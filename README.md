@@ -1,6 +1,13 @@
-# Goo
+<p align="center">
+  <img src="docs/assets/goo-readme-banner.gif" alt="Goo" width="1200">
+</p>
 
-A declarative desktop UI framework for G#.
+<p align="center">A declarative desktop UI framework for G#.</p>
+
+<p align="center">
+  <a href="https://github.com/obselate/goo/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/obselate/goo/ci.yml?branch=main&amp;style=flat-square&amp;label=ci&amp;labelColor=090B10&amp;color=478AD1" alt="CI status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/obselate/goo?style=flat-square&amp;labelColor=090B10&amp;color=6CBC5F" alt="MIT license"></a>
+</p>
 
 Goo is a retained UI framework with a small, direct core. Applications describe
 fresh UI trees in ordinary G#. Goo retains runtime state, rebuilds dirty `Cell`

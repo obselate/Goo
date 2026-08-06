@@ -23,6 +23,8 @@
 
 !/docs/
 /docs/*
+!/docs/assets/
+!/docs/assets/**
 !/docs/api/
 !/docs/api/**
 
