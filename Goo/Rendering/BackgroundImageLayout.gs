@@ -1,0 +1,228 @@
+package Goo
+
+import System
+import System.Runtime.CompilerServices
+import Goo.InternalTextInterop
+
+internal class BackgroundImageLayouts {
+  shared {
+    private var values ConditionalWeakTable[Node, BackgroundImageValue]?
+
+    internal func Path(n Node) string {
+      return if let value = state(n) { value.Path } else { "" }
+    }
+
+    internal func Source(n Node) ImageSourceProvider? {
+      return if let value = state(n) { value.Source } else { nil }
+    }
+
+    internal func Image(n Node) DecodedImage? {
+      guard let value = state(n) else { return nil }
+      if !value.Settled { Refresh(n) }
+      return value.Image
+    }
+
+    internal func SetPath(n Node, path string, invalidated Action?) bool {
+      var value = state(n)
+      if value == nil {
+        if path == "" { return false }
+        value = create(n)
+      }
+      let current = value!!
+      let changed = current.Path != path
+      current.Path = path
+      current.Invalidated = invalidated
+      if current.Source != nil {
+        return Refresh(n)
+      }
+      if !changed { return Refresh(n) }
+      releasePath(current)
+      current.Image = nil
+      current.Settled = false
+      if path == "" {
+        remove(n, current)
+        return false
+      }
+      startPath(n, current, path)
+      return Refresh(n)
+    }
+
+    internal func SetSource(n Node, source ImageSourceProvider?, invalidated Action?) bool {
+      if source == nil {
+        guard let current = state(n) else { return false }
+        current.Invalidated = invalidated
+        if current.Source == nil { return Refresh(n) }
+        releaseSource(current)
+        current.Image = nil
+        current.Settled = false
+        if current.Path == "" {
+          remove(n, current)
+          return false
+        }
+        startPath(n, current, current.Path)
+        return Refresh(n)
+      }
+      var value = state(n)
+      if value == nil { value = create(n) }
+      let current = value!!
+      current.Invalidated = invalidated
+      if current.Source == source { return Refresh(n) }
+      releasePath(current)
+      releaseSource(current)
+      current.Image = nil
+      current.Settled = false
+      current.Source = source
+      var lease ImageSourceLease?
+      try {
+        lease = source?.Acquire()
+      } catch (error Exception) {
+        lease = ImageSourceLease()
+        lease?.Fail()
+      }
+      if lease == nil {
+        lease = ImageSourceLease()
+        lease?.Fail()
+      }
+      if lease?.IsDisposed ?? false {
+        lease = ImageSourceLease()
+        lease?.Fail()
+      }
+      current.Lease = lease
+      if Refresh(n) { return true }
+      let binding = lease!!
+      current.SourceCompletion = binding.OnCompleted(func() {
+        BackgroundImageLayouts.invalidateSource(n, current, binding)
+      })
+      return false
+    }
+
+    internal func Refresh(n Node) bool {
+      guard let value = state(n) else { return false }
+      if value.Settled { return false }
+      var image DecodedImage?
+      if let lease = value.Lease {
+        if !lease.IsComplete { return false }
+        value.SourceCompletion?.Dispose()
+        value.SourceCompletion = nil
+        image = lease.Result()
+      } else if let request = value.Request {
+        if !request.IsComplete { return false }
+        value.Completion?.Dispose()
+        value.Completion = nil
+        image = request.Result
+      } else {
+        return false
+      }
+      if value.Image == image {
+        value.Settled = true
+        return false
+      }
+      value.Image = image
+      value.Settled = true
+      return true
+    }
+
+    internal func Dispose(n Node) {
+      guard let value = state(n) else {
+        return
+      }
+      remove(n, value)
+    }
+
+    private func create(n Node) BackgroundImageValue {
+      let value = BackgroundImageValue()
+      if values == nil { values = ConditionalWeakTable[Node, BackgroundImageValue]() }
+      values?.Add(n, value)
+      n.HasBackgroundImageState = true
+      return value
+    }
+
+    private func remove(n Node, value BackgroundImageValue) {
+      values?.Remove(n)
+      n.HasBackgroundImageState = false
+      releasePath(value)
+      releaseSource(value)
+      value.Path = ""
+      value.Image = nil
+      value.Settled = false
+      value.Invalidated = nil
+    }
+
+    private func startPath(n Node, value BackgroundImageValue, path string) {
+      let request = ImageDecoding.Request(path)
+      value.Request = request
+      if Refresh(n) {
+        return
+      }
+      value.Completion = request.OnCompleted(func() {
+        BackgroundImageLayouts.invalidateRequest(n, value, request)
+      })
+    }
+
+    private func releasePath(value BackgroundImageValue) {
+      value.Completion?.Dispose()
+      value.Request?.Release()
+      value.Request = nil
+      value.Completion = nil
+    }
+
+    private func releaseSource(value BackgroundImageValue) {
+      value.SourceCompletion?.Dispose()
+      value.Lease?.Dispose()
+      value.Source = nil
+      value.Lease = nil
+      value.SourceCompletion = nil
+    }
+
+    private func state(n Node) BackgroundImageValue? {
+      if !n.HasBackgroundImageState { return nil }
+      if let table = values {
+        if table.TryGetValue(n, out var value) { return value }
+      }
+      n.HasBackgroundImageState = false
+      return nil
+    }
+
+    private func invalidateRequest(n Node, value BackgroundImageValue, request ImageRequest) {
+      if n.Retired {
+        return
+      }
+      guard let current = state(n) else {
+        return
+      }
+      if current != value || current.Request != request {
+        return
+      }
+      current.Invalidated?.Invoke()
+    }
+
+    private func invalidateSource(n Node, value BackgroundImageValue, lease ImageSourceLease) {
+      if n.Retired {
+        return
+      }
+      guard let current = state(n) else {
+        return
+      }
+      if current != value || current.Lease != lease {
+        return
+      }
+      current.Invalidated?.Invoke()
+    }
+  }
+}
+
+internal class BackgroundImageValue {
+  internal var Path string
+  internal var Request ImageRequest?
+  internal var Completion ImageCompletionRegistration?
+  internal var Source ImageSourceProvider?
+  internal var Lease ImageSourceLease?
+  internal var SourceCompletion ImageSourceCompletion?
+  internal var Image DecodedImage?
+  internal var Settled bool
+  internal var Invalidated Action?
+
+  internal init() {
+    Path = ""
+  }
+}

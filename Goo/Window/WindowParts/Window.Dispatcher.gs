@@ -1,0 +1,83 @@
+package Goo
+
+import System
+import System.Collections.Generic
+import System.Threading
+import Goo.InternalTextInterop
+
+/// Hosts a Goo tree in an SDL window.
+public partial class Window {
+  /// Queues an action for the UI thread.
+  /// @param action action to run during the next Pump
+  public func Post(action Action) {
+    if action == nil { throw ArgumentNullException("action") }
+    var wake = false
+    lock cellQueueGate {
+      if !acceptingPosts {
+        throw InvalidOperationException("Window.Post is unavailable after teardown")
+      }
+      if postedActions == nil { postedActions = Queue[Action]() }
+      let queue = postedActions!!
+      let wasEmpty = queue.Count == 0
+      queue.Enqueue(action)
+      wake = wasEmpty && Interlocked.Exchange(&pendingPostedActions, 1) == 0
+    }
+    if wake {
+      host?.Wake()
+    }
+  }
+
+  private func stopPosts() {
+    lock cellQueueGate {
+      acceptingPosts = false
+      postedActions?.Clear()
+      postedActions = nil
+      Interlocked.Exchange(&pendingPostedActions, 0)
+    }
+  }
+
+  private func hasPostedActions() bool {
+    return Interlocked.CompareExchange(&pendingPostedActions, 0, 0) != 0
+  }
+
+  internal func drainPostedActions() {
+    var count int32
+    var hasBatch bool
+    lock cellQueueGate {
+      if let queue = postedActions {
+        count = queue.Count
+        hasBatch = count != 0
+      } else {
+        count = 0
+        hasBatch = false
+      }
+      if !hasBatch {
+        Interlocked.Exchange(&pendingPostedActions, 0)
+      }
+    }
+    if !hasBatch {
+      return
+    }
+    try {
+      for i in 0 ... count {
+        var action Action
+        lock cellQueueGate {
+          action = postedActions!!.Dequeue()
+        }
+        action()
+      }
+    } finally {
+      lock cellQueueGate {
+        if let queue = postedActions {
+          if queue.Count == 0 {
+            Interlocked.Exchange(&pendingPostedActions, 0)
+          } else {
+            Interlocked.Exchange(&pendingPostedActions, 1)
+          }
+        } else {
+          Interlocked.Exchange(&pendingPostedActions, 0)
+        }
+      }
+    }
+  }
+}

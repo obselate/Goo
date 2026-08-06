@@ -1,0 +1,16 @@
+<Project>
+  <!-- SkiaSharp.NativeAssets.Linux 3.116.0 publishes two byte-identical names.
+       Keep the canonical DllImport name so Linux bundles carry one payload. -->
+  <Target Name="GooRemoveDuplicateLinuxSkiaAlias"
+          AfterTargets="Publish"
+          Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
+    <PropertyGroup>
+      <_GooSkiaCanonical>$(PublishDir)libSkiaSharp.so</_GooSkiaCanonical>
+      <_GooSkiaVersionAlias>$(PublishDir)libSkiaSharp.so.116.0.0</_GooSkiaVersionAlias>
+    </PropertyGroup>
+    <Exec Command="cmp -s &quot;$(_GooSkiaCanonical)&quot; &quot;$(_GooSkiaVersionAlias)&quot;"
+          Condition="Exists('$(_GooSkiaCanonical)') and Exists('$(_GooSkiaVersionAlias)')" />
+    <Delete Files="$(_GooSkiaVersionAlias)"
+            Condition="Exists('$(_GooSkiaCanonical)') and Exists('$(_GooSkiaVersionAlias)')" />
+  </Target>
+</Project>

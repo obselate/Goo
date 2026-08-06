@@ -1,0 +1,7 @@
+<Project>
+  <!-- MSBuild only defaults Optimize=true for the literal Release configuration.
+       TestRelease is Release + compiled-in test fixtures, never a debug build. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'TestRelease'">
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+</Project>

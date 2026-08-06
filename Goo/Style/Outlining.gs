@@ -1,0 +1,100 @@
+package Goo
+
+import System.Runtime.CompilerServices
+
+internal class Outlining {
+  shared {
+    private var values ConditionalWeakTable[Node, OutlineValue]?
+
+    internal func Get(n Node) OutlineValue? {
+      if !n.HasOutlineState { return nil }
+      if let existing = values {
+        if existing.TryGetValue(n, out var value) { return value }
+      }
+      n.HasOutlineState = false
+      return nil
+    }
+
+    internal func GetWidth(n Node) Length {
+      if let value = Get(n) { return value.Width }
+      return Length{}
+    }
+
+    internal func GetColor(n Node) Color {
+      if let value = Get(n) { return value.Color }
+      return Color.Transparent
+    }
+
+    internal func GetOffset(n Node) Length {
+      if let value = Get(n) { return value.Offset }
+      return Length{}
+    }
+
+    internal func SetWidth(n Node, width Length) {
+      if let value = Get(n) {
+        value.Width = width
+        prune(n, value)
+        return
+      }
+      if emptyLength(width) {
+        return
+      }
+      let value = OutlineValue{ Width: width, Color: Color.Transparent }
+      add(n, value)
+    }
+
+    internal func SetColor(n Node, color Color) {
+      if let value = Get(n) {
+        value.Color = color
+        prune(n, value)
+        return
+      }
+      if transparent(color) {
+        return
+      }
+      let value = OutlineValue{ Color: color }
+      add(n, value)
+    }
+
+    internal func SetOffset(n Node, offset Length) {
+      if let value = Get(n) {
+        value.Offset = offset
+        prune(n, value)
+        return
+      }
+      if emptyLength(offset) {
+        return
+      }
+      let value = OutlineValue{ Offset: offset, Color: Color.Transparent }
+      add(n, value)
+    }
+
+    private func add(n Node, value OutlineValue) {
+      if values == nil { values = ConditionalWeakTable[Node, OutlineValue]() }
+      values?.Add(n, value)
+      n.HasOutlineState = true
+    }
+
+    private func prune(n Node, value OutlineValue) {
+      if !emptyLength(value.Width) || !transparent(value.Color) || !emptyLength(value.Offset) {
+        return
+      }
+      values?.Remove(n)
+      n.HasOutlineState = false
+    }
+
+    private func emptyLength(value Length) bool {
+      return value.Unit == LengthUnit.Unset
+    }
+
+    private func transparent(value Color) bool {
+      return value.R == 0.0F && value.G == 0.0F && value.B == 0.0F && value.A == 0.0F
+    }
+  }
+}
+
+internal class OutlineValue {
+  internal var Width Length
+  internal var Color Color
+  internal var Offset Length
+}

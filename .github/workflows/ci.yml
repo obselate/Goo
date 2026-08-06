@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+
+jobs:
+  linux-x64:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install Linux build and Wayland dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            binutils clang cmake curl ninja-build pkg-config zlib1g-dev \
+            libdbus-1-dev libdecor-0-dev libgl1-mesa-dev libgl1-mesa-dri \
+            libegl1 libfontconfig1 libibus-1.0-dev libwayland-dev \
+            libxkbcommon-dev wayland-protocols weston
+
+      - name: Build and test Goo
+        run: |
+          dotnet build Goo/Goo.gsproj -c Release -p:TreatWarningsAsErrors=true
+          dotnet test tests/Goo.Tests/Goo.Tests.csproj -c Release \
+            -p:TreatWarningsAsErrors=true
+
+      - name: Record dependencies and reject known vulnerabilities
+        run: |
+          mkdir -p artifacts/reports
+          dotnet --info >artifacts/reports/dotnet-info.txt
+          dotnet list Goo/Goo.gsproj package --include-transitive --format json \
+            >artifacts/reports/dependencies.json
+          dotnet list Goo/Goo.gsproj package --vulnerable --include-transitive --format json \
+            >artifacts/reports/vulnerabilities.json
+          if grep -q '"severity"' artifacts/reports/vulnerabilities.json; then
+            cat artifacts/reports/vulnerabilities.json
+            exit 1
+          fi
+
+      - name: Regenerate API documentation
+        run: |
+          dotnet run --project tools/Goo.ApiDocs/Goo.ApiDocs.csproj -c Release
+          git diff --exit-code -- docs/api
+
+      - name: Build glibc 2.35-compatible SDL
+        run: .github/scripts/build-sdl-linux-x64.sh "$PWD/artifacts/native/libSDL3.so"
+
+      - name: Pack Goo
+        run: |
+          mkdir -p artifacts/packages
+          dotnet pack Goo/Goo.gsproj -c Release -o artifacts/packages \
+            -p:TreatWarningsAsErrors=true \
+            -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so"
+
+      - name: Publish clean package consumer
+        env:
+          NUGET_PACKAGES: ${{ runner.temp }}/goo-nuget-packages
+        run: |
+          rm -rf "$NUGET_PACKAGES" artifacts/publish artifacts/linux-x64 artifacts/symbols
+          dotnet publish tests/Goo.PackageSmoke/Goo.PackageSmoke.gsproj \
+            -c Release -r linux-x64 --self-contained false \
+            -p:UseAppHost=false \
+            --configfile tests/Goo.PackageSmoke/NuGet.config \
+            -o artifacts/publish
+          .github/scripts/validate-readme-examples.py \
+            --package-dir artifacts/packages --cache "$NUGET_PACKAGES"
+
+      - name: Stage minimal Linux bundle and separate symbols
+        run: |
+          .github/scripts/stage-linux-x64.sh \
+            artifacts/publish artifacts/linux-x64 artifacts/symbols
+
+      - name: Validate package, native ABI, checksums, and 20 MiB bundle
+        run: |
+          .github/scripts/validate-release.py \
+            --package artifacts/packages/Goo.0.1.0.nupkg \
+            --bundle artifacts/linux-x64
+          dotnet artifacts/linux-x64/Goo.PackageSmoke.dll
+
+      - name: Run native Wayland smoke test
+        run: |
+          export XDG_RUNTIME_DIR="${RUNNER_TEMP}/goo-xdg-runtime"
+          export WAYLAND_DISPLAY=goo-wayland
+          install -d -m 0700 "$XDG_RUNTIME_DIR"
+          weston --backend=headless-backend.so --use-pixman \
+            --socket="$WAYLAND_DISPLAY" --idle-time=0 \
+            >"${RUNNER_TEMP}/goo-weston.log" 2>&1 &
+          weston_pid=$!
+          trap 'kill "$weston_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 50); do
+            test -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" && break
+            sleep 0.1
+          done
+          test -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" || {
+            cat "${RUNNER_TEMP}/goo-weston.log"
+            exit 1
+          }
+          GOO_NATIVE_SMOKE=1 \
+          SDL_VIDEODRIVER=wayland \
+          LIBGL_ALWAYS_SOFTWARE=1 \
+            dotnet artifacts/linux-x64/Goo.PackageSmoke.dll
+
+      - name: Upload release validation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: goo-0.1.0-linux-x64
+          if-no-files-found: error
+          path: |
+            artifacts/packages/Goo.0.1.0.nupkg
+            artifacts/linux-x64/
+            artifacts/reports/
+
+      - name: Upload symbols separately
+        uses: actions/upload-artifact@v4
+        with:
+          name: goo-0.1.0-symbols
+          if-no-files-found: error
+          path: |
+            artifacts/packages/Goo.0.1.0.snupkg
+            artifacts/symbols/
