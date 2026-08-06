@@ -1,7 +1,12 @@
-# Public repository allowlist: Goo source, tests, API documentation, and CI only.
+# Public repository allowlist: Goo source, tests, documentation, automation, and release files.
 /*
 !/.gitignore
 !/.gitattributes
+!/AGENTS.md
+!/.agents/
+!/.agents/skills/
+!/.agents/skills/resolve-goo-issue/
+!/.agents/skills/resolve-goo-issue/**
 !/.github/
 /.github/*
 !/.github/workflows/
@@ -11,6 +16,7 @@
 !/.github/ISSUE_TEMPLATE/
 !/.github/ISSUE_TEMPLATE/**
 !/.github/PULL_REQUEST_TEMPLATE.md
+!/.github/dependabot.yml
 !/.github/scripts/
 /.github/scripts/*
 !/.github/scripts/build-sdl-linux-x64.sh

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Resolve Goo Issue"
+  short_description: "Plan, approve, implement, and submit Goo issues"
+  default_prompt: "Use $resolve-goo-issue to assess and plan an open Goo issue for my review."
