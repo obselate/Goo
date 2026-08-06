@@ -464,8 +464,7 @@ internal class TextInput {
       return
     }
     if desired {
-      native.StartTextInput()
-      nativeTextInputActive = true
+      nativeTextInputActive = native.StartTextInput()
     } else {
       native.StopTextInput()
       nativeTextInputActive = false

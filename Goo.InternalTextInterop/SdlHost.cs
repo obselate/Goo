@@ -496,13 +496,15 @@ internal sealed unsafe class SdlHost : IDisposable
         Require(SDL.ShowWindow(window), "SDL_ShowWindow");
     }
 
-    public void StartTextInput()
+    public bool StartTextInput()
     {
         ThrowIfDisposed();
         if (textInputActive)
-            return;
-        Require(SDL.StartTextInput(window), "SDL_StartTextInput");
+            return true;
+        if (!SDL.StartTextInput(window))
+            return false;
         textInputActive = true;
+        return true;
     }
 
     public void StopTextInput()
@@ -514,11 +516,13 @@ internal sealed unsafe class SdlHost : IDisposable
         textInputActive = false;
     }
 
-    public void SetImeArea(int x, int y, int width, int height, int cursor)
+    public bool SetImeArea(int x, int y, int width, int height, int cursor)
     {
         ThrowIfDisposed();
+        if (!textInputActive)
+            return false;
         var area = new SDLRect(x, y, width, height);
-        Require(SDL.SetTextInputArea(window, in area, cursor), "SDL_SetTextInputArea");
+        return SDL.SetTextInputArea(window, in area, cursor);
     }
 
     public string GetClipboardText()

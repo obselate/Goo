@@ -12,6 +12,7 @@
 !/.github/scripts/stage-linux-x64.sh
 !/.github/scripts/validate-release.py
 !/.github/scripts/validate-readme-examples.py
+!/.github/scripts/with-headless-wayland.sh
 
 !/Goo/
 !/Goo/**

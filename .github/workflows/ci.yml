@@ -30,15 +30,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             binutils clang cmake curl ninja-build pkg-config zlib1g-dev \
+            fonts-dejavu-core fonts-noto-color-emoji \
             libdbus-1-dev libdecor-0-dev libgl1-mesa-dev libgl1-mesa-dri \
             libegl1 libfontconfig1 libibus-1.0-dev libwayland-dev \
             libxkbcommon-dev wayland-protocols weston
 
+      - name: Build glibc 2.35-compatible SDL
+        run: .github/scripts/build-sdl-linux-x64.sh "$PWD/artifacts/native/libSDL3.so"
+
       - name: Build and test Goo
         run: |
           dotnet build Goo/Goo.gsproj -c Release -p:TreatWarningsAsErrors=true
-          dotnet test tests/Goo.Tests/Goo.Tests.csproj -c Release \
-            -p:TreatWarningsAsErrors=true
+          SDL_VIDEODRIVER=wayland LIBGL_ALWAYS_SOFTWARE=1 \
+            .github/scripts/with-headless-wayland.sh \
+              dotnet test tests/Goo.Tests/Goo.Tests.csproj -c Release \
+                -p:TreatWarningsAsErrors=true \
+                -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so"
 
       - name: Record dependencies and reject known vulnerabilities
         run: |
@@ -57,9 +64,6 @@ jobs:
         run: |
           dotnet run --project tools/Goo.ApiDocs/Goo.ApiDocs.csproj -c Release
           git diff --exit-code -- docs/api
-
-      - name: Build glibc 2.35-compatible SDL
-        run: .github/scripts/build-sdl-linux-x64.sh "$PWD/artifacts/native/libSDL3.so"
 
       - name: Pack Goo
         run: |
@@ -95,26 +99,11 @@ jobs:
 
       - name: Run native Wayland smoke test
         run: |
-          export XDG_RUNTIME_DIR="${RUNNER_TEMP}/goo-xdg-runtime"
-          export WAYLAND_DISPLAY=goo-wayland
-          install -d -m 0700 "$XDG_RUNTIME_DIR"
-          weston --backend=headless-backend.so --use-pixman \
-            --socket="$WAYLAND_DISPLAY" --idle-time=0 \
-            >"${RUNNER_TEMP}/goo-weston.log" 2>&1 &
-          weston_pid=$!
-          trap 'kill "$weston_pid" 2>/dev/null || true' EXIT
-          for _ in $(seq 1 50); do
-            test -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" && break
-            sleep 0.1
-          done
-          test -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" || {
-            cat "${RUNNER_TEMP}/goo-weston.log"
-            exit 1
-          }
           GOO_NATIVE_SMOKE=1 \
           SDL_VIDEODRIVER=wayland \
           LIBGL_ALWAYS_SOFTWARE=1 \
-            dotnet artifacts/linux-x64/Goo.PackageSmoke.dll
+            .github/scripts/with-headless-wayland.sh \
+              dotnet artifacts/linux-x64/Goo.PackageSmoke.dll
 
       - name: Upload release validation artifacts
         uses: actions/upload-artifact@v4

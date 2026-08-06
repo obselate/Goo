@@ -17,28 +17,38 @@ public sealed class WindowInteractionTests
     }
 
     [Fact]
-    public void ClipboardRoundTripsWhileOpenRestoresThePriorValueAndFailsAfterClose()
+    public void ClipboardRoundTripsOrReportsNativeFailureAndFailsAfterClose()
     {
         var window = new Window { Width = 160, Height = 120 };
         string? original = null;
+        InvalidOperationException? nativeFailure = null;
+        var replaced = false;
         window.Open();
         try
         {
             original = window.GetClipboardText();
             const string replacement = "Goo clipboard round-trip 0de36cf1";
             window.SetClipboardText(replacement);
+            replaced = true;
             Assert.Equal(replacement, window.GetClipboardText());
+        }
+        catch (InvalidOperationException error) when (
+            Environment.GetEnvironmentVariable("GOO_HEADLESS_WAYLAND") == "1")
+        {
+            nativeFailure = error;
         }
         finally
         {
             if (window.IsOpen)
             {
-                if (original is not null)
+                if (replaced && original is not null)
                     window.SetClipboardText(original);
                 Close(window);
             }
         }
 
+        if (nativeFailure is not null)
+            Assert.StartsWith("SDL_SetClipboardText failed", nativeFailure.Message);
         Assert.Throws<InvalidOperationException>(() => window.GetClipboardText());
         Assert.Throws<InvalidOperationException>(() => window.SetClipboardText("after-close"));
     }

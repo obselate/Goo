@@ -32,6 +32,6 @@ public sealed class TextInputPrimitivesTests
         => Assert.True(new TextInputPrimitivesFixtures().MountedCustomContainerContract());
 
     [Fact]
-    public void NativeTextInputTransitionsRemainIdempotentAcrossClientChanges()
+    public void NativeTextInputTransitionsOrDegradesWithoutBreakingFocus()
         => Assert.True(new TextInputPrimitivesFixtures().NativeTextInputLifecycleContract());
 }

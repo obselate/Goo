@@ -86,7 +86,7 @@ public class ElementHandle {
   }
 
   /// Sets the native IME caret/input rectangle in window logical coordinates.
-  /// @returns False when this is not the focused generic text client in an open window.
+  /// @returns False when the element is ineligible or native text input is unavailable.
   public func SetTextInputArea(area ElementRect) bool {
     validateTextInputArea(area)
     guard let n = mountedNode(), let owner = window else { return false }

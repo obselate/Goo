@@ -72,8 +72,7 @@ public partial class Window {
     let bottom = Math.Ceiling(area.Y + area.Height)
     let width = right > left ? int32(right - left) : 1
     let height = bottom > top ? int32(bottom - top) : 1
-    native.SetImeArea(int32(left), int32(top), width, height, 0)
-    return true
+    return native.SetImeArea(int32(left), int32(top), width, height, 0)
   }
 
   internal func ScrollElementTo(n Node, x float64, y float64) bool {

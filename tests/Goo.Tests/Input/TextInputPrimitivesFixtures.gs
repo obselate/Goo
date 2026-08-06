@@ -240,7 +240,9 @@ internal class TextInputPrimitivesFixtures {
     try {
       window.UpdateTree()
       let area = ElementRect{ X: 8.0, Y: 12.0, Width: 40.0, Height: 18.0 }
-      if !cell.First.Focus() || !cell.First.SetTextInputArea(area) { return false }
+      if !cell.First.Focus() { return false }
+      let nativeTextInput = window.NativeTextInputActiveForTest()
+      if cell.First.SetTextInputArea(area) != nativeTextInput { return false }
       window.QueueTextInputForTest("commit")
       window.QueueCompositionForTest("a😀b", 1, 2)
       window.QueueCandidatesForTest([]string{ "one", "two" }, 0, true)
@@ -252,12 +254,13 @@ internal class TextInputPrimitivesFixtures {
         return false
       }
       if !cell.Second.Focus() || cell.First.SetTextInputArea(area)
-        || !cell.Second.SetTextInputArea(area) {
+        || cell.Second.SetTextInputArea(area) != nativeTextInput {
         return false
       }
       cell.FirstAttached.Value = false
       window.UpdateTree()
-      if cell.First.SetTextInputArea(area) || !cell.Second.SetTextInputArea(area) { return false }
+      if cell.First.SetTextInputArea(area)
+        || cell.Second.SetTextInputArea(area) != nativeTextInput { return false }
       window.Close()
       return !cell.Second.SetTextInputArea(area)
     } finally {
@@ -272,7 +275,15 @@ internal class TextInputPrimitivesFixtures {
     try {
       window.UpdateTree()
       if window.NativeTextInputActiveForTest() { return false }
-      if !cell.First.Focus() || !window.NativeTextInputActiveForTest() { return false }
+      if !cell.First.Focus() { return false }
+      if !window.NativeTextInputActiveForTest() {
+        if !cell.Second.Focus() || window.NativeTextInputActiveForTest() { return false }
+        if !cell.Entry.Focus() || window.NativeTextInputActiveForTest() { return false }
+        if !cell.Editor.Focus() || window.NativeTextInputActiveForTest() { return false }
+        if !cell.Plain.Focus() || window.NativeTextInputActiveForTest() { return false }
+        window.Close()
+        return !window.NativeTextInputActiveForTest()
+      }
       if !cell.Second.Focus() || !window.NativeTextInputActiveForTest() { return false }
       if !cell.Entry.Focus() || !window.NativeTextInputActiveForTest() { return false }
       if !cell.Editor.Focus() || !window.NativeTextInputActiveForTest() { return false }

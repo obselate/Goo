@@ -22,7 +22,7 @@ Subscription state is sparse. Handles without a listener and ordinary blobs and 
 
 ## Position a custom IME
 
-A focused generic text client can call `ElementHandle.SetTextInputArea` with a finite, non-negative logical-window rectangle. Goo floors the origin, ceils the far edge, and passes cursor offset zero to the native IME. The call returns false for unmounted, unfocused, built-in, closed-window, or nonparticipating elements; invalid and out-of-range rectangles throw.
+A focused generic text client can call `ElementHandle.SetTextInputArea` with a finite, non-negative logical-window rectangle. Goo floors the origin, ceils the far edge, and passes cursor offset zero to the native IME. The call returns false for unmounted, unfocused, built-in, closed-window, nonparticipating, or native-IME-unavailable elements. Invalid and out-of-range rectangles throw.
 
 ## `Blob`
 
@@ -239,7 +239,7 @@ Returns: False when the handle is unmounted or the element is not scrollable.
 
 Sets the native IME caret/input rectangle in window logical coordinates.
 
-Returns: False when this is not the focused generic text client in an open window.
+Returns: False when the element is ineligible or native text input is unavailable.
 
 ### `TryCopyTextRangeRects(TextRange,TextCoordinateSpace,System.Span{ElementRect},int32@)`
 

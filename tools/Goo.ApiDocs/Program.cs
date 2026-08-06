@@ -257,7 +257,7 @@ static void AppendTextInputAreaGuide(StringBuilder text)
     text.AppendLine();
     text.AppendLine("## Position a custom IME");
     text.AppendLine();
-    text.AppendLine("A focused generic text client can call `ElementHandle.SetTextInputArea` with a finite, non-negative logical-window rectangle. Goo floors the origin, ceils the far edge, and passes cursor offset zero to the native IME. The call returns false for unmounted, unfocused, built-in, closed-window, or nonparticipating elements; invalid and out-of-range rectangles throw.");
+    text.AppendLine("A focused generic text client can call `ElementHandle.SetTextInputArea` with a finite, non-negative logical-window rectangle. Goo floors the origin, ceils the far edge, and passes cursor offset zero to the native IME. The call returns false for unmounted, unfocused, built-in, closed-window, nonparticipating, or native-IME-unavailable elements. Invalid and out-of-range rectangles throw.");
 }
 
 static void AppendElementMetricsGuide(StringBuilder text)

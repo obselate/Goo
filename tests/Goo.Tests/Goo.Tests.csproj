@@ -22,4 +22,10 @@
           TargetPath="PublicApi.approved.txt" />
     <Compile Remove="Infrastructure\InteropFixtureAssemblyInfo.cs" />
   </ItemGroup>
+  <Target Name="UseGooLinuxSdlForTests"
+          AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(GooLinuxSdlPath)' != '' and Exists('$(GooLinuxSdlPath)')">
+    <Copy SourceFiles="$(GooLinuxSdlPath)"
+          DestinationFiles="$(TargetDir)runtimes/linux-x64/native/libSDL3.so" />
+  </Target>
 </Project>
