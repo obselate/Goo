@@ -1,6 +1,6 @@
 # Goo
 
-Fast, composable desktop UI for G#.
+A declarative desktop UI framework for G#.
 
 Goo is a retained UI framework with a small, direct core. Applications describe
 fresh UI trees in ordinary G#. Goo retains runtime state, rebuilds dirty `Cell`
@@ -67,16 +67,16 @@ change.
 
 ## What Goo optimizes for
 
-- **Primitives.** Layout, text, images, vector paths, input, motion, editing,
+- **Primitives** Layout, text, images, vector paths, input, motion, editing,
   accessibility, and windows form a public surface for application-level
   composition.
-- **Idiomatic G#.** Components use classes, functions, loops, typed values, and
+- **G# Best practices** Components use classes, functions, loops, typed values, and
   ordinary control flow.
-- **Frame discipline.** Retained nodes, scoped invalidation, reusable caches,
+- **Frame discipline** Retained nodes, scoped invalidation, reusable caches,
   and allocation budgets keep CPU time and memory traffic visible.
 
 Themes, design systems, and widget libraries live in application code or
-reusable packages. They use the same primitives as the core.
+reusable packages. The core provides base primitives for creating applications via composition and widgets.
 
 ## Documentation
 
@@ -92,8 +92,10 @@ The package includes `Goo.xml` for editor documentation.
 
 ## Credits
 
-Goo uses Skia through SkiaSharp for drawing and text. Layout uses Meta Yoga
-through the vendored Yoga.Net port. See the [third-party notices](THIRD-PARTY-NOTICES.md)
+Goo uses Skia through SkiaSharp for drawing and text. 
+Layout uses Meta Yoga through the vendored Yoga.Net port. 
+
+See the [third-party notices](THIRD-PARTY-NOTICES.md)
 for versions and license terms.
 
 ## License
