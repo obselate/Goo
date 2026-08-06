@@ -1,0 +1,98 @@
+name: Bug report
+description: Report a reproducible defect in Goo
+title: ""
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report behavior that is incorrect in Goo itself. Use the proposal form for a missing primitive or public API.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Select the Goo source domain most closely related to the defect.
+      options:
+        - Accessibility
+        - Cell
+        - Input
+        - Layout
+        - Motion
+        - Rendering
+        - Shapes
+        - Style
+        - Text
+        - Tree
+        - Window
+        - Packaging
+        - Documentation
+        - Unsure or cross-cutting
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: State the defect and its visible effect.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Provide the smallest code sample and exact steps that reproduce the defect.
+      render: gsharp
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include errors, logs, screenshots, or recordings when useful.
+    validations:
+      required: true
+
+  - type: input
+    id: goo-version
+    attributes:
+      label: Goo version
+      placeholder: 0.1.0 or commit SHA
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Include the OS, architecture, display backend, and G# SDK version when relevant.
+      placeholder: Ubuntu 22.04, x64, Wayland, Gsharp.NET.Sdk 0.3.x
+    validations:
+      required: true
+
+  - type: input
+    id: last-working
+    attributes:
+      label: Last known working version
+      description: Leave blank if this is not a regression or the version is unknown.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched for an existing issue that describes this defect.
+          required: true
+        - label: The reproduction uses Goo directly and does not depend on an unrelated application framework.
+          required: true

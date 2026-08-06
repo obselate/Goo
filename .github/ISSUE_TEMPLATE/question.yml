@@ -1,0 +1,74 @@
+name: Question
+description: Ask about using or composing Goo primitives
+title: ""
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when the public API may already support your goal but the correct composition is unclear.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Select the Goo source domain most closely related to the question.
+      options:
+        - Accessibility
+        - Cell
+        - Input
+        - Layout
+        - Motion
+        - Rendering
+        - Shapes
+        - Style
+        - Text
+        - Tree
+        - Window
+        - Packaging
+        - Documentation
+        - Unsure or cross-cutting
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: Describe the UI behavior or reusable widget you are trying to build.
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-code
+    attributes:
+      label: Current code
+      description: Show the smallest relevant composition.
+      render: gsharp
+    validations:
+      required: true
+
+  - type: textarea
+    id: blocker
+    attributes:
+      label: Where you are stuck
+      description: Explain the result you get and the part of the API that is unclear.
+    validations:
+      required: true
+
+  - type: input
+    id: goo-version
+    attributes:
+      label: Goo version
+      placeholder: 0.1.0 or commit SHA
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched the API documentation and existing issues first.
+          required: true

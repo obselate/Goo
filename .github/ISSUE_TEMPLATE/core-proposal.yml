@@ -1,0 +1,98 @@
+name: Core proposal
+description: Propose a missing primitive or public API for Goo core
+title: ""
+labels:
+  - proposal
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Goo core provides primitives. A proposal belongs here only when the current public surface cannot compose the required behavior.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Select the Goo source domain that owns the missing mechanism.
+      options:
+        - Accessibility
+        - Cell
+        - Input
+        - Layout
+        - Motion
+        - Rendering
+        - Shapes
+        - Style
+        - Text
+        - Tree
+        - Window
+        - Packaging
+        - Documentation
+        - Unsure or cross-cutting
+    validations:
+      required: true
+
+  - type: textarea
+    id: blocked-capability
+    attributes:
+      label: Blocked capability
+      description: Describe the UI behavior or reusable widget that consumers cannot build today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-surface
+    attributes:
+      label: Current public surface
+      description: List the Goo APIs you tried and show the smallest composition attempt.
+      render: gsharp
+    validations:
+      required: true
+
+  - type: textarea
+    id: composition-gap
+    attributes:
+      label: Why composition fails
+      description: Identify the inaccessible mechanism or incorrect core behavior. Convenience alone is not a core gap.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-primitive
+    attributes:
+      label: Smallest core change
+      description: Describe the minimum primitive or public API needed to unblock composition.
+    validations:
+      required: true
+
+  - type: textarea
+    id: consumers
+    attributes:
+      label: Consumers
+      description: Name the distinct applications, widgets, or libraries that need this mechanism.
+    validations:
+      required: true
+
+  - type: textarea
+    id: performance
+    attributes:
+      label: Performance impact
+      description: Note expected effects on frame time, allocations, retained memory, or hot-path complexity.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include downstream composition or library-level designs you rejected and why.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched for an existing proposal that covers this gap.
+          required: true
+        - label: I verified that the required mechanism is not already reachable through Goo's public API.
+          required: true

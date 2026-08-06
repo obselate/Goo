@@ -1,0 +1,66 @@
+name: Label issue area
+
+on:
+  issues:
+    types:
+      - opened
+      - edited
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  area:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply selected area
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const areas = {
+              Accessibility: 'area: accessibility',
+              Cell: 'area: cell',
+              Input: 'area: input',
+              Layout: 'area: layout',
+              Motion: 'area: motion',
+              Rendering: 'area: rendering',
+              Shapes: 'area: shapes',
+              Style: 'area: style',
+              Text: 'area: text',
+              Tree: 'area: tree',
+              Window: 'area: window',
+              Packaging: 'area: packaging',
+              Documentation: 'area: documentation',
+              'Unsure or cross-cutting': null
+            };
+
+            const body = context.payload.issue.body ?? '';
+            const selected = body.match(/^### Area\s*\n+([^\n]+)/m)?.[1].trim();
+            if (!(selected in areas)) return;
+
+            const desired = areas[selected];
+            const managed = new Set(Object.values(areas).filter(Boolean));
+            const current = context.payload.issue.labels
+              .map(label => typeof label === 'string' ? label : label.name)
+              .filter(Boolean);
+
+            for (const label of current) {
+              if (managed.has(label) && label !== desired) {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: label
+                });
+              }
+            }
+
+            if (desired && !current.includes(desired)) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: [desired]
+              });
+            }
