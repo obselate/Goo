@@ -10,6 +10,7 @@
 !/.github/workflows/label-issues.yml
 !/.github/ISSUE_TEMPLATE/
 !/.github/ISSUE_TEMPLATE/**
+!/.github/PULL_REQUEST_TEMPLATE.md
 !/.github/scripts/
 /.github/scripts/*
 !/.github/scripts/build-sdl-linux-x64.sh
@@ -48,6 +49,7 @@
 !/vendor/Yoga.Net/src/**
 
 !/README.md
+!/CONTRIBUTING.md
 !/CHANGELOG.md
 !/NuGet.Config
 !/LICENSE
