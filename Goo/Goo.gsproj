@@ -12,8 +12,8 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageReleaseNotes>Initial retained UI release. See the packaged CHANGELOG.md for the supported surface and limitations.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageProjectUrl>https://github.com/obselate/Goo</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/obselate/Goo</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/obselate/goo</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/obselate/goo</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <IsPackable>true</IsPackable>
     <IncludeSymbols>true</IncludeSymbols>

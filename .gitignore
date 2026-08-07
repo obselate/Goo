@@ -17,6 +17,7 @@
 !/.github/ISSUE_TEMPLATE/**
 !/.github/PULL_REQUEST_TEMPLATE.md
 !/.github/dependabot.yml
+!/.github/RELEASING.md
 !/.github/scripts/
 /.github/scripts/*
 !/.github/scripts/build-sdl-linux-x64.sh

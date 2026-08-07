@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 - Unreleased
+## 0.1.0 - 2026-08-07
 
 Goo 0.1.0 is the first public release of the retained, declarative UI framework
 for G# and .NET 10.

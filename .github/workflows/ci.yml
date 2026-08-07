@@ -12,6 +12,7 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  GOO_VERSION: 0.1.0
 
 jobs:
   linux-x64:
@@ -19,9 +20,9 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -70,6 +71,8 @@ jobs:
           mkdir -p artifacts/packages
           dotnet pack Goo/Goo.gsproj -c Release -o artifacts/packages \
             -p:TreatWarningsAsErrors=true \
+            -p:ContinuousIntegrationBuild=true \
+            -p:RepositoryCommit="$GITHUB_SHA" \
             -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so"
 
       - name: Publish clean package consumer
@@ -93,9 +96,15 @@ jobs:
       - name: Validate package, native ABI, checksums, and 20 MiB bundle
         run: |
           .github/scripts/validate-release.py \
-            --package artifacts/packages/Goo.0.1.0.nupkg \
+            --package "artifacts/packages/Goo.$GOO_VERSION.nupkg" \
             --bundle artifacts/linux-x64
           dotnet artifacts/linux-x64/Goo.PackageSmoke.dll
+
+      - name: Archive release candidates
+        run: |
+          tar -C artifacts -czf "artifacts/Goo.$GOO_VERSION-linux-x64.tar.gz" linux-x64
+          sha256sum "artifacts/Goo.$GOO_VERSION-linux-x64.tar.gz" \
+            >"artifacts/Goo.$GOO_VERSION-linux-x64.tar.gz.sha256"
 
       - name: Run native Wayland smoke test
         run: |
@@ -106,20 +115,111 @@ jobs:
               dotnet artifacts/linux-x64/Goo.PackageSmoke.dll
 
       - name: Upload release validation artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: goo-0.1.0-linux-x64
+          name: goo-${{ env.GOO_VERSION }}-linux-x64
           if-no-files-found: error
           path: |
-            artifacts/packages/Goo.0.1.0.nupkg
+            artifacts/packages/Goo.${{ env.GOO_VERSION }}.nupkg
             artifacts/linux-x64/
             artifacts/reports/
 
       - name: Upload symbols separately
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: goo-0.1.0-symbols
+          name: goo-${{ env.GOO_VERSION }}-symbols
           if-no-files-found: error
           path: |
-            artifacts/packages/Goo.0.1.0.snupkg
+            artifacts/packages/Goo.${{ env.GOO_VERSION }}.snupkg
             artifacts/symbols/
+
+      - name: Upload release candidates
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-candidates
+          if-no-files-found: error
+          path: |
+            artifacts/packages/Goo.${{ env.GOO_VERSION }}.nupkg
+            artifacts/packages/Goo.${{ env.GOO_VERSION }}.snupkg
+            artifacts/Goo.${{ env.GOO_VERSION }}-linux-x64.tar.gz
+            artifacts/Goo.${{ env.GOO_VERSION }}-linux-x64.tar.gz.sha256
+
+  release-goo:
+    if: github.repository == 'obselate/goo' && startsWith(github.ref, 'refs/tags/v')
+    needs: linux-x64
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Validate release tag
+        shell: bash
+        run: |
+          [[ "$GOO_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]
+          test "$GITHUB_REF_NAME" = "v$GOO_VERSION"
+          grep -Fx "    <Version>$GOO_VERSION</Version>" Goo/Goo.gsproj
+          git fetch origin main --no-tags
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Download release candidates
+        uses: actions/download-artifact@v8
+        with:
+          name: release-candidates
+          path: artifacts
+
+      - name: Require NuGet trusted-publishing identity
+        env:
+          NUGET_USER: ${{ vars.NUGET_USER }}
+        run: test -n "$NUGET_USER"
+
+      - name: Get temporary NuGet API key
+        id: nuget
+        uses: NuGet/login@ebc737b6fc418a6ca0073cf116ec8dc156d8b81e # v1.2.0
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Publish Goo to NuGet.org
+        run: |
+          dotnet nuget push "artifacts/packages/Goo.$GOO_VERSION.nupkg" \
+            --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+          dotnet nuget push "artifacts/packages/Goo.$GOO_VERSION.snupkg" \
+            --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_flags=()
+          if [[ "$GOO_VERSION" == *-* ]]; then
+            release_flags+=(--prerelease)
+          fi
+          assets=(
+            "artifacts/packages/Goo.$GOO_VERSION.nupkg"
+            "artifacts/packages/Goo.$GOO_VERSION.snupkg"
+            "artifacts/Goo.$GOO_VERSION-linux-x64.tar.gz"
+            "artifacts/Goo.$GOO_VERSION-linux-x64.tar.gz.sha256"
+          )
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
+              "${release_flags[@]}" \
+              --verify-tag \
+              --title "Goo $GOO_VERSION" \
+              --notes-file CHANGELOG.md
+          fi
