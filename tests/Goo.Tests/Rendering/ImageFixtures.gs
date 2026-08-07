@@ -8,70 +8,47 @@ internal class ImageFixtures {
   func DecodedImageSurface(path string) bool {
     ImageDecoding.ResetForTests()
     defer ImageDecoding.ResetForTests()
-
     let intrinsicRoot = mountChild(Image{ Path: path, AlignSelf: AlignSelf.FlexStart })
+    defer TextLayouts.DisposeTree(intrinsicRoot)
     let intrinsic = intrinsicRoot.Children[0]
-    if !waitForDecode(intrinsic) {
-      TextLayouts.DisposeTree(intrinsicRoot)
-      return false
-    }
+    if !waitForDecode(intrinsic) { return false }
     Layout().Calculate(intrinsicRoot, 200.0F, 200.0F)
-
     let widthRoot = mountChild(Image{ Path: path, Width: 40, AlignSelf: AlignSelf.FlexStart })
+    defer TextLayouts.DisposeTree(widthRoot)
     let width = widthRoot.Children[0]
     let heightRoot = mountChild(Image{ Path: path, Height: 15, AlignSelf: AlignSelf.FlexStart })
+    defer TextLayouts.DisposeTree(heightRoot)
     let height = heightRoot.Children[0]
     let fixedRoot = mountChild(Image{ Path: path, Width: 40, Height: 30, AlignSelf: AlignSelf.FlexStart })
+    defer TextLayouts.DisposeTree(fixedRoot)
     let fixed = fixedRoot.Children[0]
-    if !waitForDecode(width) || !waitForDecode(height) || !waitForDecode(fixed) {
-      TextLayouts.DisposeTree(intrinsicRoot)
-      TextLayouts.DisposeTree(widthRoot)
-      TextLayouts.DisposeTree(heightRoot)
-      TextLayouts.DisposeTree(fixedRoot)
-      return false
+    if !waitForDecode(width) || !waitForDecode(height) || !waitForDecode(fixed) { return false }
+    Layout().Calculate(widthRoot, 200.0F, 200.0F)
+    Layout().Calculate(heightRoot, 200.0F, 200.0F)
+    Layout().Calculate(fixedRoot, 200.0F, 200.0F)
+    for fit in []ImageFit{ ImageFit.Contain, ImageFit.Cover, ImageFit.Fill, ImageFit.None } {
+      using let image = render(path, fit, 0)
+      if !fitPasses(image, fit) { return false }
     }
-    let layout = Layout()
-    layout.Calculate(widthRoot, 200.0F, 200.0F)
-    layout.Calculate(heightRoot, 200.0F, 200.0F)
-    layout.Calculate(fixedRoot, 200.0F, 200.0F)
-
-    using let contain = render(path, ImageFit.Contain, 0)
-    using let cover = render(path, ImageFit.Cover, 0)
-    using let fill = render(path, ImageFit.Fill, 0)
-    using let none = render(path, ImageFit.None, 0)
     using let padded = render(path, ImageFit.Fill, 5)
     using let rounded = renderSurface(path, 0, 10, 1.0)
     using let translucent = renderSurface(path, 0, 0, 0.5)
-
     let result = intrinsic.Rect.W == 20.0F && intrinsic.Rect.H == 10.0F
       && width.Rect.W == 40.0F && width.Rect.H == 20.0F
       && height.Rect.W == 30.0F && height.Rect.H == 15.0F
       && fixed.Rect.W == 40.0F && fixed.Rect.H == 30.0F
-      && isBlack(contain, 20, 5) && isRed(contain, 10, 20) && isBlue(contain, 30, 20)
-      && isRed(cover, 2, 20) && isBlue(cover, 37, 20)
-      && isRed(fill, 10, 20) && isBlue(fill, 30, 20)
-      && isBlack(none, 0, 20) && isRed(none, 12, 20) && isBlue(none, 28, 20)
       && isBlack(padded, 3, 20) && isRed(padded, 10, 20)
       && isBlack(rounded, 1, 1) && isRed(rounded, 10, 20)
       && isHalfRed(translucent, 10, 20)
-
-    TextLayouts.DisposeTree(intrinsicRoot)
-    TextLayouts.DisposeTree(widthRoot)
-    TextLayouts.DisposeTree(heightRoot)
-    TextLayouts.DisposeTree(fixedRoot)
     return result
   }
-
   func EmptyPathContract() bool {
     ImageDecoding.ResetForTests()
     ImageDecoding.UseSyntheticDecoderForTests(true)
     defer ImageDecoding.ResetForTests()
-
     let rec = Reconciler{ Res: Resolver{} }
-    let root = rec.Mount(Container{ Width: 100, Height: 100,
-      Children: { Image{ Path: "synthetic-before-empty", Fit: ImageFit.Contain,
-        AlignSelf: AlignSelf.FlexStart } },
-    })
+    let root = rec.Mount(Container{ Width: 100, Height: 100, Children: {
+      Image{ Path: "synthetic-before-empty", Fit: ImageFit.Contain, AlignSelf: AlignSelf.FlexStart } } })
     defer TextLayouts.DisposeTree(root)
     let image = root.Children[0]
     guard let request = image.ImageRequest else { return false }
@@ -79,10 +56,8 @@ internal class ImageFixtures {
     ImageLayouts.Refresh(image)
     Layout().Calculate(root, 100.0F, 100.0F)
     let hadNaturalSize = image.Rect.W == 20.0F && image.Rect.H == 10.0F
-
     let retained = rec.Diff(root, Container{ Width: 100, Height: 100,
-      Children: { Image{ Path: "", Fit: ImageFit.Fill, AlignSelf: AlignSelf.FlexStart } },
-    })
+      Children: { Image{ Path: "", Fit: ImageFit.Fill, AlignSelf: AlignSelf.FlexStart } } })
     Layout().Calculate(retained, 100.0F, 100.0F)
     return retained == root && hadNaturalSize
       && image.ImageFit == ImageFit.Fill
@@ -93,19 +68,17 @@ internal class ImageFixtures {
   func ImageCanonicalPathContract(absolute string, relative string, missing string) bool {
     ImageDecoding.ResetForTests()
     defer ImageDecoding.ResetForTests()
-
     if !negativeCacheKeepsDeclaredBox(missing) { return false }
-
     ImageDecoding.ResetForTests()
     ImageDecoding.UseSyntheticDecoderForTests(true)
     if !canonicalCacheRetainsImageNode(absolute, relative) { return false }
-
     return true
   }
-
   private func negativeCacheKeepsDeclaredBox(path string) bool {
     let first = Reconciler{ Res: Resolver{} }.Mount(Image{ Path: path, Width: 40, Height: 30 })
+    defer TextLayouts.DisposeTree(first)
     let second = Reconciler{ Res: Resolver{} }.Mount(Image{ Path: path, Width: 40, Height: 30 })
+    defer TextLayouts.DisposeTree(second)
     guard let firstRequest = first.ImageRequest else { return false }
     guard let secondRequest = second.ImageRequest else { return false }
     firstRequest.Wait()
@@ -116,15 +89,14 @@ internal class ImageFixtures {
     Layout().Calculate(second, 100.0F, 100.0F)
     let result = firstRequest == secondRequest && !firstRequest.Result.IsValid
       && first.Rect.W == 40.0F && first.Rect.H == 30.0F
-    TextLayouts.DisposeTree(first)
-    TextLayouts.DisposeTree(second)
     return result
   }
-
   private func canonicalCacheRetainsImageNode(absolute string, relative string) bool {
     let rec = Reconciler{ Res: Resolver{} }
     let left = rec.Mount(Image{ Key: "image", Path: absolute, Fit: ImageFit.Contain })
+    defer TextLayouts.DisposeTree(left)
     let right = rec.Mount(Image{ Path: relative })
+    defer TextLayouts.DisposeTree(right)
     guard let leftRequest = left.ImageRequest else { return false }
     guard let rightRequest = right.ImageRequest else { return false }
     leftRequest.Wait()
@@ -134,20 +106,17 @@ internal class ImageFixtures {
     let retained = rec.Diff(left, Image{ Key: "image", Path: absolute, Fit: ImageFit.Cover })
     let result = leftRequest == rightRequest && left.DecodedImage == right.DecodedImage
       && retained == left && retained.Kind == NodeKind.Image && retained.ImageFit == ImageFit.Cover
-    TextLayouts.DisposeTree(left)
-    TextLayouts.DisposeTree(right)
     return result
   }
-
   func ByteEvictionKeepsAttachedImagePaintable() bool {
     ImageDecoding.ResetForTests()
     ImageDecoding.UseSyntheticDecoderForTests(true)
     defer ImageDecoding.ResetForTests()
-
     let path = "synthetic-byte-eviction"
     let image = Reconciler{ Res: Resolver{} }.Mount(Image{
       Path: path, Width: 40, Height: 20,
     })
+    defer TextLayouts.DisposeTree(image)
     let request = ImageDecoding.Request(path)
     ImageDecoding.SetCacheByteBudgetForTests(0)
     let decoded = request.Wait().IsValid
@@ -158,14 +127,12 @@ internal class ImageFixtures {
     Layout().Calculate(image, 40.0F, 20.0F)
     using let painted = Painter().RenderOffscreen(image, 40, 20)
     let visible = isRed(painted, 10, 10) && isBlue(painted, 30, 10)
-    TextLayouts.DisposeTree(image)
     return decoded && evicted && refreshed && visible
   }
   func ImageCompletionContract(missing string) bool {
     ImageDecoding.ResetForTests()
     ImageDecoding.UseSyntheticDecoderForTests(true)
     defer ImageDecoding.ResetForTests()
-
     let gate = TaskCompletionSource[bool]()
     ImageDecoding.SetDecodeGateForTests(gate.Task)
     let cell = ImageCompletionCell{}
@@ -176,14 +143,12 @@ internal class ImageFixtures {
     let image = tree.Children[0]
     guard let request = image.ImageRequest else { return false }
     guard let registration = image.ImageCompletion else { return false }
-
     gate.SetResult(true)
     request.Wait()
     registration.Wait()
     window.UpdateTree()
     let intrinsic = image.Rect.W == 20.0F && image.Rect.H == 10.0F
     let hit = Hit().Topmost(tree, 5.0F, 5.0F) == image
-
     let failedGate = TaskCompletionSource[bool]()
     ImageDecoding.SetDecodeGateForTests(failedGate.Task)
     ImageDecoding.UseSyntheticDecoderForTests(false)
@@ -198,7 +163,6 @@ internal class ImageFixtures {
     failedRegistration.Wait()
     window.UpdateTree()
     let collapsed = image.Rect.W == 0.0F && image.Rect.H == 0.0F
-
     let pendingGate = TaskCompletionSource[bool]()
     ImageDecoding.SetDecodeGateForTests(pendingGate.Task)
     ImageDecoding.UseSyntheticDecoderForTests(true)
@@ -218,7 +182,6 @@ internal class ImageFixtures {
     let dropped = tree.Children[0].Kind == NodeKind.Text
     return intrinsic && hit && retained && collapsed && dropped
   }
-
   func OwnedSourcesShareLifetimeAndPaint() bool {
     let source = sourceImage()
     let rec = Reconciler{ Res: Resolver{} }
@@ -238,7 +201,6 @@ internal class ImageFixtures {
     TextLayouts.DisposeTree(replacement)
     return mounted && retained && released
   }
-
   func ProviderReplacementCompletionFailureAndReleaseContract() bool {
     let first = TestImageSourceProvider{}
     let second = TestImageSourceProvider{}
@@ -270,7 +232,6 @@ internal class ImageFixtures {
     TextLayouts.DisposeTree(replacement)
     return staleRejected && ready && collapsed && released
   }
-
   func OwnedSourceInputContract() bool {
     var shortRejected bool
     var overflowRejected bool
@@ -291,15 +252,12 @@ internal class ImageFixtures {
     lease.Dispose()
     return shortRejected && overflowRejected && retained && source.ActiveLeases == 0
   }
-
   func OwnedSourceCopiesPixels() bool {
     let pixels = []uint8{ 255, 0, 0, 255 }
     let source = ImageSource(1, 1, pixels)
     pixels[0] = 0
     pixels[3] = 0
-    let node = Reconciler{ Res: Resolver{} }.Mount(Image{
-      Source: source, Width: 20, Height: 20, Fit: ImageFit.Fill,
-    })
+    let node = Reconciler{ Res: Resolver{} }.Mount(Image{ Source: source, Width: 20, Height: 20, Fit: ImageFit.Fill })
     Layout().Calculate(node, 20.0F, 20.0F)
     using let painted = Painter().RenderOffscreen(node, 20, 20)
     let copied = isRed(painted, 10, 10)
@@ -307,7 +265,6 @@ internal class ImageFixtures {
     source.Dispose()
     return copied
   }
-
   func CompletionCallbackExceptionLeavesLeaseReleasable() bool {
     let source = sourceImage()
     let lease = ImageSourceLease()
@@ -329,7 +286,6 @@ internal class ImageFixtures {
     source.Dispose()
     return completed && released
   }
-
   func ProviderWindowCompletionAndDisposedLeaseContract() bool {
     let provider = TestImageSourceProvider{}
     let cell = ImageSourceWindowCell{ Provider: provider }
@@ -346,122 +302,78 @@ internal class ImageFixtures {
     window.Close()
     let released = lease.IsDisposed && provider.Releases == 1 && source.ActiveLeases == 0
     source.Dispose()
-
     let disposedProvider = TestImageSourceProvider{ ReturnDisposed: true }
     let node = Reconciler{ Res: Resolver{} }.Mount(Image{ Source: disposedProvider })
     let failed = (node.ImageLease?.IsComplete ?? false) && (node.ImageLease?.IsFailed ?? false)
     TextLayouts.DisposeTree(node)
     return updated && released && failed
   }
-
-  private func sourceImage() ImageSource {
-    return ImageSource(2, 1, []uint8{ 255, 0, 0, 255, 0, 0, 255, 255 })
-  }
+  private func sourceImage() ImageSource { return ImageSource(2, 1, []uint8{ 255, 0, 0, 255, 0, 0, 255, 255 }) }
 
   private func mountChild(child Image) Node {
-    let root = Container{ Width: 200, Height: 200 }
-    root.Children.Add(child)
-    return Reconciler{ Res: Resolver{} }.Mount(root)
+    return Reconciler{ Res: Resolver{} }.Mount(Container{ Width: 200, Height: 200, Children: { child } })
   }
-
   private func waitForDecode(n Node) bool {
     guard let request = n.ImageRequest else { return false }
     let decoded = request.Wait()
     ImageLayouts.Refresh(n)
     return decoded.IsValid
   }
-
   private func render(path string, fit ImageFit, padding float64) SKImage {
     let n = Reconciler{ Res: Resolver{} }.Mount(Image{
-      Path: path,
-      Fit: fit,
-      Width: 40,
-      Height: 40,
-      Padding: padding,
-      BackgroundColor: Color.Black,
-    })
-    waitForDecode(n)
-    Layout().Calculate(n, 40.0F, 40.0F)
-    let image = Painter().RenderOffscreen(n, 40, 40)
-    TextLayouts.DisposeTree(n)
-    return image
+      Path: path, Fit: fit, Width: 40, Height: 40, Padding: padding, BackgroundColor: Color.Black })
+    return renderNode(n)
   }
-
   private func renderSurface(path string, padding float64, radius float64, opacity float64) SKImage {
     let n = Reconciler{ Res: Resolver{} }.Mount(Image{
-      Path: path,
-      Fit: ImageFit.Fill,
-      Width: 40,
-      Height: 40,
-      Padding: padding,
-      BorderRadius: radius,
-      BorderWidth: 2,
-      BorderColor: Color.White,
-      BackgroundColor: Color.Black,
-      Opacity: opacity,
-    })
+      Path: path, Fit: ImageFit.Fill, Width: 40, Height: 40, Padding: padding,
+      BorderRadius: radius, BorderWidth: 2, BorderColor: Color.White,
+      BackgroundColor: Color.Black, Opacity: opacity })
+    return renderNode(n)
+  }
+  private func renderNode(n Node) SKImage {
+    defer TextLayouts.DisposeTree(n)
     waitForDecode(n)
     Layout().Calculate(n, 40.0F, 40.0F)
-    let image = Painter().RenderOffscreen(n, 40, 40)
-    TextLayouts.DisposeTree(n)
-    return image
+    return Painter().RenderOffscreen(n, 40, 40)
   }
-
   private func pixel(image SKImage, x int32, y int32) SKColor {
     using let bitmap = SKBitmap.FromImage(image)
     return bitmap.GetPixel(x, y)
   }
-
-  private func isRed(image SKImage, x int32, y int32) bool {
-    let color = pixel(image, x, y)
-    return color.Red >= 245 && color.Green <= 10 && color.Blue <= 10
+  private func fitPasses(image SKImage, fit ImageFit) bool {
+    if fit == ImageFit.Contain { return isBlack(image, 20, 5) && isRed(image, 10, 20) && isBlue(image, 30, 20) }
+    if fit == ImageFit.Cover { return isRed(image, 2, 20) && isBlue(image, 37, 20) }
+    if fit == ImageFit.Fill { return isRed(image, 10, 20) && isBlue(image, 30, 20) }
+    return isBlack(image, 0, 20) && isRed(image, 12, 20) && isBlue(image, 28, 20)
   }
-
-  private func isBlue(image SKImage, x int32, y int32) bool {
+  private func isRgb(image SKImage, x int32, y int32, redMin int32, redMax int32, blueMin int32, blueMax int32) bool {
     let color = pixel(image, x, y)
-    return color.Blue >= 245 && color.Red <= 10 && color.Green <= 10
+    return color.Red >= redMin && color.Red <= redMax && color.Green <= 10 && color.Blue >= blueMin && color.Blue <= blueMax
   }
-
-  private func isBlack(image SKImage, x int32, y int32) bool {
-    let color = pixel(image, x, y)
-    return color.Red <= 10 && color.Green <= 10 && color.Blue <= 10
-  }
-
-  private func isHalfRed(image SKImage, x int32, y int32) bool {
-    let color = pixel(image, x, y)
-    return color.Red >= 186 && color.Red <= 189 && color.Green <= 10 && color.Blue <= 10
-  }
+  private func isRed(image SKImage, x int32, y int32) bool { return isRgb(image, x, y, 245, 255, 0, 10) }
+  private func isBlue(image SKImage, x int32, y int32) bool { return isRgb(image, x, y, 0, 10, 245, 255) }
+  private func isBlack(image SKImage, x int32, y int32) bool { return isRgb(image, x, y, 0, 10, 0, 10) }
+  private func isHalfRed(image SKImage, x int32, y int32) bool { return isRgb(image, x, y, 186, 189, 0, 10) }
 }
 internal class ImageCompletionCell : Cell {
   internal var Path string
   internal var ShowImage bool
-
   init() {
     Path = "synthetic-completion"
     ShowImage = true
   }
-
   override func Build() Blob {
-    if ShowImage {
-      return Container{
-        Width: 100, Height: 100,
-        Children: { Image{ Key: "image", Path: Path, AlignSelf: AlignSelf.FlexStart } },
-      }
-    }
-    return Container{
-      Width: 100, Height: 100,
-      Children: { Text{ Key: "replacement", Content: "replacement" } },
-    }
+    if ShowImage { return Container{ Width: 100, Height: 100, Children: { Image{ Key: "image", Path: Path, AlignSelf: AlignSelf.FlexStart } } } }
+    return Container{ Width: 100, Height: 100, Children: { Text{ Key: "replacement", Content: "replacement" } } }
   }
 }
-
 internal class TestImageSourceProvider : ImageSourceProvider {
   internal var Lease ImageSourceLease?
   internal var Acquires int32
   internal var Releases int32
   internal prop ThrowOnRelease bool { get; set; }
   internal prop ReturnDisposed bool { get; set; }
-
   func Acquire() ImageSourceLease {
     Acquires = Acquires + 1
     let lease = ImageSourceLease()
@@ -474,13 +386,7 @@ internal class TestImageSourceProvider : ImageSourceProvider {
     return lease
   }
 }
-
 internal class ImageSourceWindowCell : Cell {
   internal prop Provider TestImageSourceProvider { get; set; }
-
-  override func Build() Blob {
-    return Container{ Width: 100, Height: 100,
-      Children: { Image{ Key: "image", Source: Provider, AlignSelf: AlignSelf.FlexStart } },
-    }
-  }
+  override func Build() Blob { return Container{ Width: 100, Height: 100, Children: { Image{ Key: "image", Source: Provider, AlignSelf: AlignSelf.FlexStart } } } }
 }

@@ -52,7 +52,7 @@ internal class BackgroundImageLayouts {
         guard let current = state(n) else { return false }
         current.Invalidated = invalidated
         if current.Source == nil { return Refresh(n) }
-        releaseSource(current)
+        current.ReleaseSource()
         current.Image = nil
         current.Settled = false
         if current.Path == "" {
@@ -68,29 +68,12 @@ internal class BackgroundImageLayouts {
       current.Invalidated = invalidated
       if current.Source == source { return Refresh(n) }
       releasePath(current)
-      releaseSource(current)
       current.Image = nil
       current.Settled = false
-      current.Source = source
-      var lease ImageSourceLease?
-      try {
-        lease = source?.Acquire()
-      } catch (error Exception) {
-        lease = ImageSourceLease()
-        lease?.Fail()
-      }
-      if lease == nil {
-        lease = ImageSourceLease()
-        lease?.Fail()
-      }
-      if lease?.IsDisposed ?? false {
-        lease = ImageSourceLease()
-        lease?.Fail()
-      }
-      current.Lease = lease
+      current.RebindSource(source)
       if Refresh(n) { return true }
-      let binding = lease!!
-      current.SourceCompletion = binding.OnCompleted(func() {
+      let binding = current.Lease!!
+      current.WatchSource(func() {
         BackgroundImageLayouts.invalidateSource(n, current, binding)
       })
       return false
@@ -102,9 +85,7 @@ internal class BackgroundImageLayouts {
       var image DecodedImage?
       if let lease = value.Lease {
         if !lease.IsComplete { return false }
-        value.SourceCompletion?.Dispose()
-        value.SourceCompletion = nil
-        image = lease.Result()
+        image = value.CompletedResult()
       } else if let request = value.Request {
         if !request.IsComplete { return false }
         value.Completion?.Dispose()
@@ -141,7 +122,7 @@ internal class BackgroundImageLayouts {
       values?.Remove(n)
       n.HasBackgroundImageState = false
       releasePath(value)
-      releaseSource(value)
+      value.ReleaseSource()
       value.Path = ""
       value.Image = nil
       value.Settled = false
@@ -164,14 +145,6 @@ internal class BackgroundImageLayouts {
       value.Request?.Release()
       value.Request = nil
       value.Completion = nil
-    }
-
-    private func releaseSource(value BackgroundImageValue) {
-      value.SourceCompletion?.Dispose()
-      value.Lease?.Dispose()
-      value.Source = nil
-      value.Lease = nil
-      value.SourceCompletion = nil
     }
 
     private func state(n Node) BackgroundImageValue? {
@@ -211,13 +184,10 @@ internal class BackgroundImageLayouts {
   }
 }
 
-internal class BackgroundImageValue {
+internal class BackgroundImageValue : ImageSourceBinding {
   internal var Path string
   internal var Request ImageRequest?
   internal var Completion ImageCompletionRegistration?
-  internal var Source ImageSourceProvider?
-  internal var Lease ImageSourceLease?
-  internal var SourceCompletion ImageSourceCompletion?
   internal var Image DecodedImage?
   internal var Settled bool
   internal var Invalidated Action?

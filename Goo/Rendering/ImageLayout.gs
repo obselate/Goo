@@ -5,25 +5,52 @@ import System.Runtime.CompilerServices
 import Facebook.Yoga
 import Goo.InternalTextInterop
 
+internal open class ImageSourceBinding {
+  internal var Source ImageSourceProvider?
+  internal var Lease ImageSourceLease?
+  internal var SourceCompletion ImageSourceCompletion?
+
+  internal func BindSource(source ImageSourceProvider) {
+    Source = source
+    var lease ImageSourceLease?
+    try { lease = source.Acquire() } catch (error Exception) { lease = nil }
+    if lease == nil || (lease?.IsDisposed ?? false) {
+      lease = ImageSourceLease()
+      lease?.Fail()
+    }
+    Lease = lease
+  }
+  internal func RebindSource(source ImageSourceProvider) {
+    ReleaseSource()
+    BindSource(source)
+  }
+  internal func WatchSource(callback Action) {
+    SourceCompletion = Lease!!.OnCompleted(callback)
+  }
+  internal func CompletedResult() DecodedImage? {
+    SourceCompletion?.Dispose()
+    SourceCompletion = nil
+    return Lease?.Result()
+  }
+  internal func ReleaseSource() {
+    SourceCompletion?.Dispose()
+    Lease?.Dispose()
+    Source = nil
+    Lease = nil
+    SourceCompletion = nil
+  }
+}
+
 internal class ImageLayouts {
   shared {
-    private var sourceValues ConditionalWeakTable[Node, DirectImageSourceValue]?
+    private var sourceValues ConditionalWeakTable[Node, ImageSourceBinding]?
 
-    internal func Source(n Node) ImageSourceProvider? {
-      return if let value = sourceState(n) { value.Source } else { nil }
-    }
-
-    internal func Lease(n Node) ImageSourceLease? {
-      return if let value = sourceState(n) { value.Lease } else { nil }
-    }
-
-    internal func SourceCompletion(n Node) ImageSourceCompletion? {
-      return if let value = sourceState(n) { value.Completion } else { nil }
-    }
-
+    internal func Source(n Node) ImageSourceProvider? { return sourceState(n)?.Source }
+    internal func Lease(n Node) ImageSourceLease? { return sourceState(n)?.Lease }
+    internal func SourceCompletion(n Node) ImageSourceCompletion? { return sourceState(n)?.SourceCompletion }
     internal func IsCurrent(n Node, token object) bool {
-      if Object.ReferenceEquals(n.ImageRequest, token) { return true }
-      return if let value = sourceState(n) { Object.ReferenceEquals(value, token) } else { false }
+      return Object.ReferenceEquals(n.ImageRequest, token)
+        || Object.ReferenceEquals(sourceState(n), token)
     }
 
     internal func ApplyPath(n Node, path string, fit ImageFit,
@@ -33,7 +60,6 @@ internal class ImageLayouts {
         Dispose(n)
         return
       }
-
       let request = ImageDecoding.Request(path)
       if n.ImageRequest == request {
         request.Release()
@@ -41,13 +67,10 @@ internal class ImageLayouts {
         Refresh(n)
         return
       }
-
       let intrinsicWidth = n.ImageIntrinsicWidth
       let intrinsicHeight = n.ImageIntrinsicHeight
       removeSource(n)
-      if let registration = n.ImageCompletion {
-        registration.Dispose()
-      }
+      n.ImageCompletion?.Dispose()
       n.ImageRequest?.Release()
       n.ImagePath = request.Path
       n.ImageRequest = request
@@ -59,85 +82,57 @@ internal class ImageLayouts {
         return
       }
       n.ImageCompletion = request.OnCompleted(func() {
-        if let callback = completed {
-          callback(n, request)
-        }
+        if let callback = completed { callback(n, request) }
       })
     }
 
     internal func ApplySource(n Node, source ImageSourceProvider, fit ImageFit,
       completed ((Node, object) -> void)?) {
       n.ImageFit = fit
-      if Source(n) == source {
+      let prior = sourceState(n)
+      if prior?.Source == source {
         Refresh(n)
         return
       }
       let intrinsicWidth = n.ImageIntrinsicWidth
       let intrinsicHeight = n.ImageIntrinsicHeight
-      if let registration = n.ImageCompletion {
-        registration.Dispose()
-      }
+      n.ImageCompletion?.Dispose()
       n.ImageRequest?.Release()
       n.ImageRequest = nil
       n.ImageCompletion = nil
-      removeSource(n)
+      removeSource(n, prior)
       n.ImagePath = ""
       n.DecodedImage = nil
       n.ImageIntrinsicWidth = intrinsicWidth
       n.ImageIntrinsicHeight = intrinsicHeight
-      let value = DirectImageSourceValue()
-      value.Source = source
-      var lease ImageSourceLease?
-      try {
-        lease = source.Acquire()
-      } catch (error Exception) {
-        lease = ImageSourceLease()
-        lease?.Fail()
-      }
-      if lease == nil {
-        lease = ImageSourceLease()
-        lease?.Fail()
-      }
-      if lease?.IsDisposed ?? false {
-        lease = ImageSourceLease()
-        lease?.Fail()
-      }
-      value.Lease = lease
-      if sourceValues == nil { sourceValues = ConditionalWeakTable[Node, DirectImageSourceValue]() }
+      let value = ImageSourceBinding()
+      value.BindSource(source)
+      if sourceValues == nil { sourceValues = ConditionalWeakTable[Node, ImageSourceBinding]() }
       sourceValues?.Add(n, value)
       n.HasDirectImageSourceState = true
-      if Refresh(n) {
+      if Refresh(n, value) {
         return
       }
-      let binding = lease!!
-      value.Completion = binding.OnCompleted(func() {
+      let binding = value.Lease!!
+      value.WatchSource(func() {
         ImageLayouts.invalidateSource(n, value, binding, completed)
       })
     }
 
-    internal func Refresh(n Node) bool {
+    internal func Refresh(n Node, known ImageSourceBinding? = nil) bool {
       var decoded DecodedImage?
-      if let value = sourceState(n) {
+      if let value = known ?? sourceState(n) {
         guard let lease = value.Lease else { return false }
         if !lease.IsComplete { return false }
-        if let registration = value.Completion {
-          registration.Dispose()
-          value.Completion = nil
-        }
-        decoded = lease.Result()
-      } else {
-        guard let request = n.ImageRequest else {
-          return false
-        }
-        if !request.IsComplete {
-          return false
-        }
+        decoded = value.CompletedResult()
+      } else if let request = n.ImageRequest {
+        if !request.IsComplete { return false }
         decoded = request.Result
+      } else {
+        return false
       }
-      if let registration = n.ImageCompletion {
-        registration.Dispose()
-        n.ImageCompletion = nil
-      }
+      n.ImageCompletion?.Dispose()
+      n.ImageCompletion = nil
       let width = if let image = decoded {
         image.IsValid && image.Width > 0 ? float32(image.Width) : 0.0F
       } else { 0.0F }
@@ -161,9 +156,7 @@ internal class ImageLayouts {
     internal func Dispose(n Node) {
       let hadDimensions = n.ImageIntrinsicWidth > 0.0F || n.ImageIntrinsicHeight > 0.0F
         || n.DecodedImage != nil
-      if let registration = n.ImageCompletion {
-        registration.Dispose()
-      }
+      n.ImageCompletion?.Dispose()
       n.ImageRequest?.Release()
       removeSource(n)
       n.ImageRequest = nil
@@ -173,9 +166,7 @@ internal class ImageLayouts {
       n.ImageIntrinsicHeight = 0.0F
       n.ImagePath = ""
       if hadDimensions {
-        if let yoga = n.Yoga {
-          YGNodeAPI.YGNodeMarkDirty(yoga)
-        }
+        if let yoga = n.Yoga { YGNodeAPI.YGNodeMarkDirty(yoga) }
       }
     }
 
@@ -192,9 +183,7 @@ internal class ImageLayouts {
         naturalWidth = float32(image.Width)
         naturalHeight = float32(image.Height)
       } else {
-        if sourceState(n) != nil {
-          return YGSize{}
-        }
+        if sourceState(n) != nil { return YGSize{} }
         guard let request = n.ImageRequest else { return YGSize{} }
         if request.IsComplete || n.ImageIntrinsicWidth <= 0.0F || n.ImageIntrinsicHeight <= 0.0F {
           return YGSize{}
@@ -204,7 +193,6 @@ internal class ImageLayouts {
       }
       var measuredWidth = naturalWidth
       var measuredHeight = naturalHeight
-
       if widthMode == MeasureMode.Exactly && heightMode != MeasureMode.Exactly {
         measuredWidth = width
         measuredHeight = naturalHeight * width / naturalWidth
@@ -227,7 +215,7 @@ internal class ImageLayouts {
       return YGSize{ Width: measuredWidth, Height: measuredHeight }
     }
 
-    private func sourceState(n Node) DirectImageSourceValue? {
+    private func sourceState(n Node) ImageSourceBinding? {
       if !n.HasDirectImageSourceState { return nil }
       if let table = sourceValues {
         if table.TryGetValue(n, out var value) { return value }
@@ -235,42 +223,21 @@ internal class ImageLayouts {
       n.HasDirectImageSourceState = false
       return nil
     }
-
-    private func removeSource(n Node) {
-      if n.HasDirectImageSourceState {
-        var value DirectImageSourceValue?
-        if let table = sourceValues {
-          if table.TryGetValue(n, out var current) {
-            value = current
-            table.Remove(n)
-          }
-        }
+    private func removeSource(n Node, known ImageSourceBinding? = nil) {
+      if let value = known ?? sourceState(n) {
+        sourceValues?.Remove(n)
         n.HasDirectImageSourceState = false
-        if let current = value {
-          current.Completion?.Dispose()
-          current.Lease?.Dispose()
-          current.Source = nil
-          current.Lease = nil
-          current.Completion = nil
-        }
+        value.ReleaseSource()
       }
     }
-
-    private func invalidateSource(n Node, value DirectImageSourceValue, lease ImageSourceLease,
+    private func invalidateSource(n Node, value ImageSourceBinding, lease ImageSourceLease,
       completed ((Node, object) -> void)?) {
-      if !n.Retired {
-        if let current = sourceState(n) {
-          if current == value && current.Lease == lease {
-            if let callback = completed { callback(n, value) }
-          }
+      if n.Retired { return }
+      if let current = sourceState(n) {
+        if current == value && current.Lease == lease {
+          if let callback = completed { callback(n, value) }
         }
       }
     }
   }
-}
-
-internal class DirectImageSourceValue {
-  internal var Source ImageSourceProvider?
-  internal var Lease ImageSourceLease?
-  internal var Completion ImageSourceCompletion?
 }

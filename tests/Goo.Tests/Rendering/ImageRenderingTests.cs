@@ -5,81 +5,32 @@ using SkiaSharp;
 using Xunit;
 
 [CollectionDefinition("Image decoding", DisableParallelization = true)]
-public sealed class ImageDecodingCollection
+public sealed class ImageDecodingCollection { }
+[Collection("Image decoding")] public sealed class ImageRenderingTests
 {
-}
-
-[Collection("Image decoding")]
-public sealed class ImageRenderingTests
-{
-    [Fact]
-    public void DecodedImagesUseIntrinsicSizingFitAndBlobSurface()
-    {
-        using var image = TempImage.Create();
-
-        Assert.True(new ImageFixtures().DecodedImageSurface(image.Path));
-    }
-
-    [Fact]
-    public void EmptyImagePathDoesNotCreateARequest()
-    {
-        Assert.True(new ImageFixtures().EmptyPathContract());
-    }
-
-    [Fact]
-    public void RequestsSharePathsAndFailuresKeepLayout()
-    {
-        using var image = TempImage.Create();
-        var relative = Path.GetRelativePath(Environment.CurrentDirectory, image.Path);
-        var missing = Path.Combine(image.Directory, "missing.png");
-
-        Assert.True(new ImageFixtures().ImageCanonicalPathContract(image.Path, relative, missing));
-    }
-
-    [Fact]
-    public void AttachedImagesStayPaintableAfterCacheEviction()
-    {
+    [Fact] public void DecodedImagesUseIntrinsicSizingFitAndBlobSurface() =>
+        WithImage(image => Assert.True(new ImageFixtures().DecodedImageSurface(image.Path)));
+    [Fact] public void EmptyImagePathDoesNotCreateARequest() => Assert.True(new ImageFixtures().EmptyPathContract());
+    [Fact] public void RequestsSharePathsAndFailuresKeepLayout() =>
+        WithImage(image => Assert.True(new ImageFixtures().ImageCanonicalPathContract(
+            image.Path,
+            Path.GetRelativePath(Environment.CurrentDirectory, image.Path),
+            Path.Combine(image.Directory, "missing.png"))));
+    [Fact] public void AttachedImagesStayPaintableAfterCacheEviction() =>
         Assert.True(new ImageFixtures().ByteEvictionKeepsAttachedImagePaintable());
-    }
-
-    [Fact]
-    public void CompletionUpdatesLayoutAndIgnoresRemovals()
-    {
-        var missing = Path.Combine(
+    [Fact] public void CompletionUpdatesLayoutAndIgnoresRemovals() =>
+        Assert.True(new ImageFixtures().ImageCompletionContract(Path.Combine(
             Path.GetTempPath(),
             "goo-image-tests",
             Guid.NewGuid().ToString("N"),
-            "missing.png");
-
-        Assert.True(new ImageFixtures().ImageCompletionContract(missing));
-    }
-
-    [Fact]
-    public void OwnedSourcesShareAcrossImageAndBackgroundUntilBothUnmount()
-    {
+            "missing.png")));
+    [Fact] public void OwnedSourcesShareAcrossImageAndBackgroundUntilBothUnmount() =>
         Assert.True(new ImageFixtures().OwnedSourcesShareLifetimeAndPaint());
-    }
-
-    [Fact]
-    public void ProviderSourcesReleaseStaleBindingsAndContainFailures()
-    {
+    [Fact] public void ProviderSourcesReleaseStaleBindingsAndContainFailures() =>
         Assert.True(new ImageFixtures().ProviderReplacementCompletionFailureAndReleaseContract());
-    }
-
-    [Fact]
-    public void OwnedSourceInputIsExactAndOverflowSafe()
-    {
-        Assert.True(new ImageFixtures().OwnedSourceInputContract());
-    }
-
-    [Fact]
-    public void OwnedSourceCopiesPixelsAtConstruction()
-    {
-        Assert.True(new ImageFixtures().OwnedSourceCopiesPixels());
-    }
-
-    [Fact]
-    public void OwnedSourceAndLeaseSynchronizationCostStaysBounded()
+    [Fact] public void OwnedSourceInputIsExactAndOverflowSafe() => Assert.True(new ImageFixtures().OwnedSourceInputContract());
+    [Fact] public void OwnedSourceCopiesPixelsAtConstruction() => Assert.True(new ImageFixtures().OwnedSourceCopiesPixels());
+    [Fact] public void OwnedSourceAndLeaseSynchronizationCostStaysBounded()
     {
         var pixels = new byte[] { 255, 0, 0, 255 };
         for (var i = 0; i < 8; i++)
@@ -87,48 +38,33 @@ public sealed class ImageRenderingTests
             using var source = new ImageSource(1, 1, pixels);
             using var lease = source.Acquire();
         }
-
         var before = GC.GetAllocatedBytesForCurrentThread();
         using (var source = new ImageSource(1, 1, pixels))
         using (var lease = source.Acquire())
         {
         }
         var bytes = GC.GetAllocatedBytesForCurrentThread() - before;
-
         Assert.Equal(408, bytes);
     }
-
-    [Fact]
-    public void ThrowingCompletionCallbackLeavesLeaseReleasable()
-    {
+    [Fact] public void ThrowingCompletionCallbackLeavesLeaseReleasable() =>
         Assert.True(new ImageFixtures().CompletionCallbackExceptionLeavesLeaseReleasable());
-    }
-
-    [Fact]
-    public void OwnedSourceRejectsClrNullInputs()
+    [Fact] public void OwnedSourceRejectsClrNullInputs()
     {
         Assert.Throws<ArgumentNullException>(() => new ImageSource(1, 1, null!));
         using var lease = new ImageSourceLease();
         Assert.Throws<ArgumentNullException>(() => lease.Complete(null!));
     }
-
-    [Fact]
-    public void ProviderCompletionReconcilesThroughWindowAndDisposedLeasesFail()
-    {
+    [Fact] public void ProviderCompletionReconcilesThroughWindowAndDisposedLeasesFail() =>
         Assert.True(new ImageFixtures().ProviderWindowCompletionAndDisposedLeaseContract());
-    }
-
-    private sealed class TempImage : IDisposable
+    private static void WithImage(Action<TempImage> check)
     {
-        private TempImage(string directory, string path)
-        {
-            Directory = directory;
-            Path = path;
-        }
-
-        public string Directory { get; }
-        public string Path { get; }
-
+        using var image = TempImage.Create();
+        check(image);
+    }
+    private sealed class TempImage(string directory, string path) : IDisposable
+    {
+        public string Directory { get; } = directory;
+        public string Path { get; } = path;
         public static TempImage Create()
         {
             var directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "goo-image-tests", Guid.NewGuid().ToString("N"));
@@ -145,7 +81,6 @@ public sealed class ImageRenderingTests
             data.SaveTo(stream);
             return new TempImage(directory, path);
         }
-
         public void Dispose()
         {
             if (System.IO.Directory.Exists(Directory))
