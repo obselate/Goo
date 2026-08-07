@@ -15,16 +15,22 @@ root = Path(__file__).resolve().parents[2]
 readme = (root / "README.md").read_text(encoding="utf-8")
 blocks = re.findall(r"```([^\n]*)\n(.*?)```", readme, re.DOTALL)
 xml = [code.strip() for language, code in blocks if language == "xml"]
-gsharp = [code.rstrip() for language, code in blocks if language == "gsharp"]
+component_examples = [
+    code.rstrip()
+    for language, code in blocks
+    if language in {"gsharp", "csharp"}
+]
 if xml != ['<PackageReference Include="Goo" Version="0.1.0" />']:
     raise SystemExit("README package example changed unexpectedly")
-if len(gsharp) != 1:
-    raise SystemExit(f"expected one README G# block, found {len(gsharp)}")
+if len(component_examples) != 1:
+    raise SystemExit(
+        f"expected one README component block, found {len(component_examples)}"
+    )
 for page in (root / "docs/api").glob("*.md"):
     if "```" in page.read_text(encoding="utf-8"):
         raise SystemExit(f"API page contains an unchecked code block: {page}")
 
-source = gsharp[0] + "\n"
+source = component_examples[0] + "\n"
 
 package_dir = args.package_dir.resolve()
 if not (package_dir / "Goo.0.1.0.nupkg").is_file():
