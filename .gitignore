@@ -32,6 +32,7 @@
 
 !/tests/
 !/tests/**
+/tests/GooExtended.Tests/
 
 !/docs/
 /docs/*
