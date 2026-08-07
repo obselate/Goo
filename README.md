@@ -38,24 +38,28 @@ class Counter : Cell {
   private var count int32
 
   public override func Build() Blob ->
-    Container{
+    Container {
       Width: 320,
       Padding: 24,
       Gap: 12,
       BorderRadius: 16,
       BackgroundColor: "#181f2b",
       Children: {
-        Text{
+        Text {
           Content: "Count: $count",
           FontSize: 24,
           Color: "#f4f7ff",
         },
-        Button{
+        Button {
           Padding: 10,
           BorderRadius: 10,
           BackgroundColor: "#4a7dff",
           OnClick: () -> count++,
-          Children: { Text{ Content: "Add one", Color: "#ffffff" } },
+          Children: { 
+            Text { 
+              Content: "Add one", Color: "#ffffff" 
+            } 
+          },
         },
       },
     }
