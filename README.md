@@ -18,7 +18,13 @@ Applications keep full control over their visual identity.
 
 ## Install
 
-Goo 0.1.0 targets .NET 10:
+Goo targets .NET 10 and is available from [NuGet](https://www.nuget.org/packages/Goo/):
+
+```sh
+dotnet add package Goo --version 0.1.0
+```
+
+Or add the package reference directly:
 
 ```xml
 <PackageReference Include="Goo" Version="0.1.0" />
@@ -27,6 +33,26 @@ Goo 0.1.0 targets .NET 10:
 The first release supports `linux-x64` on glibc 2.35 or newer. It requires a
 native Wayland session and the system Fontconfig runtime (`libfontconfig1` on
 Ubuntu). X11 and XWayland backends are outside the 0.1 release.
+
+## Documentation
+
+- [API reference](https://github.com/obselate/goo/tree/main/docs/api)
+- [Accessibility](https://github.com/obselate/goo/blob/main/docs/api/accessibility.md)
+- [Cell and component state](https://github.com/obselate/goo/blob/main/docs/api/cell.md)
+- [Input](https://github.com/obselate/goo/blob/main/docs/api/input.md)
+- [Layout](https://github.com/obselate/goo/blob/main/docs/api/layout.md)
+- [Motion](https://github.com/obselate/goo/blob/main/docs/api/motion.md)
+- [Rendering](https://github.com/obselate/goo/blob/main/docs/api/rendering.md)
+- [Shapes](https://github.com/obselate/goo/blob/main/docs/api/shapes.md)
+- [Style](https://github.com/obselate/goo/blob/main/docs/api/style.md)
+- [Text](https://github.com/obselate/goo/blob/main/docs/api/text.md)
+- [Text editor](https://github.com/obselate/goo/blob/main/docs/api/text-editor.md)
+- [Tree](https://github.com/obselate/goo/blob/main/docs/api/tree.md)
+- [Window](https://github.com/obselate/goo/blob/main/docs/api/window.md)
+- [Release notes](https://github.com/obselate/goo/blob/main/CHANGELOG.md)
+- [GitHub releases](https://github.com/obselate/goo/releases)
+
+The package includes `Goo.xml` for editor documentation.
 
 ## Build a component
 
@@ -89,18 +115,6 @@ change.
 
 Themes, design systems, and widget libraries live in application code or
 reusable packages. The core provides base primitives for creating applications via composition and widgets.
-
-## Documentation
-
-- [API reference](https://github.com/obselate/goo/tree/main/docs/api)
-- [Cell and component state](https://github.com/obselate/goo/blob/main/docs/api/cell.md)
-- [Layout](https://github.com/obselate/goo/blob/main/docs/api/layout.md)
-- [Style](https://github.com/obselate/goo/blob/main/docs/api/style.md)
-- [Text editor](https://github.com/obselate/goo/blob/main/docs/api/text-editor.md)
-- [Accessibility](https://github.com/obselate/goo/blob/main/docs/api/accessibility.md)
-- [Release notes](CHANGELOG.md)
-
-The package includes `Goo.xml` for editor documentation.
 
 ## Credits
 
