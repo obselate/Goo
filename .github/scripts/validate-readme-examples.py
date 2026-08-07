@@ -20,7 +20,7 @@ component_examples = [
     for language, code in blocks
     if language in {"gsharp", "csharp"}
 ]
-if xml != ['<PackageReference Include="Goo" Version="0.1.0" />']:
+if xml != ['<PackageReference Include="Goo" Version="0.2.0" />']:
     raise SystemExit("README package example changed unexpectedly")
 if len(component_examples) != 1:
     raise SystemExit(
@@ -33,8 +33,8 @@ for page in (root / "docs/api").glob("*.md"):
 source = component_examples[0] + "\n"
 
 package_dir = args.package_dir.resolve()
-if not (package_dir / "Goo.0.1.0.nupkg").is_file():
-    raise SystemExit(f"missing Goo.0.1.0.nupkg in {package_dir}")
+if not (package_dir / "Goo.0.2.0.nupkg").is_file():
+    raise SystemExit(f"missing Goo.0.2.0.nupkg in {package_dir}")
 args.cache.mkdir(parents=True, exist_ok=True)
 temporary_root = os.environ.get("RUNNER_TEMP")
 if temporary_root and not Path(temporary_root).is_dir():
@@ -47,7 +47,7 @@ with tempfile.TemporaryDirectory(prefix="goo-readme-smoke-", dir=temporary_root)
         '    <OutputType>Exe</OutputType>\n'
         '    <TargetFramework>net10.0</TargetFramework>\n'
         '  </PropertyGroup>\n'
-        '  <ItemGroup><PackageReference Include="Goo" Version="0.1.0" /></ItemGroup>\n'
+        '  <ItemGroup><PackageReference Include="Goo" Version="0.2.0" /></ItemGroup>\n'
         '</Project>\n', encoding="utf-8")
     (work / "Program.gs").write_text(source, encoding="utf-8")
     (work / "NuGet.Config").write_text(
@@ -63,4 +63,4 @@ with tempfile.TemporaryDirectory(prefix="goo-readme-smoke-", dir=temporary_root)
         "-c", "Release", "--configfile", str(work / "NuGet.Config"),
         "-p:TreatWarningsAsErrors=true", "--nologo", "--verbosity", "minimal",
     ], check=True, env=environment)
-print("README examples compile against Goo.0.1.0")
+print("README examples compile against Goo.0.2.0")

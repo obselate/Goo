@@ -21,13 +21,13 @@ Applications keep full control over their visual identity.
 Goo targets .NET 10 and is available from [NuGet](https://www.nuget.org/packages/Goo/):
 
 ```sh
-dotnet add package Goo --version 0.1.0
+dotnet add package Goo --version 0.2.0
 ```
 
 Or add the package reference directly:
 
 ```xml
-<PackageReference Include="Goo" Version="0.1.0" />
+<PackageReference Include="Goo" Version="0.2.0" />
 ```
 
 The first release supports `linux-x64` on glibc 2.35 or newer. It requires a

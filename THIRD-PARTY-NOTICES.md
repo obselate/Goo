@@ -29,18 +29,18 @@ version. `v3.2.1` is the Meta Yoga source and behavior baseline for that port.
 
 ## SkiaSharp, HarfBuzzSharp, Skia, and HarfBuzz
 
-- SkiaSharp 3.116.0 and SkiaSharp.HarfBuzz 3.116.0: Copyright (c) 2015-2016
+- SkiaSharp 4.151.1 and SkiaSharp.HarfBuzz 4.151.1: Copyright (c) 2015-2016
   Xamarin, Inc. and Copyright (c) 2017-2018 Microsoft Corporation. License: MIT.
-- HarfBuzzSharp 8.3.1.1 and HarfBuzzSharp.NativeAssets.Linux 8.3.1.1: Copyright
+- HarfBuzzSharp 14.2.1.2 and HarfBuzzSharp.NativeAssets.Linux 14.2.1.2: Copyright
   (c) 2015-2016 Xamarin, Inc. and Copyright (c) 2017-2018 Microsoft Corporation.
   License: MIT.
-- Skia m116: Copyright (c) 2011 Google Inc. All rights reserved. License: BSD
+- Skia m151: Copyright (c) 2011 Google Inc. All rights reserved. License: BSD
   3-Clause.
-- HarfBuzz 8.3.1: Old MIT license.
-- [SkiaSharp 3.116.0 license](https://github.com/mono/SkiaSharp/blob/810ce1756977211d81a69c1e7b243e80666c99be/LICENSE.md)
-- [HarfBuzzSharp 8.3.1.1 and native-assets license](https://github.com/mono/SkiaSharp/blob/64f24b1cddb68d30ec0ac6b661964178fc21d5ec/LICENSE.md)
-- [Skia m116 license](https://github.com/google/skia/blob/chrome/m116/LICENSE)
-- [HarfBuzz 8.3.1 license](https://github.com/harfbuzz/harfbuzz/blob/8.3.1/COPYING)
+- HarfBuzz 14.2.1: Old MIT license.
+- [SkiaSharp 4.151.1 license](https://github.com/mono/SkiaSharp/blob/279f93f4ffa7f9fe4e9c0bc298bedc3c9e439764/LICENSE.md)
+- [HarfBuzzSharp 14.2.1.2 and native-assets license](https://github.com/mono/SkiaSharp/blob/fd1fdd5239f826514651a4ada5d7bb3dcec2fb43/LICENSE.md)
+- [Skia m151 license](https://github.com/google/skia/blob/chrome/m151/LICENSE)
+- [HarfBuzz 14.2.1 license](https://github.com/harfbuzz/harfbuzz/blob/14.2.1/COPYING)
 
 ### Skia BSD 3-Clause license
 
