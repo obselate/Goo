@@ -8,6 +8,11 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      graphics-stack:
+        patterns:
+          - "SkiaSharp*"
+          - "HarfBuzzSharp*"
 
   - package-ecosystem: "github-actions"
     directory: "/"

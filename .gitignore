@@ -61,6 +61,7 @@
 !/LICENSE
 !/THIRD-PARTY-NOTICES.md
 !/Directory.Build.props
+!/Directory.Packages.props
 
 **/bin/
 **/obj/

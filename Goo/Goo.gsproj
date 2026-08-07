@@ -18,7 +18,6 @@
     <IsPackable>true</IsPackable>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeGooImplementationAssemblies</TargetsForTfmSpecificBuildOutput>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="$(MSBuildProjectDirectory)/../Goo.InternalTextInterop/Goo.InternalTextInterop.csproj"
@@ -26,74 +25,15 @@
                       GlobalPropertiesToRemove="IncludeTestFixtures" />
     <ProjectReference Include="$(MSBuildProjectDirectory)/../vendor/Yoga.Net/src/Yoga.Net/Yoga.Net.csproj"
                       PrivateAssets="all" />
-    <PackageReference Include="SkiaSharp" Version="3.116.0" />
-    <PackageReference Include="SkiaSharp.HarfBuzz" Version="3.116.0" />
-    <PackageReference Include="HarfBuzzSharp" Version="8.3.1.1" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.116.0" />
-    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="8.3.1.1" />
-    <PackageReference Include="Hexa.NET.SDL3" Version="1.2.17" ExcludeAssets="native" />
-    <PackageReference Include="Unicode.Bidi" Version="0.3.18" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.HarfBuzz" />
+    <PackageReference Include="HarfBuzzSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
+    <PackageReference Include="Hexa.NET.SDL3" ExcludeAssets="native" />
+    <PackageReference Include="Unicode.Bidi" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="$(MSBuildProjectDirectory)/../README.md" Pack="true" PackagePath="/" />
-    <None Include="$(MSBuildProjectDirectory)/../CHANGELOG.md" Pack="true" PackagePath="/" />
-    <None Include="$(MSBuildProjectDirectory)/../LICENSE" Pack="true" PackagePath="/" />
-    <None Include="$(MSBuildProjectDirectory)/../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="$(MSBuildProjectDirectory)/Goo.targets"
-          Pack="true" PackagePath="buildTransitive/Goo.targets" />
-    <None Include="$(GooLinuxSdlPath)"
-          Pack="true" PackagePath="runtimes/linux-x64/native/libSDL3.so"
-          Condition="'$(GooLinuxSdlPath)' != '' and Exists('$(GooLinuxSdlPath)')" />
-  </ItemGroup>
-  <!-- Test builds use a separate output and include internal fixtures. -->
-  <ItemGroup Condition="'$(IncludeTestFixtures)' == 'true'">
-    <Compile Include="../tests/Goo.Tests/Infrastructure/FixtureAssemblyInfo.gs" Link="FixtureAssemblyInfo.gs" />
-    <Compile Include="../tests/Goo.Tests/Accessibility/AccessibilityFixtures.gs" Link="AccessibilityFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Cell/CellFixtures.gs" Link="CellFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Input/InputFixtures.gs" Link="InputFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Input/TextInputPrimitivesFixtures.gs" Link="TextInputPrimitivesFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Input/TextEditorInputFixtures.gs" Link="TextEditorInputFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Input/ClipPathInputFixtures.gs" Link="ClipPathInputFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Layout/LayoutFixtures.gs" Link="LayoutFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Motion/MotionFixtures.gs" Link="MotionFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Tree/TreeFixtures.gs" Link="TreeFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Tree/ElementHandleFixtures.gs" Link="ElementHandleFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Tree/TextGeometryFixtures.gs" Link="TextGeometryFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Window/WindowFixtures.gs" Link="WindowFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Window/Window.VisualFingerprint.gs" Link="Window.VisualFingerprint.gs" />
-    <Compile Include="../tests/Goo.Tests/Performance/PerformanceFixtures.gs" Link="PerformanceFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Style/StyleFixtures.gs" Link="StyleFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Rendering/RenderingFixtures.gs" Link="RenderingFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Shapes/ShapeFixtures.gs" Link="ShapeFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Rendering/ImageFixtures.gs" Link="ImageFixtures.gs" />
-    <Compile Include="../tests/Goo.Tests/Rendering/BackgroundImageFixtures.gs" Link="BackgroundImageFixtures.gs" />
-  </ItemGroup>
-  <Target Name="ValidateGooLinuxSdlPackageAsset" BeforeTargets="Pack">
-    <Error Condition="'$(GooLinuxSdlPath)' == '' or !Exists('$(GooLinuxSdlPath)')"
-           Text="Packing Goo requires -p:GooLinuxSdlPath=/absolute/path/to/a glibc-2.35-compatible libSDL3.so." />
-  </Target>
-  <Target Name="_PopulateGooDocFileItems"
-          AfterTargets="CoreCompile"
-          Condition="'$(DocumentationFile)' != ''">
-    <ItemGroup>
-      <DocFileItem Include="$(DocumentationFile)" />
-      <FinalDocFile Include="$(OutDir)$([System.IO.Path]::GetFileName('$(DocumentationFile)'))" />
-    </ItemGroup>
-  </Target>
-  <Target Name="IncludeGooImplementationAssemblies"
-          DependsOnTargets="BuildOnlySettings;ResolveReferences">
-    <ItemGroup>
-      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths)"
-          Condition="'%(ReferenceCopyLocalPaths.Filename)' == 'Goo.InternalTextInterop' or '%(ReferenceCopyLocalPaths.Filename)' == 'Yoga.Net'">
-        <TargetPath>%(ReferenceCopyLocalPaths.Filename)%(ReferenceCopyLocalPaths.Extension)</TargetPath>
-        <FinalOutputPath>%(ReferenceCopyLocalPaths.FullPath)</FinalOutputPath>
-      </BuildOutputInPackage>
-      <BuildOutputInPackage Include="$(TargetDir)Goo.xml" Condition="Exists('$(TargetDir)Goo.xml')">
-        <TargetPath>Goo.xml</TargetPath>
-        <FinalOutputPath>$(TargetDir)Goo.xml</FinalOutputPath>
-      </BuildOutputInPackage>
-    </ItemGroup>
-  </Target>
+  <Import Project="../tests/Goo.Tests/Goo.TestFixtures.props"
+          Condition="'$(IncludeTestFixtures)' == 'true'" />
+  <Import Project="Goo.Packaging.targets" />
 </Project>

@@ -1,0 +1,42 @@
+<Project>
+  <PropertyGroup>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeGooImplementationAssemblies</TargetsForTfmSpecificBuildOutput>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildProjectDirectory)/../README.md" Pack="true" PackagePath="/" />
+    <None Include="$(MSBuildProjectDirectory)/../CHANGELOG.md" Pack="true" PackagePath="/" />
+    <None Include="$(MSBuildProjectDirectory)/../LICENSE" Pack="true" PackagePath="/" />
+    <None Include="$(MSBuildProjectDirectory)/../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
+    <None Include="$(MSBuildProjectDirectory)/Goo.targets"
+          Pack="true" PackagePath="buildTransitive/Goo.targets" />
+    <None Include="$(GooLinuxSdlPath)"
+          Pack="true" PackagePath="runtimes/linux-x64/native/libSDL3.so"
+          Condition="'$(GooLinuxSdlPath)' != '' and Exists('$(GooLinuxSdlPath)')" />
+  </ItemGroup>
+  <Target Name="ValidateGooLinuxSdlPackageAsset" BeforeTargets="Pack">
+    <Error Condition="'$(GooLinuxSdlPath)' == '' or !Exists('$(GooLinuxSdlPath)')"
+           Text="Packing Goo requires -p:GooLinuxSdlPath=/absolute/path/to/a glibc-2.35-compatible libSDL3.so." />
+  </Target>
+  <Target Name="_PopulateGooDocFileItems"
+          AfterTargets="CoreCompile"
+          Condition="'$(DocumentationFile)' != ''">
+    <ItemGroup>
+      <DocFileItem Include="$(DocumentationFile)" />
+      <FinalDocFile Include="$(OutDir)$([System.IO.Path]::GetFileName('$(DocumentationFile)'))" />
+    </ItemGroup>
+  </Target>
+  <Target Name="IncludeGooImplementationAssemblies"
+          DependsOnTargets="BuildOnlySettings;ResolveReferences">
+    <ItemGroup>
+      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths)"
+          Condition="'%(ReferenceCopyLocalPaths.Filename)' == 'Goo.InternalTextInterop' or '%(ReferenceCopyLocalPaths.Filename)' == 'Yoga.Net'">
+        <TargetPath>%(ReferenceCopyLocalPaths.Filename)%(ReferenceCopyLocalPaths.Extension)</TargetPath>
+        <FinalOutputPath>%(ReferenceCopyLocalPaths.FullPath)</FinalOutputPath>
+      </BuildOutputInPackage>
+      <BuildOutputInPackage Include="$(TargetDir)Goo.xml" Condition="Exists('$(TargetDir)Goo.xml')">
+        <TargetPath>Goo.xml</TargetPath>
+        <FinalOutputPath>$(TargetDir)Goo.xml</FinalOutputPath>
+      </BuildOutputInPackage>
+    </ItemGroup>
+  </Target>
+</Project>
