@@ -29,7 +29,7 @@ Ubuntu). X11 and XWayland backends are outside the 0.1 release.
 
 ## Build a component
 
-```gsharp
+```csharp
 package App
 
 import Goo
