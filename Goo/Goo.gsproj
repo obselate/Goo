@@ -4,13 +4,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Goo</RootNamespace>
     <PackageId>Goo</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>Xaz</Authors>
     <Description>A retained, declarative UI framework for G#.</Description>
     <PackageTags>gsharp;ui;gui;declarative;retained</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Initial retained UI release. See the packaged CHANGELOG.md for the supported surface and limitations.</PackageReleaseNotes>
+    <PackageReleaseNotes>See the packaged CHANGELOG.md for the changes, supported surface, and limitations of this release.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageProjectUrl>https://github.com/obselate/goo</PackageProjectUrl>
     <RepositoryUrl>https://github.com/obselate/goo</RepositoryUrl>

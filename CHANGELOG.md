@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0 - Unreleased
+
+### Changed
+
+- SkiaSharp and SkiaSharp.HarfBuzz upgraded from 3.116.0 to 4.151.1, moving
+  Skia from m116 to m151.
+- HarfBuzzSharp and HarfBuzzSharp.NativeAssets.Linux upgraded from 8.3.1.1 to
+  14.2.1.2, moving HarfBuzz from 8.3.1 to 14.2.1.
+- Removed the SkiaSharp 3.x duplicate Linux native alias cleanup from
+  `Goo.targets`; SkiaSharp 4.x ships a single canonical `libSkiaSharp.so`.
+
 ## 0.1.0 - 2026-08-07
 
 Goo 0.1.0 is the first public release of the retained, declarative UI framework
