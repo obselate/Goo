@@ -10,6 +10,12 @@
   14.2.1.2, moving HarfBuzz from 8.3.1 to 14.2.1.
 - Removed the SkiaSharp 3.x duplicate Linux native alias cleanup from
   `Goo.targets`; SkiaSharp 4.x ships a single canonical `libSkiaSharp.so`.
+- Internal path construction migrated from the deprecated mutable `SKPath`
+  API to `SKPathBuilder`, ahead of SkiaSharp removing its compatibility
+  shim. Uniform solid borders and inset box shadows now paint through
+  `SKCanvas.DrawRoundRectDifference`, making rounded solid borders about
+  3x faster and removing the shim's per-paint allocation overhead. Public
+  API is unchanged.
 
 ## 0.1.0 - 2026-08-07
 
