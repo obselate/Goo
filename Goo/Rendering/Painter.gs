@@ -29,9 +29,11 @@ internal class CullDisabledMarker {
 }
 
 internal class BoxPaintScratch {
-  internal var Path SKPath?
+  internal var Builder SKPathBuilder?
   internal var RoundRect SKRoundRect?
   internal var Radii []?SKPoint
+  internal var RoundRect2 SKRoundRect?
+  internal var Radii2 []?SKPoint
   internal var DashEffects Dictionary[BoxDashEffectKey, SKPathEffect]?
 }
 
@@ -137,17 +139,17 @@ internal partial class Painter {
     return paint
   }
 
-  internal func resetBoxPath(ref scratch BoxPaintScratch?, fillType SKPathFillType) SKPath {
+  internal func resetBoxBuilder(ref scratch BoxPaintScratch?, fillType SKPathFillType) SKPathBuilder {
     let value = boxPaintScratch(ref scratch)
-    if value.Path == nil {
-      value.Path = SKPath()
+    if value.Builder == nil {
+      value.Builder = SKPathBuilder()
     }
-    guard let path = value.Path else {
-      throw InvalidOperationException("Painter.resetBoxPath: missing path")
+    guard let builder = value.Builder else {
+      throw InvalidOperationException("Painter.resetBoxBuilder: missing builder")
     }
-    path.Reset()
-    path.FillType = fillType
-    return path
+    builder.Reset()
+    builder.FillType = fillType
+    return builder
   }
 
   internal func resetBoxRoundRect(ref scratch BoxPaintScratch?, rect SKRect, topLeft float32, topRight float32,
@@ -157,13 +159,30 @@ internal partial class Painter {
       value.RoundRect = SKRoundRect()
     }
     if value.Radii == nil {
-      value.Radii = []SKPoint{ SKPoint(0.0F, 0.0F), SKPoint(0.0F, 0.0F),
-        SKPoint(0.0F, 0.0F), SKPoint(0.0F, 0.0F) }
+      value.Radii = newBoxRadii()
     }
-    guard let roundRect = value.RoundRect else {
-      throw InvalidOperationException("Painter.resetBoxRoundRect: missing round rect")
+    return setBoxRoundRect(value.RoundRect!!, value.Radii!!, rect, topLeft, topRight, bottomRight, bottomLeft)
+  }
+
+  internal func resetBoxRoundRect2(ref scratch BoxPaintScratch?, rect SKRect, topLeft float32, topRight float32,
+    bottomRight float32, bottomLeft float32) SKRoundRect {
+    let value = boxPaintScratch(ref scratch)
+    if value.RoundRect2 == nil {
+      value.RoundRect2 = SKRoundRect()
     }
-    let radii = value.Radii!!
+    if value.Radii2 == nil {
+      value.Radii2 = newBoxRadii()
+    }
+    return setBoxRoundRect(value.RoundRect2!!, value.Radii2!!, rect, topLeft, topRight, bottomRight, bottomLeft)
+  }
+
+  private func newBoxRadii() []SKPoint {
+    return []SKPoint{ SKPoint(0.0F, 0.0F), SKPoint(0.0F, 0.0F),
+      SKPoint(0.0F, 0.0F), SKPoint(0.0F, 0.0F) }
+  }
+
+  private func setBoxRoundRect(roundRect SKRoundRect, radii []SKPoint, rect SKRect, topLeft float32,
+    topRight float32, bottomRight float32, bottomLeft float32) SKRoundRect {
     radii[0] = SKPoint(topLeft, topLeft)
     radii[1] = SKPoint(topRight, topRight)
     radii[2] = SKPoint(bottomRight, bottomRight)
@@ -215,13 +234,18 @@ internal partial class Painter {
       return
     }
     scratch = nil
-    if let path = value.Path {
-      value.Path = nil
-      path.Dispose()
+    if let builder = value.Builder {
+      value.Builder = nil
+      builder.Dispose()
     }
     if let roundRect = value.RoundRect {
       value.RoundRect = nil
       value.Radii = nil
+      roundRect.Dispose()
+    }
+    if let roundRect = value.RoundRect2 {
+      value.RoundRect2 = nil
+      value.Radii2 = nil
       roundRect.Dispose()
     }
     if let effects = value.DashEffects {

@@ -278,9 +278,11 @@ internal class ShapeGeometryValue {
       && sameMatrix(fillScaleX, fillScaleY, fillTransX, fillTransY, matrix) {
       if let retained = Fill { return retained }
     }
-    let next = VectorPathSkia.ClosedContoursToSkia(source)
-    next.FillType = rule == FillRule.EvenOdd ? SKPathFillType.EvenOdd : SKPathFillType.Winding
-    next.Transform(in matrix)
+    using let native = VectorPathSkia.ClosedContoursToSkia(source)
+    using let builder = SKPathBuilder()
+    builder.FillType = rule == FillRule.EvenOdd ? SKPathFillType.EvenOdd : SKPathFillType.Winding
+    builder.AddPath(native, in matrix, SKPathAddMode.Append)
+    let next = builder.Detach()!!
     let prior = Fill
     Fill = next
     fillSource = source
@@ -312,16 +314,10 @@ internal class ShapeGeometryValue {
     using let paint = SKPaint()
     paint.Style = SKPaintStyle.Fill
     paint.PathEffect = corner
-    let next = SKPath()
-    try {
-      if !paint.GetFillPath(fill, next) {
-        throw InvalidOperationException("ShapeGeometryValue.FinalFill: SKPaint.GetFillPath failed")
-      }
-      next.FillType = fill.FillType
-    } catch (error Exception) {
-      next.Dispose()
-      throw error
+    guard let next = paint.GetFillPath(fill) else {
+      throw InvalidOperationException("ShapeGeometryValue.FinalFill: SKPaint.GetFillPath failed")
     }
+    next.FillType = fill.FillType
     let prior = RoundedFill
     RoundedFill = next
     roundedSource = fill
@@ -337,8 +333,10 @@ internal class ShapeGeometryValue {
       && sameMatrix(strokeScaleX, strokeScaleY, strokeTransX, strokeTransY, matrix) {
       if let retained = Stroke { return retained }
     }
-    let next = VectorPathSkia.ToSkia(source)
-    next.Transform(in matrix)
+    using let native = VectorPathSkia.ToSkia(source)
+    using let builder = SKPathBuilder()
+    builder.AddPath(native, in matrix, SKPathAddMode.Append)
+    let next = builder.Detach()!!
     let prior = Stroke
     Stroke = next
     strokeSource = source
@@ -368,12 +366,13 @@ internal class ShapeGeometryValue {
       if let retained = Silhouette { return retained }
     }
 
-    let next = SKPath()
+    var next SKPath? = nil
     try {
-      if let finalFill = fill { add(next, finalFill) }
+      if let finalFill = fill {
+        if !finalFill.IsEmpty { next = SKPath(finalFill) }
+      }
       if width > 0.0F {
         if let source = stroke {
-          using let geometry = SKPath()
           using let paint = SKPaint()
           paint.Style = SKPaintStyle.Stroke
           paint.StrokeWidth = width
@@ -389,19 +388,30 @@ internal class ShapeGeometryValue {
           } else if corner > 0.0F {
             paint.PathEffect = cornerEffectFor(effects)
           }
-          if !paint.GetFillPath(source, geometry) {
+          guard let geometry = paint.GetFillPath(source) else {
             throw InvalidOperationException("ShapeGeometryValue.ShadowSilhouette: SKPaint.GetFillPath failed")
           }
-          add(next, geometry)
+          using let ownedGeometry = geometry
+          if !ownedGeometry.IsEmpty {
+            if let current = next {
+              if let combined = current.Op(ownedGeometry, SKPathOp.Union) {
+                current.Dispose()
+                next = combined
+              }
+            } else {
+              next = SKPath(ownedGeometry)
+            }
+          }
         }
       }
     } catch (error Exception) {
-      next.Dispose()
+      next?.Dispose()
       throw error
     }
 
+    let resolved = next ?? SKPath()
     let prior = Silhouette
-    Silhouette = next
+    Silhouette = resolved
     silhouetteFill = fill
     silhouetteStroke = stroke
     silhouetteWidth = width
@@ -415,7 +425,7 @@ internal class ShapeGeometryValue {
     silhouetteComposedEffect = composed
     hasSilhouetteKey = true
     prior?.Dispose()
-    return next
+    return resolved
   }
 
   internal func ClearSilhouette() {
@@ -540,23 +550,6 @@ internal class ShapeGeometryValue {
     }
   }
 
-  private func add(target SKPath, geometry SKPath) {
-    if geometry.IsEmpty {
-      return
-    }
-    if target.IsEmpty {
-      target.FillType = geometry.FillType
-      target.AddPath(geometry)
-      return
-    }
-    guard let combined = target.Op(geometry, SKPathOp.Union) else {
-      return
-    }
-    using let ownedCombined = combined
-    target.Reset()
-    target.AddPath(ownedCombined)
-  }
-
   deinit {
     Dispose()
   }
@@ -582,14 +575,12 @@ internal class ShapeShadowArtifacts {
     }
     Clear()
     if value >= 0.0F { return nil }
-    using let path = SKPath()
-    path.AddPath(source)
-    using let edge = SKPath()
     using let paint = SKPaint()
     paint.Style = SKPaintStyle.Stroke
     paint.StrokeWidth = -value * 2.0F
-    if !paint.GetFillPath(path, edge) { return nil }
-    guard let next = path.Op(edge, SKPathOp.Difference) else { return nil }
+    guard let edge = paint.GetFillPath(source) else { return nil }
+    using let ownedEdge = edge
+    guard let next = source.Op(ownedEdge, SKPathOp.Difference) else { return nil }
     retain(next, source, false, value, 0.0F, 0.0F, 0.0F, SKRect{})
     return next
   }
@@ -602,34 +593,36 @@ internal class ShapeShadowArtifacts {
       return artifact
     }
     Clear()
-    using let hole = SKPath()
-    hole.AddPath(source)
-    using let edge = SKPath()
-    using let adjustment = SKPaint()
-    if value > 0.0F {
-      adjustment.Style = SKPaintStyle.Stroke
-      adjustment.StrokeWidth = value * 2.0F
-      if !adjustment.GetFillPath(hole, edge) { return nil }
-      guard let eroded = hole.Op(edge, SKPathOp.Difference) else { return nil }
-      using let ownedEroded = eroded
-      hole.Reset()
-      hole.AddPath(ownedEroded)
-    } else if value < 0.0F {
-      adjustment.Style = SKPaintStyle.StrokeAndFill
-      adjustment.StrokeWidth = -value * 2.0F
-      if !adjustment.GetFillPath(hole, edge) { return nil }
-      hole.Reset()
-      hole.AddPath(edge)
-    }
+    guard let built = insetHole(source, value) else { return nil }
+    using let hole = built
     let offset = SKMatrix.CreateTranslation(x, y)
     hole.Transform(in offset)
     let margin = blurValue * 2.0F + MathF.Abs(x) + MathF.Abs(y) + MathF.Abs(value) + 2.0F
-    using let outside = SKPath()
-    outside.AddRect(SKRect.Create(rect.Left - margin, rect.Top - margin,
-      rect.Width + margin * 2.0F, rect.Height + margin * 2.0F))
+    using let outsideBuilder = SKPathBuilder()
+    outsideBuilder.AddRect(SKRect.Create(rect.Left - margin, rect.Top - margin,
+      rect.Width + margin * 2.0F, rect.Height + margin * 2.0F), SKPathDirection.Clockwise)
+    using let outside = outsideBuilder.Detach()!!
     guard let next = outside.Op(hole, SKPathOp.Difference) else { return nil }
     retain(next, source, true, value, x, y, blurValue, rect)
     return next
+  }
+
+  private func insetHole(source SKPath, value float32) SKPath? {
+    if value > 0.0F {
+      using let adjustment = SKPaint()
+      adjustment.Style = SKPaintStyle.Stroke
+      adjustment.StrokeWidth = value * 2.0F
+      guard let edge = adjustment.GetFillPath(source) else { return nil }
+      using let ownedEdge = edge
+      return source.Op(ownedEdge, SKPathOp.Difference)
+    }
+    if value < 0.0F {
+      using let adjustment = SKPaint()
+      adjustment.Style = SKPaintStyle.StrokeAndFill
+      adjustment.StrokeWidth = -value * 2.0F
+      return adjustment.GetFillPath(source)
+    }
+    return SKPath(source)
   }
 
   internal func NativeWrapperCount() int32 {

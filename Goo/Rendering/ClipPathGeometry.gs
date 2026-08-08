@@ -39,10 +39,6 @@ internal class ClipPathGeometry {
       return path(n, clip).Contains(x, y)
     }
 
-    internal func HitTest(n Node, x float32, y float32) bool {
-      return Contains(n, x, y)
-    }
-
     internal func Dispose(n Node) {
       if values.TryGetValue(n, out var value) {
         values.Remove(n)
@@ -66,18 +62,16 @@ internal class ClipPathGeometry {
     }
 
     private func build(source VectorPath, fit ShapeFit, rect SKRect) SKPath {
-      let result = SKPath()
       let mapping = Map(source, fit, rect)
       if !mapping.Valid {
-        return result
+        return SKPath()
       }
       using let native = VectorPathSkia.ClosedContoursToSkia(source)
-      native.FillType = SKPathFillType.Winding
+      using let builder = SKPathBuilder()
+      builder.FillType = SKPathFillType.Winding
       let matrix = mapping.Matrix
-      native.Transform(in matrix)
-      result.AddPath(native, SKPathAddMode.Append)
-      result.FillType = SKPathFillType.Winding
-      return result
+      builder.AddPath(native, in matrix, SKPathAddMode.Append)
+      return builder.Detach()!!
     }
 
     internal func Map(path VectorPath, fit ShapeFit, rect SKRect) ClipPathMapping {
