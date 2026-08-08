@@ -112,46 +112,47 @@ internal partial class Painter {
       }
     }
 
-    let side = resetBoxPath(ref boxScratch, SKPathFillType.Winding)
+    let builder = resetBoxBuilder(ref boxScratch, SKPathFillType.Winding)
     let paint = resetPaint()
     paint.IsAntialias = true
     paint.Style = SKPaintStyle.Fill
     if left > 0.0F {
-      side.MoveTo(rect.Left, rect.Top)
-      side.LineTo(meetTLx, meetTLy)
-      side.LineTo(meetBLx, meetBLy)
-      side.LineTo(rect.Left, rect.Bottom)
-      side.Close()
+      builder.MoveTo(rect.Left, rect.Top)
+      builder.LineTo(meetTLx, meetTLy)
+      builder.LineTo(meetBLx, meetBLy)
+      builder.LineTo(rect.Left, rect.Bottom)
+      builder.Close()
+      using let side = builder.Detach()!!
       paint.Color = SKColor(n.BorderLeftColor.ToSkia())
       canvas.DrawPath(side, paint)
-      side.Reset()
     }
     if top > 0.0F {
-      side.MoveTo(rect.Left, rect.Top)
-      side.LineTo(rect.Right, rect.Top)
-      side.LineTo(meetTRx, meetTRy)
-      side.LineTo(meetTLx, meetTLy)
-      side.Close()
+      builder.MoveTo(rect.Left, rect.Top)
+      builder.LineTo(rect.Right, rect.Top)
+      builder.LineTo(meetTRx, meetTRy)
+      builder.LineTo(meetTLx, meetTLy)
+      builder.Close()
+      using let side = builder.Detach()!!
       paint.Color = SKColor(n.BorderTopColor.ToSkia())
       canvas.DrawPath(side, paint)
-      side.Reset()
     }
     if right > 0.0F {
-      side.MoveTo(rect.Right, rect.Top)
-      side.LineTo(rect.Right, rect.Bottom)
-      side.LineTo(meetBRx, meetBRy)
-      side.LineTo(meetTRx, meetTRy)
-      side.Close()
+      builder.MoveTo(rect.Right, rect.Top)
+      builder.LineTo(rect.Right, rect.Bottom)
+      builder.LineTo(meetBRx, meetBRy)
+      builder.LineTo(meetTRx, meetTRy)
+      builder.Close()
+      using let side = builder.Detach()!!
       paint.Color = SKColor(n.BorderRightColor.ToSkia())
       canvas.DrawPath(side, paint)
-      side.Reset()
     }
     if bottom > 0.0F {
-      side.MoveTo(rect.Left, rect.Bottom)
-      side.LineTo(meetBLx, meetBLy)
-      side.LineTo(meetBRx, meetBRy)
-      side.LineTo(rect.Right, rect.Bottom)
-      side.Close()
+      builder.MoveTo(rect.Left, rect.Bottom)
+      builder.LineTo(meetBLx, meetBLy)
+      builder.LineTo(meetBRx, meetBRy)
+      builder.LineTo(rect.Right, rect.Bottom)
+      builder.Close()
+      using let side = builder.Detach()!!
       paint.Color = SKColor(n.BorderBottomColor.ToSkia())
       canvas.DrawPath(side, paint)
     }
@@ -166,59 +167,23 @@ internal partial class Painter {
     var scale = 1.0F
     scale = edgeRadiusScale(scale, rect.Width, radius, radius)
     scale = edgeRadiusScale(scale, rect.Height, radius, radius)
-    scale = edgeRadiusScale(scale, rect.Width, radius, radius)
-    scale = edgeRadiusScale(scale, rect.Height, radius, radius)
     radius = radius * scale
-    let meetX = radius > width ? radius : width
-    let meetY = meetX
-    canvas.Save()
-    if radius > 0.0F {
-      let outer = resetBoxRoundRect(ref boxScratch, rect, radius, radius, radius, radius)
-      canvas.ClipRoundRect(outer, SKClipOperation.Intersect, true)
-      if innerRect.Width > 0.0F && innerRect.Height > 0.0F {
-        let innerRadius = insetRadius(radius, width, width)
-        let inner = resetBoxRoundRect(ref boxScratch, innerRect, innerRadius, innerRadius, innerRadius, innerRadius)
-        canvas.ClipRoundRect(inner, SKClipOperation.Difference, true)
-      }
-    } else {
-      canvas.ClipRect(rect, SKClipOperation.Intersect, true)
-      if innerRect.Width > 0.0F && innerRect.Height > 0.0F {
-        canvas.ClipRect(innerRect, SKClipOperation.Difference, true)
-      }
-    }
     let paint = resetPaint()
     paint.IsAntialias = true
     paint.Style = SKPaintStyle.Fill
     paint.Color = SKColor(color)
-    let side = resetBoxPath(ref boxScratch, SKPathFillType.Winding)
-    side.MoveTo(rect.Left, rect.Top)
-    side.LineTo(rect.Left + meetX, rect.Top + meetY)
-    side.LineTo(rect.Left + meetX, rect.Bottom - meetY)
-    side.LineTo(rect.Left, rect.Bottom)
-    side.Close()
-    canvas.DrawPath(side, paint)
-    side.Reset()
-    side.MoveTo(rect.Left, rect.Top)
-    side.LineTo(rect.Right, rect.Top)
-    side.LineTo(rect.Right - meetX, rect.Top + meetY)
-    side.LineTo(rect.Left + meetX, rect.Top + meetY)
-    side.Close()
-    canvas.DrawPath(side, paint)
-    side.Reset()
-    side.MoveTo(rect.Right, rect.Top)
-    side.LineTo(rect.Right, rect.Bottom)
-    side.LineTo(rect.Right - meetX, rect.Bottom - meetY)
-    side.LineTo(rect.Right - meetX, rect.Top + meetY)
-    side.Close()
-    canvas.DrawPath(side, paint)
-    side.Reset()
-    side.MoveTo(rect.Left, rect.Bottom)
-    side.LineTo(rect.Left + meetX, rect.Bottom - meetY)
-    side.LineTo(rect.Right - meetX, rect.Bottom - meetY)
-    side.LineTo(rect.Right, rect.Bottom)
-    side.Close()
-    canvas.DrawPath(side, paint)
-    canvas.Restore()
+    if innerRect.Width <= 0.0F || innerRect.Height <= 0.0F {
+      if radius > 0.0F {
+        canvas.DrawRoundRect(rect, radius, radius, paint)
+      } else {
+        canvas.DrawRect(rect, paint)
+      }
+      return
+    }
+    let outer = resetBoxRoundRect(ref boxScratch, rect, radius, radius, radius, radius)
+    let innerRadius = insetRadius(radius, width, width)
+    let inner = resetBoxRoundRect2(ref boxScratch, innerRect, innerRadius, innerRadius, innerRadius, innerRadius)
+    canvas.DrawRoundRectDifference(outer, inner, paint)
   }
 
   internal func edgeRadiusScale(current float32, edge float32, a float32, b float32) float32 {
@@ -481,16 +446,6 @@ internal partial class Painter {
     let outside = SKRect.Create(
       padding.Left - margin, padding.Top - margin,
       padding.Width + margin * 2.0F, padding.Height + margin * 2.0F)
-    let inverse = resetBoxPath(ref boxScratch, SKPathFillType.EvenOdd)
-    inverse.AddRect(outside)
-    if hole.Width > 0.0F && hole.Height > 0.0F {
-      if hasRadius(n) {
-        let holeRound = buildInsetShadowRoundRect(ref boxScratch, hole, n, left, top, right, bottom, spread)
-        inverse.AddRoundRect(holeRound, SKPathDirection.Clockwise)
-      } else {
-        inverse.AddRect(hole)
-      }
-    }
     canvas.Save()
     if hasRadius(n) {
       let clip = buildInnerBorderRoundRect(ref boxScratch, padding, n, left, top, right, bottom)
@@ -504,7 +459,17 @@ internal partial class Painter {
     if blur > 0.0F {
       paint.MaskFilter = blurFilter(blur)
     }
-    canvas.DrawPath(inverse, paint)
+    if hole.Width > 0.0F && hole.Height > 0.0F {
+      let outsideRound = resetBoxRoundRect(ref boxScratch, outside, 0.0F, 0.0F, 0.0F, 0.0F)
+      let holeRound = if hasRadius(n) {
+        buildInsetShadowRoundRect(ref boxScratch, hole, n, left, top, right, bottom, spread)
+      } else {
+        resetBoxRoundRect2(ref boxScratch, hole, 0.0F, 0.0F, 0.0F, 0.0F)
+      }
+      canvas.DrawRoundRectDifference(outsideRound, holeRound, paint)
+    } else {
+      canvas.DrawRect(outside, paint)
+    }
     canvas.Restore()
   }
 
@@ -524,7 +489,7 @@ internal partial class Painter {
     let tr = nonNegative(insetRadius(cornerPx(n.BorderTopRightRadius, n.BorderRadius), right, top) - spread)
     let br = nonNegative(insetRadius(cornerPx(n.BorderBottomRightRadius, n.BorderRadius), right, bottom) - spread)
     let bl = nonNegative(insetRadius(cornerPx(n.BorderBottomLeftRadius, n.BorderRadius), left, bottom) - spread)
-    return resetBoxRoundRect(ref boxScratch, rect, tl, tr, br, bl)
+    return resetBoxRoundRect2(ref boxScratch, rect, tl, tr, br, bl)
   }
 
   internal func hasOuterBoxShadows(n Node) bool {

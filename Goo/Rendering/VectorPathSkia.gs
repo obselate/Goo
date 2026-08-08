@@ -6,56 +6,49 @@ import SkiaSharp
 internal class VectorPathSkia {
   shared {
     internal func ToSkia(path VectorPath) SKPath {
-      let result = SKPath()
+      using let builder = SKPathBuilder()
       for i in 0 ... path.CommandCount {
-        appendCommand(result, path.CommandAt(i))
+        appendCommand(builder, path.CommandAt(i))
       }
-      return result
+      return builder.Detach()!!
     }
 
     internal func ClosedContoursToSkia(path VectorPath) SKPath {
-      let result = SKPath()
-      var contour SKPath? = nil
+      using let builder = SKPathBuilder()
+      var start = -1
       for i in 0 ... path.CommandCount {
-        let command = path.CommandAt(i)
-        if command.Kind == VectorPathCommandKind.MoveTo {
-          if let previous = contour { previous.Dispose() }
-          let next = SKPath()
-          appendCommand(next, command)
-          contour = next
-        } else if command.Kind == VectorPathCommandKind.Close {
-          if let closed = contour {
-            closed.Close()
-            result.AddPath(closed, SKPathAddMode.Append)
-            closed.Dispose()
-            contour = nil
+        let kind = path.CommandAt(i).Kind
+        if kind == VectorPathCommandKind.MoveTo {
+          start = i
+        } else if kind == VectorPathCommandKind.Close && start >= 0 {
+          for j in start ... i {
+            appendCommand(builder, path.CommandAt(j))
           }
-        } else if let current = contour {
-          appendCommand(current, command)
+          builder.Close()
+          start = -1
         }
       }
-      if let remaining = contour { remaining.Dispose() }
-      return result
+      return builder.Detach()!!
     }
 
-    private func appendCommand(path SKPath, command VectorPathCommand) {
+    private func appendCommand(builder SKPathBuilder, command VectorPathCommand) {
       switch command.Kind {
-        case VectorPathCommandKind.MoveTo { path.MoveTo(float32(command.X1), float32(command.Y1)) }
-        case VectorPathCommandKind.LineTo { path.LineTo(float32(command.X1), float32(command.Y1)) }
+        case VectorPathCommandKind.MoveTo { builder.MoveTo(float32(command.X1), float32(command.Y1)) }
+        case VectorPathCommandKind.LineTo { builder.LineTo(float32(command.X1), float32(command.Y1)) }
         case VectorPathCommandKind.QuadraticTo {
-          path.QuadTo(float32(command.X1), float32(command.Y1), float32(command.X2), float32(command.Y2))
+          builder.QuadTo(float32(command.X1), float32(command.Y1), float32(command.X2), float32(command.Y2))
         }
         case VectorPathCommandKind.CubicTo {
-          path.CubicTo(float32(command.X1), float32(command.Y1), float32(command.X2), float32(command.Y2),
+          builder.CubicTo(float32(command.X1), float32(command.Y1), float32(command.X2), float32(command.Y2),
             float32(command.X3), float32(command.Y3))
         }
         case VectorPathCommandKind.ArcTo {
           let size = command.LargeArc ? SKPathArcSize.Large : SKPathArcSize.Small
           let direction = command.SweepClockwise ? SKPathDirection.Clockwise : SKPathDirection.CounterClockwise
-          path.ArcTo(float32(command.RadiusX), float32(command.RadiusY), float32(command.RotationDegrees),
+          builder.ArcTo(float32(command.RadiusX), float32(command.RadiusY), float32(command.RotationDegrees),
             size, direction, float32(command.X1), float32(command.Y1))
         }
-        case VectorPathCommandKind.Close { path.Close() }
+        case VectorPathCommandKind.Close { builder.Close() }
         default { throw NotSupportedException("VectorPathSkia.appendCommand: unhandled path command") }
       }
     }

@@ -200,28 +200,6 @@ internal partial class Painter {
     }
   }
 
-  internal func adjustInsetShadowHole(path SKPath, spread float32) bool {
-    if spread == 0.0F { return !path.IsEmpty }
-    using let edge = SKPath()
-    let paint = resetPaint()
-    if spread > 0.0F {
-      paint.Style = SKPaintStyle.Stroke
-      paint.StrokeWidth = spread * 2.0F
-      if !paint.GetFillPath(path, edge) { return false }
-      guard let eroded = path.Op(edge, SKPathOp.Difference) else { return false }
-      using let ownedEroded = eroded
-      path.Reset()
-      path.AddPath(ownedEroded)
-      return true
-    }
-    paint.Style = SKPaintStyle.StrokeAndFill
-    paint.StrokeWidth = -spread * 2.0F
-    if !paint.GetFillPath(path, edge) { return false }
-    path.Reset()
-    path.AddPath(edge)
-    return !path.IsEmpty
-  }
-
   private func hasDashes(n Node) bool {
     if let dashes = n.Dashes { return dashes.Intervals.Count > 0 }
     return false
