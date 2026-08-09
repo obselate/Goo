@@ -1,0 +1,10 @@
+<Project Sdk="Gsharp.NET.Sdk/0.3.362">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDefaultItems>false</EnableDefaultItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="03_top_level_range_loop_capture_crash.gs" />
+  </ItemGroup>
+</Project>

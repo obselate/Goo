@@ -47,6 +47,11 @@
 !/tools/Goo.ApiDocs/
 !/tools/Goo.ApiDocs/**
 
+!/probes/
+/probes/*
+!/probes/Findings/
+!/probes/Findings/**
+
 !/vendor/
 /vendor/*
 !/vendor/Yoga.Net/
