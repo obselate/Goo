@@ -18,17 +18,40 @@ Applications keep full control over their visual identity.
 
 ## Install
 
-Goo targets .NET 10 and is available from [NuGet](https://www.nuget.org/packages/Goo/):
+1. Install the
+   [latest .NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0).
+2. Set up
+   [`Gsharp.NET.Sdk`](https://www.nuget.org/packages/Gsharp.NET.Sdk/) using the
+   [G# SDK guide](https://github.com/DavidObando/gsharp/blob/main/docs/sdk-usage.md).
+3. Acquire Goo using one of the following methods.
+
+From [NuGet](https://www.nuget.org/packages/Goo/) with the .NET CLI:
 
 ```sh
 dotnet add package Goo --version 0.2.0
 ```
 
-Or add the package reference directly:
+Using `PackageReference`:
 
 ```xml
 <PackageReference Include="Goo" Version="0.2.0" />
 ```
+
+As a prebuilt Linux x64 archive, download
+[`Goo.0.2.0-linux-x64.tar.gz`](https://github.com/obselate/goo/releases/download/v0.2.0/Goo.0.2.0-linux-x64.tar.gz)
+and its
+[`SHA-256 checksum`](https://github.com/obselate/goo/releases/download/v0.2.0/Goo.0.2.0-linux-x64.tar.gz.sha256)
+from [GitHub Releases](https://github.com/obselate/goo/releases).
+
+From source:
+
+```sh
+git clone https://github.com/obselate/goo.git
+cd goo
+dotnet build Goo/Goo.gsproj --configuration Release
+```
+
+Update an existing source checkout with `git pull --ff-only`.
 
 The first release supports `linux-x64` on glibc 2.35 or newer. It requires a
 native Wayland session and the system Fontconfig runtime (`libfontconfig1` on
