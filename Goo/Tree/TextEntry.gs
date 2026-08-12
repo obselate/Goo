@@ -22,6 +22,6 @@ public class TextEntry : Blob {
   public init() {
     Value = ""
     Placeholder = ""
-    SelectionColor = Color.FromNormalized(0.25F, 0.45F, 1.0F, 0.35F)
+    SelectionColor = defaultSelectionColor()
   }
 }

@@ -147,7 +147,7 @@ public open class Blob : Style {
   public prop TransitionMs float64 {
     get { return float64(transitionMs) }
     init {
-      if Double.IsNaN(value) || Double.IsInfinity(value) {
+      if !motionFinite(value) {
         throw ArgumentOutOfRangeException("TransitionMs")
       }
       let packed = float32(value < 0.0 ? 0.0 : value)
@@ -169,7 +169,7 @@ public open class Blob : Style {
   public prop TransitionDelayMs float64 {
     get { return float64(transitionDelayMs) }
     init {
-      if Double.IsNaN(value) || Double.IsInfinity(value) {
+      if !motionFinite(value) {
         throw ArgumentOutOfRangeException("TransitionDelayMs")
       }
       let packed = float32(value < 0.0 ? 0.0 : value)

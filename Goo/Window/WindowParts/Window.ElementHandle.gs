@@ -42,8 +42,7 @@ public partial class Window {
     requireUiThread("ElementHandle.Focus")
     let result = input.FocusElement(resolver, n)
     if result {
-      accessibility?.MarkDirty()
-      requestRender()
+      markDirtyAndRender()
     }
     return result
   }
@@ -52,8 +51,7 @@ public partial class Window {
     requireUiThread("ElementHandle.Blur")
     let result = input.BlurElement(resolver, n)
     if result {
-      accessibility?.MarkDirty()
-      requestRender()
+      markDirtyAndRender()
     }
     return result
   }
@@ -156,6 +154,10 @@ public partial class Window {
     if n.PinToBottom {
       n.UserScrolled = y < maxScrollY(n) - 0.5F
     }
+    markDirtyAndRender()
+  }
+
+  private func markDirtyAndRender() {
     accessibility?.MarkDirty()
     requestRender()
   }

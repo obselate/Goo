@@ -19,7 +19,7 @@ public sealed class DashPattern {
   /// @param intervals Non-negative finite dash and gap lengths. Empty is solid, and non-empty values must not all be zero.
   /// @param offset The finite phase offset in logical pixels.
   public init(intervals []float64, offset float64) {
-    if !finite(offset) {
+    if !motionFiniteFloat32(offset) {
       throw ArgumentOutOfRangeException("offset")
     }
 
@@ -27,7 +27,7 @@ public sealed class DashPattern {
     var allZero = true
     for i in 0 ... intervals.Length {
       let interval = intervals[i]
-      if !finite(interval) || interval < 0.0 {
+      if !motionFiniteFloat32(interval) || interval < 0.0 {
         throw ArgumentOutOfRangeException("intervals")
       }
       if interval != 0.0 {
@@ -47,9 +47,5 @@ public sealed class DashPattern {
 
     this.intervals = ReadOnlyCollection[float64](normalized)
     this.offset = offset
-  }
-
-  private func finite(value float64) bool {
-    return !Double.IsNaN(value) && !Double.IsInfinity(value) && !Single.IsInfinity(float32(value))
   }
 }

@@ -20,7 +20,7 @@ public partial class Window {
 
   private func requireUiThread(operation string) {
     if uiThreadBound {
-      Goo.InternalTextInterop.SdlRuntime.RequireMainThread(operation)
+      requireOpenThread(operation)
     }
   }
 
@@ -122,8 +122,7 @@ public partial class Window {
     IsFocused = hasFocus
     if !hasFocus {
       input.FocusLost(resolver)
-      accessibility?.MarkDirty()
-      requestRender()
+      markDirtyAndRender()
     }
     if let callback = OnFocusChange {
       callback(hasFocus)

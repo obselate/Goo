@@ -44,21 +44,9 @@ public class ImageSource : ImageSourceProvider, IDisposable {
   }
 
   /// Gets this immutable source's pixel width.
-  public prop Width int32 {
-    get {
-      var result int32
-      result = width
-      return result
-    }
-  }
+  public prop Width int32 { get { return width } }
   /// Gets this immutable source's pixel height.
-  public prop Height int32 {
-    get {
-      var result int32
-      result = height
-      return result
-    }
-  }
+  public prop Height int32 { get { return height } }
   /// Gets whether this source has released its owner reference.
   public prop IsDisposed bool {
     get {

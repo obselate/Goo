@@ -36,9 +36,7 @@ public partial class Window {
       wake = Interlocked.Exchange(&pendingImageCompletion, 1) == 0
     }
     if wake {
-      if let native = host {
-        native.Wake()
-      }
+      host?.Wake()
     }
   }
 

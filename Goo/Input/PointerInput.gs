@@ -343,9 +343,7 @@ internal partial class PointerInput {
       }
     } finally {
       if queueHead > 0 {
-        let remaining = queue.Count - queueHead
-        for i in 0 ... remaining { queue[i] = queue[i + queueHead] }
-        for var i = queue.Count; i > remaining; i-- { queue.RemoveAt(i - 1) }
+        queue.RemoveRange(0, queueHead)
       }
       queueHead = 0
     }

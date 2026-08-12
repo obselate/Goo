@@ -1086,7 +1086,7 @@ internal class TextGeometryQueries {
     }
 
     private func toElementPoint(n Node, point Point, space TextCoordinateSpace) Point? {
-      if !validSpace(space) || !finite(point.X) || !finite(point.Y) { return nil }
+      if !validSpace(space) || !motionFinite(point.X) || !motionFinite(point.Y) { return nil }
       if space == TextCoordinateSpace.Element {
         return point
       }
@@ -1202,10 +1202,6 @@ internal class TextGeometryQueries {
     private func validRange(value TextRange, length int32) bool {
       return value.Start >= 0 && value.Start <= length && value.Length >= 0
         && value.Length <= length - value.Start
-    }
-
-    private func finite(value float64) bool {
-      return !Double.IsNaN(value) && !Double.IsInfinity(value)
     }
 
     private func windowMappingValid(n Node) bool {

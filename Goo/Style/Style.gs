@@ -363,7 +363,7 @@ public open class Style {
   }
 
   internal func normalizeOpacity(value float64) float64 {
-    if Double.IsNaN(value) || Double.IsInfinity(value) {
+    if !motionFinite(value) {
       throw ArgumentOutOfRangeException("Opacity")
     }
     if value < 0.0 { return 0.0 }

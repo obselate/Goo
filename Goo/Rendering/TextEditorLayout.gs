@@ -240,7 +240,7 @@ internal sealed class TextEditorRenderState : IDisposable {
   internal prop LayerCount int32 { get { return layers.Length } }
   internal func Layer(index int32) TextPresentationLayer { return layers[index] }
   internal func MatchesLayers(values []TextPresentationLayer) bool {
-    return sameEditorLayers(layers, values)
+    return sameArray(layers, values)
   }
   internal prop ParagraphCacheCount int32 { get { return paragraphs.Count } }
 
@@ -432,7 +432,7 @@ internal sealed class TextEditorRenderState : IDisposable {
   }
 
   internal func Apply(nextLayers []TextPresentationLayer, readOnly bool) {
-    if !sameEditorLayers(layers, nextLayers) {
+    if !sameArray(layers, nextLayers) {
       TextEditorLayerBindings.Unregister(this)
       layers = copyEditorLayers(nextLayers)
       TextEditorLayerBindings.Register(this)
@@ -1999,14 +1999,6 @@ internal func paragraphChanged(paragraph TextRange, changes IReadOnlyList[TextCh
 internal func sameEditorComposition(left TextComposition?, right TextComposition?) bool {
   guard let leftValue = left, let rightValue = right else { return left == nil && right == nil }
   return leftValue.Range == rightValue.Range && leftValue.Text == rightValue.Text
-}
-
-internal func sameEditorLayers(left []TextPresentationLayer, right []TextPresentationLayer) bool {
-  if left.Length != right.Length { return false }
-  for i in 0 ... left.Length {
-    if left[i] != right[i] { return false }
-  }
-  return true
 }
 
 internal class TextEditorLayerBindings {

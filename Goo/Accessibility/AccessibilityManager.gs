@@ -149,7 +149,7 @@ internal class AccessibilityManager {
 
   private func collectForced(n Node, inheritedHidden bool) {
     let declaration = AccessibilityMetadata.Value(n)
-    let nowHidden = inheritedHidden || n.PaintInputHidden || declaration?.Hidden == true
+    let nowHidden = computeHidden(n, declaration, inheritedHidden)
     if nowHidden {
       return
     }
@@ -189,7 +189,7 @@ internal class AccessibilityManager {
   private func appendNode(n Node, target List[AccessibilityNode], inheritedHidden bool,
     inheritedDisabled bool, suppressAutoText bool) {
     let declaration = AccessibilityMetadata.Value(n)
-    let nowHidden = inheritedHidden || n.PaintInputHidden || declaration?.Hidden == true
+    let nowHidden = computeHidden(n, declaration, inheritedHidden)
     if nowHidden {
       return
     }
@@ -225,12 +225,12 @@ internal class AccessibilityManager {
       if view.Apply(role, declaration?.CustomRole ?? "", resolvedName(n, declaration, role),
         declaration?.Description ?? "", resolvedValue(n, declaration), valueRange?.Text ?? "",
         valueRange?.Now, valueRange?.Minimum, valueRange?.Maximum, textState.Document, textState.Start,
-        textState.Length, textState.Caret, resolvedChecked(declaration),
+        textState.Length, textState.Caret, declaration?.Checked ?? AccessibilityChecked.Unspecified,
         declaration?.Selected, declaration?.Expanded, disabled, resolvedReadOnly(n, declaration),
         declaration?.Required, declaration?.Invalid, declaration?.Busy, declaration?.Level,
-        resolvedOrientation(declaration), declaration?.Modal,
+        declaration?.Orientation ?? AccessibilityOrientation.Unspecified, declaration?.Modal,
         resolvedMultiline(n, declaration), declaration?.MultiSelectable, declaration?.HasPopup,
-        resolvedLive(declaration), declaration?.Atomic, n.Focused,
+        declaration?.Live ?? AccessibilityLive.Off, declaration?.Atomic, n.Focused,
         ElementHandles.BorderBox(n), resolvedActionMask(n, role, disabled, declaration)) {
         rebuildingChanged = true
       }
@@ -266,24 +266,13 @@ internal class AccessibilityManager {
     }
   }
 
+  private func computeHidden(n Node, declaration Accessibility?, inherited bool) bool {
+    return inherited || n.PaintInputHidden || declaration?.Hidden == true
+  }
+
   private func declaredRoleIsNone(declaration Accessibility?) bool {
     if let metadata = declaration { return metadata.Role == AccessibilityRole.None }
     return false
-  }
-
-  private func resolvedChecked(declaration Accessibility?) AccessibilityChecked {
-    if let metadata = declaration { return metadata.Checked }
-    return AccessibilityChecked.Unspecified
-  }
-
-  private func resolvedOrientation(declaration Accessibility?) AccessibilityOrientation {
-    if let metadata = declaration { return metadata.Orientation }
-    return AccessibilityOrientation.Unspecified
-  }
-
-  private func resolvedLive(declaration Accessibility?) AccessibilityLive {
-    if let metadata = declaration { return metadata.Live }
-    return AccessibilityLive.Off
   }
 
   private func resolvedName(n Node, declaration Accessibility?, role AccessibilityRole) string {
@@ -304,7 +293,7 @@ internal class AccessibilityManager {
 
   private func buttonNameFingerprint(n Node, hash uint64, inheritedHidden bool) uint64 {
     let declaration = AccessibilityMetadata.Value(n)
-    let nowHidden = inheritedHidden || n.PaintInputHidden || declaration?.Hidden == true
+    let nowHidden = computeHidden(n, declaration, inheritedHidden)
     var value = accessibilityHash(hash, uint64(int32(n.Kind)))
     value = accessibilityHash(value, nowHidden ? uint64(1) : uint64(0))
     if nowHidden { return value }
@@ -332,7 +321,7 @@ internal class AccessibilityManager {
 
   private func appendNodeText(n Node, builder StringBuilder, hidden bool) {
     let declaration = AccessibilityMetadata.Value(n)
-    let nowHidden = hidden || n.PaintInputHidden || declaration?.Hidden == true
+    let nowHidden = computeHidden(n, declaration, hidden)
     if nowHidden {
       return
     }

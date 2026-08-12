@@ -540,11 +540,7 @@ public class TextEditorController : IDisposable {
   }
 
   private func moveHorizontal(direction int32, extend bool) bool {
-    let textRange = selectedRange()
-    if textRange.Length != 0 && !extend {
-      return placeSelection(direction < 0 ? textRange.Start : textRange.Start + textRange.Length,
-        direction < 0 ? TextAffinity.Upstream : TextAffinity.Downstream, false, false)
-    }
+    if let collapsed = collapseToEdgeIfNotExtending(direction, extend) { return collapsed }
     if let mounted = mountedEditor as Node? {
       if let target = TextEditorLayouts.MoveHorizontal(mounted, selection.Active, direction) {
         return placeSelection(target.Offset, target.Affinity, extend, false)
@@ -557,14 +553,19 @@ public class TextEditorController : IDisposable {
   }
 
   private func moveWord(direction int32, extend bool) bool {
+    if let collapsed = collapseToEdgeIfNotExtending(direction, extend) { return collapsed }
+    let target = direction < 0 ? previousWord(selection.Active.Offset)
+      : nextWord(selection.Active.Offset)
+    return placeSelection(target, direction < 0 ? TextAffinity.Upstream : TextAffinity.Downstream, extend, false)
+  }
+
+  private func collapseToEdgeIfNotExtending(direction int32, extend bool) bool? {
     let textRange = selectedRange()
     if textRange.Length != 0 && !extend {
       return placeSelection(direction < 0 ? textRange.Start : textRange.Start + textRange.Length,
         direction < 0 ? TextAffinity.Upstream : TextAffinity.Downstream, false, false)
     }
-    let target = direction < 0 ? previousWord(selection.Active.Offset)
-      : nextWord(selection.Active.Offset)
-    return placeSelection(target, direction < 0 ? TextAffinity.Upstream : TextAffinity.Downstream, extend, false)
+    return nil
   }
 
   private func moveVertical(lines int32, extend bool) bool {

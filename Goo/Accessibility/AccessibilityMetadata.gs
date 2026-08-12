@@ -62,7 +62,7 @@ private func sameAccessibility(left Accessibility?, right Accessibility?) bool {
     && a.Busy == b.Busy && a.Level == b.Level && a.Orientation == b.Orientation
     && a.Modal == b.Modal && a.Multiline == b.Multiline && a.MultiSelectable == b.MultiSelectable
     && a.HasPopup == b.HasPopup && a.Live == b.Live && a.Atomic == b.Atomic && a.Hidden == b.Hidden
-    && sameActions(a.RawActions, b.RawActions) && a.OnAction == b.OnAction
+    && sameArray(a.RawActions, b.RawActions) && a.OnAction == b.OnAction
     && sameRelationships(a.Relationships, b.Relationships)
 }
 
@@ -73,31 +73,15 @@ private func sameValue(left AccessibilityValue?, right AccessibilityValue?) bool
   return a.Now == b.Now && a.Minimum == b.Minimum && a.Maximum == b.Maximum && a.Text == b.Text
 }
 
-private func sameActions(left []AccessibilityAction, right []AccessibilityAction) bool {
-  if left.Length != right.Length { return false }
-  for i in 0 ... left.Length {
-    if left[i] != right[i] { return false }
-  }
-  return true
-}
-
 private func sameRelationships(left AccessibilityRelationships?, right AccessibilityRelationships?) bool {
   if left == nil || right == nil { return left == right }
   let a = left!!
   let b = right!!
-  return sameHandles(a.RawLabelledBy, b.RawLabelledBy)
-    && sameHandles(a.RawDescribedBy, b.RawDescribedBy)
-    && sameHandles(a.RawControls, b.RawControls) && sameHandles(a.RawOwns, b.RawOwns)
-    && sameHandles(a.RawFlowTo, b.RawFlowTo) && sameHandles(a.RawErrorMessage, b.RawErrorMessage)
+  return sameArray(a.RawLabelledBy, b.RawLabelledBy)
+    && sameArray(a.RawDescribedBy, b.RawDescribedBy)
+    && sameArray(a.RawControls, b.RawControls) && sameArray(a.RawOwns, b.RawOwns)
+    && sameArray(a.RawFlowTo, b.RawFlowTo) && sameArray(a.RawErrorMessage, b.RawErrorMessage)
     && a.ActiveDescendant == b.ActiveDescendant
-}
-
-private func sameHandles(left []ElementHandle, right []ElementHandle) bool {
-  if left.Length != right.Length { return false }
-  for i in 0 ... left.Length {
-    if left[i] != right[i] { return false }
-  }
-  return true
 }
 
 internal class AccessibilityNodeStates {

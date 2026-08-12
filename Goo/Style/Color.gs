@@ -147,6 +147,10 @@ internal func transparent(value Color) bool {
   return value.R == 0.0F && value.G == 0.0F && value.B == 0.0F && value.A == 0.0F
 }
 
+internal func defaultSelectionColor() Color {
+  return Color.FromNormalized(0.25F, 0.45F, 1.0F, 0.35F)
+}
+
 internal func parseHexColor(value string) Color? {
   switch value.Length {
     case 4 {

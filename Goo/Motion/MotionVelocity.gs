@@ -53,26 +53,14 @@ public struct MotionVelocity {
       guard let right = other.components else {
         throw InvalidOperationException("MotionVelocity is not initialized")
       }
-      let summed = [right.Length]float64
-      for var i = 0; i < right.Length; i++ {
-        summed[i] = value + right[i]
-        if !motionFinite(summed[i]) {
-          throw ArgumentOutOfRangeException("other")
-        }
-      }
+      let summed = sumChecked(right.Length, (i int32) -> value + right[i])
       return MotionVelocity{ uniform: false, value: 0.0, components: summed, valid: true }
     }
     guard let left = components else {
       throw InvalidOperationException("MotionVelocity is not initialized")
     }
     if other.uniform {
-      let summed = [left.Length]float64
-      for var i = 0; i < left.Length; i++ {
-        summed[i] = left[i] + other.value
-        if !motionFinite(summed[i]) {
-          throw ArgumentOutOfRangeException("other")
-        }
-      }
+      let summed = sumChecked(left.Length, (i int32) -> left[i] + other.value)
       return MotionVelocity{ uniform: false, value: 0.0, components: summed, valid: true }
     }
     guard let right = other.components else {
@@ -81,14 +69,19 @@ public struct MotionVelocity {
     if left.Length != right.Length {
       throw ArgumentException("velocity component counts do not match", "other")
     }
-    let summed = [left.Length]float64
-    for var i = 0; i < left.Length; i++ {
-      summed[i] = left[i] + right[i]
+    let summed = sumChecked(left.Length, (i int32) -> left[i] + right[i])
+    return MotionVelocity{ uniform: false, value: 0.0, components: summed, valid: true }
+  }
+
+  private func sumChecked(length int32, at (int32) -> float64) []float64 {
+    let summed = [length]float64
+    for var i = 0; i < length; i++ {
+      summed[i] = at(i)
       if !motionFinite(summed[i]) {
         throw ArgumentOutOfRangeException("other")
       }
     }
-    return MotionVelocity{ uniform: false, value: 0.0, components: summed, valid: true }
+    return summed
   }
 
   internal func CopyInto(into []float64) {

@@ -358,9 +358,9 @@ internal class RetainedAccessibilityRelationshipIds : AccessibilityRelationshipI
   internal func Apply(labelledBy []AccessibilityId, describedBy []AccessibilityId,
     controls []AccessibilityId, owns []AccessibilityId, flowTo []AccessibilityId,
     errorMessage []AccessibilityId, activeDescendant AccessibilityId?) bool {
-    if sameIds(this.labelledBy, labelledBy) && sameIds(this.describedBy, describedBy)
-      && sameIds(this.controls, controls) && sameIds(this.owns, owns)
-      && sameIds(this.flowTo, flowTo) && sameIds(this.errorMessage, errorMessage)
+    if sameArray(this.labelledBy, labelledBy) && sameArray(this.describedBy, describedBy)
+      && sameArray(this.controls, controls) && sameArray(this.owns, owns)
+      && sameArray(this.flowTo, flowTo) && sameArray(this.errorMessage, errorMessage)
       && sameOptionalId(this.activeDescendant, activeDescendant) {
       return false
     }
@@ -753,26 +753,29 @@ private func cloneHandles(values []?ElementHandle, name string) []ElementHandle 
 private func validateHandles(values []ElementHandle, name string) {
   for value in values {
     if value == nil { throw ArgumentNullException(name) }
-    var count int32
-    for candidate in values {
-      if candidate == value { count++ }
-    }
-    if count != 1 { throw ArgumentException(name + " cannot contain duplicates") }
   }
+  requireUnique(values, name)
 }
 
 private func cloneActions(values []?AccessibilityAction) []AccessibilityAction {
   if values == nil { throw ArgumentNullException("Actions") }
   let result = values!!.Clone() as []AccessibilityAction
   for action in result {
-    let validated = validateAction(action)
-    var count int32
-    for candidate in result {
-      if candidate == action { count++ }
-    }
-    if count != 1 { throw ArgumentException("Actions cannot contain duplicates") }
+    validateAction(action)
   }
+  requireUnique(result, "Actions")
   return result
+}
+
+private func requireUnique[T](values []T, name string) {
+  let comparer = EqualityComparer[T].Default
+  for value in values {
+    var count int32
+    for candidate in values {
+      if comparer.Equals(candidate, value) { count++ }
+    }
+    if count != 1 { throw ArgumentException(name + " cannot contain duplicates") }
+  }
 }
 
 private func validateAction(value AccessibilityAction) AccessibilityAction {
@@ -842,10 +845,11 @@ internal func actionBit(action AccessibilityAction) int32 {
   return int32(1) << int32(action)
 }
 
-private func sameIds(left []AccessibilityId, right []AccessibilityId) bool {
+internal func sameArray[T](left []T, right []T) bool {
   if left.Length != right.Length { return false }
+  let comparer = EqualityComparer[T].Default
   for i in 0 ... left.Length {
-    if left[i] != right[i] { return false }
+    if !comparer.Equals(left[i], right[i]) { return false }
   }
   return true
 }

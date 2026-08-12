@@ -51,6 +51,27 @@ internal class TextEditorInputAdapter {
       setImeArea(host, n, left, top, caret.W, caret.H)
     }
 
+    internal func ApplyImeArea(host SdlHost, p0 TransformPoint, p1 TransformPoint,
+      p2 TransformPoint, p3 TransformPoint) {
+      if !p0.Valid || !p1.Valid || !p2.Valid || !p3.Valid {
+        return
+      }
+      var minX = p0.X
+      var minY = p0.Y
+      var maxX = p0.X
+      var maxY = p0.Y
+      applyImePoint(p1, ref minX, ref minY, ref maxX, ref maxY)
+      applyImePoint(p2, ref minX, ref minY, ref maxX, ref maxY)
+      applyImePoint(p3, ref minX, ref minY, ref maxX, ref maxY)
+      let left = MathF.Floor(minX)
+      let top = MathF.Floor(minY)
+      let right = MathF.Ceiling(maxX)
+      let bottom = MathF.Ceiling(maxY)
+      let width = int32(right - left) > 0 ? int32(right - left) : 1
+      let height = int32(bottom - top) > 0 ? int32(bottom - top) : 1
+      host.SetImeArea(int32(left), int32(top), width, height, 0)
+    }
+
     private func wordSelection(controller TextEditorController, position TextPosition) TextSelection {
       let text = controller.Document.GetText()
       if text.Length == 0 {
@@ -82,23 +103,7 @@ internal class TextEditorInputAdapter {
       let p1 = TransformGeometry.NodeToWindow(n, x + width, y)
       let p2 = TransformGeometry.NodeToWindow(n, x, y + height)
       let p3 = TransformGeometry.NodeToWindow(n, x + width, y + height)
-      if !p0.Valid || !p1.Valid || !p2.Valid || !p3.Valid {
-        return
-      }
-      var minX = p0.X
-      var minY = p0.Y
-      var maxX = p0.X
-      var maxY = p0.Y
-      applyImePoint(p1, ref minX, ref minY, ref maxX, ref maxY)
-      applyImePoint(p2, ref minX, ref minY, ref maxX, ref maxY)
-      applyImePoint(p3, ref minX, ref minY, ref maxX, ref maxY)
-      let left = MathF.Floor(minX)
-      let top = MathF.Floor(minY)
-      let right = MathF.Ceiling(maxX)
-      let bottom = MathF.Ceiling(maxY)
-      let areaWidth = int32(right - left) > 0 ? int32(right - left) : 1
-      let areaHeight = int32(bottom - top) > 0 ? int32(bottom - top) : 1
-      host.SetImeArea(int32(left), int32(top), areaWidth, areaHeight, 0)
+      ApplyImeArea(host, p0, p1, p2, p3)
     }
 
     private func applyImePoint(point TransformPoint, ref minX float32, ref minY float32,

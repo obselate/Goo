@@ -41,7 +41,7 @@ internal class TextInput {
       return
     }
     if let f = focused {
-      if !nodeInTree(tree, f) {
+      if !containsPath(tree, f) {
         SetFocus(resolver, nil)
       }
     }
@@ -226,24 +226,13 @@ internal class TextInput {
         let callback = received ? InputCallbacks.Focus(node) : InputCallbacks.Blur(node)
         if let handler = callback {
           handler(FocusEvent{ Control: focusControl, Generation: generation })
-          rebuildOwner(node)
+          rebuildFiberOwner(node)
         }
         if focusControl.PropagationStopped { break }
         current = node.Parent
       }
     } finally {
       focusControl.Finish(generation)
-    }
-  }
-
-  private func rebuildOwner(node Node) {
-    var current Node? = node
-    while current != nil {
-      if let owner = current!!.Fiber {
-        owner.Rebuild()
-        return
-      }
-      current = current!!.Parent
     }
   }
 
@@ -396,7 +385,7 @@ internal class TextInput {
     if let callback = TextInputCallbacks.TextCandidates(n) {
       callback(TextCandidateEvent{ Candidates: values, SelectedCandidate: selectedCandidate,
         Horizontal: horizontal })
-      rebuildOwner(n)
+      rebuildFiberOwner(n)
     }
   }
 
@@ -417,21 +406,21 @@ internal class TextInput {
   private func dispatchTextInput(n Node, value string) {
     if let callback = TextInputCallbacks.TextInput(n) {
       callback(value)
-      rebuildOwner(n)
+      rebuildFiberOwner(n)
     }
   }
 
   private func dispatchTextComposition(n Node, value TextCompositionEvent) {
     if let callback = TextInputCallbacks.TextComposition(n) {
       callback(value)
-      rebuildOwner(n)
+      rebuildFiberOwner(n)
     }
   }
 
   private func dispatchTextCompositionCancel(n Node) {
     if let callback = TextInputCallbacks.TextCompositionCancel(n) {
       callback()
-      rebuildOwner(n)
+      rebuildFiberOwner(n)
     }
   }
 
@@ -565,19 +554,6 @@ internal class TextInput {
     }
   }
 
-  private func findOwner(n Node, target Node, inherited Cell?) Cell? {
-    let here = n.Fiber ?? inherited
-    if n == target {
-      return here
-    }
-    for child in n.Children {
-      if let found = findOwner(child, target, here) {
-        return found
-      }
-    }
-    return nil
-  }
-
   private func collectFocusables(n Node, sink List[Node], hidden bool, disabled bool) {
     let nowHidden = hidden || n.PaintInputHidden
     let nowDisabled = disabled || n.Disabled
@@ -624,37 +600,7 @@ internal class TextInput {
       let p1 = TransformGeometry.NodeToWindow(n, caretX + 1.5F, topY)
       let p2 = TransformGeometry.NodeToWindow(n, caretX, bottomY)
       let p3 = TransformGeometry.NodeToWindow(n, caretX + 1.5F, bottomY)
-      if !p0.Valid || !p1.Valid || !p2.Valid || !p3.Valid {
-        return
-      }
-      var minX = p0.X
-      var minY = p0.Y
-      var maxX = p0.X
-      var maxY = p0.Y
-      if p1.X < minX { minX = p1.X }
-      if p2.X < minX { minX = p2.X }
-      if p3.X < minX { minX = p3.X }
-      if p1.Y < minY { minY = p1.Y }
-      if p2.Y < minY { minY = p2.Y }
-      if p3.Y < minY { minY = p3.Y }
-      if p1.X > maxX { maxX = p1.X }
-      if p2.X > maxX { maxX = p2.X }
-      if p3.X > maxX { maxX = p3.X }
-      if p1.Y > maxY { maxY = p1.Y }
-      if p2.Y > maxY { maxY = p2.Y }
-      if p3.Y > maxY { maxY = p3.Y }
-      let left = MathF.Floor(minX)
-      let top = MathF.Floor(minY)
-      let right = MathF.Ceiling(maxX)
-      let bottom = MathF.Ceiling(maxY)
-      let width = int32(right - left) > 0 ? int32(right - left) : 1
-      let height = int32(bottom - top) > 0 ? int32(bottom - top) : 1
-      native.SetImeArea(
-        int32(left),
-        int32(top),
-        width,
-        height,
-        0)
+      TextEditorInputAdapter.ApplyImeArea(native, p0, p1, p2, p3)
     }
   }
 
@@ -666,18 +612,6 @@ internal class TextInput {
       }
     }
     return sb.ToString()
-  }
-
-  private func nodeInTree(root Node, target Node) bool {
-    if root == target {
-      return true
-    }
-    for i in 0 ... root.Children.Count {
-      if nodeInTree(root.Children[i], target) {
-        return true
-      }
-    }
-    return false
   }
 
   private func blurEditor(n Node) {
@@ -764,5 +698,16 @@ internal class TextInput {
       updateTextInputArea(n)
     }
     return handled
+  }
+}
+
+internal func rebuildFiberOwner(node Node) {
+  var current Node? = node
+  while current != nil {
+    if let owner = current!!.Fiber {
+      owner.Rebuild()
+      return
+    }
+    current = current!!.Parent
   }
 }

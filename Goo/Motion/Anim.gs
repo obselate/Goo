@@ -116,10 +116,7 @@ public open class Anim[T] {
       }
       let elapsed = (pump.Now - startTime) * Motion.TimeScale
       for var i = 0; i < sims.Length; i++ {
-        guard let sim = sims[i] else {
-          throw InvalidOperationException("running animation is missing a simulation")
-        }
-        velRead[i] = sim.Velocity(elapsed)
+        velRead[i] = simAt(i).Velocity(elapsed)
       }
       if velRead.Length == 1 {
         return MotionVelocity.Uniform(velRead[0])
@@ -225,16 +222,7 @@ public open class Anim[T] {
       if spec == nil {
         throw InvalidOperationException("Motion.Default is nil")
       }
-      let now = prepareRetarget(target, velocity, explicitVelocity)
-      for var i = 0; i < sims.Length; i++ {
-        let built = spec(work[i], toDims[i], velDims[i])
-        if built == nil {
-          throw InvalidOperationException("motion specification returned nil")
-        }
-        nextSims[i] = built
-      }
-      commitRetarget(target, now)
-      committed = true
+      committed = buildSims(target, velocity, explicitVelocity, (i int32) -> spec)
     } finally {
       if !committed {
         clearNextSims()
@@ -256,17 +244,8 @@ public open class Anim[T] {
     var committed = false
     try {
       validateRequiredSpecs(spec, specs)
-      let now = prepareRetarget(target, velocity, explicitVelocity)
-      for var i = 0; i < sims.Length; i++ {
-        let selected = specs.Length == 0 || i == 0 ? spec : specs[i - 1]
-        let built = selected(work[i], toDims[i], velDims[i])
-        if built == nil {
-          throw InvalidOperationException("motion specification returned nil")
-        }
-        nextSims[i] = built
-      }
-      commitRetarget(target, now)
-      committed = true
+      committed = buildSims(target, velocity, explicitVelocity,
+        (i int32) -> specs.Length == 0 || i == 0 ? spec : specs[i - 1])
     } finally {
       if !committed {
         clearNextSims()
@@ -275,15 +254,27 @@ public open class Anim[T] {
     }
   }
 
+  private func buildSims(target T, velocity MotionVelocity, explicitVelocity bool,
+    selectSpec (int32) -> (float64, float64, float64) -> Simulation) bool {
+    let now = prepareRetarget(target, velocity, explicitVelocity)
+    for var i = 0; i < sims.Length; i++ {
+      let built = selectSpec(i)(work[i], toDims[i], velDims[i])
+      if built == nil {
+        throw InvalidOperationException("motion specification returned nil")
+      }
+      nextSims[i] = built
+    }
+    commitRetarget(target, now)
+    return true
+  }
+
   private func prepareRetarget(target T, velocity MotionVelocity, explicitVelocity bool) float64 {
     converter.Read(target, toDims)
     let now = currentNow()
     if running && boundPump != nil {
       let elapsed = elapsedAt(now)
       for var i = 0; i < sims.Length; i++ {
-        guard let sim = sims[i] else {
-          throw InvalidOperationException("running animation is missing a simulation")
-        }
+        let sim = simAt(i)
         work[i] = sim.Position(elapsed)
         velDims[i] = sim.Velocity(elapsed)
       }
@@ -348,10 +339,7 @@ public open class Anim[T] {
     let scale = Motion.TimeScale
     let elapsed = (now - startTime) * scale
     for var i = 0; i < sims.Length; i++ {
-      guard let sim = sims[i] else {
-        throw InvalidOperationException("running animation is missing a simulation")
-      }
-      work[i] = sim.Position(elapsed)
+      work[i] = simAt(i).Position(elapsed)
     }
     let value = converter.Write(work)
     memoTime = now
@@ -399,10 +387,7 @@ public open class Anim[T] {
     let elapsed = elapsedAt(now)
     var done = true
     for var i = 0; i < sims.Length; i++ {
-      guard let sim = sims[i] else {
-        throw InvalidOperationException("running animation is missing a simulation")
-      }
-      if !sim.Done(elapsed) {
+      if !simAt(i).Done(elapsed) {
         done = false
       }
     }
@@ -448,6 +433,13 @@ public open class Anim[T] {
 
   private func elapsedAt(now float64) float64 {
     return (now - startTime) * Motion.TimeScale
+  }
+
+  private func simAt(i int32) Simulation {
+    guard let sim = sims[i] else {
+      throw InvalidOperationException("running animation is missing a simulation")
+    }
+    return sim
   }
 }
 

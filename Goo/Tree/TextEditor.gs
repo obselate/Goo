@@ -91,7 +91,7 @@ public class TextEditor : Blob {
     validateEditorLayers(document, layers)
     this.layers = copyEditorLayers(layers)
     Placeholder = ""
-    SelectionColor = Color.FromNormalized(0.25F, 0.45F, 1.0F, 0.35F)
+    SelectionColor = defaultSelectionColor()
     CaretColor = Color.White
     CurrentLineColor = Color.Transparent
     overscanLines = 3

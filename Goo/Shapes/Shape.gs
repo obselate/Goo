@@ -37,7 +37,7 @@ public class Shape : Blob {
   public prop MiterLimit float64 {
     get { return miterLimit }
     init {
-      if Double.IsNaN(value) || Double.IsInfinity(value) || Single.IsInfinity(float32(value)) || value < 0.0 {
+      if !motionFiniteFloat32(value) || value < 0.0 {
         throw ArgumentOutOfRangeException("MiterLimit")
       }
       miterLimit = value
@@ -47,7 +47,7 @@ public class Shape : Blob {
   public prop CornerRadius float64 {
     get { return cornerRadius }
     init {
-      if Double.IsNaN(value) || Double.IsInfinity(value) || Single.IsInfinity(float32(value)) || value < 0.0 {
+      if !motionFiniteFloat32(value) || value < 0.0 {
         throw ArgumentOutOfRangeException("CornerRadius")
       }
       cornerRadius = value

@@ -69,9 +69,7 @@ public partial class Window {
     if !markReconcilePending() {
       return
     }
-    if let native = host {
-      native.Wake()
-    }
+    host?.Wake()
   }
 
   private func markReconcilePending() bool {

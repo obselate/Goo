@@ -42,14 +42,6 @@ internal partial class PointerInput {
     return rebuilt && activePath.Count > 0
   }
 
-  private func containsPath(root Node, target Node) bool {
-    if root == target { return true }
-    for i in 0 ... root.Children.Count {
-      if containsPath(root.Children[i], target) { return true }
-    }
-    return false
-  }
-
   private func appendPath(root Node, target Node, path List[Node]) bool {
     path.Add(root)
     if root == target { return true }
@@ -346,4 +338,12 @@ internal partial class PointerInput {
     }
     if let cell = owner { cell.Rebuild() }
   }
+}
+
+internal func containsPath(root Node, target Node) bool {
+  if root == target { return true }
+  for i in 0 ... root.Children.Count {
+    if containsPath(root.Children[i], target) { return true }
+  }
+  return false
 }

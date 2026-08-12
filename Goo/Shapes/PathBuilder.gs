@@ -208,7 +208,7 @@ public class PathBuilder {
   }
 
   private func validateFinite(value float64, name string) {
-    if Double.IsNaN(value) || Double.IsInfinity(value) || Single.IsInfinity(float32(value)) {
+    if !motionFiniteFloat32(value) {
       throw ArgumentOutOfRangeException(name)
     }
   }

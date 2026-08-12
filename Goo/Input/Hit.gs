@@ -129,14 +129,15 @@ internal class Hit {
     return false
   }
 
-  private func findOwner(n Node, target Node, inherited Cell?) Cell? {
-    let owner = n.Fiber ?? inherited
-    if n == target { return owner }
-    for child in n.Children {
-      if let found = findOwner(child, target, owner) {
-        return found
-      }
+}
+
+internal func findOwner(n Node, target Node, inherited Cell?) Cell? {
+  let owner = n.Fiber ?? inherited
+  if n == target { return owner }
+  for child in n.Children {
+    if let found = findOwner(child, target, owner) {
+      return found
     }
-    return nil
   }
+  return nil
 }

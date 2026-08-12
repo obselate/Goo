@@ -343,7 +343,7 @@ internal class KeyboardInput {
           result.Routed = true
           handler(KeyEvent{ Key: key, Modifiers: modifiers, Repeat: repeat,
             Control: control, Generation: generation })
-          rebuildOwner(node)
+          rebuildFiberOwner(node)
         }
         if control.PropagationStopped { break }
         current = node.Parent
@@ -352,17 +352,6 @@ internal class KeyboardInput {
       return result
     } finally {
       control.Finish(generation)
-    }
-  }
-
-  private func rebuildOwner(node Node) {
-    var current Node? = node
-    while current != nil {
-      if let owner = current!!.Fiber {
-        owner.Rebuild()
-        return
-      }
-      current = current!!.Parent
     }
   }
 
