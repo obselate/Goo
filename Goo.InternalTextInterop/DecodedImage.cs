@@ -2,11 +2,41 @@ using SkiaSharp;
 
 namespace Goo.InternalTextInterop;
 
+internal struct RefCount
+{
+    private int references;
+    private bool disposed;
+
+    public RefCount()
+    {
+        references = 1;
+    }
+
+    public readonly bool Disposed => disposed;
+
+    public void Retain(string name)
+    {
+        if (disposed)
+            throw new ObjectDisposedException(name);
+        references++;
+    }
+
+    public bool ReleaseAndDispose()
+    {
+        if (disposed)
+            return false;
+        references--;
+        if (references != 0)
+            return false;
+        disposed = true;
+        return true;
+    }
+}
+
 internal sealed class DecodedImage
 {
     private readonly SKImage? image;
-    private int references = 1;
-    private bool disposed;
+    private RefCount refCount = new();
 
     private DecodedImage(SKImage? image)
     {
@@ -34,27 +64,18 @@ internal sealed class DecodedImage
         if (image is null)
             return;
         lock (this)
-        {
-            if (disposed)
-                throw new ObjectDisposedException(nameof(DecodedImage));
-            references++;
-        }
+            refCount.Retain(nameof(DecodedImage));
     }
 
     public void Release()
     {
         if (image is null)
             return;
+        bool last;
         lock (this)
-        {
-            if (disposed)
-                return;
-            references--;
-            if (references != 0)
-                return;
-            disposed = true;
-        }
-        image.Dispose();
+            last = refCount.ReleaseAndDispose();
+        if (last)
+            image.Dispose();
     }
 
     public void Draw(SKCanvas canvas, float x, float y, float width, float height, bool minifying)

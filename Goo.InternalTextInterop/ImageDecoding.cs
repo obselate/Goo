@@ -95,7 +95,7 @@ internal static class ImageDecoding
             entry.Node = cacheOrder.AddLast(entry);
             cache.Add(canonical, entry);
             request.Retain();
-            evicted = EvictEntryLimitLocked();
+            evicted = EvictLocked(enforceByteBudget: false);
             Enqueue(entry);
         }
         ReleaseCacheLeases(evicted);
@@ -129,7 +129,7 @@ internal static class ImageDecoding
         lock (cacheLock)
         {
             Volatile.Write(ref byteBudgetOverrideForTests, bytes);
-            evicted = EvictToLimitsLocked();
+            evicted = EvictLocked(enforceByteBudget: true);
         }
         ReleaseCacheLeases(evicted);
     }
@@ -187,24 +187,10 @@ internal static class ImageDecoding
         }
     }
 
-    private static List<ImageRequest>? EvictEntryLimitLocked()
+    private static List<ImageRequest>? EvictLocked(bool enforceByteBudget)
     {
         List<ImageRequest>? evicted = null;
-        while (cache.Count > MaxCachedEntries)
-        {
-            var first = cacheOrder.First;
-            if (first is null)
-                break;
-            evicted ??= new List<ImageRequest>();
-            RemoveEntryLocked(first.Value, evicted);
-        }
-        return evicted;
-    }
-
-    private static List<ImageRequest>? EvictToLimitsLocked()
-    {
-        List<ImageRequest>? evicted = null;
-        while (cache.Count > MaxCachedEntries || cachedDecodedBytes > CurrentByteBudget())
+        while (cache.Count > MaxCachedEntries || (enforceByteBudget && cachedDecodedBytes > CurrentByteBudget()))
         {
             var first = cacheOrder.First;
             if (first is null)
@@ -254,7 +240,7 @@ internal static class ImageDecoding
             cachedDecodedBytes = charge > long.MaxValue - cachedDecodedBytes
                 ? long.MaxValue
                 : cachedDecodedBytes + charge;
-            evicted = EvictToLimitsLocked();
+            evicted = EvictLocked(enforceByteBudget: true);
         }
         ReleaseCacheLeases(evicted);
     }

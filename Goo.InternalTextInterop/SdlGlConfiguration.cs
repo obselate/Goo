@@ -1,84 +1,33 @@
 namespace Goo.InternalTextInterop;
 
-internal readonly struct SdlGlConfiguration
+internal readonly record struct SdlGlConfiguration(
+    int ContextMajorVersion,
+    int ContextMinorVersion,
+    int ContextProfileMask,
+    int ContextFlags,
+    int RedBits,
+    int GreenBits,
+    int BlueBits,
+    int AlphaBits,
+    int DepthBits,
+    int StencilBits,
+    bool DoubleBuffered,
+    bool SdlDoubleBuffered,
+    bool GlDoubleBuffered,
+    bool Accelerated,
+    bool SdlAccelerated,
+    int SampleBuffers,
+    int Samples,
+    bool SdlSrgbCapable,
+    int FramebufferColorEncoding,
+    uint FramebufferFormat,
+    /// <summary>EGL_RENDER_BUFFER on Wayland/EGL, or 0 on other backends.</summary>
+    int EglRenderBuffer,
+    /// <summary>EGL_GL_COLORSPACE on Wayland/EGL, or 0 on other backends.</summary>
+    int EglColorSpace,
+    /// <summary>EGL_CONFIG_CAVEAT on Wayland/EGL, or 0 on other backends.</summary>
+    int EglConfigCaveat)
 {
-    public SdlGlConfiguration(
-        int contextMajorVersion,
-        int contextMinorVersion,
-        int contextProfileMask,
-        int contextFlags,
-        int redBits,
-        int greenBits,
-        int blueBits,
-        int alphaBits,
-        int depthBits,
-        int stencilBits,
-        bool doubleBuffered,
-        bool sdlDoubleBuffered,
-        bool glDoubleBuffered,
-        bool accelerated,
-        bool sdlAccelerated,
-        int sampleBuffers,
-        int samples,
-        bool sdlSrgbCapable,
-        int framebufferColorEncoding,
-        uint framebufferFormat,
-        int eglRenderBuffer,
-        int eglColorSpace,
-        int eglConfigCaveat)
-    {
-        ContextMajorVersion = contextMajorVersion;
-        ContextMinorVersion = contextMinorVersion;
-        ContextProfileMask = contextProfileMask;
-        ContextFlags = contextFlags;
-        RedBits = redBits;
-        GreenBits = greenBits;
-        BlueBits = blueBits;
-        AlphaBits = alphaBits;
-        DepthBits = depthBits;
-        StencilBits = stencilBits;
-        DoubleBuffered = doubleBuffered;
-        SdlDoubleBuffered = sdlDoubleBuffered;
-        GlDoubleBuffered = glDoubleBuffered;
-        Accelerated = accelerated;
-        SdlAccelerated = sdlAccelerated;
-        SampleBuffers = sampleBuffers;
-        Samples = samples;
-        SdlSrgbCapable = sdlSrgbCapable;
-        FramebufferColorEncoding = framebufferColorEncoding;
-        FramebufferFormat = framebufferFormat;
-        EglRenderBuffer = eglRenderBuffer;
-        EglColorSpace = eglColorSpace;
-        EglConfigCaveat = eglConfigCaveat;
-    }
-
-    public int ContextMajorVersion { get; }
-    public int ContextMinorVersion { get; }
-    public int ContextProfileMask { get; }
-    public int ContextFlags { get; }
-    public int RedBits { get; }
-    public int GreenBits { get; }
-    public int BlueBits { get; }
-    public int AlphaBits { get; }
-    public int DepthBits { get; }
-    public int StencilBits { get; }
-    public bool DoubleBuffered { get; }
-    public bool SdlDoubleBuffered { get; }
-    public bool GlDoubleBuffered { get; }
-    public bool Accelerated { get; }
-    public bool SdlAccelerated { get; }
-    public int SampleBuffers { get; }
-    public int Samples { get; }
-    public bool SdlSrgbCapable { get; }
-    public int FramebufferColorEncoding { get; }
-    public uint FramebufferFormat { get; }
-    /// <summary>Gets EGL_RENDER_BUFFER on Wayland/EGL, or 0 on other backends.</summary>
-    public int EglRenderBuffer { get; }
-    /// <summary>Gets EGL_GL_COLORSPACE on Wayland/EGL, or 0 on other backends.</summary>
-    public int EglColorSpace { get; }
-    /// <summary>Gets EGL_CONFIG_CAVEAT on Wayland/EGL, or 0 on other backends.</summary>
-    public int EglConfigCaveat { get; }
-
     public override string ToString()
     {
         return $"GL {ContextMajorVersion}.{ContextMinorVersion}, profile 0x{ContextProfileMask:X}, " +

@@ -157,21 +157,7 @@ internal enum SdlHostKey
     Menu,
 }
 
-internal readonly struct SdlHostModifiers
-{
-    public SdlHostModifiers(bool alt, bool shift, bool ctrl, bool super)
-    {
-        Alt = alt;
-        Shift = shift;
-        Ctrl = ctrl;
-        Super = super;
-    }
-
-    public bool Alt { get; }
-    public bool Shift { get; }
-    public bool Ctrl { get; }
-    public bool Super { get; }
-}
+internal readonly record struct SdlHostModifiers(bool Alt, bool Shift, bool Ctrl, bool Super);
 
 internal enum SdlHostPointerButton
 {
@@ -374,10 +360,7 @@ internal sealed unsafe class SdlHost : IDisposable
         get
         {
             ThrowIfDisposed();
-            return !string.Equals(
-                SDL.GetCurrentVideoDriverS(),
-                "wayland",
-                StringComparison.OrdinalIgnoreCase);
+            return !IsWayland();
         }
     }
 
@@ -444,18 +427,17 @@ internal sealed unsafe class SdlHost : IDisposable
     public void SetState(SdlHostState value)
     {
         ThrowIfDisposed();
+        if (value is SdlHostState.Normal or SdlHostState.Minimized or SdlHostState.Maximized)
+            Require(SDL.SetWindowFullscreen(window, false), "SDL_SetWindowFullscreen");
         switch (value)
         {
             case SdlHostState.Normal:
-                Require(SDL.SetWindowFullscreen(window, false), "SDL_SetWindowFullscreen");
                 Require(SDL.RestoreWindow(window), "SDL_RestoreWindow");
                 break;
             case SdlHostState.Minimized:
-                Require(SDL.SetWindowFullscreen(window, false), "SDL_SetWindowFullscreen");
                 Require(SDL.MinimizeWindow(window), "SDL_MinimizeWindow");
                 break;
             case SdlHostState.Maximized:
-                Require(SDL.SetWindowFullscreen(window, false), "SDL_SetWindowFullscreen");
                 Require(SDL.MaximizeWindow(window), "SDL_MaximizeWindow");
                 break;
             case SdlHostState.Fullscreen:
@@ -554,35 +536,35 @@ internal sealed unsafe class SdlHost : IDisposable
     public IntPtr GetProcAddress(string name)
     {
         ThrowIfDisposed();
-        RequireGpu("SdlHost.GetProcAddress");
+        RequireRenderer(SdlHostRenderer.Gpu, "SdlHost.GetProcAddress");
         return (IntPtr)SDL.GLGetProcAddress(name);
     }
 
     public void MakeCurrent()
     {
         ThrowIfDisposed();
-        RequireGpu("SdlHost.MakeCurrent");
+        RequireRenderer(SdlHostRenderer.Gpu, "SdlHost.MakeCurrent");
         Require(SDL.GLMakeCurrent(window, context), "SDL_GL_MakeCurrent");
     }
 
     public void SwapBuffers()
     {
         ThrowIfDisposed();
-        RequireGpu("SdlHost.SwapBuffers");
+        RequireRenderer(SdlHostRenderer.Gpu, "SdlHost.SwapBuffers");
         Require(SDL.GLSwapWindow(window), "SDL_GL_SwapWindow");
     }
 
     public void Viewport(int width, int height)
     {
         ThrowIfDisposed();
-        RequireGpu("SdlHost.Viewport");
+        RequireRenderer(SdlHostRenderer.Gpu, "SdlHost.Viewport");
         viewport?.Invoke(0, 0, width, height);
     }
 
     internal void GetWaylandSurface(out IntPtr display, out IntPtr surface)
     {
         ThrowIfDisposed();
-        RequireRaster("SdlHost.GetWaylandSurface");
+        RequireRenderer(SdlHostRenderer.Raster, "SdlHost.GetWaylandSurface");
         if (!IsWayland())
             throw new PlatformNotSupportedException(
                 $"The raster renderer does not support SDL video driver '{SDL.GetCurrentVideoDriverS()}'.");
@@ -708,16 +690,13 @@ internal sealed unsafe class SdlHost : IDisposable
         return transparent ? flags | SDLWindowFlags.Transparent : flags;
     }
 
-    private void RequireGpu(string operation)
+    private void RequireRenderer(SdlHostRenderer required, string operation)
     {
-        if (renderer != SdlHostRenderer.Gpu)
-            throw new InvalidOperationException($"{operation} requires the GPU renderer.");
-    }
-
-    private void RequireRaster(string operation)
-    {
-        if (renderer != SdlHostRenderer.Raster)
-            throw new InvalidOperationException($"{operation} requires the raster renderer.");
+        if (renderer != required)
+        {
+            var name = required == SdlHostRenderer.Gpu ? "GPU" : "raster";
+            throw new InvalidOperationException($"{operation} requires the {name} renderer.");
+        }
     }
 
     private static void SetGlAttribute(SDLGLAttr attribute, int value)
@@ -763,12 +742,7 @@ internal sealed unsafe class SdlHost : IDisposable
             sdlFailure = "SDL did not grant an sRGB-capable visual.";
 
         if (sdlFailure is not null)
-        {
-            throw new InvalidOperationException(
-                $"Goo could not use the OpenGL default framebuffer: {sdlFailure} " +
-                $"Requested {RequestedGlConfiguration}; " +
-                $"SDL actual {sdlActual}");
-        }
+            ThrowUnsupportedGlConfiguration(sdlActual, sdlFailure);
 
         var getError = LoadGlFunction<GlGetError>("glGetError");
         var getBoolean = LoadGlFunction<GlGetBooleanv>("glGetBooleanv");
@@ -923,11 +897,11 @@ internal sealed unsafe class SdlHost : IDisposable
     private static bool IsRgba8(int red, int green, int blue, int alpha) =>
         red == 8 && green == 8 && blue == 8 && alpha == 8;
 
-    private static void ThrowUnsupportedGlConfiguration(SdlGlConfiguration configuration, string reason)
+    private static void ThrowUnsupportedGlConfiguration(object actual, string reason)
     {
         throw new InvalidOperationException(
             $"Goo could not use the OpenGL default framebuffer: {reason} " +
-            $"Requested {RequestedGlConfiguration}; actual {configuration}");
+            $"Requested {RequestedGlConfiguration}; actual {actual}");
     }
 
     private static int GetGlAttribute(SDLGLAttr attribute)
@@ -937,7 +911,7 @@ internal sealed unsafe class SdlHost : IDisposable
         return value;
     }
 
-    private static bool IsWayland() => string.Equals(
+    internal static bool IsWayland() => string.Equals(
         SDL.GetCurrentVideoDriverS(), "wayland", StringComparison.OrdinalIgnoreCase);
 
     private unsafe void QueryWaylandEglConfiguration(
@@ -1594,30 +1568,16 @@ internal sealed unsafe class SdlHost : IDisposable
             buttons |= ToPointerButtons(button);
         else
             buttons &= ~ToPointerButtons(button);
-        if (down)
-        {
-            PointerPressed?.Invoke(
-                pen.Which,
-                SdlHostPointerDevice.Pen,
-                pen.X,
-                pen.Y,
-                button,
-                buttons,
-                PenPressure(pen.Which),
-                MapModifiers(SDL.GetModState()));
-        }
-        else
-        {
-            PointerReleased?.Invoke(
-                pen.Which,
-                SdlHostPointerDevice.Pen,
-                pen.X,
-                pen.Y,
-                button,
-                buttons,
-                PenPressure(pen.Which),
-                MapModifiers(SDL.GetModState()));
-        }
+        var dispatch = down ? PointerPressed : PointerReleased;
+        dispatch?.Invoke(
+            pen.Which,
+            SdlHostPointerDevice.Pen,
+            pen.X,
+            pen.Y,
+            button,
+            buttons,
+            PenPressure(pen.Which),
+            MapModifiers(SDL.GetModState()));
     }
 
     private static float MousePressure(SdlHostPointerButtons buttons) =>
@@ -2075,11 +2035,7 @@ internal static class SdlRuntime
                 RequireMainThreadLocked("Window.Open");
                 if (mainThreadId == 0)
                     mainThreadId = Environment.CurrentManagedThreadId;
-                if (requiresWayland &&
-                    !string.Equals(
-                        SDL.GetCurrentVideoDriverS(),
-                        "wayland",
-                        StringComparison.OrdinalIgnoreCase))
+                if (requiresWayland && !SdlHost.IsWayland())
                 {
                     var driver = SDL.GetCurrentVideoDriverS();
                     SDL.QuitSubSystem(RequiredSubsystems);

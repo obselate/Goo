@@ -403,10 +403,13 @@ internal static class TextShaping
         foreach (var family in families)
         {
             if (manager.FontFamilies.Any(x => string.Equals(x, family, StringComparison.OrdinalIgnoreCase)))
-                return manager.MatchFamily(family, style) ?? SKTypeface.FromFamilyName(family, style) ?? SKTypeface.Default;
+                return MatchOrFromFamily(family, style) ?? SKTypeface.Default;
         }
         return SKTypeface.FromFamilyName(null, style) ?? SKTypeface.Default;
     }
+
+    internal static SKTypeface MatchOrFromFamily(string? family, SKFontStyle style) =>
+        SKFontManager.Default.MatchFamily(family, style) ?? SKTypeface.FromFamilyName(family, style);
 
     private static SKFont CreateFont(SKTypeface typeface, float size) => new(typeface, size);
 

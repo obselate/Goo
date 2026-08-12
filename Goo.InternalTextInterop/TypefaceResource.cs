@@ -6,8 +6,7 @@ namespace Goo.InternalTextInterop;
 internal sealed class TypefaceResource
 {
     private readonly Action released;
-    private int references = 1;
-    private bool disposed;
+    private RefCount refCount = new();
     private SKShaper? shaper;
 
     internal TypefaceResource(SKTypeface typeface, Action released)
@@ -24,7 +23,7 @@ internal sealed class TypefaceResource
         {
             lock (this)
             {
-                if (disposed)
+                if (refCount.Disposed)
                     throw new ObjectDisposedException(nameof(TypefaceResource));
                 return shaper ??= new SKShaper(Typeface);
             }
@@ -34,25 +33,17 @@ internal sealed class TypefaceResource
     internal TypefaceLease Lease()
     {
         lock (this)
-        {
-            if (disposed)
-                throw new ObjectDisposedException(nameof(TypefaceResource));
-            references++;
-        }
+            refCount.Retain(nameof(TypefaceResource));
         return new TypefaceLease(this);
     }
 
     internal void Release()
     {
+        bool last;
         lock (this)
-        {
-            if (disposed)
-                return;
-            references--;
-            if (references != 0)
-                return;
-            disposed = true;
-        }
+            last = refCount.ReleaseAndDispose();
+        if (!last)
+            return;
         shaper?.Dispose();
         Typeface.Dispose();
         released();
