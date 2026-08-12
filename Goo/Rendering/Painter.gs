@@ -640,17 +640,6 @@ internal partial class Painter {
     return corner.Unit == LengthUnit.Unset ? resolvePx(fallback) : resolvePx(corner)
   }
 
-  // SKRoundRectCorner order is UpperLeft, UpperRight, LowerRight, LowerLeft.
-  internal func buildRoundRect(rect SKRect, n Node) SKRoundRect {
-    let tl = cornerPx(n.BorderTopLeftRadius, n.BorderRadius)
-    let tr = cornerPx(n.BorderTopRightRadius, n.BorderRadius)
-    let br = cornerPx(n.BorderBottomRightRadius, n.BorderRadius)
-    let bl = cornerPx(n.BorderBottomLeftRadius, n.BorderRadius)
-    let rr = SKRoundRect()
-    rr.SetRectRadii(rect, []SKPoint{ SKPoint(tl, tl), SKPoint(tr, tr), SKPoint(br, br), SKPoint(bl, bl) })
-    return rr
-  }
-
   // Only Px is meaningful for BorderRadius/FontSize today; Percent/Auto/Unset
   // fold to 0 rather than inventing a resolution scheme here.
   internal func resolvePx(l Length) float32 {

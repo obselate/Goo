@@ -36,14 +36,6 @@ internal static class TextShaping
         return shaped.Width;
     }
 
-    internal static float MeasureLine(string paragraph, int start, int length, string families,
-        float size, int weight, bool italic, float letterSpacing, int direction)
-    {
-        using var shaped = ShapeLine(paragraph, start, length, families, size, weight, italic,
-            letterSpacing, direction);
-        return shaped.Width;
-    }
-
     internal static float MeasureLineUncached(string paragraph, int start, int length, string families,
         float size, int weight, bool italic, float letterSpacing, int direction)
     {
@@ -56,15 +48,6 @@ internal static class TextShaping
 
         using var shaped = ShapeUncached(paragraph, start, length, families, size, weight, italic,
             letterSpacing, direction);
-        return shaped.Width;
-    }
-
-    public static float MeasureLineWithResolution(string paragraph, int start, int length,
-        string families, float size, int weight, bool italic, float letterSpacing, int direction,
-        BidiResolution? resolution)
-    {
-        using var shaped = ShapeLine(paragraph, start, length, families, size, weight, italic,
-            letterSpacing, direction, resolution);
         return shaped.Width;
     }
 

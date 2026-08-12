@@ -16,7 +16,7 @@ internal open class CellElement : Blob {
     get { return cellType }
     init { cellType = value }
   }
-  internal prop Factory (() -> Cell) { get; init; }
+  internal prop Factory (() -> Cell)? { get; init; }
   internal prop UseActivator bool { get; init; }
   internal prop Seed Action[Cell]? { get; init; }
   internal prop Configure Action[Cell]? { get; init; }

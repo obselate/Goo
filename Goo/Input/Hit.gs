@@ -5,20 +5,6 @@ import System.Collections.Generic
 internal enum HitResult { Miss; Unhandled; Handled; Blocked }
 
 internal class Hit {
-  internal func within(n Node, x float32, y float32) bool {
-    let point = TransformGeometry.Unmap(n, x, y)
-    if !point.Valid {
-      return false
-    }
-    return withinMapped(n, point.X, point.Y)
-  }
-
-  internal func canTraverse(n Node, x float32, y float32) bool {
-    let point = TransformGeometry.Unmap(n, x, y)
-    if !point.Valid { return false }
-    return canTraverseMapped(n, point.X, point.Y)
-  }
-
   private func withinMapped(n Node, x float32, y float32) bool {
     return !n.PaintInputHidden && n.Rect.Contains(x, y)
   }
@@ -41,13 +27,6 @@ internal class Hit {
     let top = TextLayouts.ContentTop(n)
     return x >= left && x < left + TextLayouts.ContentWidth(n)
       && y >= top && y < top + TextLayouts.ContentHeight(n)
-  }
-
-  // Rect first, then fill contours for Shape nodes so wedges and rings hit true.
-  internal func hits(n Node, x float32, y float32) bool {
-    let point = TransformGeometry.Unmap(n, x, y)
-    if !point.Valid { return false }
-    return hitsMapped(n, point.X, point.Y)
   }
 
   private func hitsMapped(n Node, x float32, y float32) bool {

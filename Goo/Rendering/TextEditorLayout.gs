@@ -47,7 +47,6 @@ internal class TextEditorProjection {
   internal prop SlotKey string { get; init; }
   internal prop SlotWidth float32 { get; init; }
   internal prop SlotHeight float32 { get; init; }
-  internal prop Color Color? { get; init; }
 
   internal init() {
     Text = ""
@@ -417,7 +416,7 @@ internal sealed class TextEditorRenderState : IDisposable {
     return PlaceholderShape
   }
 
-  internal func SlotSize(key string, width float32, height float32) Rect {
+  internal func SlotSize(key string, width float32) Rect {
     for child in node.Children {
       if child.EditorSlotKey != key { continue }
       guard let yoga = child.Yoga else { break }
@@ -1457,7 +1456,7 @@ internal class TextEditorLayouts {
           let slot = projection.Kind == TextProjectionKind.InlineSlot
             || projection.Kind == TextProjectionKind.BlockSlot
           let key = textEditorSlotKey(layer, projection)
-          let size = slot ? state.SlotSize(key, width, height) : Rect{}
+          let size = slot ? state.SlotSize(key, width) : Rect{}
           values.Add(TextEditorProjection{
             Range: projection.Range,
             Text: projection.Kind == TextProjectionKind.Replacement ? projection.Text

@@ -69,10 +69,6 @@ internal class TextMetrics {
     return shape
   }
 
-  internal func PrepareCachedBufferGeometry(n Node) {
-    CachedBufferShape(n)?.PrepareGeometry()
-  }
-
   internal func EntryOffset(n Node, shaped ShapedText) float32 {
     let free = TextLayouts.ContentWidth(n) - shaped.Width
     if free <= 0.0F { return 0.0F }
@@ -98,10 +94,6 @@ internal class TextMetrics {
     let shaped = BufferShape(n)
     let contentX = localX - EntryOffset(n, shaped) + n.EditScrollX
     return shaped.HitTest(contentX)
-  }
-
-  internal func CaretIndexAt(n Node, localX float32) int32 {
-    return HitAt(n, localX).Index
   }
 
   internal func MoveCaret(n Node, delta int32) TextHit {

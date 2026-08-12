@@ -15,13 +15,13 @@ public data struct BoxShadow {
   /// Gets the horizontal offset in pixels.
   public prop OffsetX Length {
     get { return normalizedDefault(offsetX) }
-    init { offsetX = validateGeometry(value, "OffsetX", true) }
+    init { offsetX = validateGeometry(value, "OffsetX") }
   }
 
   /// Gets the vertical offset in pixels.
   public prop OffsetY Length {
     get { return normalizedDefault(offsetY) }
-    init { offsetY = validateGeometry(value, "OffsetY", true) }
+    init { offsetY = validateGeometry(value, "OffsetY") }
   }
 
   /// Gets the non-negative blur radius in pixels.
@@ -33,7 +33,7 @@ public data struct BoxShadow {
   /// Gets the spread radius in pixels.
   public prop Spread Length {
     get { return normalizedDefault(spread) }
-    init { spread = validateGeometry(value, "Spread", true) }
+    init { spread = validateGeometry(value, "Spread") }
   }
 
   /// Gets the shadow color.
@@ -170,7 +170,7 @@ internal func normalizedDefault(value Length) Length {
   return value
 }
 
-internal func validateGeometry(value Length, name string, allowsNegative bool) Length {
+internal func validateGeometry(value Length, name string) Length {
   if value.Unit == LengthUnit.Unset {
     return 0
   }
@@ -180,14 +180,11 @@ internal func validateGeometry(value Length, name string, allowsNegative bool) L
   if Double.IsNaN(float64(value.Value)) || Double.IsInfinity(float64(value.Value)) {
     throw ArgumentOutOfRangeException(name)
   }
-  if !allowsNegative && value.Value < 0.0F {
-    throw ArgumentOutOfRangeException(name)
-  }
   return value
 }
 
 internal func normalizeBlur(value Length) Length {
-  let geometry = validateGeometry(value, "Blur", true)
+  let geometry = validateGeometry(value, "Blur")
   if geometry.Value < 0.0F {
     return 0
   }

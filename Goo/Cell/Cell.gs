@@ -319,7 +319,6 @@ public open class Cell {
       return CellElement{
         Key: key,
         CellType: typeof(TCell),
-        Factory: () -> Cell{},
         UseActivator: true,
         HasInput: true,
         Input: input,

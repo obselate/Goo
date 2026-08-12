@@ -239,7 +239,7 @@ internal partial class Painter {
       selectionPaint.Color = SKColor(n.SelectionColor.ToSkia())
       selectionPaint.IsAntialias = true
       for line in layout.Lines {
-        paintEditorRange(line, layout, canvas, selectionPaint, contentX - scrollX,
+        paintEditorRange(line, canvas, selectionPaint, contentX - scrollX,
           contentY - scrollY, contentWidth, n, selectionStart, selectionEnd)
       }
     }
@@ -251,7 +251,7 @@ internal partial class Painter {
           compositionPaint.Color = SKColor(n.SelectionColor.ToSkia())
           compositionPaint.IsAntialias = true
           for line in layout.Lines {
-            paintCompositionSelection(line, layout, canvas, compositionPaint, contentX - scrollX,
+            paintCompositionSelection(line, canvas, compositionPaint, contentX - scrollX,
               contentY - scrollY, contentWidth, n, composition)
           }
         }
@@ -315,13 +315,13 @@ internal partial class Painter {
     }
   }
 
-  private func paintEditorRange(line TextEditorVisualLine, layout TextEditorVisualLayout,
+  private func paintEditorRange(line TextEditorVisualLine,
     canvas SKCanvas, paint SKPaint, contentX float32, contentY float32,
     contentWidth float32, n Node, rangeStart int32, rangeEnd int32) {
     if rangeEnd <= line.SourceStart || rangeStart >= line.SourceEnd {
       return
     }
-    guard let shape = line.Shape else {
+    if line.Shape == nil {
       return
     }
     let start = rangeStart > line.SourceStart ? rangeStart : line.SourceStart
@@ -336,10 +336,10 @@ internal partial class Painter {
       contentY + line.Top, line.Height, segments)
   }
 
-  private func paintCompositionSelection(line TextEditorVisualLine, layout TextEditorVisualLayout,
+  private func paintCompositionSelection(line TextEditorVisualLine,
     canvas SKCanvas, paint SKPaint, contentX float32, contentY float32, contentWidth float32,
     n Node, composition TextComposition) {
-    guard let shape = line.Shape else {
+    if line.Shape == nil {
       return
     }
     for segment in line.Paragraph.Segments {

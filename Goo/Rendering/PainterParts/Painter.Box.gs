@@ -493,16 +493,6 @@ internal partial class Painter {
     return false
   }
 
-  internal func hasInsetBoxShadows(n Node) bool {
-    if !isApplied(n, StyleField.BoxShadows) { return false }
-    let count = boxShadowCount(n.BoxShadows)
-    for i in 0 ... count {
-      let shadow = boxShadowAt(n.BoxShadows, i)
-      if shadow.Inset && shadow.Color.A > 0.0F { return true }
-    }
-    return false
-  }
-
   // Flat DrawRect when every corner resolves to 0, else a per-corner SKRoundRect.
   internal func fillRect(canvas SKCanvas, rect SKRect, n Node, paint SKPaint, ref boxScratch BoxPaintScratch?) {
     if n.BorderTopLeftRadius.Unit == LengthUnit.Unset

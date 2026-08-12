@@ -571,8 +571,8 @@ internal class Reconciler {
   }
 
   internal func createCell(e CellElement) Cell {
-    if !e.UseActivator {
-      return e.Factory()
+    if let factory = e.Factory {
+      return factory()
     }
     return Activator.CreateInstance(e.CellType) as Cell
   }

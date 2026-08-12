@@ -36,7 +36,6 @@ internal class AccessibilityManager {
   internal prop Adapter AccessibilityAdapter? { get { return adapter } }
   internal prop LastError Exception? { get; private set; }
   internal prop HasDemand bool { get { return semanticDirty || deliveryPending } }
-  internal prop DeliveryPending bool { get { return deliveryPending } }
 
   internal func SetAdapter(value AccessibilityAdapter?) {
     if adapter == value {
