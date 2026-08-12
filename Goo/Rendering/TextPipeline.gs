@@ -330,7 +330,7 @@ internal class TextResolvedStyles {
         FontSize: TextLayouts.fontSize(n), FontWeight: n.FontWeight,
         FontStyle: n.FontStyle, LetterSpacing: TextLayouts.letterSpacing(n),
         LineHeight: float32(n.LineHeight), Decoration: n.TextDecoration,
-        StrokeWidth: n.TextStrokeWidth.Unit == LengthUnit.Px ? n.TextStrokeWidth.Value : 0.0F,
+        StrokeWidth: n.TextStrokeWidth.Px,
         StrokeColor: n.TextStrokeColor, Shadows: n.TextShadows, Direction: n.Direction,
         Transform: n.TextTransform }
     }

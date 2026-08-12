@@ -86,10 +86,6 @@ internal class Outlining {
     private func emptyLength(value Length) bool {
       return value.Unit == LengthUnit.Unset
     }
-
-    private func transparent(value Color) bool {
-      return value.R == 0.0F && value.G == 0.0F && value.B == 0.0F && value.A == 0.0F
-    }
   }
 }
 

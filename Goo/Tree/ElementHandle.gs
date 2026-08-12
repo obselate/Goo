@@ -385,26 +385,12 @@ internal class ElementHandles {
         return ElementRect{ X: float64(left), Y: float64(top),
           Width: float64(right - left), Height: float64(bottom - top) }
       }
-      let x = min4(p0.X, p1.X, p2.X, p3.X)
-      let y = min4(p0.Y, p1.Y, p2.Y, p3.Y)
-      let maxX = max4(p0.X, p1.X, p2.X, p3.X)
-      let maxY = max4(p0.Y, p1.Y, p2.Y, p3.Y)
+      let x = TransformGeometry.min4(p0.X, p1.X, p2.X, p3.X)
+      let y = TransformGeometry.min4(p0.Y, p1.Y, p2.Y, p3.Y)
+      let maxX = TransformGeometry.max4(p0.X, p1.X, p2.X, p3.X)
+      let maxY = TransformGeometry.max4(p0.Y, p1.Y, p2.Y, p3.Y)
       return ElementRect{ X: float64(x), Y: float64(y),
         Width: float64(maxX - x), Height: float64(maxY - y) }
-    }
-
-    private func min4(a float32, b float32, c float32, d float32) float32 {
-      var result = a < b ? a : b
-      if c < result { result = c }
-      if d < result { result = d }
-      return result
-    }
-
-    private func max4(a float32, b float32, c float32, d float32) float32 {
-      var result = a > b ? a : b
-      if c > result { result = c }
-      if d > result { result = d }
-      return result
     }
   }
 }
@@ -1135,10 +1121,10 @@ internal class TextGeometryQueries {
       let p2 = TransformGeometry.NodeToWindow(n, x, y + raw.H)
       let p3 = TransformGeometry.NodeToWindow(n, x + raw.W, y + raw.H)
       if !p0.Valid || !p1.Valid || !p2.Valid || !p3.Valid { return false }
-      let left = min4(p0.X, p1.X, p2.X, p3.X)
-      let top = min4(p0.Y, p1.Y, p2.Y, p3.Y)
-      let right = max4(p0.X, p1.X, p2.X, p3.X)
-      let bottom = max4(p0.Y, p1.Y, p2.Y, p3.Y)
+      let left = TransformGeometry.min4(p0.X, p1.X, p2.X, p3.X)
+      let top = TransformGeometry.min4(p0.Y, p1.Y, p2.Y, p3.Y)
+      let right = TransformGeometry.max4(p0.X, p1.X, p2.X, p3.X)
+      let bottom = TransformGeometry.max4(p0.Y, p1.Y, p2.Y, p3.Y)
       rect = ElementRect{ X: float64(left), Y: float64(top), Width: float64(right - left),
         Height: float64(bottom - top) }
       return true
@@ -1224,20 +1210,6 @@ internal class TextGeometryQueries {
 
     private func windowMappingValid(n Node) bool {
       return TransformGeometry.NodeToWindow(n, n.Rect.X, n.Rect.Y).Valid
-    }
-
-    private func min4(a float32, b float32, c float32, d float32) float32 {
-      var result = a < b ? a : b
-      if c < result { result = c }
-      if d < result { result = d }
-      return result
-    }
-
-    private func max4(a float32, b float32, c float32, d float32) float32 {
-      var result = a > b ? a : b
-      if c > result { result = c }
-      if d > result { result = d }
-      return result
     }
   }
 }

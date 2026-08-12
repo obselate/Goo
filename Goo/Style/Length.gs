@@ -21,6 +21,8 @@ public struct Length {
   /// check `HasMagnitude` first.
   public prop Magnitude float64 { get { return float64(Value) } }
 
+  internal prop Px float32 { get { return Unit == LengthUnit.Px ? Value : 0.0F } }
+
   shared {
     /// Creates a percentage of the available size.
     /// @param value percentage of the available size

@@ -15,25 +15,25 @@ public data struct BoxShadow {
   /// Gets the horizontal offset in pixels.
   public prop OffsetX Length {
     get { return normalizedDefault(offsetX) }
-    init { offsetX = validateGeometry(value, "OffsetX") }
+    init { offsetX = validateShadowGeometry("BoxShadow", value, "OffsetX") }
   }
 
   /// Gets the vertical offset in pixels.
   public prop OffsetY Length {
     get { return normalizedDefault(offsetY) }
-    init { offsetY = validateGeometry(value, "OffsetY") }
+    init { offsetY = validateShadowGeometry("BoxShadow", value, "OffsetY") }
   }
 
   /// Gets the non-negative blur radius in pixels.
   public prop Blur Length {
     get { return normalizedDefault(blur) }
-    init { blur = normalizeBlur(value) }
+    init { blur = normalizeShadowBlur("BoxShadow", value) }
   }
 
   /// Gets the spread radius in pixels.
   public prop Spread Length {
     get { return normalizedDefault(spread) }
-    init { spread = validateGeometry(value, "Spread") }
+    init { spread = validateShadowGeometry("BoxShadow", value, "Spread") }
   }
 
   /// Gets the shadow color.
@@ -170,12 +170,12 @@ internal func normalizedDefault(value Length) Length {
   return value
 }
 
-internal func validateGeometry(value Length, name string) Length {
+internal func validateShadowGeometry(typeName string, value Length, name string) Length {
   if value.Unit == LengthUnit.Unset {
     return 0
   }
   if value.Unit == LengthUnit.Auto || value.Unit == LengthUnit.Percent {
-    throw ArgumentException("BoxShadow." + name + " must use pixel units", name)
+    throw ArgumentException(typeName + "." + name + " must use pixel units", name)
   }
   if Double.IsNaN(float64(value.Value)) || Double.IsInfinity(float64(value.Value)) {
     throw ArgumentOutOfRangeException(name)
@@ -183,8 +183,8 @@ internal func validateGeometry(value Length, name string) Length {
   return value
 }
 
-internal func normalizeBlur(value Length) Length {
-  let geometry = validateGeometry(value, "Blur")
+internal func normalizeShadowBlur(typeName string, value Length) Length {
+  let geometry = validateShadowGeometry(typeName, value, "Blur")
   if geometry.Value < 0.0F {
     return 0
   }

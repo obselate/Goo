@@ -643,7 +643,7 @@ internal partial class Painter {
   // Only Px is meaningful for BorderRadius/FontSize today; Percent/Auto/Unset
   // fold to 0 rather than inventing a resolution scheme here.
   internal func resolvePx(l Length) float32 {
-    return l.Unit == LengthUnit.Px ? l.Value : 0.0F
+    return l.Px
   }
 
   // The returned SKImage must outlive the surface it snapshots from, so the

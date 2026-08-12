@@ -143,6 +143,10 @@ internal func clamp255(value float32) int32 {
   return clampByte(normalized)
 }
 
+internal func transparent(value Color) bool {
+  return value.R == 0.0F && value.G == 0.0F && value.B == 0.0F && value.A == 0.0F
+}
+
 internal func parseHexColor(value string) Color? {
   switch value.Length {
     case 4 {

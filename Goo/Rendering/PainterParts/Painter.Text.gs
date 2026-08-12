@@ -38,7 +38,7 @@ internal partial class Painter {
     let natural = layout.Descent - layout.Ascent
     let lineHeight = TextLayouts.resolvedLineHeight(n)
     let clip = canvas.LocalClipBounds
-    let stroke = if n.TextStrokeWidth.Unit == LengthUnit.Px { n.TextStrokeWidth.Value } else { 0.0F }
+    let stroke = resolvePx(n.TextStrokeWidth)
     let pad = textPaintPad(stroke, n.TextShadows)
     for i in 0 ... layout.Lines.Count {
       let line = layout.Lines[i]
@@ -110,7 +110,7 @@ internal partial class Painter {
 
   private func paintNodeText(n Node, shape ShapedText, canvas SKCanvas, x float32,
     baseline float32, alpha float32) {
-    let width = n.TextStrokeWidth.Unit == LengthUnit.Px ? n.TextStrokeWidth.Value : 0.0F
+    let width = resolvePx(n.TextStrokeWidth)
     paintTextEffects(shape, n.Color, n.TextDecoration, width, n.TextStrokeColor,
       n.TextShadows, nil, canvas, x, baseline, alpha)
   }

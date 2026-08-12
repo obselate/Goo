@@ -38,6 +38,11 @@ internal class Resolver {
       StyleField.FontStyle, StyleField.FontWeight, StyleField.LetterSpacing, StyleField.LineHeight,
       StyleField.TextAlign, StyleField.TextWrap, StyleField.TextDecoration, StyleField.TextTransform,
       StyleField.TextShadows, StyleField.TextStrokeWidth, StyleField.TextStrokeColor, StyleField.Cursor }
+
+    private let marginEdges []StyleField = []StyleField{
+      StyleField.MarginLeft, StyleField.MarginTop, StyleField.MarginRight, StyleField.MarginBottom }
+    private let paddingEdges []StyleField = []StyleField{
+      StyleField.PaddingLeft, StyleField.PaddingTop, StyleField.PaddingRight, StyleField.PaddingBottom }
   }
 
   internal prop Animating List[Node] { get; init; }
@@ -231,11 +236,9 @@ internal class Resolver {
       let field = list.At(i).Field
       if !styleFieldApplies(n, field) { continue }
       if field == StyleField.Margin {
-        m = styleMaskWithBoxEdges(m, StyleField.MarginLeft, StyleField.MarginTop,
-          StyleField.MarginRight, StyleField.MarginBottom)
+        m = styleMaskWithBoxEdges(m, marginEdges)
       } else if field == StyleField.Padding {
-        m = styleMaskWithBoxEdges(m, StyleField.PaddingLeft, StyleField.PaddingTop,
-          StyleField.PaddingRight, StyleField.PaddingBottom)
+        m = styleMaskWithBoxEdges(m, paddingEdges)
       } else {
         m = styleMaskWith(m, styleFieldForNode(n, field))
       }
@@ -243,12 +246,12 @@ internal class Resolver {
     return m
   }
 
-  private func styleMaskWithBoxEdges(mask StyleMask, left StyleField, top StyleField,
-    right StyleField, bottom StyleField) StyleMask {
-    var m = styleMaskWith(mask, left)
-    m = styleMaskWith(m, top)
-    m = styleMaskWith(m, right)
-    return styleMaskWith(m, bottom)
+  private func styleMaskWithBoxEdges(mask StyleMask, edges []StyleField) StyleMask {
+    var m = mask
+    for f in edges {
+      m = styleMaskWith(m, f)
+    }
+    return m
   }
 
   internal func applyList(n Node, entries StyleEntries?, mask StyleMask, initial bool, shadow StyleMask) StyleMask {
@@ -265,15 +268,11 @@ internal class Resolver {
         continue
       }
       if e.Field == StyleField.Margin {
-        m = applyCanonicalBoxEdges(n, e, m, initial, shadow,
-          StyleField.MarginLeft, StyleField.MarginTop,
-          StyleField.MarginRight, StyleField.MarginBottom)
+        m = applyCanonicalBoxEdges(n, e, m, initial, shadow, marginEdges)
         continue
       }
       if e.Field == StyleField.Padding {
-        m = applyCanonicalBoxEdges(n, e, m, initial, shadow,
-          StyleField.PaddingLeft, StyleField.PaddingTop,
-          StyleField.PaddingRight, StyleField.PaddingBottom)
+        m = applyCanonicalBoxEdges(n, e, m, initial, shadow, paddingEdges)
         continue
       }
       e.Field = styleFieldForNode(n, e.Field)
@@ -290,12 +289,12 @@ internal class Resolver {
   }
 
   private func applyCanonicalBoxEdges(n Node, source StyleEntry, mask StyleMask,
-    initial bool, shadow StyleMask, left StyleField, top StyleField,
-    right StyleField, bottom StyleField) StyleMask {
-    var m = applyCanonicalBoxEdge(n, source, mask, initial, shadow, left)
-    m = applyCanonicalBoxEdge(n, source, m, initial, shadow, top)
-    m = applyCanonicalBoxEdge(n, source, m, initial, shadow, right)
-    return applyCanonicalBoxEdge(n, source, m, initial, shadow, bottom)
+    initial bool, shadow StyleMask, edges []StyleField) StyleMask {
+    var m = mask
+    for f in edges {
+      m = applyCanonicalBoxEdge(n, source, m, initial, shadow, f)
+    }
+    return m
   }
 
   private func applyCanonicalBoxEdge(n Node, source StyleEntry, mask StyleMask,

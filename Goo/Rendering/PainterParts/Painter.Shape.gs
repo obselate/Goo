@@ -11,18 +11,12 @@ internal struct ShapeShadowPresence {
 
 internal partial class Painter {
   internal func paintShape(n Node, canvas SKCanvas) {
-    let hasBackgroundImage = isApplied(n, StyleField.BackgroundImage)
-      || isApplied(n, StyleField.BackgroundImageSource)
-    let image = if hasBackgroundImage { backgroundImage(n) } else { nil }
-    var gradient Gradient? = nil
-    if isApplied(n, StyleField.BackgroundGradient) { gradient = n.BackgroundGradient }
-    let hasBaseFill = gradient != nil || isApplied(n, StyleField.BackgroundColor)
-    let hasFillSource = hasBaseFill || image != nil
-    let hasPaintedFill = hasFillSource && n.ShapePath.HasClosedContour
-    let strokeWidth = n.BorderLeftWidth.Unit == LengthUnit.Px ? n.BorderLeftWidth.Value : 0.0F
+    let image = backgroundImage(n)
+    let gradient = shapeGradient(n)
+    let hasPaintedFill = shapeHasFill(n, image, gradient)
+    let strokeWidth = resolvePx(n.BorderLeftWidth)
     let activeDashes = hasDashes(n)
-    let needsEffects = (float32(n.ShapeCornerRadius) > 0.0F && (hasPaintedFill || strokeWidth > 0.0F))
-      || (activeDashes && strokeWidth > 0.0F)
+    let needsEffects = shapeNeedsEffects(n, hasPaintedFill, strokeWidth, activeDashes)
     let effects = if needsEffects { ShapePathEffects.For(n) } else { nil }
     let shadows = shapeShadowPresence(n)
     let geometry = ShapeGeometry.PreparePaint(n, hasPaintedFill, strokeWidth,
@@ -203,6 +197,20 @@ internal partial class Painter {
   private func hasDashes(n Node) bool {
     if let dashes = n.Dashes { return dashes.Intervals.Count > 0 }
     return false
+  }
+
+  private func shapeGradient(n Node) Gradient? {
+    return isApplied(n, StyleField.BackgroundGradient) ? n.BackgroundGradient : nil
+  }
+
+  private func shapeHasFill(n Node, image DecodedImage?, gradient Gradient?) bool {
+    return (gradient != nil || image != nil || isApplied(n, StyleField.BackgroundColor))
+      && n.ShapePath.HasClosedContour
+  }
+
+  private func shapeNeedsEffects(n Node, hasFill bool, strokeWidth float32, dashed bool) bool {
+    return (float32(n.ShapeCornerRadius) > 0.0F && (hasFill || strokeWidth > 0.0F))
+      || (dashed && strokeWidth > 0.0F)
   }
 
   private func shapeShadowPresence(n Node) ShapeShadowPresence {

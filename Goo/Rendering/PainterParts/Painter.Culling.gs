@@ -24,13 +24,9 @@ internal partial class Painter {
     }
     if n.Kind == NodeKind.Shape {
       let mapping = ShapeGeometry.Map(n)
-      let hasBackgroundImage = isApplied(n, StyleField.BackgroundImage)
-        || isApplied(n, StyleField.BackgroundImageSource)
-      let image = if hasBackgroundImage { backgroundImage(n) } else { nil }
-      let hasFill = (isApplied(n, StyleField.BackgroundColor)
-        || (isApplied(n, StyleField.BackgroundGradient) && n.BackgroundGradient != nil)
-        || image != nil) && n.ShapePath.HasClosedContour
-      let strokeWidth = n.BorderLeftWidth.Unit == LengthUnit.Px ? n.BorderLeftWidth.Value : 0.0F
+      let image = backgroundImage(n)
+      let hasFill = shapeHasFill(n, image, shapeGradient(n))
+      let strokeWidth = resolvePx(n.BorderLeftWidth)
       let hasOuterShadows = hasOuterBoxShadows(n)
       if !hasOuterShadows {
         ShapeGeometry.Trim(n, hasFill, strokeWidth > 0.0F, false, false)
@@ -40,9 +36,8 @@ internal partial class Painter {
         right = clip.Right
         bottom = clip.Bottom
       } else {
-        let dashed = if let dashes = n.Dashes { dashes.Intervals.Count > 0 } else { false }
-        let needsEffects = (float32(n.ShapeCornerRadius) > 0.0F && (hasFill || strokeWidth > 0.0F))
-          || (dashed && strokeWidth > 0.0F)
+        let dashed = hasDashes(n)
+        let needsEffects = shapeNeedsEffects(n, hasFill, strokeWidth, dashed)
         let effects = if needsEffects { ShapePathEffects.For(n) } else { nil }
         ShapeGeometry.Trim(n, hasFill, strokeWidth > 0.0F, true, true)
         if let silhouette = ShapeGeometry.ShadowSilhouette(n, mapping, hasFill, effects) {

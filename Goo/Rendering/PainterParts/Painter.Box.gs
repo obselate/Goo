@@ -14,10 +14,10 @@ internal partial class Painter {
   }
 
   internal func paintBorder(n Node, canvas SKCanvas, rect SKRect, ref boxScratch BoxPaintScratch?) {
-    let left = borderPixels(n.BorderLeftWidth)
-    let top = borderPixels(n.BorderTopWidth)
-    let right = borderPixels(n.BorderRightWidth)
-    let bottom = borderPixels(n.BorderBottomWidth)
+    let left = resolvePx(n.BorderLeftWidth)
+    let top = resolvePx(n.BorderTopWidth)
+    let right = resolvePx(n.BorderRightWidth)
+    let bottom = resolvePx(n.BorderBottomWidth)
     if left <= 0.0F && top <= 0.0F && right <= 0.0F && bottom <= 0.0F {
       return
     }
@@ -26,10 +26,7 @@ internal partial class Painter {
       return
     }
     let borderColor = n.BorderLeftColor.ToSkia()
-    if n.BorderTopLeftRadius.Unit == LengthUnit.Unset
-      && n.BorderTopRightRadius.Unit == LengthUnit.Unset
-      && n.BorderBottomRightRadius.Unit == LengthUnit.Unset
-      && n.BorderBottomLeftRadius.Unit == LengthUnit.Unset
+    if cornersAllUnset(n)
       && left == top && left == right && left == bottom
       && borderColor == n.BorderTopColor.ToSkia()
       && borderColor == n.BorderRightColor.ToSkia()
@@ -197,7 +194,7 @@ internal partial class Painter {
 
   // Dashed/Dotted stroke one centerline ring with the top border width and color.
   internal func paintStrokedBorder(n Node, canvas SKCanvas, rect SKRect, ref boxScratch BoxPaintScratch?) {
-    let width = borderPixels(n.BorderTopWidth)
+    let width = resolvePx(n.BorderTopWidth)
     if width <= 0.0F || n.BorderTopColor.A <= 0.0F {
       return
     }
@@ -260,10 +257,7 @@ internal partial class Painter {
     paint.IsAntialias = true
     paint.Style = SKPaintStyle.Stroke
     paint.StrokeWidth = width
-    if n.BorderTopLeftRadius.Unit == LengthUnit.Unset
-      && n.BorderTopRightRadius.Unit == LengthUnit.Unset
-      && n.BorderBottomRightRadius.Unit == LengthUnit.Unset
-      && n.BorderBottomLeftRadius.Unit == LengthUnit.Unset {
+    if cornersAllUnset(n) {
       let radius = nonNegative(resolvePx(n.BorderRadius) + centerInflate)
       if radius > 0.0F {
         canvas.DrawRoundRect(centerRect, radius, radius, paint)
@@ -309,8 +303,11 @@ internal partial class Painter {
     return resetBoxRoundRect(ref boxScratch, rect, tl, tr, br, bl)
   }
 
-  internal func borderPixels(width Length) float32 {
-    return width.Unit == LengthUnit.Px ? width.Value : 0.0F
+  internal func cornersAllUnset(n Node) bool {
+    return n.BorderTopLeftRadius.Unit == LengthUnit.Unset
+      && n.BorderTopRightRadius.Unit == LengthUnit.Unset
+      && n.BorderBottomRightRadius.Unit == LengthUnit.Unset
+      && n.BorderBottomLeftRadius.Unit == LengthUnit.Unset
   }
 
   // Gradient wins over BackgroundColor. The image layers over either fill.
@@ -403,10 +400,10 @@ internal partial class Painter {
     if count == 0 {
       return
     }
-    let left = borderPixels(n.BorderLeftWidth)
-    let top = borderPixels(n.BorderTopWidth)
-    let right = borderPixels(n.BorderRightWidth)
-    let bottom = borderPixels(n.BorderBottomWidth)
+    let left = resolvePx(n.BorderLeftWidth)
+    let top = resolvePx(n.BorderTopWidth)
+    let right = resolvePx(n.BorderRightWidth)
+    let bottom = resolvePx(n.BorderBottomWidth)
     let padding = insetRect(rect, left, top, right, bottom)
     if padding.Width <= 0.0F || padding.Height <= 0.0F {
       return
@@ -495,10 +492,7 @@ internal partial class Painter {
 
   // Flat DrawRect when every corner resolves to 0, else a per-corner SKRoundRect.
   internal func fillRect(canvas SKCanvas, rect SKRect, n Node, paint SKPaint, ref boxScratch BoxPaintScratch?) {
-    if n.BorderTopLeftRadius.Unit == LengthUnit.Unset
-      && n.BorderTopRightRadius.Unit == LengthUnit.Unset
-      && n.BorderBottomRightRadius.Unit == LengthUnit.Unset
-      && n.BorderBottomLeftRadius.Unit == LengthUnit.Unset {
+    if cornersAllUnset(n) {
       let radius = resolvePx(n.BorderRadius)
       if radius > 0.0F {
         canvas.DrawRoundRect(rect, radius, radius, paint)

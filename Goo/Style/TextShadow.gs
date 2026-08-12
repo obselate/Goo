@@ -13,19 +13,19 @@ public data struct TextShadow {
   /// Gets the horizontal offset in pixels.
   public prop OffsetX Length {
     get { return normalizedDefault(offsetX) }
-    init { offsetX = validateTextShadowGeometry(value, "OffsetX") }
+    init { offsetX = validateShadowGeometry("TextShadow", value, "OffsetX") }
   }
 
   /// Gets the vertical offset in pixels.
   public prop OffsetY Length {
     get { return normalizedDefault(offsetY) }
-    init { offsetY = validateTextShadowGeometry(value, "OffsetY") }
+    init { offsetY = validateShadowGeometry("TextShadow", value, "OffsetY") }
   }
 
   /// Gets the non-negative blur radius in pixels.
   public prop Blur Length {
     get { return normalizedDefault(blur) }
-    init { blur = normalizeTextShadowBlur(value) }
+    init { blur = normalizeShadowBlur("TextShadow", value) }
   }
 
   /// Gets the shadow color.
@@ -119,13 +119,7 @@ internal func textShadowAt(value BoxShadowStack?, index int32) TextShadow {
 }
 
 internal func sameTextShadows(left BoxShadowStack?, right BoxShadowStack?) bool {
-  let leftCount = textShadowCount(left)
-  let rightCount = textShadowCount(right)
-  if leftCount != rightCount { return false }
-  for i in 0 ... leftCount {
-    if textShadowAt(left, i) != textShadowAt(right, i) { return false }
-  }
-  return true
+  return sameBoxShadows(left, right)
 }
 
 private func textShadowPayload(value TextShadow) BoxShadow {
@@ -139,21 +133,4 @@ private func textShadowPayload(value TextShadow) BoxShadow {
 
 private func transparentTextShadow(value TextShadow) bool {
   return normalizeTextShadow(value).Color.A == 0.0F
-}
-
-private func validateTextShadowGeometry(value Length, name string) Length {
-  if value.Unit == LengthUnit.Unset { return 0 }
-  if value.Unit == LengthUnit.Auto || value.Unit == LengthUnit.Percent {
-    throw ArgumentException("TextShadow." + name + " must use pixel units", name)
-  }
-  if Double.IsNaN(float64(value.Value)) || Double.IsInfinity(float64(value.Value)) {
-    throw ArgumentOutOfRangeException(name)
-  }
-  return value
-}
-
-private func normalizeTextShadowBlur(value Length) Length {
-  let geometry = validateTextShadowGeometry(value, "Blur")
-  if geometry.Value < 0.0F { return 0 }
-  return geometry
 }

@@ -37,7 +37,7 @@ internal class ShapeGeometry {
       ConditionalWeakTable[Node, ShapeShadowArtifacts]()
 
     internal func Map(n Node) ShapeMapping {
-      let strokeWidth = n.BorderLeftWidth.Unit == LengthUnit.Px ? n.BorderLeftWidth.Value : 0.0F
+      let strokeWidth = n.BorderLeftWidth.Px
       let halfStroke = strokeWidth * 0.5F
       let paddingLeft = ResolvedPadding(n, YGEdge.Left)
       let paddingTop = ResolvedPadding(n, YGEdge.Top)
@@ -79,7 +79,7 @@ internal class ShapeGeometry {
     }
 
     internal func ClipRect(n Node, mapping ShapeMapping) SKRect {
-      let strokeWidth = n.BorderLeftWidth.Unit == LengthUnit.Px ? n.BorderLeftWidth.Value : 0.0F
+      let strokeWidth = n.BorderLeftWidth.Px
       let halfStroke = strokeWidth * 0.5F
       return SKRect.Create(mapping.Left - halfStroke, mapping.Top - halfStroke,
         mapping.Width + strokeWidth, mapping.Height + strokeWidth)
@@ -144,7 +144,7 @@ internal class ShapeGeometry {
         Dispose(n)
         return nil
       }
-      let strokeWidth = n.BorderLeftWidth.Unit == LengthUnit.Px ? n.BorderLeftWidth.Value : 0.0F
+      let strokeWidth = n.BorderLeftWidth.Px
       if !hasFill && strokeWidth <= 0.0F {
         if values.TryGetValue(n, out var cached) { cached.ClearSilhouette() }
         return nil
@@ -306,7 +306,7 @@ internal class ShapeGeometryValue {
       }
       return fill
     }
-    let corner = cornerEffect(effects)
+    let corner = cornerEffectFor(effects)
     if Object.ReferenceEquals(roundedSource, fill) && roundedRadius == radius
       && Object.ReferenceEquals(roundedCorner, corner) {
       if let retained = RoundedFill { return retained }
@@ -496,10 +496,6 @@ internal class ShapeGeometryValue {
   private func activeDash(dashes DashPattern?) DashPattern? {
     guard let dash = dashes else { return nil }
     return dash.Intervals.Count > 0 ? dash : nil
-  }
-
-  private func cornerEffect(effects ShapePathEffectsValue?) SKPathEffect {
-    return cornerEffectFor(effects)
   }
 
   private func cornerEffectFor(effects ShapePathEffectsValue?) SKPathEffect {

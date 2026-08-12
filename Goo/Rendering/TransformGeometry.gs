@@ -85,7 +85,7 @@ internal class TransformGeometry {
     internal func NodeToWindow(n Node, x float32, y float32) TransformPoint {
       let point = Map(n, x, y)
       if !point.Valid { return point }
-      return if let parent = n.Parent { nodePointToWindow(parent, point.X, point.Y) } else { point }
+      return if let parent = n.Parent { NodeToWindow(parent, point.X, point.Y) } else { point }
     }
 
     internal func BoundsToWindow(n Node) TransformBounds {
@@ -108,12 +108,6 @@ internal class TransformGeometry {
       return TransformBounds{ X: left, Y: top, W: right - left, H: bottom - top }
     }
 
-    private func nodePointToWindow(n Node, x float32, y float32) TransformPoint {
-      let point = Map(n, x, y)
-      if !point.Valid { return point }
-      return if let parent = n.Parent { nodePointToWindow(parent, point.X, point.Y) } else { point }
-    }
-
     private func finite(value float32) bool {
       return !Single.IsNaN(value) && !Single.IsInfinity(value)
     }
@@ -122,14 +116,14 @@ internal class TransformGeometry {
       return value.Unit == LengthUnit.Percent ? basis * value.Value / 100.0F : value.Value
     }
 
-    private func min4(a float32, b float32, c float32, d float32) float32 {
+    internal func min4(a float32, b float32, c float32, d float32) float32 {
       var result = a < b ? a : b
       if c < result { result = c }
       if d < result { result = d }
       return result
     }
 
-    private func max4(a float32, b float32, c float32, d float32) float32 {
+    internal func max4(a float32, b float32, c float32, d float32) float32 {
       var result = a > b ? a : b
       if c > result { result = c }
       if d > result { result = d }

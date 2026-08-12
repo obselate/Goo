@@ -282,19 +282,24 @@ internal class TextLayouts {
       let n = YGNodeAPI.YGNodeGetContext(yoga) as Node
       let constraint = widthMode == MeasureMode.Undefined ? -1.0F : width
       let layout = For(n, constraint)
-      var measuredWidth = layout.Width
-      var measuredHeight = layout.Height
+      return clampMeasuredSize(layout.Width, layout.Height, width, widthMode, height, heightMode)
+    }
+
+    internal func clampMeasuredSize(measuredWidth float32, measuredHeight float32, width float32,
+      widthMode MeasureMode, height float32, heightMode MeasureMode) YGSize {
+      var w = measuredWidth
+      var h = measuredHeight
       if widthMode == MeasureMode.Exactly {
-        measuredWidth = width
-      } else if widthMode == MeasureMode.AtMost && measuredWidth > width {
-        measuredWidth = width
+        w = width
+      } else if widthMode == MeasureMode.AtMost && w > width {
+        w = width
       }
       if heightMode == MeasureMode.Exactly {
-        measuredHeight = height
-      } else if heightMode == MeasureMode.AtMost && measuredHeight > height {
-        measuredHeight = height
+        h = height
+      } else if heightMode == MeasureMode.AtMost && h > height {
+        h = height
       }
-      return YGSize{ Width: measuredWidth, Height: measuredHeight }
+      return YGSize{ Width: w, Height: h }
     }
 
     internal func Paint(n Node, canvas SKCanvas, paint SKPaint, contentX float32,
@@ -801,11 +806,11 @@ internal class TextLayouts {
     }
 
     internal func fontSize(n Node) float32 {
-      return n.FontSize.Unit == LengthUnit.Px ? n.FontSize.Value : 0.0F
+      return n.FontSize.Px
     }
 
     internal func letterSpacing(n Node) float32 {
-      return n.LetterSpacing.Unit == LengthUnit.Px ? n.LetterSpacing.Value : 0.0F
+      return n.LetterSpacing.Px
     }
 
     internal func resolvedLineHeight(n Node) float32 {
@@ -824,7 +829,7 @@ internal class TextLayouts {
         case YGEdge.Bottom: n.BorderBottomWidth
         default: Length{}
       }
-      return width.Unit == LengthUnit.Px ? width.Value : 0.0F
+      return width.Px
     }
 
     internal func breakAfter(text string, index int32) bool {

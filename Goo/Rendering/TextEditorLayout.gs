@@ -255,47 +255,49 @@ internal sealed class TextEditorRenderState : IDisposable {
   }
 
   internal func BeginLayout() TextEditorVisualLayout {
-    layoutScratch.Lines.Clear()
-    return layoutScratch
+    return beginLayout(layoutScratch)
   }
 
   internal func BeginParagraphLayout() TextEditorVisualLayout {
-    paragraphLayoutScratch.Lines.Clear()
-    return paragraphLayoutScratch
+    return beginLayout(paragraphLayoutScratch)
   }
 
   internal func BeginProjections() List[TextEditorProjection] {
-    projectionScratch.Clear()
-    return projectionScratch
+    return beginScratch(projectionScratch)
   }
 
   internal func BeginStyles() List[TextEditorPresentationStyle] {
-    styleScratch.Clear()
-    return styleScratch
+    return beginScratch(styleScratch)
   }
 
   internal func BeginParagraphProjections() List[TextEditorProjection] {
-    paragraphProjectionScratch.Clear()
-    return paragraphProjectionScratch
+    return beginScratch(paragraphProjectionScratch)
   }
 
   internal func BeginParagraphStyles() List[TextEditorPresentationStyle] {
-    paragraphStyleScratch.Clear()
-    return paragraphStyleScratch
+    return beginScratch(paragraphStyleScratch)
   }
 
   internal func BeginUsedParagraphs() List[TextEditorParagraphLayout] {
-    usedParagraphScratch.Clear()
-    return usedParagraphScratch
+    return beginScratch(usedParagraphScratch)
+  }
+
+  private func beginLayout(scratch TextEditorVisualLayout) TextEditorVisualLayout {
+    scratch.Lines.Clear()
+    return scratch
+  }
+
+  private func beginScratch[T](scratch List[T]) List[T] {
+    scratch.Clear()
+    return scratch
   }
 
   internal func Paragraph(source TextRange, width float32, fingerprint int32,
     lineHeight float32, ascent float32, descent float32) TextEditorParagraphLayout? {
     for i in 0 ... paragraphs.Count {
       let value = paragraphs[i]
-      if value.Source == source && value.ConstraintWidth == width
-        && value.FontFingerprint == fingerprint && value.LineHeight == lineHeight
-        && value.Ascent == ascent && value.Descent == descent {
+      if value.Source == source
+        && matchesLayoutConstraint(value, width, fingerprint, lineHeight, ascent, descent) {
         paragraphs.RemoveAt(i)
         paragraphs.Add(value)
         return value
@@ -315,10 +317,7 @@ internal sealed class TextEditorRenderState : IDisposable {
   internal func ParagraphHeightForLine(snapshot TextSnapshot, line int32, width float32,
     fingerprint int32, lineHeight float32, ascent float32, descent float32) float32? {
     for value in paragraphs {
-      if value.ConstraintWidth != width || value.FontFingerprint != fingerprint
-        || value.LineHeight != lineHeight || value.Ascent != ascent || value.Descent != descent {
-        continue
-      }
+      if !matchesLayoutConstraint(value, width, fingerprint, lineHeight, ascent, descent) { continue }
       if snapshot.GetLineIndex(value.Source.Start) == line { return value.Height }
     }
     return nil
@@ -328,15 +327,18 @@ internal sealed class TextEditorRenderState : IDisposable {
     fingerprint int32, lineHeight float32, ascent float32, descent float32) float32 {
     var adjustment = 0.0F
     for value in paragraphs {
-      if value.ConstraintWidth != width || value.FontFingerprint != fingerprint
-        || value.LineHeight != lineHeight || value.Ascent != ascent || value.Descent != descent {
-        continue
-      }
+      if !matchesLayoutConstraint(value, width, fingerprint, lineHeight, ascent, descent) { continue }
       if snapshot.GetLineIndex(value.Source.Start) < target {
         adjustment = adjustment + value.Height - lineHeight
       }
     }
     return adjustment
+  }
+
+  private func matchesLayoutConstraint(value TextEditorParagraphLayout, width float32,
+    fingerprint int32, lineHeight float32, ascent float32, descent float32) bool {
+    return value.ConstraintWidth == width && value.FontFingerprint == fingerprint
+      && value.LineHeight == lineHeight && value.Ascent == ascent && value.Descent == descent
   }
 
   internal func AddParagraph(value TextEditorParagraphLayout) { paragraphs.Add(value) }
@@ -403,7 +405,7 @@ internal sealed class TextEditorRenderState : IDisposable {
 
   internal func Placeholder(n Node) ShapedText? {
     if n.Placeholder == "" { return nil }
-    let spacing = n.LetterSpacing.Unit == LengthUnit.Px ? n.LetterSpacing.Value : 0.0F
+    let spacing = n.LetterSpacing.Px
     let fingerprint = n.Placeholder.GetHashCode() ^ n.FontFamily.GetHashCode()
       ^ int32(TextLayouts.fontSize(n)) ^ int32(n.FontWeight) ^ int32(n.FontStyle)
       ^ int32(spacing) ^ int32(n.Direction)
@@ -585,6 +587,8 @@ internal class TextEditorLayouts {
       (value TextEditorSlotGeometry) -> float64(value.NaturalLeft)
     private let caretSortKey Func[TextEditorVisualCaret, float64] =
       (value TextEditorVisualCaret) -> float64(value.X)
+    private let orderSortKey Func[TextEditorPresentationStyle, float64] =
+      (value TextEditorPresentationStyle) -> float64(value.Order)
 
     private func sortEditorItems[T any](values List[T], key Func[T, float64]) {
       for var i = 1; i < values.Count; i++ {
@@ -675,16 +679,15 @@ internal class TextEditorLayouts {
     }
 
     internal func dispose(layout TextEditorVisualLayout?) {
-      if let value = layout {
-        for line in value.Lines {
-          line.Shape?.Dispose()
-          for run in line.Runs { run.Shape?.Dispose() }
-        }
-      }
+      if let value = layout { disposeLines(value.Lines) }
     }
 
     internal func disposeParagraph(value TextEditorParagraphLayout) {
-      for line in value.Lines {
+      disposeLines(value.Lines)
+    }
+
+    private func disposeLines(lines List[TextEditorVisualLine]) {
+      for line in lines {
         line.Shape?.Dispose()
         for run in line.Runs { run.Shape?.Dispose() }
       }
@@ -696,13 +699,7 @@ internal class TextEditorLayouts {
       let constraint = widthMode == MeasureMode.Undefined ? -1.0F : width
       let heightConstraint = heightMode == MeasureMode.Undefined ? -1.0F : height
       let layout = For(n, constraint, heightConstraint)
-      var measuredWidth = layout.Width
-      var measuredHeight = layout.Height
-      if widthMode == MeasureMode.Exactly { measuredWidth = width }
-      else if widthMode == MeasureMode.AtMost && measuredWidth > width { measuredWidth = width }
-      if heightMode == MeasureMode.Exactly { measuredHeight = height }
-      else if heightMode == MeasureMode.AtMost && measuredHeight > height { measuredHeight = height }
-      return YGSize{ Width: measuredWidth, Height: measuredHeight }
+      return TextLayouts.clampMeasuredSize(layout.Width, layout.Height, width, widthMode, height, heightMode)
     }
 
     internal func CaretRect(n Node, position TextPosition) Rect {
@@ -1542,15 +1539,7 @@ internal class TextEditorLayouts {
         if value.Range.Start > sourceEnd { break }
         if value.Range.Start + value.Range.Length > source.Start { result.Add(value) }
       }
-      for var i = 1; i < result.Count; i++ {
-        let current = result[i]
-        var j = i
-        while j > 0 && result[j - 1].Order > current.Order {
-          result[j] = result[j - 1]
-          j--
-        }
-        result[j] = current
-      }
+      sortEditorItems(result, orderSortKey)
     }
 
     private func editorStyleAt(styles List[TextEditorPresentationStyle], offset int32,
@@ -1672,16 +1661,8 @@ internal class TextEditorLayouts {
     }
 
     internal func editorLineOffset(n Node, line TextEditorVisualLine, width float32) float32 {
-      let free = width - line.Width
-      if free <= 0.0F { return 0.0F }
       let rtl = if let shape = line.Shape { shape.RightToLeft } else { false }
-      return switch n.TextAlign {
-        case TextAlign.Center: free * 0.5F
-        case TextAlign.Right: free
-        case TextAlign.Start: rtl ? free : 0.0F
-        case TextAlign.End: rtl ? 0.0F : free
-        default: 0.0F
-      }
+      return TextLayouts.lineOffset(n, line.Width, rtl, width)
     }
 
     internal func CaretX(line TextEditorVisualLine, index int32, affinity TextAffinity) float32 {

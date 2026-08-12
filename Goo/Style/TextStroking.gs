@@ -73,10 +73,6 @@ internal class TextStroking {
       values?.Remove(n)
       n.HasTextStrokeState = false
     }
-
-    private func transparent(value Color) bool {
-      return value.R == 0.0F && value.G == 0.0F && value.B == 0.0F && value.A == 0.0F
-    }
   }
 }
 
