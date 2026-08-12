@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Threading;
 using Goo.InternalTextInterop;
 using Hexa.NET.SDL3;
+using SkiaSharp;
 using Xunit;
 
 [Trait("Category", "NativeBoundary")]
@@ -562,14 +564,218 @@ public sealed class WindowSdlHostTests
     [Fact]
     public void TransparencyIsOptIn()
     {
-        var opaque = SdlHost.BuildWindowFlags(false);
-        var transparent = SdlHost.BuildWindowFlags(true);
+        var opaque = SdlHost.BuildWindowFlags(false, SdlHostRenderer.Gpu);
+        var transparent = SdlHost.BuildWindowFlags(true, SdlHostRenderer.Gpu);
 
         Assert.Equal(opaque | SDLWindowFlags.Transparent, transparent);
         Assert.Equal((SDLWindowFlags)0, opaque & SDLWindowFlags.Transparent);
     }
 
-    private static SdlHost CreateHost(string title, bool vsync, bool decorated = true)
+    [Fact]
+    public void RasterWindowDoesNotRequestOpenGl()
+    {
+        var gpu = SdlHost.BuildWindowFlags(false, SdlHostRenderer.Gpu);
+        var raster = SdlHost.BuildWindowFlags(false, SdlHostRenderer.Raster);
+
+        Assert.NotEqual((SDLWindowFlags)0, gpu & SDLWindowFlags.Opengl);
+        Assert.Equal((SDLWindowFlags)0, raster & SDLWindowFlags.Opengl);
+    }
+
+    [Fact]
+    public void RasterWindowRejectsTransparency()
+    {
+        var error = Assert.Throws<NotSupportedException>(() =>
+        {
+            using var host = CreateHost(
+                "raster-transparent",
+                false,
+                renderer: SdlHostRenderer.Raster,
+                transparent: true);
+        });
+
+        Assert.Contains("does not support transparent windows", error.Message);
+    }
+
+    [Fact]
+    public void WaylandSurfaceDamageUsesVersionedRequest()
+    {
+        Assert.Equal(2u, WaylandNative.SelectDamageOpcode(1));
+        Assert.Equal(2u, WaylandNative.SelectDamageOpcode(2));
+        Assert.Equal(2u, WaylandNative.SelectDamageOpcode(3));
+        Assert.Equal(9u, WaylandNative.SelectDamageOpcode(4));
+        Assert.Equal(9u, WaylandNative.SelectDamageOpcode(5));
+        Assert.Equal(int.MaxValue, WaylandNative.SelectDamageExtent(1, 160));
+        Assert.Equal(int.MaxValue, WaylandNative.SelectDamageExtent(2, 120));
+        Assert.Equal(int.MaxValue, WaylandNative.SelectDamageExtent(3, 160));
+        Assert.Equal(160, WaylandNative.SelectDamageExtent(4, 160));
+        Assert.Equal(120, WaylandNative.SelectDamageExtent(5, 120));
+    }
+
+    [Fact]
+    public void PublicRasterWindowPumpsPaintsResizesAndReopens()
+    {
+        for (var cycle = 0; cycle < 3; cycle++)
+        {
+            var window = new Goo.Window
+            {
+                Title = $"raster-window-{cycle}",
+                Width = 160,
+                Height = 120,
+                Renderer = Goo.WindowRenderer.Raster,
+                Root = new Goo.Cell(),
+            };
+
+            try
+            {
+                window.Open();
+                Assert.True(window.IsOpen);
+
+                window.Pump(0.0);
+                Assert.False(window.RenderPending());
+
+                for (var resize = 0; resize < 3; resize++)
+                {
+                    window.Width = 176 + cycle * 8 + resize * 8;
+                    window.Height = 132 + cycle * 8 + resize * 8;
+                    window.Pump(0.0);
+                    Assert.True(window.IsOpen);
+                    Assert.False(window.RenderPending());
+                }
+            }
+            finally
+            {
+                CloseWindow(window);
+            }
+        }
+    }
+
+    [Fact]
+    public void RasterPresentationPreservesSrgbColorAndLinearBlending()
+    {
+        var sourceMemory = Marshal.AllocHGlobal(16);
+        var destinationMemory = Marshal.AllocHGlobal(8);
+        try
+        {
+            using var source = RasterColorPipeline.WrapLinearPaintSurface(
+                sourceMemory,
+                2,
+                1,
+                16);
+            source.Canvas.Clear(SKColors.CornflowerBlue);
+            RasterColorPipeline.ConvertLinearRgba16ToSrgbBgra8(
+                sourceMemory,
+                destinationMemory,
+                2);
+            Assert.Equal(
+                unchecked((int)0xFF6495ED),
+                Marshal.ReadInt32(destinationMemory));
+
+            source.Canvas.Clear(SKColors.Black);
+            using var paint = new SKPaint { Color = new SKColor(255, 255, 255, 128) };
+            source.Canvas.DrawRect(0, 0, 2, 1, paint);
+            RasterColorPipeline.ConvertLinearRgba16ToSrgbBgra8(
+                sourceMemory,
+                destinationMemory,
+                2);
+            Assert.Equal(
+                unchecked((int)0xFFBCBCBC),
+                Marshal.ReadInt32(destinationMemory));
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(destinationMemory);
+            Marshal.FreeHGlobal(sourceMemory);
+        }
+    }
+
+    [Fact]
+    public void RasterPresentationRoundTripsEverySrgbChannelValue()
+    {
+        const int count = 256;
+        var sourceMemory = Marshal.AllocHGlobal(count * 8);
+        var destinationMemory = Marshal.AllocHGlobal(count * 4);
+        try
+        {
+            using var source = RasterColorPipeline.WrapLinearPaintSurface(
+                sourceMemory,
+                count,
+                1,
+                count * 8);
+            using var paint = new SKPaint();
+            for (var value = 0; value < count; value++)
+            {
+                paint.Color = new SKColor((byte)value, (byte)value, (byte)value);
+                source.Canvas.DrawRect(value, 0, 1, 1, paint);
+            }
+
+            RasterColorPipeline.ConvertLinearRgba16ToSrgbBgra8(
+                sourceMemory,
+                destinationMemory,
+                count);
+
+            for (var value = 0; value < count; value++)
+            {
+                var expected = unchecked((int)(0xFF000000u
+                    | (uint)value << 16
+                    | (uint)value << 8
+                    | (uint)value));
+                Assert.Equal(expected, Marshal.ReadInt32(destinationMemory, value * 4));
+            }
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(destinationMemory);
+            Marshal.FreeHGlobal(sourceMemory);
+        }
+    }
+
+    [Fact]
+    public void RasterTargetPaintsPresentsReusesAndResizes()
+    {
+        using var host = CreateHost(
+            "raster-target",
+            false,
+            renderer: SdlHostRenderer.Raster);
+        using var target = SdlRenderTargetFactory.Create(host);
+
+        Assert.IsType<WaylandShmRasterTarget>(target);
+        Assert.True(target.Resize(host.FramebufferWidth, host.FramebufferHeight));
+        host.Show();
+        for (var frame = 0; frame < 4; frame++)
+        {
+            target.BeginFrame();
+            target.Canvas.Clear(SKColors.CornflowerBlue);
+            target.Canvas.Flush();
+            target.Flush();
+            target.Present();
+        }
+
+        for (var resize = 0; resize < 3; resize++)
+        {
+            var width = host.FramebufferWidth + 8 + resize * 8;
+            var height = host.FramebufferHeight + 8 + resize * 8;
+            Assert.True(target.Resize(width, height));
+            target.BeginFrame();
+            target.Canvas.Clear(SKColors.Coral);
+            target.Canvas.Flush();
+            target.Flush();
+            target.Present();
+        }
+
+        Assert.True(target.Resize(host.FramebufferWidth, host.FramebufferHeight));
+        target.BeginFrame();
+        target.Canvas.Clear(SKColors.Coral);
+        target.Canvas.Flush();
+        target.Flush();
+        target.Present();
+    }
+
+    private static SdlHost CreateHost(
+        string title,
+        bool vsync,
+        bool decorated = true,
+        SdlHostRenderer renderer = SdlHostRenderer.Gpu,
+        bool transparent = false)
     {
         return new SdlHost(
             title,
@@ -581,9 +787,21 @@ public sealed class WindowSdlHostTests
             SdlHostState.Normal,
             decorated,
             false,
-            false,
+            transparent,
+            renderer,
             vsync,
             (_, _) => SdlHitResult.Normal);
+    }
+
+    private static void CloseWindow(Goo.Window window)
+    {
+        if (!window.IsOpen)
+            return;
+
+        window.OnClosing = () => true;
+        window.RequestClose();
+        window.Pump(0.0);
+        Assert.False(window.IsOpen);
     }
 
     private static SDLEvent PenMove(uint windowId, uint which)

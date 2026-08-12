@@ -5,7 +5,7 @@
 | Lane | Filter | Scope |
 | --- | --- | --- |
 | Core | `Category!=Performance&Category!=NativeBoundary` | Fast, deterministic, headless behavior |
-| Performance | `Category=Performance` | 37 deterministic allocation and storage gates |
+| Performance | `Category=Performance` | 38 deterministic allocation and storage gates |
 | Native boundary | `Category=NativeBoundary` | Deterministic SDL ABI and host-adapter behavior |
 
 Run a lane from the repository root:
@@ -43,10 +43,10 @@ historical regression.
 
 | Lane | Cases | Scope |
 | --- | ---: | --- |
-| Core | 426 | Deterministic behavior and public contracts |
-| Performance | 37 | Deterministic allocation and storage budgets |
-| Native boundary | 25 | Deterministic SDL ABI and host adapters |
-| Full suite | 488 | All selectable lanes |
+| Core | 428 | Deterministic behavior and public contracts |
+| Performance | 38 | Deterministic allocation and storage budgets |
+| Native boundary | 32 | Deterministic SDL ABI and host adapters |
+| Full suite | 498 | All selectable lanes |
 
 The performance lane has no wall-clock assertions. Tests remain under the top-level
 `tests` directory, and Goo packages exclude the complete directory. Probes and local

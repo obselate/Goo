@@ -602,11 +602,9 @@ internal func makeBoxShadowTransition(from BoxShadowStack?, target BoxShadowStac
   }
 }
 
-// Gradient compares by reference: a rebuilt Style carries fresh objects, so a
-// mismatch just re-writes the paint-only field.
 internal func sameEntry(cur StyleEntry, e StyleEntry) bool {
   return cur.A == e.A && cur.B == e.B && cur.C == e.C && cur.D == e.D
-    && entryText(cur) == entryText(e) && entryGradient(cur) == entryGradient(e)
+    && entryText(cur) == entryText(e) && sameGradient(entryGradient(cur), entryGradient(e))
     && sameBoxShadows(entryShadows(cur), entryShadows(e))
     && samePath(entryPath(cur), entryPath(e))
     && entryImageSource(cur) == entryImageSource(e)

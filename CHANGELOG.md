@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Added an opt-in `Window.Renderer` raster backend for NativeAOT, diagnostics,
+  and tools that need to avoid GPU-driver context overhead. GPU remains the
+  default. Raster requires Wayland. It paints a 16-bit linear CPU surface and
+  presents through three shared-memory buffers without creating OpenGL or EGL
+  contexts or an SDL renderer. It is opaque, compositor paced, and cannot be
+  combined with `Window.Transparent`.
+
+### Changed
+
+- Window painting retains up to 64 gradient shaders by content and bounds.
+  Image decoding uses two fixed queue workers instead of one task per request.
+- Raster Wayland damage uses `wl_surface.damage` for protocol versions 1-3 and
+  `wl_surface.damage_buffer` for version 4 and later.
+
+### Verification
+
+- Release coverage opens, pumps, resizes, presents, reuses, and reopens raster
+  windows, and rejects transparency. Lanes pass 428 core, 38 performance, 32
+  native, and 498 total.
+- Three Release probe runs measured median conversion at 2.091 ms for 1920x1080
+  and 8.268 ms for 3840x2160, down from 3.683 ms and 12.361 ms, with zero
+  managed allocation. The targets retain 39.6 MiB and 158.2 MiB. Direct Skia
+  conversion measured 27.430 ms and 109.909 ms. Headless core raster paint
+  allocates 88 B per operation.
+
 ## 0.2.0 - 2026-08-07
 
 ### Changed

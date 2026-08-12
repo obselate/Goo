@@ -45,7 +45,7 @@ internal partial class Painter {
             }
             let paint = resetPaint()
             paint.IsAntialias = true
-            using let shader = GradientSkia.ToShader(g, bounds.TightBounds)
+            let shader = cachedGradientShader(g, bounds.TightBounds)
             paint.Shader = shader
             canvas.DrawPath(fill, paint)
           } else if isApplied(n, StyleField.BackgroundColor) {

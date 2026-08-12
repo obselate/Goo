@@ -1,6 +1,9 @@
 using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using Goo;
+using Goo.InternalTextInterop;
 using SkiaSharp;
 using Xunit;
 
@@ -52,14 +55,61 @@ public sealed class AllocationTests
     public void WarmGradientPaintStaysWithinBudget()
     {
         var fixtures = new PerformanceFixtures();
-        var window = fixtures.PrepareLinearGradientPaint(600);
-        Assert.Equal(600, fixtures.GradientPaintChildCount(window));
-        using var surface = SKSurface.Create(new SKImageInfo(800, 600));
-        Assert.NotNull(surface);
+        var shared = fixtures.PrepareLinearGradientPaint(600);
+        var distinct = fixtures.PrepareDistinctLinearGradientPaint(600);
+        var shapes = fixtures.PrepareDistinctShapeGradientPaint(32);
+        var capacity = fixtures.PrepareDistinctShapeGradientPaint(66);
+        Assert.Equal(600, fixtures.GradientPaintChildCount(shared));
+        Assert.Equal(600, fixtures.GradientPaintChildCount(distinct));
+        Assert.Equal(32, fixtures.GradientPaintChildCount(shapes));
+        Assert.Equal(66, fixtures.GradientPaintChildCount(capacity));
+        using var sharedSurface = SKSurface.Create(new SKImageInfo(800, 600));
+        using var distinctSurface = SKSurface.Create(new SKImageInfo(800, 600));
+        using var shapeSurface = SKSurface.Create(new SKImageInfo(800, 600));
+        using var capacitySurface = SKSurface.Create(new SKImageInfo(800, 600));
+        Assert.NotNull(sharedSurface);
+        Assert.NotNull(distinctSurface);
+        Assert.NotNull(shapeSurface);
+        Assert.NotNull(capacitySurface);
         for (var i = 0; i < 8; i++)
-            window.PaintTo(surface!.Canvas);
+        {
+            shared.PaintTo(sharedSurface!.Canvas);
+            distinct.PaintTo(distinctSurface!.Canvas);
+            shapes.PaintTo(shapeSurface!.Canvas);
+            capacity.PaintTo(capacitySurface!.Canvas);
+        }
 
-        Assert.InRange(MeasurePaint(window, surface!), 0, 1_024);
+        var sharedBytes = MeasurePaint(shared, sharedSurface!);
+        var distinctBytes = MeasurePaint(distinct, distinctSurface!);
+        var shapeBytes = MeasurePaint(shapes, shapeSurface!);
+        var capacityBytes = MeasurePaint(capacity, capacitySurface!);
+        Console.WriteLine(
+            $"gradient-paint shared={sharedBytes} B/{MedianPaintMicros(shared, sharedSurface!):F2} us, " +
+            $"distinct={distinctBytes} B/{MedianPaintMicros(distinct, distinctSurface!):F2} us, " +
+            $"shapes={shapeBytes} B/{MedianPaintMicros(shapes, shapeSurface!):F2} us, " +
+            $"capacity={capacityBytes} B/{MedianPaintMicros(capacity, capacitySurface!):F2} us");
+        Assert.InRange(sharedBytes, 0, 1_024);
+        Assert.InRange(distinctBytes, 0, 1_024);
+        Assert.InRange(shapeBytes, 0, 1_024);
+        Assert.InRange(capacityBytes, 0, 12_000);
+        Assert.Equal(1, shared.GradientShaderCountForTests);
+        Assert.Equal(1, distinct.GradientShaderCountForTests);
+        Assert.Equal(32, shapes.GradientShaderCountForTests);
+        Assert.Equal(64, capacity.GradientShaderCountForTests);
+        try
+        {
+            shared.Close();
+            distinct.Close();
+            shapes.Close();
+            capacity.Close();
+        }
+        finally
+        {
+            Assert.Equal(0, shared.GradientShaderCountForTests);
+            Assert.Equal(0, distinct.GradientShaderCountForTests);
+            Assert.Equal(0, shapes.GradientShaderCountForTests);
+            Assert.Equal(0, capacity.GradientShaderCountForTests);
+        }
     }
 
     [Fact]
@@ -87,7 +137,7 @@ public sealed class AllocationTests
         for (var i = 0; i < 8; i++)
             window.PaintTo(surface!.Canvas);
 
-        Assert.Equal(128, MeasurePaint(window, surface!));
+        Assert.Equal(88, MeasurePaint(window, surface!));
         window.Close();
     }
 
@@ -268,6 +318,35 @@ public sealed class AllocationTests
     }
 
     [Fact]
+    public void WarmRasterColorConversionStaysAllocationFree()
+    {
+        const int pixelCount = 1_024;
+        var source = Marshal.AllocHGlobal(pixelCount * 8);
+        var destination = Marshal.AllocHGlobal(pixelCount * 4);
+        try
+        {
+            for (var index = 0; index < pixelCount * 4; index++)
+                Marshal.WriteInt16(source, index * 2, unchecked((short)(index * 257)));
+
+            Action convert = () => RasterColorPipeline.ConvertLinearRgba16ToSrgbBgra8(
+                source,
+                destination,
+                pixelCount);
+            convert();
+            for (var warmup = 0; warmup < 8; warmup++)
+                convert();
+
+            Assert.NotEqual(0, Marshal.ReadInt32(destination));
+            Assert.Equal(0, Measure(convert));
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(destination);
+            Marshal.FreeHGlobal(source);
+        }
+    }
+
+    [Fact]
     public void OneMiBEditorSemanticEditStaysWithinBudget()
     {
         using var editor = new EditorAllocationCase();
@@ -406,6 +485,30 @@ public sealed class AllocationTests
     {
         var before = GC.GetAllocatedBytesForCurrentThread();
         window.PaintTo(surface.Canvas);
+        return GC.GetAllocatedBytesForCurrentThread() - before;
+    }
+
+    private static double MedianPaintMicros(Window window, SKSurface surface)
+    {
+        const int samples = 7;
+        const int iterations = 16;
+        var values = new double[samples];
+        for (var sample = 0; sample < samples; sample++)
+        {
+            var start = Stopwatch.GetTimestamp();
+            for (var iteration = 0; iteration < iterations; iteration++)
+                window.PaintTo(surface.Canvas);
+            values[sample] = (Stopwatch.GetTimestamp() - start) * 1_000_000.0
+                / Stopwatch.Frequency / iterations;
+        }
+        Array.Sort(values);
+        return values[samples / 2];
+    }
+
+    private static long Measure(Action operation)
+    {
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        operation();
         return GC.GetAllocatedBytesForCurrentThread() - before;
     }
 

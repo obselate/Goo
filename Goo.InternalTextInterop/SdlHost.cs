@@ -13,6 +13,12 @@ internal enum SdlHostState
     Fullscreen,
 }
 
+internal enum SdlHostRenderer
+{
+    Gpu,
+    Raster,
+}
+
 internal enum SdlHitResult
 {
     Normal,
@@ -268,6 +274,7 @@ internal sealed unsafe class SdlHost : IDisposable
 
     private readonly Func<int, int, SdlHitResult> hitTest;
     private readonly SDLHitTest hitTestDelegate;
+    private readonly SdlHostRenderer renderer;
     private SDLWindowPtr window;
     private SDLGLContext context;
     private GlViewport? viewport;
@@ -292,11 +299,13 @@ internal sealed unsafe class SdlHost : IDisposable
         bool decorated,
         bool resizable,
         bool transparent,
+        SdlHostRenderer renderer,
         bool vsync,
         Func<int, int, SdlHitResult> hitTest)
     {
         this.hitTest = hitTest;
         hitTestDelegate = HitTest;
+        this.renderer = renderer;
         SdlRuntime.Acquire();
         runtimeOwned = true;
 
@@ -317,10 +326,13 @@ internal sealed unsafe class SdlHost : IDisposable
             RefreshMetrics();
             RefreshPosition();
 
-            var address = GetProcAddress("glViewport");
-            if (address == IntPtr.Zero)
-                throw new InvalidOperationException("SDL_GL_GetProcAddress did not provide glViewport.");
-            viewport = Marshal.GetDelegateForFunctionPointer<GlViewport>(address);
+            if (renderer == SdlHostRenderer.Gpu)
+            {
+                var address = GetProcAddress("glViewport");
+                if (address == IntPtr.Zero)
+                    throw new InvalidOperationException("SDL_GL_GetProcAddress did not provide glViewport.");
+                viewport = Marshal.GetDelegateForFunctionPointer<GlViewport>(address);
+            }
         }
         catch
         {
@@ -353,6 +365,7 @@ internal sealed unsafe class SdlHost : IDisposable
     public int FramebufferHeight { get; private set; }
     public int X { get; private set; }
     public int Y { get; private set; }
+    internal SdlHostRenderer Renderer => renderer;
     internal bool IsTextInputActive => textInputActive;
     public bool IsClosing { get; private set; }
     public SdlGlConfiguration GlConfiguration { get; private set; }
@@ -469,17 +482,18 @@ internal sealed unsafe class SdlHost : IDisposable
     public void SetVSync(bool value)
     {
         ThrowIfDisposed();
-        MakeCurrent();
+        if (renderer == SdlHostRenderer.Raster)
+            return;
+
         var requestedInterval = value ? 1 : 0;
+        MakeCurrent();
         Require(SDL.GLSetSwapInterval(requestedInterval), "SDL_GL_SetSwapInterval");
 
         var actualInterval = 0;
         Require(SDL.GLGetSwapInterval(ref actualInterval), "SDL_GL_GetSwapInterval");
         if (actualInterval != requestedInterval)
-        {
             throw new InvalidOperationException(
                 $"SDL_GL_SetSwapInterval requested {requestedInterval}, but SDL reports {actualInterval}.");
-        }
     }
 
     public void SetCursor(SdlHostCursor value)
@@ -540,25 +554,50 @@ internal sealed unsafe class SdlHost : IDisposable
     public IntPtr GetProcAddress(string name)
     {
         ThrowIfDisposed();
+        RequireGpu("SdlHost.GetProcAddress");
         return (IntPtr)SDL.GLGetProcAddress(name);
     }
 
     public void MakeCurrent()
     {
         ThrowIfDisposed();
+        RequireGpu("SdlHost.MakeCurrent");
         Require(SDL.GLMakeCurrent(window, context), "SDL_GL_MakeCurrent");
     }
 
     public void SwapBuffers()
     {
         ThrowIfDisposed();
+        RequireGpu("SdlHost.SwapBuffers");
         Require(SDL.GLSwapWindow(window), "SDL_GL_SwapWindow");
     }
 
     public void Viewport(int width, int height)
     {
         ThrowIfDisposed();
+        RequireGpu("SdlHost.Viewport");
         viewport?.Invoke(0, 0, width, height);
+    }
+
+    internal void GetWaylandSurface(out IntPtr display, out IntPtr surface)
+    {
+        ThrowIfDisposed();
+        RequireRaster("SdlHost.GetWaylandSurface");
+        if (!IsWayland())
+            throw new PlatformNotSupportedException(
+                $"The raster renderer does not support SDL video driver '{SDL.GetCurrentVideoDriverS()}'.");
+
+        var properties = SDL.GetWindowProperties(window);
+        display = (IntPtr)SDL.GetPointerProperty(
+            properties,
+            "SDL.window.wayland.display",
+            IntPtr.Zero);
+        surface = (IntPtr)SDL.GetPointerProperty(
+            properties,
+            "SDL.window.wayland.surface",
+            IntPtr.Zero);
+        if (display == IntPtr.Zero || surface == IntPtr.Zero)
+            throw new InvalidOperationException("SDL did not expose its Wayland display and surface.");
     }
 
     public void Dispose()
@@ -602,11 +641,18 @@ internal sealed unsafe class SdlHost : IDisposable
 
     private void CreateWindow(string title, int width, int height, bool transparent)
     {
-        ConfigureGl();
-        var flags = BuildWindowFlags(transparent);
+        if (renderer == SdlHostRenderer.Raster && transparent)
+            throw new NotSupportedException("The raster renderer does not support transparent windows.");
+        if (renderer == SdlHostRenderer.Gpu)
+            ConfigureGl();
+
+        var flags = BuildWindowFlags(transparent, renderer);
         window = SDL.CreateWindow(title, width, height, (ulong)flags);
         if (window.IsNull)
             ThrowSdl("SDL_CreateWindow");
+
+        if (renderer == SdlHostRenderer.Raster)
+            return;
 
         context = SDL.GLCreateContext(window);
         if (context.IsNull)
@@ -652,13 +698,26 @@ internal sealed unsafe class SdlHost : IDisposable
         SetGlAttribute(SDLGLAttr.ContextProfileMask, SDL.SDL_GL_CONTEXT_PROFILE_CORE);
     }
 
-    internal static SDLWindowFlags BuildWindowFlags(bool transparent)
+    internal static SDLWindowFlags BuildWindowFlags(bool transparent, SdlHostRenderer renderer)
     {
-        var flags = SDLWindowFlags.Opengl |
-            SDLWindowFlags.HighPixelDensity |
+        var flags = SDLWindowFlags.HighPixelDensity |
             SDLWindowFlags.Hidden |
             SDLWindowFlags.Resizable;
+        if (renderer == SdlHostRenderer.Gpu)
+            flags |= SDLWindowFlags.Opengl;
         return transparent ? flags | SDLWindowFlags.Transparent : flags;
+    }
+
+    private void RequireGpu(string operation)
+    {
+        if (renderer != SdlHostRenderer.Gpu)
+            throw new InvalidOperationException($"{operation} requires the GPU renderer.");
+    }
+
+    private void RequireRaster(string operation)
+    {
+        if (renderer != SdlHostRenderer.Raster)
+            throw new InvalidOperationException($"{operation} requires the raster renderer.");
     }
 
     private static void SetGlAttribute(SDLGLAttr attribute, int value)

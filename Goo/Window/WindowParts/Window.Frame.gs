@@ -450,7 +450,10 @@ public partial class Window {
     guard let n = node else {
       return
     }
-    Painter().Paint(n, canvas)
+    if retainedPainter == nil {
+      retainedPainter = Painter{ RetainGradientShaders: true }
+    }
+    retainedPainter?.Paint(n, canvas)
   }
 
   internal func UpdateAndPaint(canvas SKCanvas) {

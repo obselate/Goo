@@ -339,6 +339,16 @@ internal class PerformanceFixtures {
     return window
   }
 
+  func PrepareDistinctShapeGradientPaint(count int32) Window {
+    let window = Window{
+      Width: 800,
+      Height: 600,
+      Root: GradientPaintFixtureCell{ Count: count, DistinctGradients: true, ShapeGradients: true },
+    }
+    window.UpdateTree()
+    return window
+  }
+
   internal func prepareGradientPaint(count int32, gradient Gradient?) Window {
     let window = Window{
       Width: 800,
@@ -1477,6 +1487,7 @@ internal class GradientPaintFixtureCell : Cell {
   internal var Count int32
   internal var FillGradient Gradient?
   internal var DistinctGradients bool
+  internal var ShapeGradients bool
 
   override func Build() Blob {
     let root = Container{
@@ -1486,6 +1497,18 @@ internal class GradientPaintFixtureCell : Cell {
       FlexWrap: FlexWrap.Wrap,
     }
     if DistinctGradients {
+      if ShapeGradients {
+        let path = PathBuilder().MoveTo(0.0, 0.0).LineTo(1.0, 0.0)
+          .LineTo(1.0, 1.0).LineTo(0.0, 1.0).Close().Build()
+        for i in 0 ... Count {
+          root.Children.Add(Shape{
+            Key: "distinct-shape-gradient-$i", Width: 40, Height: 20, Path: path,
+            BackgroundGradient: LinearGradient(135.0,
+              Color.Rgb(26, 42, 108), Color.Rgb(178, 31, 31)),
+          })
+        }
+        return root
+      }
       for i in 0 ... Count {
         root.Children.Add(Container{
           Key: "distinct-gradient-$i", Width: 40, Height: 20,

@@ -109,7 +109,17 @@ internal class WindowFixtures {
     let cell = WindowGradientCell{}
     let window = Window{ Root: cell, Width: 100, Height: 100 }
     window.UpdateTree()
+    guard let tree = window.Tree else { return false }
+    guard let retainedGradient = tree.BackgroundGradient else { return false }
     let linear = window.visualFingerprint()
+    window.markFrameRendered()
+    cell.Revision.Value = 1
+    window.UpdateTree()
+    if Object.ReferenceEquals(retainedGradient, cell.LastGradient)
+      || window.RenderPending()
+      || !Object.ReferenceEquals(retainedGradient, tree.BackgroundGradient) {
+      return false
+    }
     cell.Mode.Value = 1
     window.UpdateTree()
     let angled = window.visualFingerprint()
@@ -631,16 +641,23 @@ internal class RenderGateFadeCell : Cell {
 
 internal class WindowGradientCell : Cell {
   internal var Mode State[int32]
+  internal var Revision State[int32]
+  internal var LastGradient Gradient?
 
-  init() { Mode = Track(0) }
+  init() {
+    Mode = Track(0)
+    Revision = Track(0)
+  }
 
   override func Build() Blob {
+    let black = Revision.Value == 0 ? Color.Black : Color.Rgb(0, 0, 0)
     let gradient Gradient = switch Mode.Value {
-      case 0: LinearGradient(0.0, Color.Black, Color.White)
-      case 1: LinearGradient(90.0, Color.Black, Color.White)
-      case 2: LinearGradient(90.0, Color.Black, Color.Rgb(255, 0, 0))
-      case _: RadialGradient(Color.Black, Color.Rgb(255, 0, 0))
+      case 0: LinearGradient(0.0, black, Color.White)
+      case 1: LinearGradient(90.0, black, Color.White)
+      case 2: LinearGradient(90.0, black, Color.Rgb(255, 0, 0))
+      case _: RadialGradient(black, Color.Rgb(255, 0, 0))
     }
+    LastGradient = gradient
     return Container{
       Width: 100,
       Height: 100,

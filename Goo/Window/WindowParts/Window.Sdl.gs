@@ -25,6 +25,14 @@ public partial class Window {
     }
   }
 
+  private func toSdlRenderer(value WindowRenderer) Goo.InternalTextInterop.SdlHostRenderer {
+    return switch value {
+      case WindowRenderer.Gpu: Goo.InternalTextInterop.SdlHostRenderer.Gpu
+      case WindowRenderer.Raster: Goo.InternalTextInterop.SdlHostRenderer.Raster
+      case _: throw NotSupportedException("Window.toSdlRenderer: unhandled renderer " + value.ToString())
+    }
+  }
+
   private func toSdlCursor(value Cursor) Goo.InternalTextInterop.SdlHostCursor {
     return switch value {
       case Cursor.Default: Goo.InternalTextInterop.SdlHostCursor.Default

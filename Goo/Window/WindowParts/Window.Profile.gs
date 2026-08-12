@@ -8,7 +8,7 @@ import System.Text
 internal enum FrameProfileStage {
   Frame; Events; Input; Tree; Motion; Reconcile; Build; Diff; StyleResolve;
   Transitions; Layout; InputTree;
-  Render; MakeCurrent; Paint; CanvasFlush; GpuFlush; Swap; Count
+  Render; TargetBegin; Paint; CanvasFlush; TargetFlush; Present; Count
 }
 
 internal data struct FrameProfilePoint {
@@ -30,11 +30,11 @@ internal class FrameProfileTotal {
 
 internal class FrameProfiler {
   shared {
-    // Report labels for Events..Swap in enum order.
+    // Report labels for Events..Present in enum order.
     private let stageNames []string = []string{
       "events", "input", "tree", "motion", "reconcile", "build", "diff", "style_resolve",
-      "transitions", "layout", "input_tree", "render", "current", "paint", "canvas_flush",
-      "gpu_flush", "swap" }
+      "transitions", "layout", "input_tree", "render", "target_begin", "paint", "canvas_flush",
+      "target_flush", "present" }
   }
 
   private let enabled bool

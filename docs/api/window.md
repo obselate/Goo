@@ -156,6 +156,10 @@ Gets or sets the callback that receives each physical key press.
 
 Gets or sets the callback that receives each window state change.
 
+### `Renderer`
+
+Gets or sets the renderer used the next time the window opens. GPU is the default. Raster requires Wayland, avoids GPU contexts, and cannot be combined with Transparent.
+
 ### `Resizable`
 
 Gets or sets whether the user can resize the window.
@@ -178,11 +182,11 @@ Gets or sets the window title.
 
 ### `Transparent`
 
-Gets or sets whether the native surface composites with per-pixel alpha. The value is applied when the window opens; an open window is unchanged.
+Gets or sets next-open per-pixel alpha. An open window is unchanged. Transparency requires the GPU renderer.
 
 ### `VSync`
 
-Gets or sets vertical synchronization.
+Gets or sets GPU vertical synchronization. Raster presentation is compositor paced.
 
 ### `Width`
 
@@ -227,6 +231,19 @@ Gets the reported logical height.
 ### `LogicalWidth`
 
 Gets the reported logical width.
+
+## `WindowRenderer`
+
+Source:
+
+- [`Window.gs`](../../Goo/Window/Window.gs)
+
+Selects the native rendering backend used by a window.
+
+### Values
+
+- `Gpu`
+- `Raster`
 
 ## `WindowState`
 

@@ -1,6 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Goo;
+using Goo.InternalTextInterop;
 using SkiaSharp;
 using Xunit;
 
@@ -56,6 +60,49 @@ public sealed class ImageDecodingCollection { }
     }
     [Fact] public void ProviderCompletionReconcilesThroughWindowAndDisposedLeasesFail() =>
         Assert.True(new ImageFixtures().ProviderWindowCompletionAndDisposedLeaseContract());
+    [Fact]
+    public void SyntheticDecodeAdmissionUsesExactlyTwoWorkers()
+    {
+        ImageDecoding.ResetForTests();
+        ImageDecoding.UseSyntheticDecoderForTests(true);
+        var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        ImageDecoding.SetDecodeGateForTests(gate.Task);
+        var requests = new List<ImageRequest>();
+        const int requestCount = 5;
+        try
+        {
+            for (var i = 0; i < requestCount; i++)
+                requests.Add(ImageDecoding.Request($"synthetic-admission-{i}"));
+
+            Assert.True(SpinWait.SpinUntil(
+                () => ImageDecoding.PendingDecodeCountForTests()
+                    == requestCount - ImageDecoding.DecodeWorkerCountForTests(),
+                TimeSpan.FromSeconds(2)));
+            Assert.Equal(2, ImageDecoding.DecodeWorkerCountForTests());
+            Assert.Equal(requestCount - 2, ImageDecoding.PendingDecodeCountForTests());
+
+            gate.SetResult(true);
+            foreach (var request in requests)
+                Assert.True(request.Wait().IsValid);
+        }
+        finally
+        {
+            gate.TrySetResult(true);
+            foreach (var request in requests)
+            {
+                try
+                {
+                    request.Wait();
+                }
+                catch
+                {
+                }
+                request.Release();
+            }
+            ImageDecoding.ClearDecodeGateForTests();
+            ImageDecoding.ResetForTests();
+        }
+    }
     private static void WithImage(Action<TempImage> check)
     {
         using var image = TempImage.Create();

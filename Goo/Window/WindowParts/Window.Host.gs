@@ -4,7 +4,6 @@ import System
 import System.Diagnostics
 import System.Numerics
 import System.Threading
-import SkiaSharp
 import Goo.InternalTextInterop
 
 /// Hosts a Goo tree in an SDL window.
@@ -51,6 +50,7 @@ public partial class Window {
     prepare()
 
     try {
+      let nativeRenderer = toSdlRenderer(Renderer)
       let native = Goo.InternalTextInterop.SdlHost(
         Title,
         Width,
@@ -62,19 +62,19 @@ public partial class Window {
         decorated,
         resizable,
         transparent,
+        nativeRenderer,
         VSync,
         func(px int32, py int32) Goo.InternalTextInterop.SdlHitResult { return hitTest(px, py) })
       host = native
       uiThreadBound = true
       configureHost(native)
-      createSkiaContext(native)
+      windowTarget = Goo.InternalTextInterop.SdlRenderTargetFactory.Create(native)
       if !applyNativeResize(
-        native,
         native.LogicalWidth,
         native.LogicalHeight,
         native.FramebufferWidth,
         native.FramebufferHeight) {
-        throw InvalidOperationException("Window initialization could not create an sRGB Skia surface")
+        throw InvalidOperationException("Window initialization could not create a render target")
       }
       x = native.X
       y = native.Y
@@ -149,18 +149,6 @@ public partial class Window {
     return handler()
   }
 
-  private func createSkiaContext(native Goo.InternalTextInterop.SdlHost) {
-    let getProcAddress = func(name string) IntPtr { return native.GetProcAddress(name) }
-    guard let glInterface = GRGlInterface.Create(getProcAddress) else {
-      throw InvalidOperationException("Window initialization could not create a Skia OpenGL interface")
-    }
-    using let ownedGlInterface = glInterface
-    guard let context = GRContext.CreateGl(ownedGlInterface) else {
-      throw InvalidOperationException("Window initialization could not create a Skia GPU context")
-    }
-    grContext = context
-  }
-
   /// Processes one frame with the specified elapsed time.
   /// @param dt elapsed seconds since the previous frame
   public func Pump(dt float64) {
@@ -205,7 +193,7 @@ public partial class Window {
       }
       return
     }
-    consumeNativeMetrics(native)
+    consumeNativeMetrics()
     if profiling {
       profiler.Record(FrameProfileStage.Events, eventsProfile)
     }
@@ -244,15 +232,15 @@ public partial class Window {
     if needsRenderFrame(resolver.VisualDirty) {
       let renderProfile = profiling ? profiler.Start() : FrameProfilePoint{}
       let currentProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-      native.MakeCurrent()
+      windowTarget?.BeginFrame()
       if profiling {
-        profiler.Record(FrameProfileStage.MakeCurrent, currentProfile)
+        profiler.Record(FrameProfileStage.TargetBegin, currentProfile)
       }
       renderFrame()
       let swapProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-      native.SwapBuffers()
+      windowTarget?.Present()
       if profiling {
-        profiler.Record(FrameProfileStage.Swap, swapProfile)
+        profiler.Record(FrameProfileStage.Present, swapProfile)
         profiler.Record(FrameProfileStage.Render, renderProfile)
       }
       markFrameRendered()
@@ -329,12 +317,8 @@ public partial class Window {
       try {
         input.Dispose()
       } finally {
-        surface?.Dispose()
-        surface = nil
-        renderTarget?.Dispose()
-        renderTarget = nil
-        grContext?.Dispose()
-        grContext = nil
+        windowTarget?.Dispose()
+        windowTarget = nil
         host?.Dispose()
         host = nil
         framebufferWidth = 0
@@ -361,111 +345,77 @@ public partial class Window {
       teardownNative()
     } finally {
       try {
+        retainedPainter?.ClearNativeResources()
+      } finally {
         try {
-          if let tree = node {
-            node = nil
-            TextLayouts.DisposeTree(tree)
+          try {
+            if let tree = node {
+              node = nil
+              TextLayouts.DisposeTree(tree)
+            }
+          } finally {
+            try {
+              MetricSubscriptions.Flush(this)
+            } finally {
+              MetricSubscriptions.ClearWindow(this)
+            }
           }
         } finally {
-          try {
-            MetricSubscriptions.Flush(this)
-          } finally {
-            MetricSubscriptions.ClearWindow(this)
+          motionPump.Clear()
+          pendingRebuild = 0
+          pendingPaintResourceInvalidation = 0
+          lock cellQueueGate {
+            cellTransactionActive = false
+            pendingCells.Clear()
+            deferredCells.Clear()
+            cellBatch.Clear()
+            fiberBatch.Clear()
           }
+          paintResourceHook = nil
+          imageCompletionHook = nil
+          retainedInvalidationHook = nil
+          resolver.PaintResourceInvalidated = nil
+          cellHook = nil
+          hookInstalled = false
         }
-      } finally {
-        motionPump.Clear()
-        pendingRebuild = 0
-        pendingPaintResourceInvalidation = 0
-        lock cellQueueGate {
-          cellTransactionActive = false
-          pendingCells.Clear()
-          deferredCells.Clear()
-          cellBatch.Clear()
-          fiberBatch.Clear()
-        }
-        paintResourceHook = nil
-        imageCompletionHook = nil
-        retainedInvalidationHook = nil
-        resolver.PaintResourceInvalidated = nil
-        cellHook = nil
-        hookInstalled = false
       }
     }
   }
 
   private func renderFrame() {
-    if let s = surface {
-      if let canvas = s.Canvas {
-        let profiling = profiler.Enabled
-        canvas.Save()
-        try {
-          canvas.Scale(dpi.X, dpi.Y)
-          let paintProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-          PaintTo(canvas)
-          if profiling {
-            profiler.Record(FrameProfileStage.Paint, paintProfile)
-          }
-        } finally {
-          canvas.Restore()
-        }
-        let canvasProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-        canvas.Flush()
+    if let target = windowTarget {
+      let canvas = target.Canvas
+      let profiling = profiler.Enabled
+      canvas.Save()
+      try {
+        canvas.Scale(dpi.X, dpi.Y)
+        let paintProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+        PaintTo(canvas)
         if profiling {
-          profiler.Record(FrameProfileStage.CanvasFlush, canvasProfile)
+          profiler.Record(FrameProfileStage.Paint, paintProfile)
         }
-        let gpuProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-        grContext?.Flush()
-        if profiling {
-          profiler.Record(FrameProfileStage.GpuFlush, gpuProfile)
-        }
+      } finally {
+        canvas.Restore()
+      }
+      let canvasProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+      canvas.Flush()
+      if profiling {
+        profiler.Record(FrameProfileStage.CanvasFlush, canvasProfile)
+      }
+      let targetProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+      target.Flush()
+      if profiling {
+        profiler.Record(FrameProfileStage.TargetFlush, targetProfile)
       }
     }
   }
 
-  private func recreateSurface(native Goo.InternalTextInterop.SdlHost, width int32, height int32) bool {
-    requestRender()
-    guard let ctx = grContext else {
-      return false
-    }
-    if width <= 0 || height <= 0 {
-      return false
-    }
-    surface?.Dispose()
-    surface = nil
-    renderTarget?.Dispose()
-    renderTarget = nil
-    framebufferWidth = 0
-    framebufferHeight = 0
-    ctx.ResetContext(GRGlBackendState.All)
-    let gl = native.GlConfiguration
-    let srgbInfo = GRGlFramebufferInfo(uint32(0), gl.FramebufferFormat)
-    using let colorSpace = SKColorSpace.CreateSrgbLinear()
-    let srgbTarget = GRBackendRenderTarget(width, height, gl.Samples, gl.StencilBits, srgbInfo)
-    try {
-      if let s = SKSurface.Create(ctx, srgbTarget, GRSurfaceOrigin.BottomLeft,
-        SKColorType.Srgba8888, colorSpace) {
-        renderTarget = srgbTarget
-        surface = s
-        framebufferWidth = width
-        framebufferHeight = height
-        return true
-      }
-    } catch (e Exception) {
-      srgbTarget.Dispose()
-      return false
-    }
-    srgbTarget.Dispose()
-    return false
-  }
-
-  private func consumeNativeMetrics(native Goo.InternalTextInterop.SdlHost) {
+  private func consumeNativeMetrics() {
     if !pendingMetrics {
       return
     }
     pendingMetrics = false
     if !applyNativeResize(
-      native,
       pendingLogicalWidth,
       pendingLogicalHeight,
       pendingFramebufferWidth,
@@ -474,20 +424,23 @@ public partial class Window {
     }
   }
 
-  private func applyNativeResize(native Goo.InternalTextInterop.SdlHost, logicalWidth int32, logicalHeight int32,
+  private func applyNativeResize(logicalWidth int32, logicalHeight int32,
     newFramebufferWidth int32, newFramebufferHeight int32) bool {
     HandleResize(logicalWidth, logicalHeight)
     if newFramebufferWidth <= 0 || newFramebufferHeight <= 0 {
       return true
     }
-    if framebufferWidth == newFramebufferWidth && framebufferHeight == newFramebufferHeight {
-      dpi = DpiScale(logicalWidth, logicalHeight, newFramebufferWidth, newFramebufferHeight)
-      return true
-    }
-    native.MakeCurrent()
     dpi = DpiScale(logicalWidth, logicalHeight, newFramebufferWidth, newFramebufferHeight)
-    native.Viewport(newFramebufferWidth, newFramebufferHeight)
-    return recreateSurface(native, newFramebufferWidth, newFramebufferHeight)
+    requestRender()
+    guard let target = windowTarget else {
+      return false
+    }
+    if !target.Resize(newFramebufferWidth, newFramebufferHeight) {
+      return false
+    }
+    framebufferWidth = newFramebufferWidth
+    framebufferHeight = newFramebufferHeight
+    return true
   }
 }
 

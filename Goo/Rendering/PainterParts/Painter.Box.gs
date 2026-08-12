@@ -321,18 +321,9 @@ internal partial class Painter {
         let paint = resetPaint()
         paint.IsAntialias = true
         let localRect = SKRect.Create(0.0F, 0.0F, rect.Width, rect.Height)
-        if let shader = cachedGradientShader(gradient, rect.Width, rect.Height) {
-          paint.Shader = shader
-          paintLocalBackground(canvas, rect, localRect, n, paint, ref boxScratch)
-        } else {
-          using let shader = GradientSkia.ToShader(gradient, localRect)
-          paint.Shader = shader
-          try {
-            paintLocalBackground(canvas, rect, localRect, n, paint, ref boxScratch)
-          } finally {
-            paint.Shader = nil
-          }
-        }
+        let shader = cachedGradientShader(gradient, localRect)
+        paint.Shader = shader
+        paintLocalBackground(canvas, rect, localRect, n, paint, ref boxScratch)
         filled = true
       }
     }

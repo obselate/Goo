@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using SkiaSharp;
@@ -6,7 +7,7 @@ namespace Goo.InternalTextInterop;
 
 internal static class ImageDecoding
 {
-    private const int MaxConcurrentDecodes = 2;
+    private const int DecodeWorkerCount = 2;
     private const int MaxCachedEntries = 128;
     private const long MaxCachedDecodedBytes = 64L * 1024 * 1024;
 
@@ -25,17 +26,51 @@ internal static class ImageDecoding
         internal bool Accounted { get; set; }
     }
 
+    private static readonly ConcurrentQueue<CacheEntry> decodeQueue = new();
+    private static readonly SemaphoreSlim decodeAvailable = new(0);
+    private static readonly Task[] decodeWorkers = CreateDecodeWorkers();
     private static readonly StringComparer cacheComparer = OperatingSystem.IsWindows()
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
     private static readonly Dictionary<string, CacheEntry> cache = new(cacheComparer);
     private static readonly LinkedList<CacheEntry> cacheOrder = new();
     private static readonly object cacheLock = new();
-    private static readonly SemaphoreSlim decodeSemaphore = new(MaxConcurrentDecodes, MaxConcurrentDecodes);
     private static Task? decodeGateForTests;
     private static int syntheticDecoderForTests;
     private static long byteBudgetOverrideForTests = -1;
     private static long cachedDecodedBytes;
+
+    private static Task[] CreateDecodeWorkers()
+    {
+        var workers = new Task[DecodeWorkerCount];
+        for (var index = 0; index < workers.Length; index++)
+            workers[index] = Task.Run(DecodeWorkerAsync);
+        return workers;
+    }
+
+    private static async Task DecodeWorkerAsync()
+    {
+        while (true)
+        {
+            await decodeAvailable.WaitAsync().ConfigureAwait(false);
+            if (!decodeQueue.TryDequeue(out var entry))
+                continue;
+
+            try
+            {
+                await entry.Request.DecodeAndAccountAsync(entry).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+            }
+        }
+    }
+
+    private static void Enqueue(CacheEntry entry)
+    {
+        decodeQueue.Enqueue(entry);
+        decodeAvailable.Release();
+    }
 
     public static ImageRequest Request(string path)
     {
@@ -61,7 +96,7 @@ internal static class ImageDecoding
             cache.Add(canonical, entry);
             request.Retain();
             evicted = EvictEntryLimitLocked();
-            request.Start(entry);
+            Enqueue(entry);
         }
         ReleaseCacheLeases(evicted);
         return request;
@@ -104,6 +139,10 @@ internal static class ImageDecoding
         lock (cacheLock)
             return cache.Count;
     }
+
+    internal static int DecodeWorkerCountForTests() => decodeWorkers.Length;
+
+    internal static int PendingDecodeCountForTests() => decodeQueue.Count;
 
     internal static long CachedDecodedBytesForTests()
     {
@@ -275,7 +314,7 @@ internal static class ImageDecoding
         }
     }
 
-    internal static async Task<DecodedImage> DecodeAsync(
+    internal static async ValueTask<DecodedImage> DecodeAsync(
         string path,
         Task? gate,
         bool synthetic,
@@ -283,11 +322,8 @@ internal static class ImageDecoding
         int syntheticHeight,
         CancellationToken cancellationToken)
     {
-        var admitted = false;
         try
         {
-            await decodeSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            admitted = true;
             if (gate is not null)
                 await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
@@ -296,11 +332,6 @@ internal static class ImageDecoding
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             return DecodedImage.Failed;
-        }
-        finally
-        {
-            if (admitted)
-                decodeSemaphore.Release();
         }
     }
 

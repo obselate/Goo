@@ -562,7 +562,7 @@ public sealed class TextLayoutTests
         window.PaintTo(surface!.Canvas);
         var bytes = GC.GetAllocatedBytesForCurrentThread() - before;
 
-        Assert.Equal(128, bytes);
+        Assert.Equal(88, bytes);
         window.Close();
     }
 

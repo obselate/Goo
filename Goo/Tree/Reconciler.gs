@@ -1280,40 +1280,6 @@ internal func sameStyleEntry(a StyleEntry, b StyleEntry) bool {
     && entryImageSource(a) == entryImageSource(b)
 }
 
-internal func sameGradient(a Gradient?, b Gradient?) bool {
-  if a == b {
-    return true
-  }
-  guard let left = a else {
-    return b == nil
-  }
-  guard let right = b else {
-    return false
-  }
-  let geometryMatches = switch left {
-    case linear is LinearGradient: switch right {
-      case other is LinearGradient: linear.Angle == other.Angle
-      case _: false
-    }
-    case radial is RadialGradient: switch right {
-      case other is RadialGradient: radial.CenterX == other.CenterX
-        && radial.CenterY == other.CenterY && radial.Radius == other.Radius
-      case _: false
-    }
-    case _: false
-  }
-  if !geometryMatches || left.Stops.Count != right.Stops.Count {
-    return false
-  }
-  for i in 0 ... left.Stops.Count {
-    if left.Stops[i].Offset != right.Stops[i].Offset
-      || !left.Stops[i].Color.Equals(right.Stops[i].Color) {
-      return false
-    }
-  }
-  return true
-}
-
 internal func sameDashPattern(a DashPattern?, b DashPattern?) bool {
   if a == b {
     return true

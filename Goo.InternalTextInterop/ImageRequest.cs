@@ -10,7 +10,8 @@ internal sealed class ImageRequest
     private readonly int syntheticWidth;
     private readonly int syntheticHeight;
     private readonly CancellationTokenSource cancellation = new();
-    private Task<DecodedImage>? task;
+    private readonly TaskCompletionSource<DecodedImage> completion =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int references = 1;
 
     internal ImageRequest(
@@ -28,15 +29,17 @@ internal sealed class ImageRequest
     }
 
     public string Path { get; }
-    public bool IsComplete => task!.IsCompleted;
-    public DecodedImage Result => task!.Status == TaskStatus.RanToCompletion ? task.Result : DecodedImage.Failed;
+    public bool IsComplete => completion.Task.IsCompleted;
+    public DecodedImage Result => completion.Task.Status == TaskStatus.RanToCompletion
+        ? completion.Task.Result
+        : DecodedImage.Failed;
 
-    public DecodedImage Wait() => task!.GetAwaiter().GetResult();
+    public DecodedImage Wait() => completion.Task.GetAwaiter().GetResult();
 
     public ImageCompletionRegistration OnCompleted(Action callback)
     {
         var registration = new ImageCompletionRegistration(callback);
-        _ = task!.ContinueWith(
+        _ = completion.Task.ContinueWith(
             static (_, state) => ((ImageCompletionRegistration)state!).Invoke(),
             registration,
             CancellationToken.None,
@@ -45,12 +48,7 @@ internal sealed class ImageRequest
         return registration;
     }
 
-    internal void Start(ImageDecoding.CacheEntry entry)
-    {
-        task = Task.Run(() => DecodeAndAccountAsync(entry));
-    }
-
-    private async Task<DecodedImage> DecodeAndAccountAsync(ImageDecoding.CacheEntry entry)
+    internal async ValueTask DecodeAndAccountAsync(ImageDecoding.CacheEntry entry)
     {
         try
         {
@@ -62,11 +60,12 @@ internal sealed class ImageRequest
                 syntheticHeight,
                 cancellation.Token).ConfigureAwait(false);
             ImageDecoding.Complete(entry, decoded);
-            return decoded;
+            completion.TrySetResult(decoded);
         }
-        catch
+        catch (Exception exception)
         {
             ImageDecoding.Complete(entry, null);
+            completion.TrySetException(exception);
             throw;
         }
     }
@@ -98,7 +97,7 @@ internal sealed class ImageRequest
 
     private void FinishFinalRelease()
     {
-        var current = task!;
+        var current = completion.Task;
         cancellation.Cancel();
         if (current.IsCompleted)
         {

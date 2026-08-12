@@ -8,8 +8,13 @@ import SkiaSharp
 
 internal struct GradientShaderKey {
   internal var Source Gradient
-  internal var Width float32
-  internal var Height float32
+  internal var Target SKRect
+  internal var Hash int32
+}
+
+internal struct GradientShaderCacheEntry {
+  internal var Key GradientShaderKey
+  internal var Shader SKShader
 }
 
 internal struct BoxDashEffectKey {
@@ -35,22 +40,6 @@ internal class BoxPaintScratch {
   internal var RoundRect2 SKRoundRect?
   internal var Radii2 []?SKPoint
   internal var DashEffects Dictionary[BoxDashEffectKey, SKPathEffect]?
-}
-
-internal class GradientShaderKeyComparer : IEqualityComparer[GradientShaderKey] {
-  shared {
-    internal let Instance GradientShaderKeyComparer = GradientShaderKeyComparer()
-  }
-
-  public func Equals(left GradientShaderKey, right GradientShaderKey) bool {
-    return Object.ReferenceEquals(left.Source, right.Source)
-      && left.Width == right.Width && left.Height == right.Height
-  }
-
-  public func GetHashCode(value GradientShaderKey) int32 {
-    return HashCode.Combine(
-      RuntimeHelpers.GetHashCode(value.Source), value.Width, value.Height)
-  }
 }
 
 internal class BoxDashEffectKeyComparer : IEqualityComparer[BoxDashEffectKey] {
@@ -79,7 +68,12 @@ internal partial class Painter {
 
   private var reusablePaint SKPaint?
   private var blurFilters Dictionary[float32, SKMaskFilter]?
-  private var gradientShaders Dictionary[GradientShaderKey, SKShader]?
+  private var gradientShaders List[GradientShaderCacheEntry]?
+  internal prop RetainGradientShaders bool { get; init; }
+
+  internal prop GradientShaderCountForTests int32 {
+    get { return gradientShaders?.Count ?? 0 }
+  }
   // Required differential oracle for the culling release gate.
   internal prop CullDisabled bool {
     get { return cullDisabledPainters.TryGetValue(this, out var marker) }
@@ -121,7 +115,9 @@ internal partial class Painter {
             try {
               disposeBoxScratch(ref boxScratch)
             } finally {
-              disposeGradientShaders()
+              if !RetainGradientShaders {
+                ClearNativeResources()
+              }
             }
           }
         }
@@ -284,31 +280,64 @@ internal partial class Painter {
     }
   }
 
-  private func cachedGradientShader(gradient Gradient, width float32, height float32) SKShader? {
-    let key = GradientShaderKey{ Source: gradient, Width: width, Height: height }
+  private func cachedGradientShader(gradient Gradient, target SKRect) SKShader {
+    let keyHash = gradientShaderKeyHash(gradient, target)
     if let shaders = gradientShaders {
-      if shaders.TryGetValue(key, out var existing) {
-        return existing
-      }
-      if shaders.Count >= gradientShaderCacheLimit {
-        return nil
+      var i int32 = 0
+      while i < shaders.Count {
+        let entry = shaders[i]
+        if entry.Key.Hash == keyHash
+          && entry.Key.Target.Left == target.Left
+          && entry.Key.Target.Top == target.Top
+          && entry.Key.Target.Right == target.Right
+          && entry.Key.Target.Bottom == target.Bottom
+          && sameGradient(entry.Key.Source, gradient) {
+          if i != shaders.Count - 1 {
+            shaders.RemoveAt(i)
+            shaders.Add(entry)
+          }
+          return entry.Shader
+        }
+        i++
       }
     }
-    let created = GradientSkia.ToShader(gradient, SKRect.Create(0.0F, 0.0F, width, height))
+    let key = GradientShaderKey{
+      Source: gradient,
+      Target: target,
+      Hash: keyHash,
+    }
+    let created = GradientSkia.ToShader(gradient, target)
     if gradientShaders == nil {
-      gradientShaders = Dictionary[GradientShaderKey, SKShader](4, GradientShaderKeyComparer.Instance)
+      gradientShaders = List[GradientShaderCacheEntry](4)
     }
-    if let shaders = gradientShaders {
-      shaders.Add(key, created)
+    guard let shaders = gradientShaders else {
+      return created
     }
+    if shaders.Count >= gradientShaderCacheLimit {
+      let evicted = shaders[0]
+      shaders.RemoveAt(0)
+      evicted.Shader.Dispose()
+    }
+    shaders.Add(GradientShaderCacheEntry{ Key: key, Shader: created })
     return created
   }
 
-  private func disposeGradientShaders() {
+  private func gradientShaderKeyHash(gradient Gradient, target SKRect) int32 {
+    let targetHash = HashCode.Combine(
+      hashGradientCoordinate(target.Left), hashGradientCoordinate(target.Top),
+      hashGradientCoordinate(target.Right), hashGradientCoordinate(target.Bottom))
+    return HashCode.Combine(gradientContentHash(gradient), targetHash)
+  }
+
+  private func hashGradientCoordinate(value float32) int32 {
+    return value == 0.0F ? 0 : value.GetHashCode()
+  }
+
+  internal func ClearNativeResources() {
     if let shaders = gradientShaders {
       gradientShaders = nil
-      for shader in shaders.Values {
-        shader.Dispose()
+      for entry in shaders {
+        entry.Shader.Dispose()
       }
     }
   }

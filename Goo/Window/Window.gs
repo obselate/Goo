@@ -11,6 +11,9 @@ import Goo.InternalTextInterop
 /// Identifies the requested state of a window.
 public enum WindowState { Normal; Minimized; Maximized; Fullscreen }
 
+/// Selects the native rendering backend used by a window.
+public enum WindowRenderer { Gpu; Raster }
+
 /// Describes one stable window size and display-scale snapshot.
 public data struct WindowMetrics {
   private var logicalWidth int32
@@ -57,8 +60,12 @@ public partial class Window {
   /// Reports whether the window is open.
   public prop IsOpen bool { get; private set; }
   internal prop Tree Node? { get { return node } }
+  internal prop GradientShaderCountForTests int32 {
+    get { return retainedPainter?.GradientShaderCountForTests ?? 0 }
+  }
 
-  /// Gets or sets vertical synchronization.
+  /// Gets or sets GPU vertical synchronization.
+  /// Raster presentation is compositor paced.
   public prop VSync bool {
     get { return vsync }
     set(v) {
@@ -70,6 +77,16 @@ public partial class Window {
       if let native = host {
         native.SetVSync(v)
       }
+    }
+  }
+
+  /// Gets or sets the renderer used the next time the window opens. GPU is the default.
+  /// Raster requires Wayland, avoids GPU contexts, and cannot be combined with Transparent.
+  public prop Renderer WindowRenderer {
+    get { return renderer }
+    set(v) {
+      requireUiThread("Window.Renderer")
+      renderer = v
     }
   }
 
@@ -162,8 +179,8 @@ public partial class Window {
     }
   }
 
-  /// Gets or sets whether the native surface composites with per-pixel alpha.
-  /// The value is applied when the window opens; an open window is unchanged.
+  /// Gets or sets next-open per-pixel alpha. An open window is unchanged.
+  /// Transparency requires the GPU renderer.
   public prop Transparent bool {
     get { return transparent }
     set(v) {
@@ -325,11 +342,10 @@ public partial class Window {
 
   private var input InputCoordinator
   private var accessibility AccessibilityManager?
+  private var retainedPainter Painter?
 
   private var host Goo.InternalTextInterop.SdlHost?
-  private var grContext GRContext?
-  private var surface SKSurface?
-  private var renderTarget GRBackendRenderTarget?
+  private var windowTarget Goo.InternalTextInterop.SdlRenderTarget?
   private var dpi Vector2
 
   private var pendingMetrics bool
@@ -341,6 +357,7 @@ public partial class Window {
   private var framebufferHeight int32
 
   private var state WindowState
+  private var renderer WindowRenderer
   private var vsync bool
   private var title string
   private var background Color
@@ -368,6 +385,8 @@ public partial class Window {
   public init() {
     title = ""
     Background = Color.Black
+    retainedPainter = nil
+    renderer = WindowRenderer.Gpu
     vsync = true
     decorated = true
     resizable = true
