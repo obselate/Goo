@@ -99,7 +99,9 @@ public class TextEditor : Blob {
 }
 
 internal func copyEditorLayers(values []TextPresentationLayer) []TextPresentationLayer {
-  return values.Clone() as []TextPresentationLayer
+  let result = [values.Length]TextPresentationLayer
+  Array.Copy(values, result, values.Length)
+  return result
 }
 
 internal func validateEditorLayers(document TextDocument, values []TextPresentationLayer) {

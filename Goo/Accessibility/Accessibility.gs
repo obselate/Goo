@@ -77,32 +77,32 @@ public class AccessibilityRelationships {
 
   /// Gets or sets the elements that label this element.
   public prop LabelledBy []ElementHandle {
-    get { return labelledBy.Clone() as []ElementHandle }
+    get { return copyValues(labelledBy) }
     init { labelledBy = cloneHandles(value, "LabelledBy") }
   }
   /// Gets or sets the elements that describe this element.
   public prop DescribedBy []ElementHandle {
-    get { return describedBy.Clone() as []ElementHandle }
+    get { return copyValues(describedBy) }
     init { describedBy = cloneHandles(value, "DescribedBy") }
   }
   /// Gets or sets the elements controlled by this element.
   public prop Controls []ElementHandle {
-    get { return controls.Clone() as []ElementHandle }
+    get { return copyValues(controls) }
     init { controls = cloneHandles(value, "Controls") }
   }
   /// Gets or sets the elements owned by this element.
   public prop Owns []ElementHandle {
-    get { return owns.Clone() as []ElementHandle }
+    get { return copyValues(owns) }
     init { owns = cloneHandles(value, "Owns") }
   }
   /// Gets or sets the next logical reading targets for this element.
   public prop FlowTo []ElementHandle {
-    get { return flowTo.Clone() as []ElementHandle }
+    get { return copyValues(flowTo) }
     init { flowTo = cloneHandles(value, "FlowTo") }
   }
   /// Gets or sets the elements that describe a current error.
   public prop ErrorMessage []ElementHandle {
-    get { return errorMessage.Clone() as []ElementHandle }
+    get { return copyValues(errorMessage) }
     init { errorMessage = cloneHandles(value, "ErrorMessage") }
   }
   /// Gets or sets the active descendant, when one is mounted.
@@ -191,7 +191,7 @@ public class Accessibility {
   public prop Hidden bool { get; init; }
   /// Gets or sets actions advertised by a composed control.
   public prop Actions []AccessibilityAction {
-    get { return actions.Clone() as []AccessibilityAction }
+    get { return copyValues(actions) }
     init { actions = cloneActions(value) }
   }
   /// Gets the handler for advertised composed-control actions.
@@ -742,8 +742,8 @@ internal class AccessibilityEmpty {
 }
 
 private func cloneHandles(values []?ElementHandle, name string) []ElementHandle {
-  if values == nil { throw ArgumentNullException(name) }
-  let result = values!!.Clone() as []ElementHandle
+  guard let source = values else { throw ArgumentNullException(name) }
+  let result = copyValues(source)
   for handle in result {
     if handle == nil { throw ArgumentNullException(name) }
   }
@@ -758,12 +758,18 @@ private func validateHandles(values []ElementHandle, name string) {
 }
 
 private func cloneActions(values []?AccessibilityAction) []AccessibilityAction {
-  if values == nil { throw ArgumentNullException("Actions") }
-  let result = values!!.Clone() as []AccessibilityAction
+  guard let source = values else { throw ArgumentNullException("Actions") }
+  let result = copyValues(source)
   for action in result {
     validateAction(action)
   }
   requireUnique(result, "Actions")
+  return result
+}
+
+private func copyValues[T](values []T) []T {
+  let result = [values.Length]T
+  Array.Copy(values, result, values.Length)
   return result
 }
 

@@ -411,7 +411,13 @@ internal static class TextShaping
     internal static SKTypeface MatchOrFromFamily(string? family, SKFontStyle style) =>
         SKFontManager.Default.MatchFamily(family, style) ?? SKTypeface.FromFamilyName(family, style);
 
-    private static SKFont CreateFont(SKTypeface typeface, float size) => new(typeface, size);
+    internal static SKFont CreateFont(SKTypeface typeface, float size) => new(typeface, size)
+    {
+        Edging = SKFontEdging.Antialias,
+        Hinting = SKFontHinting.Slight,
+        LinearMetrics = true,
+        Subpixel = true
+    };
 
     private static SKFontStyle Style(int weight, bool italic) => new(
         (SKFontStyleWeight)weight, SKFontStyleWidth.Normal,

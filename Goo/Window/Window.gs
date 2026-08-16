@@ -344,8 +344,8 @@ public partial class Window {
   private var accessibility AccessibilityManager?
   private var retainedPainter Painter?
 
-  private var host Goo.InternalTextInterop.SdlHost?
-  private var windowTarget Goo.InternalTextInterop.SdlRenderTarget?
+  private var host SdlHost?
+  private var windowTarget SdlRenderTarget?
   private var dpi Vector2
 
   private var pendingMetrics bool
@@ -420,9 +420,7 @@ public partial class Window {
     resolver = Resolver{}
     profiler = FrameProfiler()
     motionPump = MotionPump()
-    motionPump.Wake = func() {
-      requestReconcile()
-    }
+    motionPump.Wake = requestReconcile
 
     input = InputCoordinator()
     accessibility = nil

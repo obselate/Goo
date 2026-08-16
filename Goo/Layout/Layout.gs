@@ -250,6 +250,13 @@ internal class Layout {
   }
 }
 
+internal func nodeFromYoga(yoga Facebook.Yoga.Node) Node {
+  guard let node = YGNodeAPI.YGNodeGetContext(yoga) as Node else {
+    throw InvalidOperationException("Yoga node has no Goo context")
+  }
+  return node
+}
+
 internal func applyAll(yg Facebook.Yoga.Node, n Node, isRoot bool) {
   applyDirection(yg, n)
   applySize(yg, n)

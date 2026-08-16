@@ -574,7 +574,10 @@ internal class Reconciler {
     if let factory = e.Factory {
       return factory()
     }
-    return Activator.CreateInstance(e.CellType) as Cell
+    guard let cell = Activator.CreateInstance(e.CellType) as Cell else {
+      throw InvalidOperationException("Cell type did not create a Cell")
+    }
+    return cell
   }
 
   internal func expandCellAt(existing Node?, e CellElement, prior Cell?, owner Cell?) Node {

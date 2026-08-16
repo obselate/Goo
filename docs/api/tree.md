@@ -364,6 +364,22 @@ Controls how an image fits its destination box.
 - `Fill`
 - `None`
 
+### `Contain`
+
+Preserves the image aspect ratio within the destination box.
+
+### `Cover`
+
+Preserves the image aspect ratio while filling the destination box.
+
+### `Fill`
+
+Stretches the image to fill the destination box.
+
+### `None`
+
+Paints the image at its intrinsic size without scaling.
+
 ## `ImageSource`
 
 Source:
@@ -458,7 +474,7 @@ Supplies one image binding when a Goo element mounts.
 
 ### `Acquire`
 
-Creates the lease that Goo owns and disposes for one mounted image or background binding.
+Creates the lease Goo owns and disposes for one mounted element.
 
 ## `Text`
 
@@ -509,6 +525,14 @@ Creates an editor without presentation layers.
 - `document`: The document to edit.
 - `controller`: The per-view controller bound to the document.
 
+### `new(TextDocument,TextEditorController,ElementHandle)`
+
+Creates an editor without presentation layers and attaches a mounted handle.
+
+- `document`: The document to edit.
+- `controller`: The per-view controller bound to the document.
+- `handle`: The consumer-owned mounted element handle.
+
 ### `new(TextDocument,TextEditorController,TextPresentationLayer[])`
 
 Creates an editor with ordered presentation layers.
@@ -517,21 +541,13 @@ Creates an editor with ordered presentation layers.
 - `controller`: The per-view controller bound to the document.
 - `layers`: The ordered presentation layers.
 
-### `new(TextDocument,TextEditorController,TextPresentationLayer[],System.Nullable`1{ElementHandle})`
+### `new(TextDocument,TextEditorController,TextPresentationLayer[],ElementHandle)`
 
 Creates an editor with ordered presentation layers and a mounted handle.
 
 - `document`: The document to edit.
 - `controller`: The per-view controller bound to the document.
 - `layers`: The ordered presentation layers.
-- `handle`: The consumer-owned mounted element handle.
-
-### `new(TextDocument,TextEditorController,System.Nullable`1{ElementHandle})`
-
-Creates an editor without presentation layers and attaches a mounted handle.
-
-- `document`: The document to edit.
-- `controller`: The per-view controller bound to the document.
 - `handle`: The consumer-owned mounted element handle.
 
 ### `CaretColor`

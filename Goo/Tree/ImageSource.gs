@@ -59,9 +59,7 @@ public class ImageSource : ImageSourceProvider, IDisposable {
   /// Creates an already-completed binding that retains this source until release.
   /// @returns The completed binding for this source.
   public func Acquire() ImageSourceLease {
-    let lease = ImageSourceLease()
-    lease.Complete(this)
-    return lease
+    return ImageSourceLease(this)
   }
 
   /// Releases this source's owner reference. Existing mounted leases stay valid.
@@ -121,6 +119,15 @@ public class ImageSourceLease : IDisposable {
     registrations = List[ImageSourceCompletion]()
   }
 
+  internal init(source ImageSource) {
+    registrations = List[ImageSourceCompletion]()
+    let retained = source.retainImage()
+    completed = true
+    image = retained
+    owner = retained == nil ? nil : source
+    failed = retained == nil
+  }
+
   /// Gets whether the provider completed this binding.
   public prop IsComplete bool {
     get {
@@ -155,7 +162,7 @@ public class ImageSourceLease : IDisposable {
   }
 
   private func complete(source ImageSource?) bool {
-    var completedRegistrations []ImageSourceCompletion
+    var completedRegistrations []?ImageSourceCompletion = nil
     var retained DecodedImage?
     if source != nil { retained = source?.retainImage() }
     lock registrations {
@@ -171,7 +178,9 @@ public class ImageSourceLease : IDisposable {
       completedRegistrations = registrations.ToArray()
       registrations.Clear()
     }
-    for registration in completedRegistrations { registration.Invoke() }
+    if let current = completedRegistrations {
+      for registration in current { registration.Invoke() }
+    }
     return true
   }
 
@@ -198,7 +207,7 @@ public class ImageSourceLease : IDisposable {
   public func Dispose() {
     var current DecodedImage?
     var source ImageSource?
-    var cancelled []ImageSourceCompletion
+    var cancelled []?ImageSourceCompletion = nil
     var release bool
     lock registrations {
       if !disposed {
@@ -215,7 +224,9 @@ public class ImageSourceLease : IDisposable {
     if !release {
       return
     }
-    for registration in cancelled { registration.Dispose() }
+    if let currentCancelled = cancelled {
+      for registration in currentCancelled { registration.Dispose() }
+    }
     current?.Release()
     source?.releaseLease()
     try {

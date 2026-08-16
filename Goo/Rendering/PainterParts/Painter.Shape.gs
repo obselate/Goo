@@ -1,6 +1,7 @@
 package Goo
 
 import System
+import Goo.InternalTextInterop
 import SkiaSharp
 
 internal struct ShapeShadowPresence {

@@ -172,7 +172,7 @@ internal class ImageLayouts {
 
     internal func Measure(yoga Facebook.Yoga.Node, width float32, widthMode MeasureMode,
       height float32, heightMode MeasureMode) YGSize {
-      let n = YGNodeAPI.YGNodeGetContext(yoga) as Node
+      let n = nodeFromYoga(yoga)
       Refresh(n)
       var naturalWidth = 0.0F
       var naturalHeight = 0.0F

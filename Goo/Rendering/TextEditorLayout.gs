@@ -695,7 +695,7 @@ internal class TextEditorLayouts {
 
     internal func Measure(yoga Facebook.Yoga.Node, width float32, widthMode MeasureMode,
       height float32, heightMode MeasureMode) YGSize {
-      let n = YGNodeAPI.YGNodeGetContext(yoga) as Node
+      let n = nodeFromYoga(yoga)
       let constraint = widthMode == MeasureMode.Undefined ? -1.0F : width
       let heightConstraint = heightMode == MeasureMode.Undefined ? -1.0F : height
       let layout = For(n, constraint, heightConstraint)

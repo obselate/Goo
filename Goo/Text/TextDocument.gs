@@ -530,7 +530,7 @@ internal func replaceText(root TextPieceNode?, change TextChange) TextPieceNode?
   let ignoredAndAfter = splitText(beforeAndRest.Right, change.Range.Length)
   if change.InsertedText.Length != 0 && change.Range.Length == 0
     && canExtendLastText(beforeAndRest.Left) {
-    let before = beforeAndRest.Left as TextPieceNode
+    let before = beforeAndRest.Left!!
     return joinText(extendLastText(before, change.InsertedText), ignoredAndAfter.Right)
   }
   let inserted TextPieceNode? = if change.InsertedText.Length != 0 {
@@ -545,7 +545,7 @@ internal func replaceText(root TextPieceNode?, change TextChange) TextPieceNode?
 internal func canExtendLastText(root TextPieceNode?) bool {
   guard let node = root else { return false }
   var last = node
-  while last.Right != nil { last = last.Right as TextPieceNode }
+  while let right = last.Right { last = right }
   return last.Piece.Buffer.CanAppend(last.Piece.Start + last.Piece.Length)
 }
 
@@ -618,9 +618,9 @@ internal func removeFirstText(root TextPieceNode) TextFirst {
 internal func balanceText(root TextPieceNode) TextPieceNode {
   let difference = textHeight(root.Left) - textHeight(root.Right)
   if difference > 1 {
-    let left = root.Left as TextPieceNode
+    let left = root.Left!!
     if textHeight(left.Left) < textHeight(left.Right) {
-      let pivot = left.Right as TextPieceNode
+      let pivot = left.Right!!
       let rotatedLeft = TextPieceNode(left.Left, left.Piece, pivot.Left)
       let rotatedRight = TextPieceNode(pivot.Right, root.Piece, root.Right)
       return TextPieceNode(rotatedLeft, pivot.Piece, rotatedRight)
@@ -629,9 +629,9 @@ internal func balanceText(root TextPieceNode) TextPieceNode {
     return TextPieceNode(left.Left, left.Piece, rotatedRight)
   }
   if difference < -1 {
-    let right = root.Right as TextPieceNode
+    let right = root.Right!!
     if textHeight(right.Right) < textHeight(right.Left) {
-      let pivot = right.Left as TextPieceNode
+      let pivot = right.Left!!
       let rotatedLeft = TextPieceNode(root.Left, root.Piece, pivot.Left)
       let rotatedRight = TextPieceNode(pivot.Right, right.Piece, right.Right)
       return TextPieceNode(rotatedLeft, pivot.Piece, rotatedRight)
@@ -718,10 +718,7 @@ internal func readText(root TextPieceNode?, textRange TextRange) string {
 }
 
 internal func appendText(root TextPieceNode?, start int32, end int32, builder StringBuilder) {
-  if root == nil {
-    return
-  }
-  let node = root as TextPieceNode
+  guard let node = root else { return }
   let leftLength = textLength(node.Left)
   if start < leftLength {
     appendText(node.Left, start, end < leftLength ? end : leftLength, builder)
@@ -771,24 +768,24 @@ internal func findTextLineBreakStart(root TextPieceNode?, breakIndex int32) int3
   if breakIndex < 0 || breakIndex >= textLineBreaks(root) {
     throw ArgumentOutOfRangeException("breakIndex")
   }
-  return findTextLineBreakStart(root as TextPieceNode, breakIndex, 0)
+  return findTextLineBreakStart(root!!, breakIndex, 0)
 }
 
 internal func findTextLineBreakStart(root TextPieceNode, breakIndex int32, prefix int32) int32 {
   let left = root.Left
   let leftBreaks = textLineBreaks(left)
   if breakIndex < leftBreaks {
-    return findTextLineBreakStart(left as TextPieceNode, breakIndex, prefix)
+    return findTextLineBreakStart(left!!, breakIndex, prefix)
   }
   let leftLength = textLength(left)
   var remaining = breakIndex - leftBreaks
-  let skipPieceStart = left != nil && (left as TextPieceNode).EndsCr && root.Piece.StartsLf ? 1 : 0
+  let skipPieceStart = (left?.EndsCr ?? false) && root.Piece.StartsLf ? 1 : 0
   let pieceBreaks = root.Piece.LineBreaks - skipPieceStart
   if remaining < pieceBreaks {
     return prefix + leftLength + findPieceLineBreakStart(root.Piece, remaining + skipPieceStart)
   }
   remaining = remaining - pieceBreaks
-  let right = root.Right as TextPieceNode
+  let right = root.Right!!
   let skipRightStart = right.StartsLf && root.Piece.EndsCr ? 1 : 0
   return findTextLineBreakStart(right, remaining + skipRightStart, prefix + leftLength + root.Piece.Length)
 }
@@ -798,10 +795,8 @@ internal func findPieceLineBreakStart(piece TextPiece, breakIndex int32) int32 {
 }
 
 internal func countTextLineBreaksBefore(root TextPieceNode?, offset int32, predecessorEndsCr bool) int32 {
-  if root == nil || offset <= 0 {
-    return 0
-  }
-  let node = root as TextPieceNode
+  if offset <= 0 { return 0 }
+  guard let node = root else { return 0 }
   let left = node.Left
   let leftLength = textLength(left)
   if offset <= leftLength {
@@ -809,8 +804,7 @@ internal func countTextLineBreaksBefore(root TextPieceNode?, offset int32, prede
   }
   var count = textLineBreaks(left)
   var previousEndsCr = predecessorEndsCr
-  if left != nil {
-    let leftNode = left as TextPieceNode
+  if let leftNode = left {
     if predecessorEndsCr && leftNode.StartsLf {
       count--
     }
@@ -829,8 +823,7 @@ internal func countTextLineBreaksBefore(root TextPieceNode?, offset int32, prede
 internal func textCharAt(root TextPieceNode?, offset int32) char {
   var current = root
   var local = offset
-  while current != nil {
-    let node = current as TextPieceNode
+  while let node = current {
     let leftLength = textLength(node.Left)
     if local < leftLength {
       current = node.Left

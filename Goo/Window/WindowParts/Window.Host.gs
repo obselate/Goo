@@ -14,7 +14,7 @@ public partial class Window {
     /// @param version application version
     /// @param identifier unique reverse-domain identifier
     public func ConfigureApplication(name string, version string, identifier string) {
-      Goo.InternalTextInterop.SdlRuntime.ConfigureApplication(name, version, identifier)
+      SdlRuntime.ConfigureApplication(name, version, identifier)
     }
   }
 
@@ -25,7 +25,7 @@ public partial class Window {
   }
 
   private func requireOpenThread(operation string) {
-    Goo.InternalTextInterop.SdlRuntime.RequireMainThread(operation)
+    SdlRuntime.RequireMainThread(operation)
   }
 
   private func pushSize() {
@@ -51,7 +51,7 @@ public partial class Window {
 
     try {
       let nativeRenderer = toSdlRenderer(Renderer)
-      let native = Goo.InternalTextInterop.SdlHost(
+      let native = SdlHost(
         Title,
         Width,
         Height,
@@ -64,11 +64,11 @@ public partial class Window {
         transparent,
         nativeRenderer,
         VSync,
-        func(px int32, py int32) Goo.InternalTextInterop.SdlHitResult { return hitTest(px, py) })
+        func(px int32, py int32) SdlHitResult { return hitTest(px, py) })
       host = native
       uiThreadBound = true
       configureHost(native)
-      windowTarget = Goo.InternalTextInterop.SdlRenderTargetFactory.Create(native)
+      windowTarget = SdlRenderTargetFactory.Create(native)
       if !applyNativeResize(
         native.LogicalWidth,
         native.LogicalHeight,
@@ -88,12 +88,12 @@ public partial class Window {
     }
   }
 
-  private func configureHost(native Goo.InternalTextInterop.SdlHost) {
+  private func configureHost(native SdlHost) {
     native.MetricsChanged += func(logicalWidth int32, logicalHeight int32,
       nativeWidth int32, nativeHeight int32) {
       queueNativeMetrics(logicalWidth, logicalHeight, nativeWidth, nativeHeight)
     }
-    native.StateChanged += func(value Goo.InternalTextInterop.SdlHostState) {
+    native.StateChanged += func(value SdlHostState) {
       state = fromSdlState(value)
       requestRender()
       if let callback = OnStateChange {

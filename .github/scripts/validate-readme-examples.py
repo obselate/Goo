@@ -42,7 +42,7 @@ if temporary_root and not Path(temporary_root).is_dir():
 with tempfile.TemporaryDirectory(prefix="goo-readme-smoke-", dir=temporary_root) as directory:
     work = Path(directory)
     (work / "ReadmeSmoke.gsproj").write_text(
-        '<Project Sdk="Gsharp.NET.Sdk/0.3.633">\n'
+        '<Project Sdk="Gsharp.NET.Sdk/0.4.1">\n'
         '  <PropertyGroup>\n'
         '    <OutputType>Exe</OutputType>\n'
         '    <TargetFramework>net10.0</TargetFramework>\n'

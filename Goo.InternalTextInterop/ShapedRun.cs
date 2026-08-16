@@ -75,7 +75,7 @@ internal sealed class ShapedRun : IDisposable
 
         var lease = TypefaceLease?.Duplicate();
         var typeface = lease?.Typeface ?? TextShaping.MatchOrFromFamily(Typeface.FamilyName, Typeface.FontStyle);
-        var font = new SKFont(typeface, Font.Size);
+        var font = TextShaping.CreateFont(typeface, Font.Size);
         var visualStart = firstGlyph == 0 ? VisualStart : Points[firstGlyph].X;
         var visualEnd = lastGlyph == Points.Length ? VisualEnd : Points[lastGlyph].X;
         return new ShapedRun(Text, typeface, font, glyphs.ToArray(), points.ToArray(),

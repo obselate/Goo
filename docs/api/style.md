@@ -191,7 +191,7 @@ Returns this color with a normalized alpha channel.
 
 Returns: A color with the specified alpha channel.
 
-### `op_Implicit(string)`
+### `op_Implicit(string)~Color`
 
 Converts a CSS color string to Color.
 
@@ -350,6 +350,10 @@ Source:
 
 Paints a background with interpolated color stops.
 
+### `Stops`
+
+Gets the ordered color stops.
+
 ## `GradientStop`
 
 Source:
@@ -399,7 +403,7 @@ Creates a percentage of the available size.
 
 Returns: a percentage length
 
-### `op_Implicit(float64)`
+### `op_Implicit(float64)~Length`
 
 Converts a pixel value to a length.
 
@@ -407,7 +411,7 @@ Converts a pixel value to a length.
 
 Returns: a pixel length
 
-### `op_Implicit(int32)`
+### `op_Implicit(int32)~Length`
 
 Converts an integer pixel value to a length.
 

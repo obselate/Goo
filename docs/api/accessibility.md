@@ -222,6 +222,12 @@ Source:
 
 Receives retained semantic-tree updates from a Window.
 
+### `Update(AccessibilityTree)`
+
+Receives the current mutable retained semantic tree on the UI thread.
+
+- `tree`: The current retained semantic tree.
+
 ## `AccessibilityChecked`
 
 Source:
@@ -267,6 +273,146 @@ Source:
 
 Represents one retained semantic node. Adapters may retain this mutable view.
 
+### `Actions`
+
+Gets supported actions in deterministic order.
+
+### `Atomic`
+
+Gets the resolved atomic live-region state.
+
+### `Bounds`
+
+Gets the transformed border bounds in window logical coordinates.
+
+### `Busy`
+
+Gets the resolved busy state.
+
+### `Caret`
+
+Gets the UTF-16 active caret offset, when this node has editable text.
+
+### `Checked`
+
+Gets the resolved check state.
+
+### `Children`
+
+Gets published semantic children in deterministic source order.
+
+### `CustomRole`
+
+Gets the custom role text when Role is Custom.
+
+### `Description`
+
+Gets the resolved description.
+
+### `Disabled`
+
+Gets the inherited disabled state.
+
+### `Expanded`
+
+Gets the resolved expanded state.
+
+### `Focused`
+
+Gets whether this node owns keyboard focus.
+
+### `HasPopup`
+
+Gets the resolved popup state.
+
+### `Id`
+
+Gets the stable public semantic identifier.
+
+### `Invalid`
+
+Gets the resolved invalid state.
+
+### `Level`
+
+Gets the resolved heading level.
+
+### `Live`
+
+Gets the resolved live-region behavior.
+
+### `Modal`
+
+Gets the resolved modal state.
+
+### `MultiSelectable`
+
+Gets the resolved multiselectable state.
+
+### `Multiline`
+
+Gets the resolved multiline state.
+
+### `Name`
+
+Gets the resolved name.
+
+### `Orientation`
+
+Gets the resolved orientation.
+
+### `ReadOnly`
+
+Gets the resolved read-only state.
+
+### `Relationships`
+
+Gets resolved public-ID relationships.
+
+### `Required`
+
+Gets the resolved required state.
+
+### `Role`
+
+Gets the resolved role.
+
+### `Selected`
+
+Gets the resolved selected state.
+
+### `SelectionLength`
+
+Gets the UTF-16 selection length, when this node has editable text.
+
+### `SelectionStart`
+
+Gets the UTF-16 selection start, when this node has editable text.
+
+### `TextSnapshot`
+
+Gets the immutable editor text snapshot, when this node is a text editor.
+
+### `Value`
+
+Gets the resolved string value.
+
+### `ValueMaximum`
+
+Gets the resolved numeric maximum.
+
+### `ValueMinimum`
+
+Gets the resolved numeric minimum.
+
+### `ValueNow`
+
+Gets the resolved numeric value.
+
+### `ValueText`
+
+Gets the resolved localized value text.
+
 ## `AccessibilityOrientation`
 
 Source:
@@ -288,6 +434,34 @@ Source:
 - [`Accessibility.gs`](../../Goo/Accessibility/Accessibility.gs)
 
 Reports resolved relationship IDs for one retained semantic node.
+
+### `ActiveDescendant`
+
+Gets the active descendant target, when published.
+
+### `Controls`
+
+Gets controlled targets in declaration order.
+
+### `DescribedBy`
+
+Gets description targets in declaration order.
+
+### `ErrorMessage`
+
+Gets error-message targets in declaration order.
+
+### `FlowTo`
+
+Gets flow targets in declaration order.
+
+### `LabelledBy`
+
+Gets labeling targets in declaration order.
+
+### `Owns`
+
+Gets owned targets in declaration order.
 
 ## `AccessibilityRelationships`
 
@@ -384,6 +558,14 @@ Source:
 - [`Accessibility.gs`](../../Goo/Accessibility/Accessibility.gs)
 
 Represents the retained semantic tree delivered to an AccessibilityAdapter.
+
+### `Root`
+
+Gets the published root, or nil when no visible semantic node exists.
+
+### `Version`
+
+Gets the monotonic version for retained-tree mutations.
 
 ## `AccessibilityValue`
 

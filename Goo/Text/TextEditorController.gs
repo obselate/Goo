@@ -679,9 +679,10 @@ public class TextEditorController : IDisposable {
   }
 
   private func expandAtomicDeletions(changes List[TextChange]) []TextChange {
+    guard let mounted = mountedEditor as Node else { return changes.ToArray() }
     let result = List[TextChange]()
     for change in changes {
-      let textRange = TextEditorLayouts.ExpandAtomicRange(mountedEditor as Node, change.Range)
+      let textRange = TextEditorLayouts.ExpandAtomicRange(mounted, change.Range)
       if result.Count != 0 {
         let index = result.Count - 1
         let previous = result[index]

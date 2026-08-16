@@ -64,7 +64,7 @@ Builds the component tree.
 
 Returns: the root blob for this component
 
-### `MountSeeded``1(System.Nullable`1{string},System.Nullable`1{System.Action{TCell}},System.Nullable`1{System.Action{TCell}})`
+### `MountSeeded``1(string,System.Action{TCell},System.Action{TCell})`
 
 Describes a child component mount with one-time initialization.
 
@@ -75,7 +75,7 @@ Describes a child component mount with one-time initialization.
 
 Returns: a blob that mounts the child component
 
-### `Mount``1(System.Nullable`1{string})`
+### `Mount``1(string)`
 
 Describes a child component mount.
 
@@ -84,7 +84,7 @@ Describes a child component mount.
 
 Returns: a blob that mounts the child component
 
-### `Mount``1(System.Nullable`1{string},System.Nullable`1{System.Action{TCell}})`
+### `Mount``1(string,System.Action{TCell})`
 
 Describes a child component mount.
 
@@ -94,7 +94,7 @@ Describes a child component mount.
 
 Returns: a blob that mounts the child component
 
-### `Mount``2(System.Nullable`1{string},TInput)`
+### `Mount``2(string,TInput)`
 
 Describes a child component mount with an immutable input snapshot.
 

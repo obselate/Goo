@@ -21,8 +21,6 @@ internal data struct VectorPathCommand {
   internal let SweepClockwise bool
 }
 
-// Class because G# structs cannot override CLR virtuals; VectorPath's value
-// equality and hash flow through this single reference field.
 internal class VectorPathData {
   internal let Commands []VectorPathCommand
   internal let Hash uint64

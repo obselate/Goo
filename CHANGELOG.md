@@ -13,6 +13,11 @@
 
 ### Changed
 
+- The build toolchain now targets the pinned G# 0.4.1 release SDK. Nullable
+  safe casts use explicit flow binding, and split
+  partial types now resolve their dependencies from each declaring file.
+- Completed image leases now initialize directly and use nullable temporary
+  arrays so the 0.4.1 array zero value does not add hot-path allocations.
 - Window painting retains up to 64 gradient shaders by content and bounds.
   Image decoding uses two fixed queue workers instead of one task per request.
 - Raster Wayland damage uses `wl_surface.damage` for protocol versions 1-3 and
@@ -20,6 +25,10 @@
 
 ### Verification
 
+- The Goo Release build, package build, external package consumer, and native
+  open-pump-close smoke pass on the pinned G# 0.4.1 SDK.
+- The `TestDebug` fixture build passes after removing the old cross-part
+  interop qualification workaround.
 - Release coverage opens, pumps, resizes, presents, reuses, and reopens raster
   windows, and rejects transparency. Lanes pass 428 core, 38 performance, 32
   native, and 498 total.

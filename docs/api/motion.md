@@ -30,14 +30,6 @@ Animates toward target with Motion.Default.
 
 - `target`: value to animate toward
 
-### `To(T,(float64@ float64@ float64) -} Simulation,(float64@ float64@ float64) -} Simulation[])`
-
-Animates toward target with one shared or one-per-dimension specification.
-
-- `target`: value to animate toward
-- `spec`: first specification
-- `specs`: remaining specifications, empty for shared behavior
-
 ### `To(T,MotionVelocity)`
 
 Animates toward target with an explicit initial converter-coordinate velocity.
@@ -45,12 +37,20 @@ Animates toward target with an explicit initial converter-coordinate velocity.
 - `target`: value to animate toward
 - `velocity`: uniform or dimension-ordered initial velocity
 
-### `To(T,MotionVelocity,(float64@ float64@ float64) -} Simulation,(float64@ float64@ float64) -} Simulation[])`
+### `To(T,MotionVelocity,System.Func{float64,float64,float64,Simulation},System.Func{float64,float64,float64,Simulation}[])`
 
 Animates toward target with explicit velocity and shared or per-dimension specifications.
 
 - `target`: value to animate toward
 - `velocity`: uniform or dimension-ordered initial velocity
+- `spec`: first specification
+- `specs`: remaining specifications, empty for shared behavior
+
+### `To(T,System.Func{float64,float64,float64,Simulation},System.Func{float64,float64,float64,Simulation}[])`
+
+Animates toward target with one shared or one-per-dimension specification.
+
+- `target`: value to animate toward
 - `spec`: first specification
 - `specs`: remaining specifications, empty for shared behavior
 
@@ -98,7 +98,7 @@ Source:
 
 Converts an animated value to fixed scalar simulation coordinates.
 
-### `new(int32,(T@ []float64) -} void,([]float64) -} T)`
+### `new(int32,System.Action{T,float64[]},System.Func{float64[],T})`
 
 Creates a converter with a fixed coordinate count and conversion callbacks.
 

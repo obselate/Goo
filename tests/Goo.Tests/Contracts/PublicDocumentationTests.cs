@@ -16,18 +16,19 @@ public sealed class PublicDocumentationTests
     private static readonly string[] ExpectedMethodIds =
     {
         "M:Goo.Accessibility.#ctor",
-        "M:Goo.AccessibilityActionRequest.#ctor(AccessibilityAction)",
+        "M:Goo.AccessibilityActionRequest.#ctor(Goo.AccessibilityAction)",
         "M:Goo.AccessibilityActionRequest.Scroll(System.Double,System.Double)",
         "M:Goo.AccessibilityActionRequest.SetSelection(System.Int32,System.Int32)",
         "M:Goo.AccessibilityActionRequest.SetValue(System.String)",
+        "M:Goo.AccessibilityAdapter.Update(Goo.AccessibilityTree)",
         "M:Goo.AccessibilityRelationships.#ctor",
         "M:Goo.AccessibilityValue.#ctor",
         "M:Goo.Anim`1.Set(`0)",
         "M:Goo.Anim`1.Snap(`0)",
         "M:Goo.Anim`1.To(`0)",
-        "M:Goo.Anim`1.To(`0,(float64@ float64@ float64) -} Simulation,(float64@ float64@ float64) -} Simulation[])",
+        "M:Goo.Anim`1.To(`0,System.Func{System.Double,System.Double,System.Double,Goo.Simulation},System.Func{System.Double,System.Double,System.Double,Goo.Simulation}[])",
         "M:Goo.Anim`1.To(`0,Goo.MotionVelocity)",
-        "M:Goo.Anim`1.To(`0,Goo.MotionVelocity,(float64@ float64@ float64) -} Simulation,(float64@ float64@ float64) -} Simulation[])",
+        "M:Goo.Anim`1.To(`0,Goo.MotionVelocity,System.Func{System.Double,System.Double,System.Double,Goo.Simulation},System.Func{System.Double,System.Double,System.Double,Goo.Simulation}[])",
         "M:Goo.Button.#ctor",
         "M:Goo.Cell.#ctor",
         "M:Goo.Cell.Animate(Goo.Color)",
@@ -36,10 +37,10 @@ public sealed class PublicDocumentationTests
         "M:Goo.Cell.Animate(System.Double)",
         "M:Goo.Cell.Animate``1(``0,Goo.MotionConverter{``0})",
         "M:Goo.Cell.Build",
-        "M:Goo.Cell.MountSeeded``1(System.Nullable`1{System.String},System.Nullable`1{System.Action{``0}},System.Nullable`1{System.Action{``0}})",
-        "M:Goo.Cell.Mount``1(System.Nullable`1{System.String})",
-        "M:Goo.Cell.Mount``1(System.Nullable`1{System.String},System.Nullable`1{System.Action{``0}})",
-        "M:Goo.Cell.Mount``2(System.Nullable`1{System.String},``0)",
+        "M:Goo.Cell.MountSeeded``1(System.String,System.Action{``0},System.Action{``0})",
+        "M:Goo.Cell.Mount``1(System.String)",
+        "M:Goo.Cell.Mount``1(System.String,System.Action{``0})",
+        "M:Goo.Cell.Mount``2(System.String,``0)",
         "M:Goo.Cell.Prop``1(``0)",
         "M:Goo.Cell.Rebuild",
         "M:Goo.Cell.Track``1(``0)",
@@ -50,7 +51,7 @@ public sealed class PublicDocumentationTests
         "M:Goo.Color.Rgba(System.Int32,System.Int32,System.Int32,System.Int32)",
         "M:Goo.Color.TryParse(System.String)",
         "M:Goo.Color.WithAlpha(System.Double)",
-        "M:Goo.Color.op_Implicit(System.String)",
+        "M:Goo.Color.op_Implicit(System.String)~Goo.Color",
         "M:Goo.Container.#ctor",
         "M:Goo.DashPattern.#ctor(System.Double[],System.Double)",
         "M:Goo.ElementHandle.#ctor",
@@ -59,20 +60,21 @@ public sealed class PublicDocumentationTests
         "M:Goo.ElementHandle.ScrollIntoView",
         "M:Goo.ElementHandle.ScrollTo(System.Double,System.Double)",
         "M:Goo.ElementHandle.SetTextInputArea(Goo.ElementRect)",
-        "M:Goo.ElementHandle.TryCopyTextRangeRects(Goo.TextRange,TextCoordinateSpace,System.Span{Goo.ElementRect},System.Int32@)",
-        "M:Goo.ElementHandle.TryGetTextCaretRect(Goo.TextPosition,TextCoordinateSpace,Goo.ElementRect@)",
-        "M:Goo.ElementHandle.TryGetTextPositionAt(Goo.Point,TextCoordinateSpace,Goo.TextPosition@)",
+        "M:Goo.ElementHandle.TryCopyTextRangeRects(Goo.TextRange,Goo.TextCoordinateSpace,System.Span{Goo.ElementRect},System.Int32@)",
+        "M:Goo.ElementHandle.TryGetTextCaretRect(Goo.TextPosition,Goo.TextCoordinateSpace,Goo.ElementRect@)",
+        "M:Goo.ElementHandle.TryGetTextPositionAt(Goo.Point,Goo.TextCoordinateSpace,Goo.TextPosition@)",
         "M:Goo.Image.#ctor",
         "M:Goo.ImageSource.#ctor(System.Int32,System.Int32,System.Byte[])",
         "M:Goo.ImageSource.Acquire",
+        "M:Goo.ImageSourceProvider.Acquire",
         "M:Goo.ImageSource.Dispose",
         "M:Goo.ImageSourceLease.#ctor",
         "M:Goo.ImageSourceLease.Complete(Goo.ImageSource)",
         "M:Goo.ImageSourceLease.Dispose",
         "M:Goo.ImageSourceLease.Fail",
         "M:Goo.Length.Percent(System.Double)",
-        "M:Goo.Length.op_Implicit(System.Double)",
-        "M:Goo.Length.op_Implicit(System.Int32)",
+        "M:Goo.Length.op_Implicit(System.Double)~Goo.Length",
+        "M:Goo.Length.op_Implicit(System.Int32)~Goo.Length",
         "M:Goo.LinearGradient.#ctor(Goo.Color[])",
         "M:Goo.LinearGradient.#ctor(System.Double,Goo.Color[])",
         "M:Goo.LinearGradient.#ctor(System.Double,Goo.GradientStop[])",
@@ -102,7 +104,7 @@ public sealed class PublicDocumentationTests
         "M:Goo.Simulation.Position(System.Double)",
         "M:Goo.Simulation.Velocity(System.Double)",
         "M:Goo.Motion.#ctor",
-        "M:Goo.MotionConverter`1.#ctor(System.Int32,(T@ []float64) -} void,([]float64) -} T)",
+        "M:Goo.MotionConverter`1.#ctor(System.Int32,System.Action{`0,System.Double[]},System.Func{System.Double[],`0})",
         "M:Goo.MotionConverter`1.Dimensions",
         "M:Goo.MotionConverter`1.Read(`0,System.Double[])",
         "M:Goo.MotionConverter`1.Write(System.Double[])",
@@ -128,9 +130,9 @@ public sealed class PublicDocumentationTests
         "M:Goo.TextDocument.Snapshot",
         "M:Goo.TextDocument.Undo",
         "M:Goo.TextEditor.#ctor(Goo.TextDocument,Goo.TextEditorController)",
-        "M:Goo.TextEditor.#ctor(Goo.TextDocument,Goo.TextEditorController,System.Nullable`1{Goo.ElementHandle})",
+        "M:Goo.TextEditor.#ctor(Goo.TextDocument,Goo.TextEditorController,Goo.ElementHandle)",
         "M:Goo.TextEditor.#ctor(Goo.TextDocument,Goo.TextEditorController,Goo.TextPresentationLayer[])",
-        "M:Goo.TextEditor.#ctor(Goo.TextDocument,Goo.TextEditorController,Goo.TextPresentationLayer[],System.Nullable`1{Goo.ElementHandle})",
+        "M:Goo.TextEditor.#ctor(Goo.TextDocument,Goo.TextEditorController,Goo.TextPresentationLayer[],Goo.ElementHandle)",
         "M:Goo.TextCommandEvent.#ctor(Goo.TextCommand)",
         "M:Goo.TextEditorController.#ctor(Goo.TextDocument)",
         "M:Goo.TextEditorController.BeginComposition",
@@ -210,6 +212,14 @@ public sealed class PublicDocumentationTests
         "M:Goo.PanelTransform.op_Inequality(Goo.PanelTransform,Goo.PanelTransform)",
     };
 
+    private static readonly string[] ExpectedEnumFieldIds =
+    {
+        "F:Goo.ImageFit.Contain",
+        "F:Goo.ImageFit.Cover",
+        "F:Goo.ImageFit.Fill",
+        "F:Goo.ImageFit.None",
+    };
+
     private static readonly HashSet<Type> SynthesizedPrimaryDataTypes =
     [
         typeof(TextChange),
@@ -232,23 +242,24 @@ public sealed class PublicDocumentationTests
             ["M:Goo.AccessibilityActionRequest.Scroll(System.Double,System.Double)"] = new(["x", "y"], [], false),
             ["M:Goo.AccessibilityActionRequest.SetSelection(System.Int32,System.Int32)"] = new(["start", "length"], [], false),
             ["M:Goo.AccessibilityActionRequest.SetValue(System.String)"] = new(["value"], [], false),
-            ["M:Goo.AccessibilityActionRequest.#ctor(AccessibilityAction)"] = new(["action"], [], false),
+            ["M:Goo.AccessibilityActionRequest.#ctor(Goo.AccessibilityAction)"] = new(["action"], [], false),
+            ["M:Goo.AccessibilityAdapter.Update(Goo.AccessibilityTree)"] = new(["tree"], [], false),
             ["M:Goo.Anim`1.Set(`0)"] = new(["value"], [], false),
             ["M:Goo.Anim`1.Snap(`0)"] = new(["value"], [], false),
             ["M:Goo.Anim`1.To(`0)"] = new(["target"], [], false),
-            ["M:Goo.Anim`1.To(`0,(float64@ float64@ float64) -} Simulation,(float64@ float64@ float64) -} Simulation[])"] = new(["target", "spec", "specs"], [], false),
+            ["M:Goo.Anim`1.To(`0,System.Func{System.Double,System.Double,System.Double,Goo.Simulation},System.Func{System.Double,System.Double,System.Double,Goo.Simulation}[])"] = new(["target", "spec", "specs"], [], false),
             ["M:Goo.Anim`1.To(`0,Goo.MotionVelocity)"] = new(["target", "velocity"], [], false),
-            ["M:Goo.Anim`1.To(`0,Goo.MotionVelocity,(float64@ float64@ float64) -} Simulation,(float64@ float64@ float64) -} Simulation[])"] = new(["target", "velocity", "spec", "specs"], [], false),
+            ["M:Goo.Anim`1.To(`0,Goo.MotionVelocity,System.Func{System.Double,System.Double,System.Double,Goo.Simulation},System.Func{System.Double,System.Double,System.Double,Goo.Simulation}[])"] = new(["target", "velocity", "spec", "specs"], [], false),
             ["M:Goo.Cell.Animate(Goo.Color)"] = new(["initial"], [], true),
             ["M:Goo.Cell.Animate(Goo.Length)"] = new(["initial"], [], true),
             ["M:Goo.Cell.Animate(Goo.Point)"] = new(["initial"], [], true),
             ["M:Goo.Cell.Animate(System.Double)"] = new(["initial"], [], true),
             ["M:Goo.Cell.Animate``1(``0,Goo.MotionConverter{``0})"] = new(["initial", "converter"], ["T"], true),
             ["M:Goo.Cell.Build"] = new([], [], true),
-            ["M:Goo.Cell.Mount``1(System.Nullable`1{System.String})"] = new(["key"], ["TCell"], true),
-            ["M:Goo.Cell.Mount``1(System.Nullable`1{System.String},System.Nullable`1{System.Action{``0}})"] = new(["key", "configure"], ["TCell"], true),
-            ["M:Goo.Cell.Mount``2(System.Nullable`1{System.String},``0)"] = new(["key", "input"], ["TInput", "TCell"], true),
-            ["M:Goo.Cell.MountSeeded``1(System.Nullable`1{System.String},System.Nullable`1{System.Action{``0}},System.Nullable`1{System.Action{``0}})"] = new(["key", "seed", "configure"], ["TCell"], true),
+            ["M:Goo.Cell.Mount``1(System.String)"] = new(["key"], ["TCell"], true),
+            ["M:Goo.Cell.Mount``1(System.String,System.Action{``0})"] = new(["key", "configure"], ["TCell"], true),
+            ["M:Goo.Cell.Mount``2(System.String,``0)"] = new(["key", "input"], ["TInput", "TCell"], true),
+            ["M:Goo.Cell.MountSeeded``1(System.String,System.Action{``0},System.Action{``0})"] = new(["key", "seed", "configure"], ["TCell"], true),
             ["M:Goo.Cell.Prop``1(``0)"] = new(["initial"], ["T"], true),
             ["M:Goo.Cell.Track``1(``0)"] = new(["initial"], ["T"], true),
             ["M:Goo.Color.FromNormalized(System.Single,System.Single,System.Single,System.Single)"] = new(["r", "g", "b", "a"], [], true),
@@ -257,23 +268,24 @@ public sealed class PublicDocumentationTests
             ["M:Goo.Color.Rgba(System.Int32,System.Int32,System.Int32,System.Int32)"] = new(["r", "g", "b", "a"], [], true),
             ["M:Goo.Color.TryParse(System.String)"] = new(["value"], [], true),
             ["M:Goo.Color.WithAlpha(System.Double)"] = new(["alpha"], [], true),
-            ["M:Goo.Color.op_Implicit(System.String)"] = new(["value"], [], true),
+            ["M:Goo.Color.op_Implicit(System.String)~Goo.Color"] = new(["value"], [], true),
             ["M:Goo.DashPattern.#ctor(System.Double[],System.Double)"] = new(["intervals", "offset"], [], false),
             ["M:Goo.ElementHandle.Blur"] = new([], [], true),
             ["M:Goo.ElementHandle.Focus"] = new([], [], true),
             ["M:Goo.ElementHandle.ScrollIntoView"] = new([], [], true),
             ["M:Goo.ElementHandle.ScrollTo(System.Double,System.Double)"] = new(["x", "y"], [], true),
             ["M:Goo.ElementHandle.SetTextInputArea(Goo.ElementRect)"] = new([], [], true),
-            ["M:Goo.ElementHandle.TryCopyTextRangeRects(Goo.TextRange,TextCoordinateSpace,System.Span{Goo.ElementRect},System.Int32@)"] = new(["required"], [], true),
-            ["M:Goo.ElementHandle.TryGetTextCaretRect(Goo.TextPosition,TextCoordinateSpace,Goo.ElementRect@)"] = new([], [], true),
-            ["M:Goo.ElementHandle.TryGetTextPositionAt(Goo.Point,TextCoordinateSpace,Goo.TextPosition@)"] = new([], [], true),
+            ["M:Goo.ElementHandle.TryCopyTextRangeRects(Goo.TextRange,Goo.TextCoordinateSpace,System.Span{Goo.ElementRect},System.Int32@)"] = new(["required"], [], true),
+            ["M:Goo.ElementHandle.TryGetTextCaretRect(Goo.TextPosition,Goo.TextCoordinateSpace,Goo.ElementRect@)"] = new([], [], true),
+            ["M:Goo.ElementHandle.TryGetTextPositionAt(Goo.Point,Goo.TextCoordinateSpace,Goo.TextPosition@)"] = new([], [], true),
             ["M:Goo.ImageSource.#ctor(System.Int32,System.Int32,System.Byte[])"] = new(["width", "height", "pixels"], [], false),
             ["M:Goo.ImageSource.Acquire"] = new([], [], true),
+            ["M:Goo.ImageSourceProvider.Acquire"] = new([], [], false),
             ["M:Goo.ImageSourceLease.Complete(Goo.ImageSource)"] = new(["source"], [], true),
             ["M:Goo.ImageSourceLease.Fail"] = new([], [], true),
             ["M:Goo.Length.Percent(System.Double)"] = new(["value"], [], true),
-            ["M:Goo.Length.op_Implicit(System.Double)"] = new(["value"], [], true),
-            ["M:Goo.Length.op_Implicit(System.Int32)"] = new(["value"], [], true),
+            ["M:Goo.Length.op_Implicit(System.Double)~Goo.Length"] = new(["value"], [], true),
+            ["M:Goo.Length.op_Implicit(System.Int32)~Goo.Length"] = new(["value"], [], true),
             ["M:Goo.LinearGradient.#ctor(Goo.Color[])"] = new(["colors"], [], false),
             ["M:Goo.LinearGradient.#ctor(System.Double,Goo.Color[])"] = new(["angle", "colors"], [], false),
             ["M:Goo.LinearGradient.#ctor(System.Double,Goo.GradientStop[])"] = new(["angle", "stops"], [], false),
@@ -300,9 +312,9 @@ public sealed class PublicDocumentationTests
             ["M:Goo.TextDocument.Snapshot"] = new([], [], true),
             ["M:Goo.TextDocument.Undo"] = new([], [], true),
             ["M:Goo.TextEditor.#ctor(Goo.TextDocument,Goo.TextEditorController)"] = new(["document", "controller"], [], false),
-            ["M:Goo.TextEditor.#ctor(Goo.TextDocument,Goo.TextEditorController,System.Nullable`1{Goo.ElementHandle})"] = new(["document", "controller", "handle"], [], false),
+            ["M:Goo.TextEditor.#ctor(Goo.TextDocument,Goo.TextEditorController,Goo.ElementHandle)"] = new(["document", "controller", "handle"], [], false),
             ["M:Goo.TextEditor.#ctor(Goo.TextDocument,Goo.TextEditorController,Goo.TextPresentationLayer[])"] = new(["document", "controller", "layers"], [], false),
-            ["M:Goo.TextEditor.#ctor(Goo.TextDocument,Goo.TextEditorController,Goo.TextPresentationLayer[],System.Nullable`1{Goo.ElementHandle})"] = new(["document", "controller", "layers", "handle"], [], false),
+            ["M:Goo.TextEditor.#ctor(Goo.TextDocument,Goo.TextEditorController,Goo.TextPresentationLayer[],Goo.ElementHandle)"] = new(["document", "controller", "layers", "handle"], [], false),
             ["M:Goo.TextCommandEvent.#ctor(Goo.TextCommand)"] = new(["command"], [], false),
             ["M:Goo.TextEditorController.#ctor(Goo.TextDocument)"] = new(["document"], [], false),
             ["M:Goo.TextEditorController.BeginComposition"] = new([], [], true),
@@ -355,7 +367,7 @@ public sealed class PublicDocumentationTests
             ["M:Goo.Simulation.Done(System.Double)"] = new(["elapsed"], [], true),
             ["M:Goo.Simulation.Position(System.Double)"] = new(["elapsed"], [], true),
             ["M:Goo.Simulation.Velocity(System.Double)"] = new(["elapsed"], [], true),
-            ["M:Goo.MotionConverter`1.#ctor(System.Int32,(T@ []float64) -} void,([]float64) -} T)"] = new(["dimensions", "read", "write"], [], false),
+            ["M:Goo.MotionConverter`1.#ctor(System.Int32,System.Action{`0,System.Double[]},System.Func{System.Double[],`0})"] = new(["dimensions", "read", "write"], [], false),
             ["M:Goo.MotionConverter`1.Read(`0,System.Double[])"] = new(["value", "into"], [], false),
             ["M:Goo.MotionConverter`1.Write(System.Double[])"] = new(["dims"], [], true),
             ["M:Goo.MotionVelocity.Add(Goo.MotionVelocity)"] = new(["other"], [], true),
@@ -403,7 +415,7 @@ public sealed class PublicDocumentationTests
     }
 
     [Fact]
-    public void XmlEmitterOmissionsStillRequireSourceDocumentation()
+    public void EnumsInterfacesAndWindowPartialsRequireSourceDocumentation()
     {
         var sources = Directory.EnumerateFiles(
                 Path.Combine(FindRepositoryRoot().FullName, "Goo"), "*.gs", SearchOption.AllDirectories)
@@ -499,10 +511,6 @@ public sealed class PublicDocumentationTests
             .Where(type => type.IsAbstract)
             .Select(type => type.FullName)
             .ToHashSet(StringComparer.Ordinal);
-        var interfaceTypes = ApiTypes()
-            .Where(type => type.IsInterface)
-            .Select(type => type.FullName)
-            .ToHashSet(StringComparer.Ordinal);
         var generatedNames = new HashSet<string>(StringComparer.Ordinal)
         {
             "Deconstruct", "Equals", "GetHashCode", "ToString", "op_Equality", "op_Inequality",
@@ -514,8 +522,7 @@ public sealed class PublicDocumentationTests
                     && parts[1] != "Goo.Cell`1"
                     && !SynthesizedPrimaryDataTypes.Any(type => type.FullName == parts[1])
                     && !abstractTypes.Contains(parts[1])
-                || parts[0] == "method" && !generatedNames.Contains(parts[2])
-                    && !interfaceTypes.Contains(parts[1]));
+                || parts[0] == "method" && !generatedNames.Contains(parts[2]));
         Assert.Equal(count, ExpectedMethodIds.Length);
     }
 
@@ -523,15 +530,15 @@ public sealed class PublicDocumentationTests
     {
         var types = ApiTypes().ToArray();
         var typeIds = types
-            .Where(type => !type.IsEnum && !type.IsInterface && type != typeof(Window))
+            .Where(type => type != typeof(Window))
             .Select(type => $"T:{type.FullName}");
         var propertyIds = types
-            .Where(type => !type.IsInterface && !SynthesizedPrimaryDataTypes.Contains(type))
+            .Where(type => !SynthesizedPrimaryDataTypes.Contains(type))
             .SelectMany(type => type.GetProperties(PublicDeclared)
                 .Select(property => $"P:{type.FullName}.{property.Name}"));
         var eventIds = types.SelectMany(type => type.GetEvents(PublicDeclared)
             .Select(@event => $"E:{type.FullName}.{@event.Name}"));
-        return ExpectedMethodIds.Concat(ExpectedEqualityDocumentationIds).Concat(typeIds).Concat(propertyIds).Concat(eventIds)
+        return ExpectedMethodIds.Concat(ExpectedEqualityDocumentationIds).Concat(ExpectedEnumFieldIds).Concat(typeIds).Concat(propertyIds).Concat(eventIds)
             .Append("P:Goo.Cell`1.Input");
     }
 

@@ -279,7 +279,7 @@ internal class TextLayouts {
 
     internal func Measure(yoga Facebook.Yoga.Node, width float32, widthMode MeasureMode,
       height float32, heightMode MeasureMode) YGSize {
-      let n = YGNodeAPI.YGNodeGetContext(yoga) as Node
+      let n = nodeFromYoga(yoga)
       let constraint = widthMode == MeasureMode.Undefined ? -1.0F : width
       let layout = For(n, constraint)
       return clampMeasuredSize(layout.Width, layout.Height, width, widthMode, height, heightMode)
