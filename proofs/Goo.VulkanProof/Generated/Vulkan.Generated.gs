@@ -10,12 +10,14 @@ type VkAttachmentStoreOp = int32
 type VkBlendFactor = int32
 type VkBlendOp = int32
 type VkBool32 = uint32
+type VkBorderColor = int32
 type VkBuffer = uint64
 type VkBufferCreateFlagBits = int32
 type VkFlags = uint32
 type VkBufferCreateFlags = VkFlags
 type VkBufferUsageFlagBits = int32
 type VkBufferUsageFlags = VkFlags
+type VkBufferView = uint64
 type VkColorComponentFlagBits = int32
 type VkColorComponentFlags = VkFlags
 type VkColorSpaceKHR = int32
@@ -43,7 +45,14 @@ type VkDebugUtilsMessengerCreateFlagsEXT = VkFlags
 type VkDebugUtilsMessengerEXT = uint64
 type VkDependencyFlagBits = int32
 type VkDependencyFlags = VkFlags
+type VkDescriptorPool = uint64
+type VkDescriptorPoolCreateFlagBits = int32
+type VkDescriptorPoolCreateFlags = VkFlags
+type VkDescriptorSet = uint64
 type VkDescriptorSetLayout = uint64
+type VkDescriptorSetLayoutCreateFlagBits = int32
+type VkDescriptorSetLayoutCreateFlags = VkFlags
+type VkDescriptorType = int32
 type VkDevice = nint
 type VkDeviceCreateFlags = VkFlags
 type VkDeviceMemory = uint64
@@ -54,6 +63,7 @@ type VkDynamicState = int32
 type VkFence = uint64
 type VkFenceCreateFlagBits = int32
 type VkFenceCreateFlags = VkFlags
+type VkFilter = int32
 type VkFormat = int32
 type VkFormatFeatureFlagBits = int32
 type VkFormatFeatureFlags = VkFlags
@@ -134,6 +144,11 @@ type VkResult = int32
 type VkSampleCountFlagBits = int32
 type VkSampleCountFlags = VkFlags
 type VkSampleMask = uint32
+type VkSampler = uint64
+type VkSamplerAddressMode = int32
+type VkSamplerCreateFlagBits = int32
+type VkSamplerCreateFlags = VkFlags
+type VkSamplerMipmapMode = int32
 type VkSemaphore = uint64
 type VkSemaphoreCreateFlags = VkFlags
 type VkShaderModule = uint64
@@ -210,6 +225,12 @@ class VkConstants {
         const VK_BLEND_OP_MIN VkBlendOp = 3
         const VK_BLEND_OP_REVERSE_SUBTRACT VkBlendOp = 2
         const VK_BLEND_OP_SUBTRACT VkBlendOp = 1
+        const VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK VkBorderColor = 2
+        const VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE VkBorderColor = 4
+        const VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK VkBorderColor = 0
+        const VK_BORDER_COLOR_INT_OPAQUE_BLACK VkBorderColor = 3
+        const VK_BORDER_COLOR_INT_OPAQUE_WHITE VkBorderColor = 5
+        const VK_BORDER_COLOR_INT_TRANSPARENT_BLACK VkBorderColor = 1
         const VK_BUFFER_CREATE_SPARSE_ALIASED_BIT VkBufferCreateFlagBits = 4
         const VK_BUFFER_CREATE_SPARSE_BINDING_BIT VkBufferCreateFlagBits = 1
         const VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT VkBufferCreateFlagBits = 2
@@ -273,6 +294,18 @@ class VkConstants {
         const VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT VkDebugUtilsMessageTypeFlagBitsEXT = 4
         const VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT VkDebugUtilsMessageTypeFlagBitsEXT = 2
         const VK_DEPENDENCY_BY_REGION_BIT VkDependencyFlagBits = 1
+        const VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT VkDescriptorPoolCreateFlagBits = 1
+        const VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER VkDescriptorType = 1
+        const VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT VkDescriptorType = 10
+        const VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE VkDescriptorType = 2
+        const VK_DESCRIPTOR_TYPE_SAMPLER VkDescriptorType = 0
+        const VK_DESCRIPTOR_TYPE_STORAGE_BUFFER VkDescriptorType = 7
+        const VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC VkDescriptorType = 9
+        const VK_DESCRIPTOR_TYPE_STORAGE_IMAGE VkDescriptorType = 3
+        const VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER VkDescriptorType = 5
+        const VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER VkDescriptorType = 6
+        const VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC VkDescriptorType = 8
+        const VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER VkDescriptorType = 4
         const VK_DYNAMIC_STATE_BLEND_CONSTANTS VkDynamicState = 4
         const VK_DYNAMIC_STATE_DEPTH_BIAS VkDynamicState = 3
         const VK_DYNAMIC_STATE_DEPTH_BOUNDS VkDynamicState = 5
@@ -308,6 +341,8 @@ class VkConstants {
         const VK_EXT_SWAPCHAIN_MAINTENANCE_1_SPEC_VERSION int32 = 1
         const VK_FALSE uint32 = 0u
         const VK_FENCE_CREATE_SIGNALED_BIT VkFenceCreateFlagBits = 1
+        const VK_FILTER_LINEAR VkFilter = 1
+        const VK_FILTER_NEAREST VkFilter = 0
         const VK_FORMAT_A1R5G5B5_UNORM_PACK16 VkFormat = 8
         const VK_FORMAT_A2B10G10R10_SINT_PACK32 VkFormat = 69
         const VK_FORMAT_A2B10G10R10_SNORM_PACK32 VkFormat = 65
@@ -723,6 +758,12 @@ class VkConstants {
         const VK_RESOLVE_MODE_MIN_BIT VkResolveModeFlagBits = 4
         const VK_RESOLVE_MODE_NONE VkResolveModeFlagBits = 0
         const VK_RESOLVE_MODE_SAMPLE_ZERO_BIT VkResolveModeFlagBits = 1
+        const VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER VkSamplerAddressMode = 3
+        const VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE VkSamplerAddressMode = 2
+        const VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT VkSamplerAddressMode = 1
+        const VK_SAMPLER_ADDRESS_MODE_REPEAT VkSamplerAddressMode = 0
+        const VK_SAMPLER_MIPMAP_MODE_LINEAR VkSamplerMipmapMode = 1
+        const VK_SAMPLER_MIPMAP_MODE_NEAREST VkSamplerMipmapMode = 0
         const VK_SAMPLE_COUNT_16_BIT VkSampleCountFlagBits = 16
         const VK_SAMPLE_COUNT_1_BIT VkSampleCountFlagBits = 1
         const VK_SAMPLE_COUNT_2_BIT VkSampleCountFlagBits = 2
@@ -907,6 +948,13 @@ unsafe struct VkBindImageMemoryInfo {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkBufferCopy {
+    var srcOffset VkDeviceSize
+    var dstOffset VkDeviceSize
+    var size VkDeviceSize
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkBufferCreateInfo {
     var sType VkStructureType
     var pNext *void
@@ -1038,6 +1086,19 @@ unsafe struct VkComponentMapping {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkCopyDescriptorSet {
+    var sType VkStructureType
+    var pNext *void
+    var srcSet VkDescriptorSet
+    var srcBinding uint32
+    var srcArrayElement uint32
+    var dstSet VkDescriptorSet
+    var dstBinding uint32
+    var dstArrayElement uint32
+    var descriptorCount uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkDebugUtilsLabelEXT {
     var sType VkStructureType
     var pNext *void
@@ -1092,6 +1153,63 @@ unsafe struct VkDependencyInfo {
     var pBufferMemoryBarriers *VkBufferMemoryBarrier2
     var imageMemoryBarrierCount uint32
     var pImageMemoryBarriers *VkImageMemoryBarrier2
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkDescriptorBufferInfo {
+    var buffer VkBuffer
+    var offset VkDeviceSize
+    var _range VkDeviceSize
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkDescriptorImageInfo {
+    var sampler VkSampler
+    var imageView VkImageView
+    var imageLayout VkImageLayout
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkDescriptorPoolCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkDescriptorPoolCreateFlags
+    var maxSets uint32
+    var poolSizeCount uint32
+    var pPoolSizes *VkDescriptorPoolSize
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkDescriptorPoolSize {
+    var _type VkDescriptorType
+    var descriptorCount uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkDescriptorSetAllocateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var descriptorPool VkDescriptorPool
+    var descriptorSetCount uint32
+    var pSetLayouts *VkDescriptorSetLayout
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkDescriptorSetLayoutBinding {
+    var binding uint32
+    var descriptorType VkDescriptorType
+    var descriptorCount uint32
+    var stageFlags VkShaderStageFlags
+    var pImmutableSamplers *VkSampler
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkDescriptorSetLayoutCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkDescriptorSetLayoutCreateFlags
+    var bindingCount uint32
+    var pBindings *VkDescriptorSetLayoutBinding
 }
 
 @StructLayout(LayoutKind.Sequential)
@@ -1895,6 +2013,28 @@ unsafe struct VkRenderingInfo {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkSamplerCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkSamplerCreateFlags
+    var magFilter VkFilter
+    var minFilter VkFilter
+    var mipmapMode VkSamplerMipmapMode
+    var addressModeU VkSamplerAddressMode
+    var addressModeV VkSamplerAddressMode
+    var addressModeW VkSamplerAddressMode
+    var mipLodBias float32
+    var anisotropyEnable VkBool32
+    var maxAnisotropy float32
+    var compareEnable VkBool32
+    var compareOp VkCompareOp
+    var minLod float32
+    var maxLod float32
+    var borderColor VkBorderColor
+    var unnormalizedCoordinates VkBool32
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkSemaphoreCreateInfo {
     var sType VkStructureType
     var pNext *void
@@ -2035,6 +2175,20 @@ unsafe struct VkViewport {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkWriteDescriptorSet {
+    var sType VkStructureType
+    var pNext *void
+    var dstSet VkDescriptorSet
+    var dstBinding uint32
+    var dstArrayElement uint32
+    var descriptorCount uint32
+    var descriptorType VkDescriptorType
+    var pImageInfo *VkDescriptorImageInfo
+    var pBufferInfo *VkDescriptorBufferInfo
+    var pTexelBufferView *VkBufferView
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkGlobalDispatch {
     var vkGetInstanceProcAddr unmanaged[Cdecl] (VkInstance, *int8) -> unmanaged[Cdecl] () -> void
     var vkEnumerateInstanceVersion unmanaged[Cdecl] (*uint32) -> VkResult
@@ -2119,5 +2273,17 @@ unsafe struct VkDeviceDispatch {
     var vkMapMemory unmanaged[Cdecl] (VkDevice, VkDeviceMemory, VkDeviceSize, VkDeviceSize, VkMemoryMapFlags, *void) -> VkResult
     var vkUnmapMemory unmanaged[Cdecl] (VkDevice, VkDeviceMemory) -> void
     var vkInvalidateMappedMemoryRanges unmanaged[Cdecl] (VkDevice, uint32, *VkMappedMemoryRange) -> VkResult
+    var vkFlushMappedMemoryRanges unmanaged[Cdecl] (VkDevice, uint32, *VkMappedMemoryRange) -> VkResult
     var vkCmdCopyImageToBuffer unmanaged[Cdecl] (VkCommandBuffer, VkImage, VkImageLayout, VkBuffer, uint32, *VkBufferImageCopy) -> void
+    var vkCmdCopyBuffer unmanaged[Cdecl] (VkCommandBuffer, VkBuffer, VkBuffer, uint32, *VkBufferCopy) -> void
+    var vkCmdCopyBufferToImage unmanaged[Cdecl] (VkCommandBuffer, VkBuffer, VkImage, VkImageLayout, uint32, *VkBufferImageCopy) -> void
+    var vkCreateSampler unmanaged[Cdecl] (VkDevice, *VkSamplerCreateInfo, *VkAllocationCallbacks, *VkSampler) -> VkResult
+    var vkDestroySampler unmanaged[Cdecl] (VkDevice, VkSampler, *VkAllocationCallbacks) -> void
+    var vkCreateDescriptorSetLayout unmanaged[Cdecl] (VkDevice, *VkDescriptorSetLayoutCreateInfo, *VkAllocationCallbacks, *VkDescriptorSetLayout) -> VkResult
+    var vkDestroyDescriptorSetLayout unmanaged[Cdecl] (VkDevice, VkDescriptorSetLayout, *VkAllocationCallbacks) -> void
+    var vkCreateDescriptorPool unmanaged[Cdecl] (VkDevice, *VkDescriptorPoolCreateInfo, *VkAllocationCallbacks, *VkDescriptorPool) -> VkResult
+    var vkDestroyDescriptorPool unmanaged[Cdecl] (VkDevice, VkDescriptorPool, *VkAllocationCallbacks) -> void
+    var vkAllocateDescriptorSets unmanaged[Cdecl] (VkDevice, *VkDescriptorSetAllocateInfo, *VkDescriptorSet) -> VkResult
+    var vkUpdateDescriptorSets unmanaged[Cdecl] (VkDevice, uint32, *VkWriteDescriptorSet, uint32, *VkCopyDescriptorSet) -> void
+    var vkCmdBindDescriptorSets unmanaged[Cdecl] (VkCommandBuffer, VkPipelineBindPoint, VkPipelineLayout, uint32, uint32, *VkDescriptorSet, uint32, *uint32) -> void
 }

@@ -92,7 +92,19 @@
     "vkMapMemory",
     "vkUnmapMemory",
     "vkInvalidateMappedMemoryRanges",
-    "vkCmdCopyImageToBuffer"
+    "vkFlushMappedMemoryRanges",
+    "vkCmdCopyImageToBuffer",
+    "vkCmdCopyBuffer",
+    "vkCmdCopyBufferToImage",
+    "vkCreateSampler",
+    "vkDestroySampler",
+    "vkCreateDescriptorSetLayout",
+    "vkDestroyDescriptorSetLayout",
+    "vkCreateDescriptorPool",
+    "vkDestroyDescriptorPool",
+    "vkAllocateDescriptorSets",
+    "vkUpdateDescriptorSets",
+    "vkCmdBindDescriptorSets"
   ],
   "requiredTypes": [
     "VkClearValue",
