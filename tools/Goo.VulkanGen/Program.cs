@@ -24,12 +24,18 @@ internal static class Program
 
 		public List<string> InstanceCommands { get; }
 
-		public Manifest(string registrySha256, List<string> extensions, List<string> globalCommands, List<string> instanceCommands)
+		public List<string> DeviceCommands { get; }
+
+		public List<string> RequiredTypes { get; }
+
+		public Manifest(string registrySha256, List<string> extensions, List<string> globalCommands, List<string> instanceCommands, List<string> deviceCommands, List<string> requiredTypes)
 		{
 			RegistrySha256 = registrySha256;
 			Extensions = extensions;
 			GlobalCommands = globalCommands;
 			InstanceCommands = instanceCommands;
+			DeviceCommands = deviceCommands;
+			RequiredTypes = requiredTypes;
 		}
 	}
 
@@ -66,14 +72,22 @@ internal static class Program
 				select candidate).FirstOrDefault();
 		}
 
-		public (XElement Element, string? Extends, string GroupName, string? GroupType)? FindEnum(string name)
+		public (XElement Element, string? Extends, string GroupName, string? GroupType, string? ExtensionNumber)? FindEnum(string name)
 		{
 			foreach (XElement item in EnumGroups.Values.OrderBy<XElement, string>((XElement value) => value.Attribute("name")?.Value, StringComparer.Ordinal))
 			{
 				XElement xElement = item.Elements("enum").FirstOrDefault((XElement value) => value.Attribute("name")?.Value == name);
 				if (xElement != null)
 				{
-					return (xElement, xElement.Attribute("extends")?.Value, item.Attribute("name")?.Value ?? string.Empty, item.Attribute("type")?.Value);
+					return (xElement, xElement.Attribute("extends")?.Value, item.Attribute("name")?.Value ?? string.Empty, item.Attribute("type")?.Value, null);
+				}
+			}
+			foreach (XElement feature in Root.Elements("feature").Where(Program.SupportsVulkan).OrderBy(value => value.Attribute("name")?.Value, StringComparer.Ordinal))
+			{
+				XElement? featureValue = feature.Descendants("require").Elements("enum").FirstOrDefault(value => value.Attribute("name")?.Value == name);
+				if (featureValue != null)
+				{
+					return (featureValue, featureValue.Attribute("extends")?.Value, feature.Attribute("name")?.Value ?? string.Empty, null, null);
 				}
 			}
 			foreach (XElement extension in Extensions)
@@ -81,7 +95,7 @@ internal static class Program
 				XElement xElement2 = extension.Descendants("require").Elements("enum").FirstOrDefault((XElement value) => value.Attribute("name")?.Value == name);
 				if (xElement2 != null)
 				{
-					return (xElement2, xElement2.Attribute("extends")?.Value, extension.Attribute("name")?.Value ?? string.Empty, null);
+					return (xElement2, xElement2.Attribute("extends")?.Value, extension.Attribute("name")?.Value ?? string.Empty, null, extension.Attribute("number")?.Value);
 				}
 			}
 			return null;
@@ -99,6 +113,8 @@ internal static class Program
 		public string? Alias { get; }
 
 		public string? Requires { get; }
+
+		public string? BitValues { get; }
 
 		public string? Api { get; }
 
@@ -120,12 +136,13 @@ internal static class Program
 			}
 		}
 
-		private TypeDefinition(string? name, string? category, string? alias, string? requires, string? api, XElement element, int ordinal, bool handleIsNonDispatchable)
+		private TypeDefinition(string? name, string? category, string? alias, string? requires, string? bitValues, string? api, XElement element, int ordinal, bool handleIsNonDispatchable)
 		{
 			Name = name;
 			Category = category;
 			Alias = alias;
 			Requires = requires;
+			BitValues = bitValues;
 			Api = api;
 			Element = element;
 			Ordinal = ordinal;
@@ -141,7 +158,7 @@ internal static class Program
 				name = element.Element("proto")?.Element("name")?.Value.Trim();
 			}
 			string a = element.Element("type")?.Value.Trim();
-			return new TypeDefinition(name, text, element.Attribute("alias")?.Value, element.Attribute("requires")?.Value, element.Attribute("api")?.Value, element, nextOrdinal++, string.Equals(a, "VK_DEFINE_NON_DISPATCHABLE_HANDLE", StringComparison.Ordinal));
+			return new TypeDefinition(name, text, element.Attribute("alias")?.Value, element.Attribute("requires")?.Value, element.Attribute("bitvalues")?.Value, element.Attribute("api")?.Value, element, nextOrdinal++, string.Equals(a, "VK_DEFINE_NON_DISPATCHABLE_HANDLE", StringComparison.Ordinal));
 		}
 
 		public IEnumerable<string> ReferencedTypes()
@@ -165,11 +182,15 @@ internal static class Program
 				{
 					yield return Requires;
 				}
+				if (Category == "bitmask" && BitValues != null)
+				{
+					yield return BitValues;
+				}
 				break;
 			}
 			case "struct":
 			case "union":
-				foreach (XElement item in Element.Elements("member"))
+				foreach (XElement item in Element.Elements("member").Where(Program.SupportsVulkan))
 				{
 					XElement xElement4 = item.Element("type");
 					if (xElement4 != null)
@@ -185,7 +206,7 @@ internal static class Program
 				{
 					yield return xElement.Value.Trim();
 				}
-				foreach (XElement item2 in Element.Elements("param"))
+				foreach (XElement item2 in Element.Elements("param").Where(Program.SupportsVulkan))
 				{
 					XElement xElement2 = item2.Element("type");
 					if (xElement2 != null)
@@ -316,7 +337,11 @@ internal static class Program
 
 	private static readonly string[] ExpectedGlobalCommands = new string[4] { "vkGetInstanceProcAddr", "vkEnumerateInstanceVersion", "vkEnumerateInstanceExtensionProperties", "vkCreateInstance" };
 
-	private static readonly string[] ExpectedInstanceCommands = new string[5] { "vkDestroyInstance", "vkEnumeratePhysicalDevices", "vkGetPhysicalDeviceQueueFamilyProperties", "vkDestroySurfaceKHR", "vkGetPhysicalDeviceSurfaceSupportKHR" };
+	private static readonly string[] ExpectedInstanceCommands = new string[13] { "vkDestroyInstance", "vkEnumeratePhysicalDevices", "vkGetPhysicalDeviceQueueFamilyProperties", "vkGetPhysicalDeviceProperties", "vkDestroySurfaceKHR", "vkGetPhysicalDeviceSurfaceSupportKHR", "vkGetDeviceProcAddr", "vkGetPhysicalDeviceFeatures2", "vkEnumerateDeviceExtensionProperties", "vkGetPhysicalDeviceSurfaceCapabilitiesKHR", "vkGetPhysicalDeviceSurfaceFormatsKHR", "vkGetPhysicalDeviceSurfacePresentModesKHR", "vkCreateDevice" };
+
+	private static readonly string[] ExpectedDeviceCommands = new string[21] { "vkDestroyDevice", "vkGetDeviceQueue", "vkCreateSwapchainKHR", "vkDestroySwapchainKHR", "vkGetSwapchainImagesKHR", "vkCreateCommandPool", "vkDestroyCommandPool", "vkAllocateCommandBuffers", "vkCreateSemaphore", "vkDestroySemaphore", "vkCreateFence", "vkDestroyFence", "vkWaitForFences", "vkAcquireNextImageKHR", "vkBeginCommandBuffer", "vkEndCommandBuffer", "vkCmdPipelineBarrier2", "vkCmdClearColorImage", "vkQueueSubmit2", "vkQueuePresentKHR", "vkQueueWaitIdle" };
+
+	private static readonly string[] ExpectedRequiredTypes = new string[4] { "VkClearValue", "VkPhysicalDeviceFeatures2", "VkPhysicalDeviceVulkan12Features", "VkPhysicalDeviceVulkan13Features" };
 
 	private static readonly string[] GsharpKeywords = new string[55]
 	{
@@ -421,9 +446,13 @@ internal static class Program
 		List<string> extensions = ReadStringArray(rootElement, "extensions");
 		List<string> list = ReadStringArray(rootElement, "globalCommands");
 		List<string> list2 = ReadStringArray(rootElement, "instanceCommands");
+		List<string> list3 = ReadStringArray(rootElement, "deviceCommands");
+		List<string> list4 = ReadStringArray(rootElement, "requiredTypes");
 		RequireExactCommands(list, ExpectedGlobalCommands, "globalCommands");
 		RequireExactCommands(list2, ExpectedInstanceCommands, "instanceCommands");
-		return new Manifest(text, extensions, list, list2);
+		RequireExactCommands(list3, ExpectedDeviceCommands, "deviceCommands");
+		RequireExactCommands(list4, ExpectedRequiredTypes, "requiredTypes");
+		return new Manifest(text, extensions, list, list2, list3, list4);
 	}
 
 	private static List<string> ReadStringArray(JsonElement root, string property)
@@ -499,6 +528,7 @@ internal static class Program
 		EmitStructs(stringBuilder, registry, selectedTypes, constants);
 		EmitDispatch(stringBuilder, registry, manifest.GlobalCommands, "VkGlobalDispatch");
 		EmitDispatch(stringBuilder, registry, manifest.InstanceCommands, "VkInstanceDispatch");
+		EmitDispatch(stringBuilder, registry, manifest.DeviceCommands, "VkDeviceDispatch");
 		return stringBuilder.ToString();
 	}
 
@@ -506,7 +536,7 @@ internal static class Program
 	{
 		HashSet<string> hashSet = new HashSet<string>(StringComparer.Ordinal);
 		Queue<string> queue = new Queue<string>();
-		foreach (string item in manifest.GlobalCommands.Concat(manifest.InstanceCommands))
+		foreach (string item in manifest.GlobalCommands.Concat(manifest.InstanceCommands).Concat(manifest.DeviceCommands))
 		{
 			if (!registry.Commands.TryGetValue(item, out CommandDefinition value))
 			{
@@ -517,6 +547,10 @@ internal static class Program
 			{
 				AddType(parameter.Type.Name, queue, registry);
 			}
+		}
+		foreach (string item2 in manifest.RequiredTypes)
+		{
+			AddType(item2, queue, registry);
 		}
 		while (queue.Count > 0)
 		{
@@ -571,6 +605,25 @@ internal static class Program
 				AddConstant(dictionary, ConstantDefinition.FromEnum(item3, selectedType, selectedType, value.Attribute("type")?.Value));
 			}
 		}
+		foreach (string selectedType in selectedTypes.OrderBy(value => value, StringComparer.Ordinal))
+		{
+			TypeDefinition? definition = registry.GetDefinition(selectedType);
+			if (definition == null || definition.Category is not ("struct" or "union"))
+			{
+				continue;
+			}
+			foreach (XElement member in definition.Element.Elements("member").Where(Program.SupportsVulkan))
+			{
+				foreach (string valueName in (member.Attribute("values")?.Value ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+				{
+					(XElement, string?, string, string?, string?)? value = registry.FindEnum(valueName);
+					if (value.HasValue)
+					{
+						AddConstant(dictionary, ConstantDefinition.FromEnum(value.Value.Item1, value.Value.Item2, value.Value.Item3, value.Value.Item4, value.Value.Item5));
+					}
+				}
+			}
+		}
 		foreach (XElement extension in registry.Extensions)
 		{
 			foreach (XElement item4 in extension.Descendants("require").Elements("enum"))
@@ -596,10 +649,10 @@ internal static class Program
 		{
 			if (item6.Alias != null && !dictionary.ContainsKey(item6.Alias))
 			{
-				(XElement, string, string, string)? tuple = registry.FindEnum(item6.Alias);
+				(XElement, string?, string, string?, string?)? tuple = registry.FindEnum(item6.Alias);
 				if (tuple.HasValue)
 				{
-					AddConstant(dictionary, ConstantDefinition.FromEnum(tuple.Value.Item1, tuple.Value.Item2, tuple.Value.Item3, tuple.Value.Item4));
+					AddConstant(dictionary, ConstantDefinition.FromEnum(tuple.Value.Item1, tuple.Value.Item2, tuple.Value.Item3, tuple.Value.Item4, tuple.Value.Item5));
 				}
 			}
 		}
@@ -628,7 +681,7 @@ internal static class Program
 
 	private static void EmitAliases(StringBuilder text, Registry registry, HashSet<string> selectedTypes)
 	{
-		foreach (string item in selectedTypes.OrderBy<string, string>((string value) => value, StringComparer.Ordinal))
+		foreach (string item in OrderAliases(registry, selectedTypes))
 		{
 			TypeDefinition typeDefinition = registry.GetDefinition(item) ?? throw new InvalidDataException("selected type missing: " + item);
 			switch (typeDefinition.Category)
@@ -646,6 +699,47 @@ internal static class Program
 				EmitAlias(text, item, typeDefinition.Alias ?? EnumUnderlying(item));
 				break;
 			}
+		}
+	}
+
+	private static IReadOnlyList<string> OrderAliases(Registry registry, HashSet<string> selectedTypes)
+	{
+		List<string> ordered = new List<string>();
+		HashSet<string> visited = new HashSet<string>(StringComparer.Ordinal);
+		HashSet<string> active = new HashSet<string>(StringComparer.Ordinal);
+		foreach (string name in selectedTypes.OrderBy(value => value, StringComparer.Ordinal))
+		{
+			VisitAlias(name);
+		}
+		return ordered;
+
+		void VisitAlias(string name)
+		{
+			if (!selectedTypes.Contains(name) || !visited.Add(name))
+			{
+				return;
+			}
+			if (!active.Add(name))
+			{
+				throw new InvalidDataException("cyclic Vulkan type alias: " + name);
+			}
+			TypeDefinition? definition = registry.GetDefinition(name);
+			if (definition != null && definition.Category is "basetype" or "bitmask")
+			{
+				if (definition.Alias != null)
+				{
+					VisitAlias(definition.Alias);
+				}
+				else
+				{
+					foreach (string reference in definition.ReferencedTypes().OrderBy(value => value, StringComparer.Ordinal))
+					{
+						VisitAlias(reference);
+					}
+				}
+			}
+			active.Remove(name);
+			ordered.Add(name);
 		}
 	}
 
@@ -681,17 +775,18 @@ internal static class Program
 		{
 			TypeDefinition typeDefinition = registry.GetDefinition(item) ?? throw new InvalidDataException("selected type missing: " + item);
 			string category = typeDefinition.Category;
-			if ((!(category == "struct") && !(category == "union")) || 1 == 0)
+			if (category == "union")
+			{
+				EmitUnion(text, item, typeDefinition, registry, selectedTypes, constants);
+				continue;
+			}
+			if (category != "struct")
 			{
 				continue;
 			}
-			if (typeDefinition.Category == "union")
-			{
-				throw new InvalidDataException("union is outside the supported generated ABI: " + item);
-			}
 			text.AppendLine("@StructLayout(LayoutKind.Sequential)");
 			text.Append("unsafe struct ").Append(item).AppendLine(" {");
-			foreach (XElement item2 in typeDefinition.Element.Elements("member"))
+			foreach (XElement item2 in typeDefinition.Element.Elements("member").Where(Program.SupportsVulkan))
 			{
 				FieldDefinition fieldDefinition = ParseField(item2);
 				string value = EscapeIdentifier(fieldDefinition.Name);
@@ -723,6 +818,58 @@ internal static class Program
 			text.AppendLine("}");
 			text.AppendLine();
 		}
+	}
+
+	private static void EmitUnion(StringBuilder text, string name, TypeDefinition definition, Registry registry, HashSet<string> selectedTypes, Dictionary<string, ConstantDefinition> constants)
+	{
+		long size = name switch
+		{
+			"VkClearColorValue" => 16L,
+			"VkClearValue" => 16L,
+			_ => throw new InvalidDataException("unsupported union ABI: " + name)
+		};
+		List<FieldDefinition> fields = definition.Element.Elements("member").Where(Program.SupportsVulkan).Select(ParseField).ToList();
+		foreach (FieldDefinition field in fields.Where(value => value.ArrayExpression != null))
+		{
+			long length = ResolveArrayLength(field.ArrayExpression!, constants);
+			string elementType = RenderType(field.Type with { PointerDepth = 0, ArrayExpression = null }, registry, selectedTypes, pointerAsNativeInt: false, callbackAlias: false);
+			if (!IsFixedBufferElement(elementType))
+			{
+				throw new InvalidDataException($"unsupported fixed-buffer element type {elementType} in {name}.{field.Name}");
+			}
+			string helperName = name + "_" + EscapeIdentifier(field.Name) + "Array";
+			text.AppendLine("@StructLayout(LayoutKind.Sequential)");
+			text.Append("unsafe struct ").Append(helperName).AppendLine(" {");
+			text.Append("    fixed values [").Append(length.ToString(CultureInfo.InvariantCulture)).Append(']')
+				.Append(elementType).AppendLine();
+			text.AppendLine("}");
+			text.AppendLine();
+		}
+		text.Append("@StructLayout(LayoutKind.Explicit, Size: ").Append(size.ToString(CultureInfo.InvariantCulture)).AppendLine(")");
+		text.Append("unsafe struct ").Append(name).AppendLine(" {");
+		foreach (FieldDefinition field in fields)
+		{
+			string fieldName = EscapeIdentifier(field.Name);
+			if (field.ArrayExpression != null)
+			{
+				string helperName = name + "_" + fieldName + "Array";
+				text.Append("    @FieldOffset(0) var ").Append(fieldName).Append(' ').Append(helperName).AppendLine();
+			}
+			else
+			{
+				text.Append("    @FieldOffset(0) var ").Append(fieldName).Append(' ')
+					.Append(RenderType(field.Type, registry, selectedTypes, pointerAsNativeInt: false, callbackAlias: false))
+					.AppendLine();
+			}
+		}
+		text.AppendLine("}");
+		text.AppendLine();
+	}
+
+	private static bool SupportsVulkan(XElement element)
+	{
+		string? api = element.Attribute("api")?.Value;
+		return string.IsNullOrEmpty(api) || api.Split(',').Contains("vulkan", StringComparer.Ordinal) || api.Split(',').Contains("vulkanbase", StringComparer.Ordinal);
 	}
 
 	private static bool IsFixedBufferElement(string typeName)
@@ -810,6 +957,8 @@ internal static class Program
 		{
 			"void" => "void",
 			"char" => "int8",
+			"signed char" => "int8",
+			"unsigned char" => "uint8",
 			"int8_t" => "int8",
 			"uint8_t" => "uint8",
 			"int16_t" => "int16",
@@ -1080,7 +1229,7 @@ internal static class Program
 	private static FunctionDefinition ParseFunctionPointer(XElement element)
 	{
 		TypeSpec returnType = ParseType(element.Element("proto") ?? throw new InvalidDataException("function pointer has no proto"));
-		List<ParameterDefinition> parameters = element.Elements("param").Select(ParseParameter).ToList();
+		List<ParameterDefinition> parameters = element.Elements("param").Where(SupportsVulkan).Select(ParseParameter).ToList();
 		return new FunctionDefinition(returnType, parameters);
 	}
 
@@ -1089,7 +1238,7 @@ internal static class Program
 		XElement? obj = element.Element("proto") ?? throw new InvalidDataException("command has no proto");
 		string name = obj.Element("name")?.Value.Trim() ?? throw new InvalidDataException("command has no name");
 		TypeSpec returnType = ParseType(obj);
-		List<ParameterDefinition> parameters = element.Elements("param").Select(ParseParameter).ToList();
+		List<ParameterDefinition> parameters = element.Elements("param").Where(SupportsVulkan).Select(ParseParameter).ToList();
 		return new CommandDefinition(name, returnType, parameters);
 	}
 

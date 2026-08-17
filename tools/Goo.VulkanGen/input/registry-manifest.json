@@ -19,7 +19,44 @@
     "vkDestroyInstance",
     "vkEnumeratePhysicalDevices",
     "vkGetPhysicalDeviceQueueFamilyProperties",
+    "vkGetPhysicalDeviceProperties",
     "vkDestroySurfaceKHR",
-    "vkGetPhysicalDeviceSurfaceSupportKHR"
+    "vkGetPhysicalDeviceSurfaceSupportKHR",
+    "vkGetDeviceProcAddr",
+    "vkGetPhysicalDeviceFeatures2",
+    "vkEnumerateDeviceExtensionProperties",
+    "vkGetPhysicalDeviceSurfaceCapabilitiesKHR",
+    "vkGetPhysicalDeviceSurfaceFormatsKHR",
+    "vkGetPhysicalDeviceSurfacePresentModesKHR",
+    "vkCreateDevice"
+  ],
+  "deviceCommands": [
+    "vkDestroyDevice",
+    "vkGetDeviceQueue",
+    "vkCreateSwapchainKHR",
+    "vkDestroySwapchainKHR",
+    "vkGetSwapchainImagesKHR",
+    "vkCreateCommandPool",
+    "vkDestroyCommandPool",
+    "vkAllocateCommandBuffers",
+    "vkCreateSemaphore",
+    "vkDestroySemaphore",
+    "vkCreateFence",
+    "vkDestroyFence",
+    "vkWaitForFences",
+    "vkAcquireNextImageKHR",
+    "vkBeginCommandBuffer",
+    "vkEndCommandBuffer",
+    "vkCmdPipelineBarrier2",
+    "vkCmdClearColorImage",
+    "vkQueueSubmit2",
+    "vkQueuePresentKHR",
+    "vkQueueWaitIdle"
+  ],
+  "requiredTypes": [
+    "VkClearValue",
+    "VkPhysicalDeviceFeatures2",
+    "VkPhysicalDeviceVulkan12Features",
+    "VkPhysicalDeviceVulkan13Features"
   ]
 }
