@@ -1,0 +1,25 @@
+{
+  "registryCommit": "e3b1eec08173d6b825cd3ac88c885a63b621504a",
+  "registrySha256": "264d0d7350e37d70c82407fb430d085040fc01a9a961d43dec8c2d6ed1dfd183",
+  "api": "vulkan",
+  "core": "1.3",
+  "extensions": [
+    "VK_KHR_surface",
+    "VK_KHR_swapchain",
+    "VK_KHR_win32_surface",
+    "VK_KHR_wayland_surface"
+  ],
+  "globalCommands": [
+    "vkGetInstanceProcAddr",
+    "vkEnumerateInstanceVersion",
+    "vkEnumerateInstanceExtensionProperties",
+    "vkCreateInstance"
+  ],
+  "instanceCommands": [
+    "vkDestroyInstance",
+    "vkEnumeratePhysicalDevices",
+    "vkGetPhysicalDeviceQueueFamilyProperties",
+    "vkDestroySurfaceKHR",
+    "vkGetPhysicalDeviceSurfaceSupportKHR"
+  ]
+}

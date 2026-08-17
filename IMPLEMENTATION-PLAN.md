@@ -1,6 +1,6 @@
 # Goo Core Vulkan Implementation Plan
 
-Status: active, S00 through S03 complete, S04 and S05 started
+Status: active, S00 through S04 complete, S05 and S06 next
 
 Date: 2026-08-16
 
@@ -83,13 +83,13 @@ Reusable controls belong in consumer code or a separate G# library.
 
 Before each hot-path change:
 
-1. Use the current accepted baseline.
+1. Use the recorded Skia reference or the current accepted Vulkan result.
 2. Run the same Release NativeAOT scenario.
 3. Record total frame behavior, not only the changed internal stage.
 4. Reject a change that exceeds a Q10 regression limit.
-5. Store an accepted Vulkan result as the next chained baseline.
+5. Retain an accepted Vulkan result as the next regression reference.
 
-Do not weaken a gate, select a slower historical result, or rebase the immutable Skia floor.
+Do not weaken a gate, select a slower historical result, or replace the recorded Skia reference.
 
 ### 2.5 Change ownership rule
 
@@ -128,7 +128,7 @@ S00 scope and evidence lock
   -> S01 exact G# 0.4.1 restore
   -> S02 isolated G# migration and historical finding audit
   -> S03 package, API, requirements, and workload lock
-  -> S04 frozen qualifying Skia baseline
+  -> S04 accept existing recorded Skia benchmark information
   -> S05 Vulkan capability and build-toolchain contract
   -> S06 generated binding and SDL Vulkan loader
   -> S07 diagnostics and evidence spine
@@ -157,10 +157,10 @@ lead records evidence that a dependency is not real.
 | S01 | Exact G# 0.4.1 SDK restores without hidden local state | Clean-clone package consumer succeeds |
 | S02 | Current migration and historical workarounds have evidence | Build, behavior, API, and package shape remain stable |
 | S03 | Core requirements and deterministic workloads are fixed | Every reference gap is classified and owned |
-| S04 | Complete immutable Skia floor exists | Both platforms have qualifying Q10 manifests |
+| S04 | Existing recorded Skia benchmark information is accepted as the reference | The recorded data is sufficient for the required comparisons |
 | S05 | Vulkan capability and toolchain manifests are pinned | Target GPUs expose the required common surface |
 | S06 | Narrow generated Vulkan ABI and SDL loader work | Validation-clean loader and surface proof on both platforms |
-| S07 | Backend-neutral logs, counters, and manifests exist | Disabled diagnostics allocate nothing |
+| S07 | Backend-neutral logs and counters exist | Disabled diagnostics allocate nothing |
 | S08 | Runtime, allocator, offscreen target, and one-window WSI work | Clear, quad, resize, and retirement are validation-clean |
 | S09 | Typed plan drives the representative basic slice | Stable digest, correct pixels, zero warm allocation |
 | S10 | Resource, shader, upload, and lifetime systems plateau | No warm resource creation or unbounded cache growth |
@@ -172,7 +172,7 @@ lead records evidence that a dependency is not real.
 | S16 | Shared-device multi-window lifecycle and recovery work | Q10 lifecycle endurance passes |
 | S17 | Remaining approved core mechanisms and platform adapters work | Required credential, semantics, accessibility, focus, and scroll contracts pass |
 | S18 | Direct Vulkan becomes Goo's only product renderer | Skia and CPU raster are absent and the G#-only runtime boundary remains intact |
-| S19 | Both RIDs pass all release gates | Accepted Vulkan manifest becomes the next baseline |
+| S19 | Both RIDs pass all release gates | Accepted Vulkan result becomes the next regression reference |
 
 ### 5.1 Accepted-decision coverage
 
@@ -187,7 +187,7 @@ lead records evidence that a dependency is not real.
 | O07 dirty frames | S15 implements retained chunks, stable GPU ranges, and per-image damage history |
 | O08 binding and allocation | S05-S06 generate the narrow binding. S08 and S10 implement the Goo allocator |
 | O09 multi-window ownership | S08 establishes shared ownership. S16 implements scheduling and bounded recovery |
-| O10 adoption gates | S04 freezes Skia. S19 qualifies and chains accepted Vulkan results |
+| O10 adoption gates | S04 accepts existing Skia benchmark information. S19 qualifies Vulkan against the hard gates |
 | O11 persistence | S03 classifies persistence, storage, restore validation, monitor clamping, and policy outside core |
 | O12 accessibility | S17 completes neutral semantics and required Windows UIA and Linux AT-SPI adapters |
 | O13 control boundary | S03 classifies controls outside core. S17 adds only non-composable mechanisms |
@@ -448,97 +448,41 @@ Reopen when:
 - A reference requirement needs a new public Goo mechanism or cannot be represented by the workload
   set.
 
-### S04. Freeze the qualifying Skia baseline
+### S04. Close against existing recorded Skia benchmark information
+
+S04 is closed using the existing recorded Skia benchmark information. It does not create a new
+benchmark run, qualifying manifest system, or permanent Skia benchmark, provenance, or trace
+infrastructure.
 
 Work:
 
-1. Preserve existing Skia results as historical evidence.
-2. Select the newest complete qualifying record independently for each workload and metric.
-3. Capture only missing Q10 workloads, platforms, provenance, and metrics before Skia removal.
-4. Store raw results, visual captures, diffs, package inventories, and SHA-256 hashes in a durable
-  baseline manifest.
-5. Assign a stable `baselineId` and `baselineKey`. The key includes OS/RID, GPU, driver, graphics
-  implementation, workload, metric, and protocol.
-6. Chain later accepted Vulkan records through `parentBaselineId` for the same complete baseline
-  key. Never compare results from different GPUs or drivers as a baseline pair.
-7. Make the benchmark harness reproducible by tracking it in this repository or pinning its external
-  source commit and immutable digest.
-8. Preserve the 2026-08-07 G# 0.3.633 Skia result as historical evidence, but capture the final
-  current-Skia Q10 floor with the exact selected G# 0.4.1 SDK wherever compiler, runtime, workload, or
-  metric behavior can differ.
-9. Update the tracked benchmark protocol schema, producer, parser, and validator for five isolated
-   runs and all Q10 provenance before accepting any new baseline. External consumer ingestion is out
-   of scope for Goo core.
-10. Retain accepted manifests and raw evidence in tracked evidence storage or immutable retained CI
-  artifacts. Scratch files, local Workbench history, and unretained CI output do not qualify.
+1. Use the most recent applicable recorded Skia result for each required workload, platform, and
+   metric.
+2. Use that recorded information as the historical comparison reference for Vulkan results.
+3. Keep the accepted Vulkan architecture and hard runtime gates unchanged.
+4. Proceed directly to S05 and then S06.
+5. Delete any temporary S04 probes, source, binaries, traces, and scratch output immediately.
 
-Qualifying provenance:
+Reference:
 
-- Source commit and dirty state.
-- Workload ID and revision.
-- Build configuration and NativeAOT settings.
-- G# SDK package and digest.
-- .NET runtime.
-- OS and kernel.
-- CPU, GPU, driver, driver state, graphics API/backend, and graphics implementation.
-- Power mode.
-- Display configuration, resolution, refresh rate, DPI, pixel format, and color space.
-- Present mode and, on Linux, Wayland compositor and session identity.
-- Font files and hashes.
-- Font fallback and raster options.
-- Run count, warmup count, measured frame count, and exact command.
-
-Protocol:
-
-- Release NativeAOT.
-- Five isolated processes.
-- 300 warmup frames.
-- 2,000 measured frames.
-- P50, P95, P99, P99.9, and worst.
-- Preserve all five per-run distributions. Concatenate the 10,000 valid measured samples for the
-  aggregate percentiles. Do not use median-of-three, median-of-medians, or percentile averaging.
-- Report every per-run percentile and the pooled percentile. Any invalid or incomplete run invalidates
-  the result.
-- Measurement noise is the larger of 3 percent or 0.1 ms.
-- Windows and Linux records remain separate.
-
-Recorded metrics:
-
-- Input, state propagation, reconciliation, Yoga, frame-plan or paint construction, resource
-  preparation, upload, command recording, GPU passes, submit, present wait, and total frame time.
-- Managed allocations and GC pauses.
-- Managed heap, private dirty memory, RSS, and Goo-reserved GPU memory.
-- Upload bytes, command bytes, draw calls, pipeline changes, barriers, and render passes.
-- Startup and first usable frame.
-- Input-to-present latency.
-- Installed bytes and mandatory native library count.
-
-Permanent verification:
-
-- T02 fixed visual corpus capture using the current Skia renderer.
-- T03 fixed reference hot-path benchmark.
-- Capture the pre-cutover T04 three-window action subset without Vulkan-only surface/device-loss
-  injection. The full T04 recovery contract applies after S18.
-- Capture T05 baseline package and NativeAOT contents for both RIDs. The Skia-absence assertion
-  applies only after S18.
+- Existing recorded Skia benchmark information is the only S04 baseline input.
+- The 2026-08-07 G# 0.3.633 Skia result remains historical reference information where applicable.
+- No new baseline capture, parser, validator, qualifying manifest, or retained S04 evidence store is
+  required.
 
 Exit:
 
-- Every required Skia workload and Q10 metric has a valid immutable manifest on both platforms.
-- Raw artifacts, source/configuration inputs, manifests, and their hashes are durably retained.
-- The manifest itself is content-hashed and immutable after acceptance.
-- The frozen Skia floor cannot be edited by later Vulkan runs.
+- The recorded Skia information is accepted for the comparisons required by the hard runtime gates.
+- No S04-specific benchmark, provenance, or trace infrastructure remains.
+- S05 can start immediately, followed by S06 after its capability and toolchain contract is locked.
 
-Reopen when:
-
-- Provenance is missing, environments are mixed, noise is excessive, or a required workload is not
-  reproducible.
+Reopen only if an accepted decision or hard runtime gate changes.
 
 ### S05. Lock Vulkan capability and build-toolchain contracts
 
 Entry:
 
-- S04 baseline manifests are complete.
+- S04 recorded Skia benchmark information is available as the comparison reference.
 
 Work:
 
@@ -1192,7 +1136,7 @@ Logs:
 
 Exit:
 
-- Sparse large-table and topology P95 improve by at least 20 percent over frozen Skia.
+- Sparse large-table and topology P95 improve by at least 20 percent over the recorded Skia reference.
 - Pixels remain correct when optional incremental-present hints are ignored.
 - No total-frame, present, memory, hitch, or power-proxy regression exceeds Q10 noise.
 
@@ -1248,8 +1192,8 @@ T04 acceptance:
 - Allocator and cache use plateau.
 - Resize, close, surface loss, and device loss remain safe while images and referenced chunks are in
   flight.
-- Three-window sparse-change P95 is at least 20 percent faster than the matching frozen Skia
-  baseline, with no total-frame, memory, hitch, present, or power-proxy regression beyond Q10.
+- Three-window sparse-change P95 is at least 20 percent faster than the matching recorded Skia
+  reference, with no total-frame, memory, hitch, present, or power-proxy regression beyond Q10.
 
 Logs:
 
@@ -1405,7 +1349,7 @@ Reopen when:
 
 - Any behavior requires a fallback, any package contains Skia, or any target platform fails.
 
-### S19. Qualify Windows/Linux packages and establish the next baseline
+### S19. Qualify Windows/Linux packages and establish the next regression reference
 
 Qualification matrix:
 
@@ -1414,7 +1358,7 @@ Qualification matrix:
 - Linux Wayland x64 integrated GPU.
 - Linux Wayland x64 discrete GPU.
 - Software Vulkan only for deterministic CI and headless capture. Software-ICD results cannot satisfy
-  Q10 hardware gates, become an accepted Q10 baseline, or replace any hardware result.
+  Q10 hardware gates, become an accepted Q10 hardware result, or replace any hardware result.
 
 Run:
 
@@ -1443,9 +1387,9 @@ Package specification:
 Exit:
 
 - Every final acceptance gate in section 12 passes independently.
-- Raw manifests and artifact hashes are stored.
-- The accepted Vulkan result points to its parent baseline and becomes the next regression baseline.
-- The immutable Skia floor remains unchanged.
+- Raw qualification logs and artifact hashes are retained.
+- The accepted Vulkan result becomes the next regression reference.
+- The recorded Skia reference remains unchanged.
 
 ## 7. Minimal durable verification system
 
@@ -1456,18 +1400,18 @@ Only these durable verification targets may be added or expanded for this render
 | T01 | Clean G# package consumer | Freshly packed Goo, mounted cross-assembly generic cell, typed `Build(input)`, `ShouldRebuild`, restore, compile, NativeAOT, open, pump, close |
 | T02 | One visual and async readback corpus | Boxes, borders, gradients, text, fallback, CJK, RTL, emoji, images, paths, clips, transforms, opacity, blend, effects, DPI, SVG |
 | T03 | One reference hot-path harness | Idle, animation, sparse table, topology, text editing, images/effects, resize, three windows, stage and resource metrics |
-| T04 | One lifecycle and recovery program per platform | Pre-cutover three-window action baseline, then final 1,000 operations, 10 surface losses, 3 device losses, input, protected text, accessibility traversal, plateau, validation |
-| T05 | One package and NativeAOT report per RID | Frozen Skia baseline contents, then final dependencies, native libraries, installed bytes, startup, Skia absence, and Goo core/runtime-helper C# source absence |
+| T04 | One lifecycle and recovery program per platform | Pre-cutover three-window action reference, then final 1,000 operations, 10 surface losses, 3 device losses, input, protected text, accessibility traversal, plateau, validation |
+| T05 | One package and NativeAOT report per RID | Recorded Skia package information, then final dependencies, native libraries, installed bytes, startup, Skia absence, and Goo core/runtime-helper C# source absence |
 
 T02 capture contract:
 
 - Each case pins logical size, pixel width and height, DPI, font/input hashes, color space, and expected
   origin.
 - Readback is tightly defined row-major, top-left-origin, premultiplied RGBA8. Row stride is recorded.
-- The manifest records whether channel bytes are sRGB encoded and the exact Vulkan target format and
-  conversion path.
+- The capture record includes whether channel bytes are sRGB encoded and the exact Vulkan target
+  format and conversion path.
 - Strict regions and AA/effect regions use explicit masks generated from the scene contract. Masks
-  are reviewed, pinned, and content-hashed before the Skia reference is frozen.
+  are reviewed, pinned, and content-hashed before visual comparison is accepted.
 - Strict masks use maximum absolute channel delta 1.
 - AA/effect masks require at least 99.9 percent of pixels at maximum channel delta 8 or less and no
   channel delta above 24.
@@ -1564,44 +1508,38 @@ It does not require a permanent runtime probe.
 
 ### 9.4 Failure triage order
 
-1. Reject mismatched provenance or environment.
+1. Reject mismatched run context or environment.
 2. Check restore, compile, package contents, RID, NativeAOT, and dependencies.
 3. Check validation, result codes, synchronization, generations, and retirement.
 4. Classify pixel differences as geometry, text, color, AA/effect, or nondeterminism.
 5. Check window ownership, damage history, and stale swapchain state.
 6. Check managed, native, and GPU allocation and cache plateau.
 7. Use stage times and GPU timestamps to locate performance regressions.
-8. Re-run the same isolated workload under the same manifest.
+8. Re-run the same isolated workload under the same locked protocol and environment.
 9. Use one ephemeral probe only if logs and the E2E corpus cannot answer the remaining question.
 
-## 10. Baseline and artifact schema
+## 10. Reference and result records
 
-Every benchmark result must include:
+S04 does not define or require a qualifying manifest system. Existing recorded Skia benchmark
+information is the only Skia reference input. Do not add permanent Skia benchmark, provenance, or
+trace infrastructure.
 
-- `baselineId`.
-- `baselineKey` containing OS/RID, GPU/driver/implementation, workload, metric, and protocol.
-- `parentBaselineId` for Vulkan results.
+Vulkan implementation and release records contain only the information needed to reproduce a hard
+gate and diagnose a failure:
+
 - Backend and renderer revision.
-- Platform and hardware provenance.
-- Workload ID and revision.
-- Protocol version.
-- Metric schema version.
-- Pass/fail result for every Q10 gate.
-- Raw result artifact paths and SHA-256 hashes.
-- Visual reference, capture, mask, and diff hashes.
-- Package inventory and hashes.
-- Manifest hash and every source/configuration input hash.
+- Platform, RID, hardware, workload, metric, and locked protocol.
+- Pass or fail result for every applicable Q10 gate.
+- Raw logs, captures, and hashes when produced by a durable verification target.
 - Validation error count.
-- Notes for intentional present wait and first-use separation.
+- Notes for intentional present waits and first-use separation.
 
-Selection rules:
+Comparison rules:
 
-- Pick the newest complete qualifying Skia result per workload and metric.
-- Capture only missing facts before cutover.
-- Never pick an older or slower result to lower the floor.
-- Compare each Vulkan result only to the immutable Skia floor and immediate accepted Vulkan parent
-  with the same complete baseline key.
-- A Vulkan result can match its parent within Q10 noise.
+- Compare Vulkan results to the existing recorded Skia reference when the workload, platform, and
+  metric match.
+- Compare later Vulkan results to the most recent accepted result with the same workload, platform,
+  metric, and protocol.
 - A larger regression requires explicit Q&A.
 - Never average platform or workload failures into a passing score.
 
@@ -1631,11 +1569,10 @@ pass before the next row starts.
 | Batch | Luna Max lane A | Luna Max lane B | Luna Max lane C | Lead integration gate |
 |---|---|---|---|---|
 | B00A | Exact SDK restore and package identity | Read-only requirements provenance | Read-only benchmark-harness provenance | S01 exact SDK identity is verified before findings run |
-| B00B | Historical finding matrix | Isolated migration and fresh-package consumer | Requirements/workload manifest | S02-S03 pass before baseline capture starts |
-| B00C | Windows Skia capture | Linux Skia capture | Manifest/parser verifier | S04 immutable qualifying baselines pass |
+| B00B | Historical finding matrix | Isolated migration and fresh-package consumer | Requirements/workload manifest | S02-S03 pass before Vulkan capability work starts |
 | B01A | Vulkan capability census | Shader compiler/SPIR-V provenance | Trace and evidence schema | S05 manifests and schemas are locked |
 | B01B | Vulkan registry generator | SDL loader bootstrap and surface probe | Generated-output drift verifier | S06 generated ABI and loader pass |
-| B01C | Runtime diagnostics implementation | Five-run baseline ingestion/parser | Validation and fatal-snapshot path | S07 consumes S06 IDs and passes disabled-allocation gate |
+| B01C | Runtime diagnostics implementation | Q10 log integration | Validation and fatal-snapshot path | S07 consumes S06 IDs and passes disabled-allocation gate |
 | B02 | Allocator and resource model | Offscreen target and one-window WSI | Shader sources, SPIR-V, and manifest | Clear and quad proof is validation-clean |
 | B03A | Typed frame-plan layout | Read-only semantic-digest fixture | Read-only counting/benchmark fixture | Frame-plan layout and IDs are locked |
 | B03B | Scene compiler | Basic pipeline recorder | T02/T03 harness integration | S09 basic slice and zero-allocation gate pass |
@@ -1689,12 +1626,12 @@ All rows are independent hard gates.
 | AA/effect pixels | At least 99.9 percent have maximum channel delta at most 8 and no channel exceeds 24 |
 | Placement | Geometry and text displacement is at most 0.5 logical pixels |
 | General frame time | No percentile regresses beyond the larger of 3 percent or 0.1 ms |
-| Sparse workloads | Table, topology, and three-window sparse P95 are at least 20 percent faster than frozen Skia |
+| Sparse workloads | Table, topology, and three-window sparse P95 are at least 20 percent faster than the recorded Skia reference |
 | Absolute frame budget | P95 is at most 8.33 ms and P99 is at most 16.67 ms, excluding intentional present wait |
 | Input | P95 input-to-present is at most two refresh intervals plus 4 ms and does not regress |
 | Startup | P95 first usable frame does not regress beyond noise |
 | Memory | Managed heap, private dirty memory, RSS, and Goo-reserved GPU memory each stay within 5 percent |
-| Binary | Each Windows and Linux NativeAOT output is at least 8 MiB smaller than frozen Skia |
+| Binary | Each Windows and Linux NativeAOT output is at least 8 MiB smaller than the recorded Skia reference |
 | Dependencies | No Skia source, package, native asset, or runtime payload remains |
 | Native surface | Mandatory native-library count does not increase |
 | Product language | Goo core and Goo-owned runtime helpers contain only G# source. C# vendors, external packages, tests, benchmarks, and tools remain allowed |
@@ -1724,4 +1661,4 @@ Stop implementation and return to Q&A when:
 - Any Q10 hard gate fails and the fix requires changing an accepted architecture decision.
 
 Do not hide a failed gate in an average, weighted score, fallback, optional platform result, or weaker
-baseline.
+reference.

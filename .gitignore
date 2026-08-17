@@ -31,17 +31,6 @@
 !/Goo.InternalTextInterop/
 !/Goo.InternalTextInterop/**
 
-!/benchmarks/
-/benchmarks/*
-!/benchmarks/Goo.Benchmarks/
-!/benchmarks/Goo.Benchmarks/**
-!/benchmarks/Goo.Benchmarking/
-!/benchmarks/Goo.Benchmarking/**
-!/benchmarks/Goo.Q10TextBenchmark/
-!/benchmarks/Goo.Q10TextBenchmark/**
-!/benchmarks/Goo.TextEditorBenchmark/
-!/benchmarks/Goo.TextEditorBenchmark/**
-
 !/tests/
 !/tests/**
 /tests/GooExtended.Tests/
@@ -69,6 +58,13 @@
 /tools/*
 !/tools/Goo.ApiDocs/
 !/tools/Goo.ApiDocs/**
+!/tools/Goo.VulkanGen/
+!/tools/Goo.VulkanGen/**
+
+!/proofs/
+/proofs/*
+!/proofs/Goo.VulkanProof/
+!/proofs/Goo.VulkanProof/**
 
 !/probes/
 /probes/*

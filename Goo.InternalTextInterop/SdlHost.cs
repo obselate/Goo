@@ -1767,7 +1767,7 @@ internal sealed unsafe class SdlHost : IDisposable
 
     private void ThrowIfDisposed([CallerMemberName] string operation = "")
     {
-        SdlRuntime.RequireMainThread($"SdlHost.{operation}");
+        SdlRuntime.RequireMainThread(operation, "SdlHost.");
         ObjectDisposedException.ThrowIf(disposed, this);
     }
 
@@ -2079,25 +2079,27 @@ internal static class SdlRuntime
         }
     }
 
-    internal static void RequireMainThread(string operation)
+    internal static void RequireMainThread(string operation, string prefix = "")
     {
         lock (Sync)
-            RequireMainThreadLocked(operation);
+            RequireMainThreadLocked(operation, prefix);
     }
 
-    private static void RequireMainThreadLocked(string operation)
+    private static void RequireMainThreadLocked(string operation, string prefix = "")
     {
         var currentThreadId = Environment.CurrentManagedThreadId;
         if (mainThreadId != 0 && currentThreadId != mainThreadId)
         {
+            var operationText = prefix.Length == 0 ? operation : string.Concat(prefix, operation);
             throw new InvalidOperationException(
-                $"{operation} must run on Goo's main UI thread {mainThreadId}; " +
+                $"{operationText} must run on Goo's main UI thread {mainThreadId}; " +
                 $"the current managed thread is {currentThreadId}.");
         }
         if (!SDL.IsMainThread())
         {
+            var operationText = prefix.Length == 0 ? operation : string.Concat(prefix, operation);
             throw new InvalidOperationException(
-                $"{operation} must run on SDL's main thread; " +
+                $"{operationText} must run on SDL's main thread; " +
                 $"the current managed thread is {currentThreadId}.");
         }
     }
