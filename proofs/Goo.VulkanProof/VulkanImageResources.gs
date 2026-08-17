@@ -15,6 +15,23 @@ internal enum VulkanImageResourceState {
     Retiring;
 }
 
+internal enum VulkanImageDescriptorState {
+    Empty;
+    Bound;
+    Retiring;
+}
+
+internal data struct VulkanImageDescriptorBinding {
+    var State VulkanImageDescriptorState
+    var ImageId ResourceId
+    var SamplerId ResourceId
+    var SamplerMode VulkanImageSamplerMode
+    var Generation uint64
+    var Slot int32
+    var DescriptorToken uint64
+    var RetireFence uint64
+}
+
 internal data struct VulkanImageResourceEntry {
     var Id ResourceId
     var Width uint32
@@ -27,7 +44,8 @@ internal data struct VulkanImageResourceEntry {
     var Image VkImage
     var ImageView VkImageView
     var Allocation VulkanMemoryAllocation?
-    var Descriptor VulkanDescriptorBinding
+    var NearestDescriptor VulkanImageDescriptorBinding
+    var LinearDescriptor VulkanImageDescriptorBinding
     var ImageLayout VkImageLayout
     var UploadedVersion uint64
     var Upload VulkanUploadReservation
@@ -48,6 +66,9 @@ internal data struct VulkanImageResourceStats {
     var ResidentBytes VkDeviceSize
     var ResidentByteBudget VkDeviceSize
     var LiveObjectCount uint64
+    var DescriptorCapacity int32
+    var BoundDescriptorCount int32
+    var RetiringDescriptorCount int32
     var HighestCompletedFence uint64
     var Upload VulkanUploadRingStats
     var Registry VulkanResourceRegistryStats
@@ -75,8 +96,8 @@ internal unsafe class VulkanImageResources : IDisposable {
     private let dispatch VkDeviceDispatch
     private let allocator VulkanMemoryAllocator
     private let registry VulkanResourceRegistry
-    private let descriptorTable VulkanDescriptorTable
     private let capacity int32
+    private let descriptorCapacity int32
     private let residentByteBudget VkDeviceSize
     private let entries []VulkanImageResourceEntry
     private let logicalRecords []VulkanLogicalResource
@@ -111,6 +132,9 @@ internal unsafe class VulkanImageResources : IDisposable {
                 ResidentBytes: residentBytes,
                 ResidentByteBudget: residentByteBudget,
                 LiveObjectCount: CurrentLiveObjectHandleCount(),
+                DescriptorCapacity: descriptorCapacity,
+                BoundDescriptorCount: CurrentBoundDescriptorCount(),
+                RetiringDescriptorCount: CurrentRetiringDescriptorCount(),
                 HighestCompletedFence: highestCompletedFence,
                 Upload: uploadRing.Stats,
                 Registry: registry.Stats,
@@ -161,8 +185,9 @@ internal unsafe class VulkanImageResources : IDisposable {
         stagingByteCapacity = stagingBytes
         entries = [imageCapacity]VulkanImageResourceEntry
         logicalRecords = [logicalResourceCapacity]VulkanLogicalResource
-        descriptorSets = [imageCapacity]VkDescriptorSet
-        descriptorLayouts = [imageCapacity]VkDescriptorSetLayout
+        descriptorCapacity = imageCapacity + imageCapacity
+        descriptorSets = [descriptorCapacity]VkDescriptorSet
+        descriptorLayouts = [descriptorCapacity]VkDescriptorSetLayout
         poolSizes = [1]VkDescriptorPoolSize
         generation = initialGeneration
         highestCompletedFence = 0uL
@@ -170,7 +195,6 @@ internal unsafe class VulkanImageResources : IDisposable {
         nextTouch = 1uL
         registry = VulkanResourceRegistry(logicalResourceCapacity, maximumResidentBytes,
             maximumLogicalSourceBytes)
-        descriptorTable = VulkanDescriptorTable(imageCapacity, initialGeneration)
         uploadRing = VulkanUploadRing(stagingBytes, uploadRangeCapacity, initialGeneration)
         registry.SetGpuGeneration(initialGeneration)
         flushPrepared = false
@@ -181,7 +205,6 @@ internal unsafe class VulkanImageResources : IDisposable {
             DestroyGeneration()
             DestroyStagingBuffer()
             uploadRing.Dispose()
-            descriptorTable.Dispose()
             registry.Dispose()
             throw error
         }
@@ -212,7 +235,6 @@ internal unsafe class VulkanImageResources : IDisposable {
         try {
             DestroyGpuResources()
             registry.SetGpuGeneration(nextGeneration)
-            descriptorTable.SetGeneration(nextGeneration)
             uploadRing.SetGeneration(nextGeneration)
             generation = nextGeneration
             generationLastUseFence = 0uL
@@ -223,7 +245,6 @@ internal unsafe class VulkanImageResources : IDisposable {
             DestroyGeneration()
             DestroyStagingBuffer()
             uploadRing.Dispose()
-            descriptorTable.Dispose()
             registry.Dispose()
             disposed = true
             throw error
@@ -256,9 +277,10 @@ internal unsafe class VulkanImageResources : IDisposable {
                 if existing.Id.Version == id.Version {
                     EnsureExactMetadata(existing, id, width, height, source, cacheable, samplerId, samplerMode)
                     registry.Register(id, bytes, source, cacheable)
+                    existing.SamplerMode = samplerMode
                     existing.LastTouch = TouchValue()
                     entries[existingIndex] = existing
-                    return Lookup(existingIndex)
+                    return Lookup(existingIndex, samplerId, samplerMode)
                 }
                 throw InvalidOperationException("Vulkan image version is still resident")
             }
@@ -270,7 +292,7 @@ internal unsafe class VulkanImageResources : IDisposable {
         let index = if existingIndex >= 0 { existingIndex } else { FindEmptyIndex() }
         let priorLogical = if existingIndex < 0 { CaptureLogical(id) } else { nil }
         CreateImage(index, id, width, height, bytes, source, cacheable, samplerId, samplerMode, priorLogical)
-        return Lookup(index)
+        return Lookup(index, samplerId, samplerMode)
     }
 
     internal func QueueUpload(id ResourceId, premultipliedSourceBytes *uint8,
@@ -370,9 +392,25 @@ internal unsafe class VulkanImageResources : IDisposable {
                 if entry.UploadCommandBuffer != 0uL {
                     throw InvalidOperationException("Vulkan image upload must be aborted before recording again")
                 }
+                try {
+                    RecordUpload(commandBuffer, entry)
+                } catch (error Exception) {
+                    if !uploadRing.Cancel(entry.Upload) {
+                        throw InvalidOperationException("Vulkan image upload reservation rollback failed")
+                    }
+                    entry.State = VulkanImageResourceState.Resident
+                    entry.Upload = VulkanUploadReservation{}
+                    entry.UploadRecorded = false
+                    entry.UploadSubmitted = false
+                    entry.UploadCommandBuffer = 0uL
+                    entry.UploadFence = 0uL
+                    entry.PendingRetire = false
+                    entries[index] = entry
+                    uploadRing.Collect(highestCompletedFence)
+                    flushPrepared = false
+                    throw error
+                }
                 entry.UploadCommandBuffer = commandBuffer
-                entries[index] = entry
-                RecordUpload(commandBuffer, entry)
                 entry.UploadRecorded = true
                 entries[index] = entry
                 recorded++
@@ -642,12 +680,11 @@ internal unsafe class VulkanImageResources : IDisposable {
         if entry.State == VulkanImageResourceState.Retiring {
             let safeFence = RetireFence(entry, fence)
             if safeFence > entry.RetireFence {
+                let retiredEntry = RetireDescriptors(entry, safeFence)
                 if !registry.Retire(id, safeFence) {
                     throw InvalidOperationException("Vulkan image registry entry is not resident")
                 }
-                if !descriptorTable.Retire(entry.Descriptor, safeFence) {
-                    throw InvalidOperationException("Vulkan image descriptor is stale")
-                }
+                entry = retiredEntry
                 entry.RetireFence = safeFence
                 entries[index] = entry
                 if safeFence > generationLastUseFence {
@@ -659,29 +696,28 @@ internal unsafe class VulkanImageResources : IDisposable {
         if entry.Upload.Succeeded && entry.UploadRecorded && !entry.UploadSubmitted {
             throw InvalidOperationException("Vulkan image upload commands are recorded")
         }
-        if entry.Upload.Succeeded && !entry.UploadSubmitted {
-            if !uploadRing.Cancel(entry.Upload) {
-                throw InvalidOperationException("Vulkan image upload reservation is stale")
-            }
-            entry.Upload = VulkanUploadReservation{}
-            entry.UploadRecorded = false
-            entry.UploadCommandBuffer = 0uL
-        }
+        let cancelUpload = entry.Upload.Succeeded && !entry.UploadSubmitted
         let safeFence = RetireFence(entry, fence)
         let registryLookup = registry.Lookup(id, generation)
         if !registryLookup.Found {
             throw InvalidOperationException("Vulkan image registry entry is stale")
         }
-        let descriptorLookup = descriptorTable.Lookup(entry.Descriptor.Slot, generation)
-        if !descriptorLookup.Found
-            || descriptorLookup.DescriptorToken != entry.Descriptor.DescriptorToken {
-            throw InvalidOperationException("Vulkan image descriptor is stale")
+        let retiredEntry = RetireDescriptors(entry, safeFence)
+        if cancelUpload {
+            if !uploadRing.Cancel(entry.Upload) {
+                throw InvalidOperationException("Vulkan image upload reservation is stale")
+            }
         }
         if !registry.Retire(id, safeFence) {
             throw InvalidOperationException("Vulkan image registry entry is not resident")
         }
-        if !descriptorTable.Retire(entry.Descriptor, safeFence) {
-            throw InvalidOperationException("Vulkan image descriptor is stale")
+        entry = retiredEntry
+        if cancelUpload {
+            entry.Upload = VulkanUploadReservation{}
+            entry.UploadRecorded = false
+            entry.UploadSubmitted = false
+            entry.UploadCommandBuffer = 0uL
+            entry.UploadFence = 0uL
         }
         entry.RetireFence = safeFence
         entry.State = VulkanImageResourceState.Retiring
@@ -704,7 +740,22 @@ internal unsafe class VulkanImageResources : IDisposable {
             var entry = entries[index]
             if entry.State == VulkanImageResourceState.UploadPending
                 && entry.UploadSubmitted && entry.UploadFence <= effectiveCompletedFence {
+                let pendingRetire = entry.PendingRetire
+                var retiredEntry = entry
+                if pendingRetire {
+                    retiredEntry = RetireDescriptors(entry, entry.RetireFence)
+                }
+                let registryLookup = registry.Lookup(entry.Id, generation)
+                if !registryLookup.Found {
+                    throw InvalidOperationException("Vulkan image registry entry is stale")
+                }
                 registry.MarkUploaded(entry.Id, generation)
+                if pendingRetire {
+                    if !registry.Retire(entry.Id, entry.RetireFence) {
+                        throw InvalidOperationException("Vulkan image registry entry is not resident")
+                    }
+                    entry = retiredEntry
+                }
                 entry.UploadedVersion = entry.Id.Version
                 entry.Upload = VulkanUploadReservation{}
                 entry.UploadRecorded = false
@@ -713,13 +764,7 @@ internal unsafe class VulkanImageResources : IDisposable {
                 entry.UploadFence = 0uL
                 entry.State = VulkanImageResourceState.Resident
                 entry.LastTouch = TouchValue()
-                if entry.PendingRetire {
-                    if !registry.Retire(entry.Id, entry.RetireFence) {
-                        throw InvalidOperationException("Vulkan image registry entry is not resident")
-                    }
-                    if !descriptorTable.Retire(entry.Descriptor, entry.RetireFence) {
-                        throw InvalidOperationException("Vulkan image descriptor is stale")
-                    }
+                if pendingRetire {
                     entry.PendingRetire = false
                     entry.State = VulkanImageResourceState.Retiring
                 }
@@ -743,7 +788,6 @@ internal unsafe class VulkanImageResources : IDisposable {
             index++
         }
         registry.Collect(effectiveCompletedFence)
-        descriptorTable.Collect(effectiveCompletedFence)
         return completedUploads + retired
     }
 
@@ -788,7 +832,25 @@ internal unsafe class VulkanImageResources : IDisposable {
         if index < 0 {
             return VulkanImageResourceLookup{ Found: false }
         }
-        return Lookup(index)
+        let entry = entries[index]
+        return Lookup(index, entry.SamplerId, entry.SamplerMode)
+    }
+
+    internal func Lookup(
+        id ResourceId,
+        samplerId ResourceId,
+        samplerMode VulkanImageSamplerMode,
+        expectedGeneration uint64) VulkanImageResourceLookup {
+        if disposed || !id.IsValid || id.Kind != SceneResourceKind.Image
+            || !samplerId.IsValid || samplerId.Kind != SceneResourceKind.Sampler
+            || expectedGeneration == 0uL || expectedGeneration != generation {
+            return VulkanImageResourceLookup{ Found: false }
+        }
+        let index = FindExactIndex(id)
+        if index < 0 {
+            return VulkanImageResourceLookup{ Found: false }
+        }
+        return Lookup(index, samplerId, samplerMode)
     }
 
     internal func BindDescriptor(
@@ -802,7 +864,26 @@ internal unsafe class VulkanImageResources : IDisposable {
         if index < 0 {
             throw InvalidOperationException("Vulkan image is not registered")
         }
-        let lookup = Lookup(index)
+        let entry = entries[index]
+        BindDescriptor(commandBuffer, pipelineLayout, id, entry.SamplerId, entry.SamplerMode,
+            expectedGeneration)
+    }
+
+    internal func BindDescriptor(
+        commandBuffer VkCommandBuffer,
+        pipelineLayout VkPipelineLayout,
+        id ResourceId,
+        samplerId ResourceId,
+        samplerMode VulkanImageSamplerMode,
+        expectedGeneration uint64) {
+        EnsureOpen()
+        ValidateGeneration(expectedGeneration)
+        ValidateSamplerId(samplerId)
+        let index = FindExactIndex(id)
+        if index < 0 {
+            throw InvalidOperationException("Vulkan image is not registered")
+        }
+        let lookup = Lookup(index, samplerId, samplerMode)
         let entry = entries[index]
         let uploadCanBeConsumed = entry.State == VulkanImageResourceState.UploadPending
             && entry.Upload.Succeeded
@@ -810,6 +891,9 @@ internal unsafe class VulkanImageResources : IDisposable {
             && entry.UploadCommandBuffer == commandBuffer
         if !lookup.Renderable && !uploadCanBeConsumed {
             throw InvalidOperationException("Vulkan image upload is not complete")
+        }
+        if lookup.DescriptorSet == 0uL {
+            throw InvalidOperationException("Vulkan image descriptor is stale")
         }
         var descriptorSet = lookup.DescriptorSet
         let bindDescriptorSets = dispatch.vkCmdBindDescriptorSets
@@ -841,7 +925,6 @@ internal unsafe class VulkanImageResources : IDisposable {
         DestroyGpuResources()
         DestroyStagingBuffer()
         uploadRing.Dispose()
-        descriptorTable.Dispose()
         registry.Dispose()
         index = 0
         while index < entries.Length {
@@ -873,10 +956,10 @@ internal unsafe class VulkanImageResources : IDisposable {
         }
         poolSizes[0] = VkDescriptorPoolSize{}
         poolSizes[0]._type = VkConstants.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-        poolSizes[0].descriptorCount = uint32(capacity)
+        poolSizes[0].descriptorCount = uint32(descriptorCapacity)
         var poolInfo = VkDescriptorPoolCreateInfo{}
         poolInfo.sType = VkConstants.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
-        poolInfo.maxSets = uint32(capacity)
+        poolInfo.maxSets = uint32(descriptorCapacity)
         poolInfo.poolSizeCount = 1u
         poolInfo.pPoolSizes = &poolSizes[0]
         let createPool = dispatch.vkCreateDescriptorPool
@@ -886,14 +969,14 @@ internal unsafe class VulkanImageResources : IDisposable {
             throw InvalidOperationException("vkCreateDescriptorPool failed")
         }
         var descriptorIndex int32 = 0
-        while descriptorIndex < capacity {
+        while descriptorIndex < descriptorCapacity {
             descriptorLayouts[descriptorIndex] = descriptorSetLayout
             descriptorIndex++
         }
         var allocateInfo = VkDescriptorSetAllocateInfo{}
         allocateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO
         allocateInfo.descriptorPool = descriptorPool
-        allocateInfo.descriptorSetCount = uint32(capacity)
+        allocateInfo.descriptorSetCount = uint32(descriptorCapacity)
         allocateInfo.pSetLayouts = &descriptorLayouts[0]
         let allocateSets = dispatch.vkAllocateDescriptorSets
         if allocateSets(device, &allocateInfo, &descriptorSets[0]) != VkConstants.VK_SUCCESS {
@@ -954,6 +1037,7 @@ internal unsafe class VulkanImageResources : IDisposable {
         samplerId ResourceId,
         samplerMode VulkanImageSamplerMode,
         priorLogical VulkanLogicalResource?) {
+        EnsureDescriptorSlots(index)
         var imageInfo = VkImageCreateInfo{}
         imageInfo.sType = VkConstants.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
         imageInfo.imageType = VkConstants.VK_IMAGE_TYPE_2D
@@ -977,7 +1061,8 @@ internal unsafe class VulkanImageResources : IDisposable {
         }
         var allocation VulkanMemoryAllocation? = nil
         var view VkImageView = 0uL
-        var descriptor VulkanDescriptorBinding{}
+        var nearestDescriptor VulkanImageDescriptorBinding{}
+        var linearDescriptor VulkanImageDescriptorBinding{}
         var registration VulkanResourceRegistration{}
         try {
             allocation = allocator.AllocateImage(image,
@@ -1000,10 +1085,13 @@ internal unsafe class VulkanImageResources : IDisposable {
             if createView(device, &viewInfo, nil, &view) != VkConstants.VK_SUCCESS || view == 0uL {
                 throw InvalidOperationException("vkCreateImageView failed")
             }
-            descriptor = BindDescriptorSet(id, view, samplerMode)
             EnsureRegistryPublication(bytes)
             registration = registry.Register(id, bytes, source, cacheable)
-            registry.PublishGpu(id, generation, image, descriptor.Slot)
+            nearestDescriptor = BindDescriptorSet(index, id, samplerId, view,
+                VulkanImageSamplerMode.Nearest)
+            linearDescriptor = BindDescriptorSet(index, id, samplerId, view,
+                VulkanImageSamplerMode.Linear)
+            registry.PublishGpu(id, generation, image, nearestDescriptor.Slot)
             entries[index] = VulkanImageResourceEntry{
                 Id: id,
                 Width: width,
@@ -1016,7 +1104,8 @@ internal unsafe class VulkanImageResources : IDisposable {
                 Image: image,
                 ImageView: view,
                 Allocation: allocation,
-                Descriptor: descriptor,
+                NearestDescriptor: nearestDescriptor,
+                LinearDescriptor: linearDescriptor,
                 ImageLayout: VkConstants.VK_IMAGE_LAYOUT_UNDEFINED,
                 UploadedVersion: 0uL,
                 Upload: VulkanUploadReservation{},
@@ -1036,10 +1125,6 @@ internal unsafe class VulkanImageResources : IDisposable {
             if registration.Accepted {
                 rollbackSucceeded = RollbackRegistration(id, registration, priorLogical)
             }
-            if descriptor.Succeeded {
-                descriptorTable.Retire(descriptor, 0uL)
-                descriptorTable.Collect(0uL)
-            }
             if view != 0uL {
                 let destroyView = dispatch.vkDestroyImageView
                 destroyView(device, view, nil)
@@ -1057,29 +1142,40 @@ internal unsafe class VulkanImageResources : IDisposable {
     }
 
     private func BindDescriptorSet(
+        index int32,
         id ResourceId,
+        samplerId ResourceId,
         view VkImageView,
-        samplerMode VulkanImageSamplerMode) VulkanDescriptorBinding {
+        samplerMode VulkanImageSamplerMode) VulkanImageDescriptorBinding {
         let sampler = if samplerMode == VulkanImageSamplerMode.Nearest { nearestSampler } else { linearSampler }
-        let token = uint64(view)
-        let binding = descriptorTable.Bind(id, token)
-        if !binding.Succeeded || binding.Slot < 0 || binding.Slot >= capacity {
+        let slot = DescriptorSlot(index, samplerMode)
+        if slot < 0 || slot >= descriptorCapacity || descriptorSets[slot] == 0uL {
             throw InvalidOperationException("Vulkan image descriptor capacity reached")
         }
+        let token = uint64(view)
         var imageInfo = VkDescriptorImageInfo{}
         imageInfo.sampler = sampler
         imageInfo.imageView = view
         imageInfo.imageLayout = VkConstants.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         var write = VkWriteDescriptorSet{}
         write.sType = VkConstants.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
-        write.dstSet = descriptorSets[binding.Slot]
+        write.dstSet = descriptorSets[slot]
         write.dstBinding = 0u
         write.descriptorCount = 1u
         write.descriptorType = VkConstants.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
         write.pImageInfo = &imageInfo
         let update = dispatch.vkUpdateDescriptorSets
         update(device, 1u, &write, 0u, nil)
-        return binding
+        return VulkanImageDescriptorBinding{
+            State: VulkanImageDescriptorState.Bound,
+            ImageId: id,
+            SamplerId: samplerId,
+            SamplerMode: samplerMode,
+            Generation: generation,
+            Slot: slot,
+            DescriptorToken: token,
+            RetireFence: 0uL,
+        }
     }
 
     private func RecordUpload(commandBuffer VkCommandBuffer, entry VulkanImageResourceEntry) {
@@ -1148,11 +1244,19 @@ internal unsafe class VulkanImageResources : IDisposable {
         pipelineBarrier(commandBuffer, &secondDependency)
     }
 
-    private func Lookup(index int32) VulkanImageResourceLookup {
+    private func Lookup(
+        index int32,
+        samplerId ResourceId,
+        samplerMode VulkanImageSamplerMode) VulkanImageResourceLookup {
         var entry = entries[index]
+        let descriptor = DescriptorFor(entry, samplerId, samplerMode)
+        let descriptorSet = if descriptor.State == VulkanImageDescriptorState.Bound
+            && descriptor.Slot >= 0 && descriptor.Slot < descriptorCapacity {
+            descriptorSets[descriptor.Slot]
+        } else { 0uL }
         let renderable = entry.State == VulkanImageResourceState.Resident
             && entry.Image != 0uL && entry.ImageView != 0uL
-            && entry.UploadedVersion == entry.Id.Version
+            && entry.UploadedVersion == entry.Id.Version && descriptorSet != 0uL
         entry.LastTouch = TouchValue()
         entries[index] = entry
         return VulkanImageResourceLookup{
@@ -1161,11 +1265,11 @@ internal unsafe class VulkanImageResources : IDisposable {
             Id: entry.Id,
             Image: entry.Image,
             ImageView: entry.ImageView,
-            DescriptorSet: if entry.Descriptor.Slot >= 0 { descriptorSets[entry.Descriptor.Slot] } else { 0uL },
+            DescriptorSet: descriptorSet,
             Width: entry.Width,
             Height: entry.Height,
-            SamplerId: entry.SamplerId,
-            SamplerMode: entry.SamplerMode,
+            SamplerId: samplerId,
+            SamplerMode: samplerMode,
             UploadedVersion: entry.UploadedVersion,
         }
     }
@@ -1320,12 +1424,138 @@ internal unsafe class VulkanImageResources : IDisposable {
             || entry.Height != height
             || entry.Bytes != source.Bytes
             || !SameSource(entry.SamplerId, samplerId)
-            || entry.SamplerMode != samplerMode
             || entry.Cacheable != cacheable
             || !SameSource(entry.Id, id)
             || !SameSource(entry, source) {
             throw InvalidOperationException("Vulkan image metadata changed for an unchanged version")
         }
+    }
+
+    private func DescriptorSlot(index int32, samplerMode VulkanImageSamplerMode) int32 {
+        if index < 0 || index >= capacity {
+            return -1
+        }
+        let modeOffset = if samplerMode == VulkanImageSamplerMode.Nearest { 0 } else { 1 }
+        return index + index + modeOffset
+    }
+
+    private func EnsureDescriptorSlots(index int32) {
+        let nearestSlot = DescriptorSlot(index, VulkanImageSamplerMode.Nearest)
+        let linearSlot = DescriptorSlot(index, VulkanImageSamplerMode.Linear)
+        if nearestSlot < 0 || nearestSlot >= descriptorCapacity
+            || linearSlot < 0 || linearSlot >= descriptorCapacity
+            || descriptorSets[nearestSlot] == 0uL
+            || descriptorSets[linearSlot] == 0uL {
+            throw InvalidOperationException("Vulkan image descriptor capacity reached")
+        }
+    }
+
+    private func DescriptorFor(
+        entry VulkanImageResourceEntry,
+        samplerId ResourceId,
+        samplerMode VulkanImageSamplerMode) VulkanImageDescriptorBinding {
+        let binding = if samplerMode == VulkanImageSamplerMode.Nearest {
+            entry.NearestDescriptor
+        } else {
+            entry.LinearDescriptor
+        }
+        if binding.State == VulkanImageDescriptorState.Empty
+            || binding.Generation != generation
+            || !SameSource(binding.ImageId, entry.Id)
+            || !SameSource(binding.SamplerId, samplerId)
+            || binding.SamplerMode != samplerMode
+            || binding.DescriptorToken != uint64(entry.ImageView)
+            || binding.Slot < 0 || binding.Slot >= descriptorCapacity
+            || descriptorSets[binding.Slot] == 0uL {
+            return VulkanImageDescriptorBinding{}
+        }
+        return binding
+    }
+
+    private func EnsureDescriptorsBound(entry VulkanImageResourceEntry) {
+        let nearest = DescriptorFor(entry, entry.SamplerId, VulkanImageSamplerMode.Nearest)
+        let linear = DescriptorFor(entry, entry.SamplerId, VulkanImageSamplerMode.Linear)
+        if nearest.State != VulkanImageDescriptorState.Bound
+            || linear.State != VulkanImageDescriptorState.Bound {
+            throw InvalidOperationException("Vulkan image descriptor is stale")
+        }
+    }
+
+    private func RetireDescriptors(
+        entry VulkanImageResourceEntry,
+        fence uint64) VulkanImageResourceEntry {
+        var updated = entry
+        updated.NearestDescriptor = RetireDescriptor(
+            entry.NearestDescriptor, entry.Id, entry.SamplerId,
+            VulkanImageSamplerMode.Nearest, entry.ImageView, fence)
+        updated.LinearDescriptor = RetireDescriptor(
+            entry.LinearDescriptor, entry.Id, entry.SamplerId,
+            VulkanImageSamplerMode.Linear, entry.ImageView, fence)
+        return updated
+    }
+
+    private func RetireDescriptor(
+        binding VulkanImageDescriptorBinding,
+        imageId ResourceId,
+        samplerId ResourceId,
+        samplerMode VulkanImageSamplerMode,
+        imageView VkImageView,
+        fence uint64) VulkanImageDescriptorBinding {
+        if binding.State == VulkanImageDescriptorState.Empty
+            || binding.Generation != generation
+            || !SameSource(binding.ImageId, imageId)
+            || !SameSource(binding.SamplerId, samplerId)
+            || binding.SamplerMode != samplerMode
+            || binding.DescriptorToken != uint64(imageView)
+            || binding.Slot < 0 || binding.Slot >= descriptorCapacity
+            || descriptorSets[binding.Slot] == 0uL {
+            throw InvalidOperationException("Vulkan image descriptor is stale")
+        }
+        var updated = binding
+        if binding.State == VulkanImageDescriptorState.Retiring {
+            if fence > updated.RetireFence {
+                updated.RetireFence = fence
+            }
+            return updated
+        }
+        if binding.State != VulkanImageDescriptorState.Bound {
+            throw InvalidOperationException("Vulkan image descriptor is not bound")
+        }
+        updated.State = VulkanImageDescriptorState.Retiring
+        updated.RetireFence = fence
+        return updated
+    }
+
+    private func CurrentBoundDescriptorCount() int32 {
+        var count int32 = 0
+        var index int32 = 0
+        while index < entries.Length {
+            let entry = entries[index]
+            if entry.NearestDescriptor.State == VulkanImageDescriptorState.Bound {
+                count++
+            }
+            if entry.LinearDescriptor.State == VulkanImageDescriptorState.Bound {
+                count++
+            }
+            index++
+        }
+        return count
+    }
+
+    private func CurrentRetiringDescriptorCount() int32 {
+        var count int32 = 0
+        var index int32 = 0
+        while index < entries.Length {
+            let entry = entries[index]
+            if entry.NearestDescriptor.State == VulkanImageDescriptorState.Retiring {
+                count++
+            }
+            if entry.LinearDescriptor.State == VulkanImageDescriptorState.Retiring {
+                count++
+            }
+            index++
+        }
+        return count
     }
 
     private func SameSource(left ResourceId, right ResourceId) bool {
@@ -1373,12 +1603,11 @@ internal unsafe class VulkanImageResources : IDisposable {
 
     private func CurrentLiveObjectHandleCount() uint64 {
         var count uint64 = uint64(liveCount) * 2uL
-        count += uint64(capacity)
         if stagingBuffer != 0uL {
             count++
         }
         if descriptorPool != 0uL {
-            count++
+            count += 1uL + uint64(descriptorCapacity)
         }
         if descriptorSetLayout != 0uL {
             count++

@@ -9,15 +9,19 @@ internal class VulkanImageE2EContract {
     const Height uint32 = 64u
     const ImageLogicalId uint64 = 7771uL
     const SamplerLogicalId uint64 = 7772uL
-    const ExpectedDigest uint64 = 12286913645295596837uL
+    const ExpectedDigest uint64 = 2726448270383127845uL
 }
 
-internal func VulkanImageResourceId() ResourceId {
+internal func VulkanImageResourceIdVersion(version uint64) ResourceId {
     return ResourceId{
         Kind: SceneResourceKind.Image,
         LogicalId: VulkanImageE2EContract.ImageLogicalId,
-        Version: 1uL,
+        Version: version,
     }
+}
+
+internal func VulkanImageResourceId() ResourceId {
+    return VulkanImageResourceIdVersion(2uL)
 }
 
 internal func VulkanImageSamplerId() ResourceId {
@@ -28,9 +32,12 @@ internal func VulkanImageSamplerId() ResourceId {
     }
 }
 
-internal func BuildVulkanImageScene(frame SceneFrame) {
+internal func BuildVulkanImageScene(frame SceneFrame, sampling uint32) {
     if frame == nil {
         throw ArgumentNullException("frame")
+    }
+    if sampling > 1u {
+        throw ArgumentOutOfRangeException("sampling")
     }
     frame.ResetForReuse()
     frame.BeginChunk(0x494D414745454E44uL, 1uL, ConservativeBounds{
@@ -48,7 +55,7 @@ internal func BuildVulkanImageScene(frame SceneFrame) {
         SourceWidth: 1.0F,
         SourceHeight: 1.0F,
         Opacity: 1.0F,
-        Sampling: 0u,
+        Sampling: sampling,
         TransformIndex: -1,
     })
     frame.EndChunk()
@@ -82,7 +89,7 @@ internal unsafe func VerifyVulkanImageReadback(readback *uint8, width uint32, he
     if !VulkanImageExactPixel(readback, width, 4, 4, 0u, 0u, 0u, 0u) {
         return false
     }
-    if !VulkanImageExactPixel(readback, width, 20, 20, 255u, 0u, 0u, 255u) {
+    if !VulkanImageExactPixel(readback, width, 20, 20, 0u, 0u, 255u, 255u) {
         return false
     }
     if !VulkanImageNearPixel(readback, width, 44, 20, 188, 92, 0, 128, 4) {
@@ -95,6 +102,10 @@ internal unsafe func VerifyVulkanImageReadback(readback *uint8, width uint32, he
         return false
     }
     return true
+}
+
+internal unsafe func VerifyVulkanImageLinearReadback(readback *uint8, width uint32, height uint32) bool {
+    return VerifyVulkanImageReadback(readback, width, height)
 }
 
 internal func VulkanImageUploadStatsEqual(first VulkanUploadRingStats, second VulkanUploadRingStats) bool {

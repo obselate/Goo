@@ -807,6 +807,14 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         if !value.SamplerId.IsValid || value.SamplerId.Kind != SceneResourceKind.Sampler {
             throw ArgumentException("cached image sampler id is not a sampler")
         }
+        if value.Sampling != 0u && value.Sampling != 1u {
+            throw ArgumentOutOfRangeException("sampling")
+        }
+        let samplerMode = if value.Sampling == 0u {
+            VulkanImageSamplerMode.Nearest
+        } else {
+            VulkanImageSamplerMode.Linear
+        }
         ValidateFinite(value.SourceX, "cached image source x")
         ValidateFinite(value.SourceY, "cached image source y")
         ValidateFinite(value.SourceWidth, "cached image source width")
@@ -817,18 +825,10 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
             || value.SourceY + value.SourceHeight > 1.0F {
             throw ArgumentOutOfRangeException("cached image source rectangle")
         }
-        let lookup = imageResources!!.Lookup(value.ImageId, resourceGeneration)
+        let lookup = imageResources!!.Lookup(value.ImageId, value.SamplerId, samplerMode,
+            resourceGeneration)
         if !lookup.Found || !lookup.Renderable {
             throw InvalidOperationException("Vulkan cached image is not renderable")
-        }
-        if lookup.SamplerId.Kind != value.SamplerId.Kind
-            || lookup.SamplerId.LogicalId != value.SamplerId.LogicalId
-            || lookup.SamplerId.Version != value.SamplerId.Version {
-            throw InvalidOperationException("Vulkan cached image sampler identity mismatch")
-        }
-        let expectedSampling = if lookup.SamplerMode == VulkanImageSamplerMode.Nearest { 0u } else { 1u }
-        if value.Sampling != expectedSampling {
-            throw InvalidOperationException("Vulkan cached image sampling policy mismatch")
         }
         if value.Bounds.IsEmpty {
             return
@@ -841,7 +841,8 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         push.params_y = value.SourceY
         push.params_z = value.SourceWidth
         push.params_w = value.SourceHeight
-        imageResources!!.BindDescriptor(commandBuffer, pipelineLayout, value.ImageId, resourceGeneration)
+        imageResources!!.BindDescriptor(commandBuffer, pipelineLayout, value.ImageId,
+            value.SamplerId, samplerMode, resourceGeneration)
         if activePipeline != sampledPipeline {
             let bindPipeline = dispatch.vkCmdBindPipeline
             bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, sampledPipeline)

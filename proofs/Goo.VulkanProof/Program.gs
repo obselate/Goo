@@ -342,6 +342,10 @@ unsafe func QuerySwapchainSelection(
 }
 
 unsafe func Main() int32 {
+    if Environment.GetEnvironmentVariable("GOO_VK_TEXT_E2E") == "1" {
+        RunVulkanTextE2E()
+        return 0
+    }
     if Environment.GetEnvironmentVariable("GOO_VK_SCENE_PLAN") == "1" {
         RunScenePlanProof()
         return 0
@@ -416,6 +420,12 @@ unsafe func Main() int32 {
     var imagePreflightLiveBytesBefore uint64 = 0uL
     var imagePreflightLiveBytesAfter uint64 = 0uL
     var imageSourcePixels *uint8 = nil
+    var imageSourceProvider VulkanImageSourceProvider? = nil
+    var imageSourceLease VulkanImageSourceLease? = nil
+    var imageSource VulkanResourceSource
+    var imageLinearDigest uint64 = 0uL
+    let imageSourceStorage *uint32 = stackalloc [4]uint32
+    imageSourcePixels = *uint8(imageSourceStorage)
     var offscreenCommandBuffer VkCommandBuffer = nint(0)
     var allocatedCommandBufferCount uint32 = 0u
     var resetCommandBufferAddress nint = nint(0)
@@ -2243,7 +2253,7 @@ unsafe func Main() int32 {
                 }
                 if imageReadbackRequested {
                     sceneFrame = SceneFrame(2)
-                    BuildVulkanImageScene(sceneFrame!!)
+                    BuildVulkanImageScene(sceneFrame!!, 0u)
                     if sceneFrame!!.DrawRefCount != 1 || sceneFrame!!.CachedImageCount != 1 {
                         throw InvalidOperationException("Vulkan image scene plan is invalid")
                     }
@@ -2264,24 +2274,6 @@ unsafe func Main() int32 {
                     planEndTicks - planStartTicks)
             }
             if imageReadbackRequested {
-                let imageSourceStorage *uint32 = stackalloc [4]uint32
-                imageSourcePixels = *uint8(imageSourceStorage)
-                imageSourcePixels[0] = uint8(255)
-                imageSourcePixels[1] = uint8(0)
-                imageSourcePixels[2] = uint8(0)
-                imageSourcePixels[3] = uint8(255)
-                imageSourcePixels[4] = uint8(128)
-                imageSourcePixels[5] = uint8(64)
-                imageSourcePixels[6] = uint8(0)
-                imageSourcePixels[7] = uint8(128)
-                imageSourcePixels[8] = uint8(0)
-                imageSourcePixels[9] = uint8(255)
-                imageSourcePixels[10] = uint8(0)
-                imageSourcePixels[11] = uint8(255)
-                imageSourcePixels[12] = uint8(0)
-                imageSourcePixels[13] = uint8(0)
-                imageSourcePixels[14] = uint8(0)
-                imageSourcePixels[15] = uint8(0)
                 let imageAllocator = readbackAllocatorValue
                 let imageResourceValue = VulkanImageResources(
                     device,
@@ -2296,10 +2288,12 @@ unsafe func Main() int32 {
                     imageGeneration)
                 imageResources = imageResourceValue
                 let imageId = VulkanImageResourceId()
-                let imageSource = VulkanResourceSource{
-                    ProviderId: 1uL,
+                let imageSourceProviderValue = VulkanImageSourceProvider(9911uL, 4, 4, 1024uL)
+                imageSourceProvider = imageSourceProviderValue
+                imageSource = VulkanResourceSource{
+                    ProviderId: imageSourceProviderValue.ProviderId,
                     SourceId: VulkanImageE2EContract.ImageLogicalId,
-                    Version: 1uL,
+                    Version: 2uL,
                     Bytes: 16uL,
                 }
                 let registration = imageResourceValue.RegisterImage(
@@ -2312,6 +2306,91 @@ unsafe func Main() int32 {
                     VulkanImageSamplerMode.Nearest)
                 if !registration.Found {
                     throw InvalidOperationException("Vulkan image registration failed")
+                }
+                if !imageSourceProviderValue.Begin(VulkanImageE2EContract.ImageLogicalId, 1uL) {
+                    throw InvalidOperationException("Vulkan image source pending begin failed")
+                }
+                let staleLease = imageSourceProviderValue.Acquire(
+                    VulkanImageE2EContract.ImageLogicalId, 1uL)
+                if staleLease == nil || !staleLease!!.IsValid || staleLease!!.IsReady {
+                    throw InvalidOperationException("Vulkan pending image source became ready")
+                }
+                let pendingImageStats = imageResourceValue.Stats
+                if pendingImageStats.Upload.ActiveRanges != 0
+                    || pendingImageStats.Upload.SubmittedRanges != 0 {
+                    throw InvalidOperationException("Vulkan pending image source queued upload work")
+                }
+                if !imageSourceProviderValue.Begin(VulkanImageE2EContract.ImageLogicalId, 2uL) {
+                    throw InvalidOperationException("Vulkan image source replacement begin failed")
+                }
+                let stalePixels = [16]uint8
+                stalePixels[0] = uint8(255)
+                stalePixels[1] = uint8(0)
+                stalePixels[2] = uint8(0)
+                stalePixels[3] = uint8(255)
+                stalePixels[4] = uint8(128)
+                stalePixels[5] = uint8(64)
+                stalePixels[6] = uint8(0)
+                stalePixels[7] = uint8(128)
+                stalePixels[8] = uint8(0)
+                stalePixels[9] = uint8(255)
+                stalePixels[10] = uint8(0)
+                stalePixels[11] = uint8(255)
+                stalePixels[12] = uint8(0)
+                stalePixels[13] = uint8(0)
+                stalePixels[14] = uint8(0)
+                stalePixels[15] = uint8(0)
+                if imageSourceProviderValue.CompletePremultipliedRgba(
+                    VulkanImageE2EContract.ImageLogicalId,
+                    1uL,
+                    2u,
+                    2u,
+                    stalePixels) {
+                    throw InvalidOperationException("Vulkan stale image source completion was accepted")
+                }
+                let staleLookup = imageSourceProviderValue.Lookup(
+                    VulkanImageE2EContract.ImageLogicalId, 1uL)
+                if !staleLookup.Found || staleLookup.State != VulkanImageSourceState.Failed {
+                    throw InvalidOperationException("Vulkan stale image source state is invalid")
+                }
+                let replacementPixels = [16]uint8
+                replacementPixels[0] = uint8(0)
+                replacementPixels[1] = uint8(0)
+                replacementPixels[2] = uint8(255)
+                replacementPixels[3] = uint8(255)
+                replacementPixels[4] = uint8(128)
+                replacementPixels[5] = uint8(64)
+                replacementPixels[6] = uint8(0)
+                replacementPixels[7] = uint8(128)
+                replacementPixels[8] = uint8(0)
+                replacementPixels[9] = uint8(255)
+                replacementPixels[10] = uint8(0)
+                replacementPixels[11] = uint8(255)
+                replacementPixels[12] = uint8(0)
+                replacementPixels[13] = uint8(0)
+                replacementPixels[14] = uint8(0)
+                replacementPixels[15] = uint8(0)
+                if !imageSourceProviderValue.CompletePremultipliedRgba(
+                    VulkanImageE2EContract.ImageLogicalId,
+                    2uL,
+                    2u,
+                    2u,
+                    replacementPixels) {
+                    throw InvalidOperationException("Vulkan replacement image source completion failed")
+                }
+                let replacementLease = imageSourceProviderValue.Acquire(
+                    VulkanImageE2EContract.ImageLogicalId, 2uL)
+                if replacementLease == nil || !replacementLease!!.IsValid || !replacementLease!!.IsReady {
+                    throw InvalidOperationException("Vulkan replacement image source lease is invalid")
+                }
+                staleLease!!.Dispose()
+                imageSourceProviderValue.Dispose()
+                imageSourceLease = replacementLease
+                if !imageSourceLease!!.IsValid || !imageSourceLease!!.IsReady {
+                    throw InvalidOperationException("Vulkan source lease did not survive provider disposal")
+                }
+                if !imageSourceLease!!.CopyPixelsTo(imageSourcePixels, 16uL) {
+                    throw InvalidOperationException("Vulkan retained image source copy failed")
                 }
                 let resetUploadCommandBuffer = deviceDispatch.vkResetCommandBuffer
                 let resetUploadResult = TrackResult(diagnostics, 40uL,
@@ -2769,6 +2848,18 @@ unsafe func Main() int32 {
                 if imageResources!!.QueueUpload(imageId, imageSourcePixels, 16uL, imageGeneration) {
                     throw InvalidOperationException("Vulkan unchanged image upload was queued")
                 }
+                let linearRegistration = imageResources!!.RegisterImage(
+                    imageId,
+                    2u,
+                    2u,
+                    imageSource,
+                    true,
+                    VulkanImageSamplerId(),
+                    VulkanImageSamplerMode.Linear)
+                if !linearRegistration.Found {
+                    throw InvalidOperationException("Vulkan linear image registration failed")
+                }
+                BuildVulkanImageScene(sceneFrame!!, 1u)
                 RecordVulkanImageFrame(
                     deviceDispatch,
                     queue,
@@ -2804,13 +2895,10 @@ unsafe func Main() int32 {
                     throw InvalidOperationException("Vulkan warm sampled image recording allocated managed bytes")
                 }
                 let secondReadback = *uint8(offscreenTargetValue.ReadbackPointer)
-                if !VerifyVulkanImageReadback(secondReadback, offscreenExtent.width, offscreenExtent.height) {
-                    throw InvalidOperationException("Vulkan second sampled image readback pixels are invalid")
+                if !VerifyVulkanImageLinearReadback(secondReadback, offscreenExtent.width, offscreenExtent.height) {
+                    throw InvalidOperationException("Vulkan linear sampled image readback pixels are invalid")
                 }
-                let secondDigest = VulkanImageReadbackDigest(secondReadback, offscreenExtent.width, offscreenExtent.height)
-                if secondDigest != imageDigest {
-                    throw InvalidOperationException("Vulkan unchanged sampled image digest changed")
-                }
+                imageLinearDigest = VulkanImageReadbackDigest(secondReadback, offscreenExtent.width, offscreenExtent.height)
                 let plateauStatsAfter = imageResources!!.Stats
                 let plateauAllocatorAfter = readbackAllocatorValue.Counters
                 if !VulkanImageUploadStatsEqual(plateauUploadBefore, plateauStatsAfter.Upload)
@@ -2862,7 +2950,7 @@ unsafe func Main() int32 {
                     logicalImage.Source,
                     logicalImage.Cacheable,
                     VulkanImageSamplerId(),
-                    VulkanImageSamplerMode.Nearest)
+                    VulkanImageSamplerMode.Linear)
                 if !rehydratedRegistration.Found {
                     throw InvalidOperationException("Vulkan logical image re-registration failed")
                 }
@@ -2874,6 +2962,15 @@ unsafe func Main() int32 {
                 let resetUploadFence = deviceDispatch.vkResetFences
                 if TrackResult(diagnostics, 51uL, resetUploadFence(device, 1u, &imageUploadFence)) != VkConstants.VK_SUCCESS {
                     throw InvalidOperationException("vkResetFences failed for rehydrated image upload")
+                }
+                var imageSourceIndex int32 = 0
+                while imageSourceIndex < 16 {
+                    imageSourcePixels[imageSourceIndex] = uint8(0)
+                    imageSourceIndex++
+                }
+                if imageSourceLease == nil || !imageSourceLease!!.IsValid
+                    || !imageSourceLease!!.CopyPixelsTo(imageSourcePixels, 16uL) {
+                    throw InvalidOperationException("Vulkan rehydrated image source copy failed")
                 }
                 imageUploadQueueAccepted = false
                 imageUploadTrackingCommandBuffer = imageUploadCommandBuffer
@@ -2995,11 +3092,11 @@ unsafe func Main() int32 {
                 if rehydratedTarget.LastRecordAllocatedBytes != 0L {
                     throw InvalidOperationException("Vulkan rehydrated image recording allocated managed bytes")
                 }
-                if !VerifyVulkanImageReadback(thirdReadback, offscreenExtent.width, offscreenExtent.height) {
+                if !VerifyVulkanImageLinearReadback(thirdReadback, offscreenExtent.width, offscreenExtent.height) {
                     throw InvalidOperationException("Vulkan rehydrated image readback pixels are invalid")
                 }
                 let thirdDigest = VulkanImageReadbackDigest(thirdReadback, offscreenExtent.width, offscreenExtent.height)
-                if thirdDigest != imageDigest {
+                if thirdDigest != imageLinearDigest {
                     throw InvalidOperationException("Vulkan rehydrated image readback digest changed")
                 }
                 if imageResources!!.Collect(6uL) <= 0 {
@@ -3009,7 +3106,7 @@ unsafe func Main() int32 {
                 offscreenTarget = nil
                 imageResources!!.Dispose()
                 imageResources = nil
-                Console.WriteLine("Image E2E: digest=${imageDigest} plateau=true handles=${plateauStatsBefore.LiveObjectCount} residentAllocations=${plateauAllocatorBefore.residentAllocations} residentBytes=${plateauAllocatorBefore.residentBytes} retirement=true handles=${retainedStatsAfterCollect.LiveObjectCount}->${releasedStats.LiveObjectCount} liveAllocations=${retainedAllocator.liveAllocations}->${releasedAllocator.liveAllocations} preflight=true handles=${imagePreflightHandlesBefore}->${imagePreflightHandlesAfter} liveAllocations=${imagePreflightLiveAllocationsBefore}->${imagePreflightLiveAllocationsAfter} liveBytes=${imagePreflightLiveBytesBefore}->${imagePreflightLiveBytesAfter} rehydration=true allocated=0")
+                Console.WriteLine("Image E2E: nearestDigest=${imageDigest} linearDigest=${imageLinearDigest} plateau=true handles=${plateauStatsBefore.LiveObjectCount} residentAllocations=${plateauAllocatorBefore.residentAllocations} residentBytes=${plateauAllocatorBefore.residentBytes} retirement=true handles=${retainedStatsAfterCollect.LiveObjectCount}->${releasedStats.LiveObjectCount} liveAllocations=${retainedAllocator.liveAllocations}->${releasedAllocator.liveAllocations} preflight=true handles=${imagePreflightHandlesBefore}->${imagePreflightHandlesAfter} liveAllocations=${imagePreflightLiveAllocationsBefore}->${imagePreflightLiveAllocationsAfter} liveBytes=${imagePreflightLiveBytesBefore}->${imagePreflightLiveBytesAfter} rehydration=true allocated=0")
             }
         }
         if let diagnostics = diagnostics {
@@ -3166,6 +3263,19 @@ unsafe func Main() int32 {
             }
         } catch (error Exception) {
             Console.Error.WriteLine("Vulkan cleanup image resources failed: " + error.ToString())
+        }
+
+        try {
+            if imageSourceLease != nil {
+                imageSourceLease!!.Dispose()
+                imageSourceLease = nil
+            }
+            if imageSourceProvider != nil {
+                imageSourceProvider!!.Dispose()
+                imageSourceProvider = nil
+            }
+        } catch (error Exception) {
+            Console.Error.WriteLine("Vulkan cleanup image source failed: " + error.ToString())
         }
 
         if offscreenTarget == nil {
