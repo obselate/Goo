@@ -19,16 +19,27 @@ metric before calculating pooled percentiles. It never averages percentiles.
 state, workload manifest and benchmark binary hashes, NativeAOT settings and
 binary hash, G# SDK package and digest, .NET runtime, OS and kernel, RID,
 CPU/GPU/driver/driver state, backend and graphics implementation, power mode,
-display resolution/refresh/DPI/pixel format/color space, present mode, Wayland
-compositor/session, font hashes, fallback/raster options, exact command, and
-run counts. Leave an unknown field `null`. The library does not invent machine
-facts.
+CPU/GPU/driver evidence, backend and graphics implementation, power mode and
+evidence, logical and framebuffer display sizes, independent X/Y scale and DPI,
+refresh/pixel format/color space and evidence, observed present setting and
+evidence, SDL video driver, Wayland session/socket/runtime/compositor evidence,
+font hashes and raster evidence, build sidecar, exact command, and run counts.
+Leave an unknown field `null`. The library does not invent machine facts.
 
 `BenchmarkJson.SerializeCanonical` sorts object keys and emits compact UTF-8
 JSON. `BenchmarkHashes` provides SHA-256 helpers for bytes, text, streams,
 files, and canonical JSON. Batch manifests include per-run summaries, pooled
-raw samples, raw artifact hashes, and a content hash. Use
-`BenchmarkManifestVerifier.Validate` before accepting a manifest.
+raw samples, raw artifact hashes, visual/package/source artifacts, gate results,
+validation error count, and a content hash. Use
+`BenchmarkManifestVerifier.Validate` for diagnostics. Use
+`BenchmarkS04Qualification.Validate(manifest, artifactRoot)` as the explicit
+fail-closed S04 acceptance gate. It additionally requires a clean full commit,
+Release NativeAOT, the pinned G# SDK identity and digest, verified machine and
+display facts, five distinct positive child process IDs, hashed artifacts, the
+fixed Q10 gate set, and baseline IDs recomputed from canonical complete provenance.
+Skia records use `baseline` gate status. Accepted Vulkan records use `passed`.
+The qualification gate does not run implicitly, so incomplete diagnostic
+batches remain inspectable.
 
 ```csharp
 var runner = new BenchmarkBatchRunner();

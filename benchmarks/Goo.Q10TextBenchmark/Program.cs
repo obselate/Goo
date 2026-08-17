@@ -112,7 +112,10 @@ internal static class Q10TextEditingBenchmark
             provenance,
             null,
             "passed",
-            0);
+            0)
+        {
+            ProcessId = Environment.ProcessId,
+        };
         Console.WriteLine(BenchmarkJson.SerializeCanonical(run));
     }
 
@@ -204,7 +207,7 @@ internal static class Q10TextEditingBenchmark
             throw new InvalidOperationException(
                 $"child process {processIndex} exited {process.ExitCode}: {stderr.Trim()}");
         }
-        return new BenchmarkProcessOutput(process.ExitCode, stdout, stderr);
+        return new BenchmarkProcessOutput(process.ExitCode, stdout, stderr, process.Id);
     }
 
     private static string ExactChildCommand()

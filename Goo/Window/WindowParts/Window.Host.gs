@@ -165,9 +165,9 @@ public partial class Window {
     if !IsOpen {
       return
     }
-    let profiling = profiler.Enabled
-    let frameProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-    let eventsProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+    let profiling = profileEnabled()
+    let frameProfile = profiling ? profileBeginFrame() : FrameProfilePoint{}
+    let eventsProfile = profiling ? profileStart() : FrameProfilePoint{}
     if hasDemand() {
       native.PollEvents()
     } else {
@@ -186,25 +186,25 @@ public partial class Window {
         Close()
       } finally {
         if profiling {
-          profiler.Record(FrameProfileStage.Events, eventsProfile)
-          profiler.EndFrame(frameProfile, false)
+          profileRecord(FrameProfileStage.Events, eventsProfile)
+          profileEnd(frameProfile, false)
         }
       }
       return
     }
     consumeNativeMetrics()
     if profiling {
-      profiler.Record(FrameProfileStage.Events, eventsProfile)
+      profileRecord(FrameProfileStage.Events, eventsProfile)
     }
 
     // Pump drains each fixed Post batch here, after close decisions and before input.
     drainPostedActions()
 
     // Drain returns true only for visually relevant input; bare moves stay quiet.
-    let inputProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+    let inputProfile = profiling ? profileStart() : FrameProfilePoint{}
     let inputChanged = input.Drain(node, resolver, timeS, OnKeyPress, repeatStartTicks)
     if profiling {
-      profiler.Record(FrameProfileStage.Input, inputProfile)
+      profileRecord(FrameProfileStage.Input, inputProfile)
     }
     if inputChanged {
       accessibility?.MarkDirty()
@@ -221,32 +221,32 @@ public partial class Window {
     // simulation step is bounded; UpdateTree's wallDt/simDt split keeps them
     // separate.
     let stepDt = Math.Min(dt, 1.0 / 30.0)
-    let treeProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+    let treeProfile = profiling ? profileStart() : FrameProfilePoint{}
     UpdateTree(dt, stepDt)
     if profiling {
-      profiler.Record(FrameProfileStage.Tree, treeProfile)
+      profileRecord(FrameProfileStage.Tree, treeProfile)
     }
     native.SetCursor(toSdlCursor(input.CurrentCursor()))
     var rendered = false
     if needsRenderFrame(resolver.VisualDirty) {
-      let renderProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-      let currentProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+      let renderProfile = profiling ? profileStart() : FrameProfilePoint{}
+      let currentProfile = profiling ? profileStart() : FrameProfilePoint{}
       windowTarget?.BeginFrame()
       if profiling {
-        profiler.Record(FrameProfileStage.TargetBegin, currentProfile)
+        profileRecord(FrameProfileStage.TargetBegin, currentProfile)
       }
       renderFrame()
-      let swapProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+      let swapProfile = profiling ? profileStart() : FrameProfilePoint{}
       windowTarget?.Present()
       if profiling {
-        profiler.Record(FrameProfileStage.Present, swapProfile)
-        profiler.Record(FrameProfileStage.Render, renderProfile)
+        profileRecord(FrameProfileStage.Present, swapProfile)
+        profileRecord(FrameProfileStage.Render, renderProfile)
       }
       markFrameRendered()
       rendered = true
     }
     if profiling {
-      profiler.EndFrame(frameProfile, rendered)
+      profileEnd(frameProfile, rendered)
     }
   }
 
@@ -337,6 +337,7 @@ public partial class Window {
 
   internal func Close() {
     requireUiThread("Window.Close")
+    profileFlush()
     stopPosts()
     stopImageCompletions()
     stopRetainedInvalidations()
@@ -384,27 +385,27 @@ public partial class Window {
   private func renderFrame() {
     if let target = windowTarget {
       let canvas = target.Canvas
-      let profiling = profiler.Enabled
+      let profiling = profileEnabled()
       canvas.Save()
       try {
         canvas.Scale(dpi.X, dpi.Y)
-        let paintProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+        let paintProfile = profiling ? profileStart() : FrameProfilePoint{}
         PaintTo(canvas)
         if profiling {
-          profiler.Record(FrameProfileStage.Paint, paintProfile)
+          profileRecord(FrameProfileStage.Paint, paintProfile)
         }
       } finally {
         canvas.Restore()
       }
-      let canvasProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+      let canvasProfile = profiling ? profileStart() : FrameProfilePoint{}
       canvas.Flush()
       if profiling {
-        profiler.Record(FrameProfileStage.CanvasFlush, canvasProfile)
+        profileRecord(FrameProfileStage.CanvasFlush, canvasProfile)
       }
-      let targetProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+      let targetProfile = profiling ? profileStart() : FrameProfilePoint{}
       target.Flush()
       if profiling {
-        profiler.Record(FrameProfileStage.TargetFlush, targetProfile)
+        profileRecord(FrameProfileStage.TargetFlush, targetProfile)
       }
     }
   }
@@ -440,6 +441,39 @@ public partial class Window {
     framebufferWidth = newFramebufferWidth
     framebufferHeight = newFramebufferHeight
     return true
+  }
+
+  private func profileEnabled() bool {
+    return profiler?.Enabled == true
+  }
+
+  private func profileBeginFrame() FrameProfilePoint {
+    guard let value = profiler else { return FrameProfilePoint{} }
+    return value.BeginFrame()
+  }
+
+  private func profileStart() FrameProfilePoint {
+    guard let value = profiler else { return FrameProfilePoint{} }
+    return value.Start()
+  }
+
+  private func profileRecord(stage FrameProfileStage, point FrameProfilePoint) {
+    profiler?.Record(stage, point)
+  }
+
+  private func profileRecordReconcile(point FrameProfilePoint,
+    buildTicks int64, buildBytes int64, buildCalls int64,
+    resolveTicks int64, resolveBytes int64, resolveCalls int64) {
+    profiler?.RecordReconcileSplit(point, buildTicks, buildBytes, buildCalls,
+      resolveTicks, resolveBytes, resolveCalls)
+  }
+
+  private func profileEnd(point FrameProfilePoint, rendered bool) {
+    profiler?.EndFrame(point, rendered)
+  }
+
+  private func profileFlush() {
+    profiler?.Flush()
   }
 }
 

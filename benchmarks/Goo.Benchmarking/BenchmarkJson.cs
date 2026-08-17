@@ -40,6 +40,10 @@ public static class BenchmarkJson
         Deserialize<BenchmarkBatchManifest>(json)
         ?? throw new BenchmarkValidationException(["manifest JSON was null"]);
 
+    public static BenchmarkBuildSidecar DeserializeBuildSidecar(string json) =>
+        Deserialize<BenchmarkBuildSidecar>(json)
+        ?? throw new BenchmarkValidationException(["build sidecar JSON was null"]);
+
     private static JsonTypeInfo<T> GetTypeInfo<T>() =>
         typeof(T) switch
         {
@@ -55,6 +59,8 @@ public static class BenchmarkJson
                 (JsonTypeInfo<T>)(object)BenchmarkJsonContext.Default.BenchmarkProvenance,
             var type when type == typeof(BenchmarkNativeAotSettings) =>
                 (JsonTypeInfo<T>)(object)BenchmarkJsonContext.Default.BenchmarkNativeAotSettings,
+            var type when type == typeof(BenchmarkBuildSidecar) =>
+                (JsonTypeInfo<T>)(object)BenchmarkJsonContext.Default.BenchmarkBuildSidecar,
             var type when type == typeof(BenchmarkDisplayConfiguration) =>
                 (JsonTypeInfo<T>)(object)BenchmarkJsonContext.Default.BenchmarkDisplayConfiguration,
             var type when type == typeof(BenchmarkFileHash) =>
@@ -91,6 +97,8 @@ public static class BenchmarkJson
                 (JsonTypeInfo<T>)(object)BenchmarkJsonIndentedContext.Default.BenchmarkProvenance,
             var type when type == typeof(BenchmarkNativeAotSettings) =>
                 (JsonTypeInfo<T>)(object)BenchmarkJsonIndentedContext.Default.BenchmarkNativeAotSettings,
+            var type when type == typeof(BenchmarkBuildSidecar) =>
+                (JsonTypeInfo<T>)(object)BenchmarkJsonIndentedContext.Default.BenchmarkBuildSidecar,
             var type when type == typeof(BenchmarkDisplayConfiguration) =>
                 (JsonTypeInfo<T>)(object)BenchmarkJsonIndentedContext.Default.BenchmarkDisplayConfiguration,
             var type when type == typeof(BenchmarkFileHash) =>

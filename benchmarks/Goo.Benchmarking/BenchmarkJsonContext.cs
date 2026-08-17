@@ -15,6 +15,7 @@ namespace Goo.Benchmarking;
 [JsonSerializable(typeof(BenchmarkChildRun))]
 [JsonSerializable(typeof(BenchmarkProvenance))]
 [JsonSerializable(typeof(BenchmarkNativeAotSettings))]
+[JsonSerializable(typeof(BenchmarkBuildSidecar))]
 [JsonSerializable(typeof(BenchmarkDisplayConfiguration))]
 [JsonSerializable(typeof(BenchmarkFileHash))]
 [JsonSerializable(typeof(BenchmarkMetricAggregate))]
@@ -23,6 +24,7 @@ namespace Goo.Benchmarking;
 [JsonSerializable(typeof(BenchmarkRunSummary))]
 [JsonSerializable(typeof(BenchmarkWorkloadSummary))]
 [JsonSerializable(typeof(BenchmarkArtifact))]
+[JsonSerializable(typeof(BenchmarkGateResult))]
 [JsonSerializable(typeof(BenchmarkBatchManifest))]
 internal partial class BenchmarkJsonContext : JsonSerializerContext
 {
@@ -41,6 +43,7 @@ internal partial class BenchmarkJsonContext : JsonSerializerContext
 [JsonSerializable(typeof(BenchmarkChildRun))]
 [JsonSerializable(typeof(BenchmarkProvenance))]
 [JsonSerializable(typeof(BenchmarkNativeAotSettings))]
+[JsonSerializable(typeof(BenchmarkBuildSidecar))]
 [JsonSerializable(typeof(BenchmarkDisplayConfiguration))]
 [JsonSerializable(typeof(BenchmarkFileHash))]
 [JsonSerializable(typeof(BenchmarkMetricAggregate))]
@@ -49,6 +52,7 @@ internal partial class BenchmarkJsonContext : JsonSerializerContext
 [JsonSerializable(typeof(BenchmarkRunSummary))]
 [JsonSerializable(typeof(BenchmarkWorkloadSummary))]
 [JsonSerializable(typeof(BenchmarkArtifact))]
+[JsonSerializable(typeof(BenchmarkGateResult))]
 [JsonSerializable(typeof(BenchmarkBatchManifest))]
 internal partial class BenchmarkJsonIndentedContext : JsonSerializerContext
 {

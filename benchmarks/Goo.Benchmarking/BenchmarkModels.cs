@@ -110,6 +110,7 @@ public sealed class BenchmarkChildRun
     public string BaselineKey { get; init; } = string.Empty;
     public string? ParentBaselineId { get; init; }
     public int ProcessIndex { get; init; }
+    public int? ProcessId { get; init; }
     public int? ExitCode { get; init; } = 0;
     public BenchmarkProvenance Provenance { get; init; } = new();
     public List<BenchmarkWorkloadRun> Workloads { get; init; } = [];
@@ -155,18 +156,34 @@ public sealed class BenchmarkProvenance
     public string? Rid { get; init; }
     public string? Cpu { get; init; }
     public string? Gpu { get; init; }
+    public string? GraphicsDeviceEvidenceSource { get; init; }
     public string? Driver { get; init; }
+    public string? DriverEvidenceSource { get; init; }
     public string? DriverState { get; init; }
     public string? Backend { get; init; }
     public string? GraphicsImplementation { get; init; }
+    public string? GraphicsImplementationEvidenceSource { get; init; }
     public string? PowerMode { get; init; }
+    public string? PowerEvidenceSource { get; init; }
     public BenchmarkDisplayConfiguration? Display { get; init; }
     public string? PresentMode { get; init; }
+    public string? ObservedPresentSetting { get; init; }
+    public string? PresentEvidenceSource { get; init; }
     public string? WaylandCompositor { get; init; }
     public string? WaylandSession { get; init; }
+    public string? SdlVideoDriver { get; init; }
+    public string? WaylandSessionId { get; init; }
+    public string? WaylandSessionEvidenceSource { get; init; }
+    public string? WaylandSocket { get; init; }
+    public string? WaylandSocketEvidenceSource { get; init; }
+    public string? WaylandRuntimeDirectory { get; init; }
+    public string? WaylandRuntimeEvidenceSource { get; init; }
+    public string? WaylandCompositorEvidenceSource { get; init; }
     public List<BenchmarkFileHash>? FontFiles { get; init; }
     public string? FontFallback { get; init; }
     public string? FontRasterOptions { get; init; }
+    public string? FontEvidenceSource { get; init; }
+    public BenchmarkArtifact? BuildSidecarArtifact { get; init; }
     public string? ExactCommand { get; init; }
     public string? BuildConfiguration { get; init; }
     public int? ProcessCount { get; init; } = BenchmarkProtocol.RequiredProcesses;
@@ -181,13 +198,44 @@ public sealed class BenchmarkNativeAotSettings
     public string? RuntimeIdentifier { get; init; }
     public bool? PublishTrimmed { get; init; }
     public bool? StripSymbols { get; init; }
+    public bool? SelfContained { get; init; }
     public bool? InvariantGlobalization { get; init; }
     public string? IlcOptimizationPreference { get; init; }
     public string? AdditionalSettings { get; init; }
 }
 
+public sealed class BenchmarkBuildSidecar
+{
+    public string? Configuration { get; init; }
+    public string? TargetFramework { get; init; }
+    public string? RuntimeIdentifier { get; init; }
+    public string? SdkIdentity { get; init; }
+    public string? CompilerIdentity { get; init; }
+    public string? RuntimePackIdentity { get; init; }
+    public bool? NativeAot { get; init; }
+    public bool? PublishTrimmed { get; init; }
+    public bool? StripSymbols { get; init; }
+    public bool? SelfContained { get; init; }
+    public bool? InvariantGlobalization { get; init; }
+    public string? IlcOptimizationPreference { get; init; }
+    public string? OutputPath { get; init; }
+    public long? OutputBytes { get; init; }
+    public string? OutputSha256 { get; init; }
+    public string? GSharpSdkPackage { get; init; }
+    public string? GSharpSdkDigest { get; init; }
+}
+
 public sealed class BenchmarkDisplayConfiguration
 {
+    public int? LogicalWidth { get; init; }
+    public int? LogicalHeight { get; init; }
+    public int? FramebufferWidth { get; init; }
+    public int? FramebufferHeight { get; init; }
+    public double? ContentScaleX { get; init; }
+    public double? ContentScaleY { get; init; }
+    public double? DpiX { get; init; }
+    public double? DpiY { get; init; }
+    public string? EvidenceSource { get; init; }
     public int? Width { get; init; }
     public int? Height { get; init; }
     public double? RefreshHz { get; init; }
@@ -300,6 +348,7 @@ public sealed class BenchmarkPooledWorkload
 public sealed class BenchmarkRunSummary
 {
     public int ProcessIndex { get; init; }
+    public int? ProcessId { get; init; }
     public string Status { get; init; } = string.Empty;
     public BenchmarkProvenance Provenance { get; init; } = new();
     public List<BenchmarkWorkloadSummary> Workloads { get; init; } = [];
@@ -332,6 +381,14 @@ public sealed class BenchmarkArtifact
     public long? Bytes { get; init; }
 }
 
+public sealed class BenchmarkGateResult
+{
+    public string GateId { get; init; } = string.Empty;
+    public string Status { get; init; } = string.Empty;
+    public string? EvidenceSource { get; init; }
+    public string? Details { get; init; }
+}
+
 public sealed class BenchmarkBatchManifest
 {
     public int SchemaVersion { get; init; } = BenchmarkProtocol.SchemaVersion;
@@ -349,6 +406,11 @@ public sealed class BenchmarkBatchManifest
     public List<BenchmarkRunSummary> Runs { get; init; } = [];
     public List<BenchmarkPooledWorkload> Workloads { get; init; } = [];
     public List<BenchmarkArtifact> RawArtifacts { get; init; } = [];
+    public List<BenchmarkArtifact> VisualArtifacts { get; init; } = [];
+    public List<BenchmarkArtifact> PackageArtifacts { get; init; } = [];
+    public List<BenchmarkArtifact> SourceConfigurationArtifacts { get; init; } = [];
+    public List<BenchmarkGateResult> Gates { get; init; } = [];
+    public int ValidationErrorCount { get; init; }
     public BenchmarkProvenance Provenance { get; init; } = new();
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ContentHash { get; init; }
@@ -377,6 +439,11 @@ public sealed class BenchmarkBatchManifest
         Runs = (Runs ?? []).ToList(),
         Workloads = (Workloads ?? []).ToList(),
         RawArtifacts = (RawArtifacts ?? []).ToList(),
+        VisualArtifacts = (VisualArtifacts ?? []).ToList(),
+        PackageArtifacts = (PackageArtifacts ?? []).ToList(),
+        SourceConfigurationArtifacts = (SourceConfigurationArtifacts ?? []).ToList(),
+        Gates = (Gates ?? []).ToList(),
+        ValidationErrorCount = ValidationErrorCount,
         Provenance = Provenance ?? new(),
     };
 }
@@ -409,6 +476,11 @@ public sealed class BenchmarkBatchValidationOptions
     public string? BaselineKey { get; init; }
     public string? ParentBaselineId { get; init; }
     public IReadOnlyDictionary<string, string>? WorkloadRevisions { get; init; }
+    public IReadOnlyList<BenchmarkArtifact>? VisualArtifacts { get; init; }
+    public IReadOnlyList<BenchmarkArtifact>? PackageArtifacts { get; init; }
+    public IReadOnlyList<BenchmarkArtifact>? SourceConfigurationArtifacts { get; init; }
+    public IReadOnlyList<BenchmarkGateResult>? Gates { get; init; }
+    public int ValidationErrorCount { get; init; }
 }
 
 public sealed class BenchmarkValidationException : InvalidOperationException
@@ -424,14 +496,16 @@ public sealed class BenchmarkValidationException : InvalidOperationException
 
 public sealed class BenchmarkProcessOutput
 {
-    public BenchmarkProcessOutput(int exitCode, string standardOutput, string? standardError = null)
+    public BenchmarkProcessOutput(int exitCode, string standardOutput, string? standardError = null, int? processId = null)
     {
         ExitCode = exitCode;
         StandardOutput = standardOutput ?? throw new ArgumentNullException(nameof(standardOutput));
         StandardError = standardError;
+        ProcessId = processId;
     }
 
     public int ExitCode { get; }
     public string StandardOutput { get; }
     public string? StandardError { get; }
+    public int? ProcessId { get; }
 }

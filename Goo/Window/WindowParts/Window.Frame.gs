@@ -133,11 +133,11 @@ public partial class Window {
     validateDelta(simDt, "simDt")
     timeS = timeS + wallDt
     prepare()
-    let profiling = profiler.Enabled
-    let motionProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+    let profiling = profileEnabled()
+    let motionProfile = profiling ? profileStart() : FrameProfilePoint{}
     motionPump.Sweep(simDt)
     if profiling {
-      profiler.Record(FrameProfileStage.Motion, motionProfile)
+      profileRecord(FrameProfileStage.Motion, motionProfile)
     }
     let retainedEffects = drainRetainedInvalidations()
     if Interlocked.Exchange(&pendingRebuild, 0) != 0 {
@@ -155,7 +155,7 @@ public partial class Window {
     var effects = combineEffects(pendingReconcileEffects, retainedEffects)
     if dirty {
       dirty = false
-      let reconcileProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+      let reconcileProfile = profiling ? profileStart() : FrameProfilePoint{}
       beginCellTransaction()
       ElementHandles.PushOwner(this)
       let paintResourceInvalidated = Interlocked.Exchange(&pendingPaintResourceInvalidation, 0) != 0
@@ -194,7 +194,7 @@ public partial class Window {
       }
       effects = combineEffects(effects, rec.Effects)
       if profiling {
-        profiler.RecordReconcileSplit(
+        profileRecordReconcile(
           reconcileProfile,
           rec.ProfileBuildTicks,
           rec.ProfileBuildBytes,
@@ -217,10 +217,10 @@ public partial class Window {
     pendingReconcileEffects = ReconcileEffects.None
     var accessibilityLayout bool
     var accessibilityScroll bool
-    let resolveProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+    let resolveProfile = profiling ? profileStart() : FrameProfilePoint{}
     resolver.Advance(simDt)
     if profiling {
-      profiler.Record(FrameProfileStage.Transitions, resolveProfile)
+      profileRecord(FrameProfileStage.Transitions, resolveProfile)
     }
     effects = combineEffects(effects, resolver.FlushEffects())
     var metricsChanged bool
@@ -245,10 +245,10 @@ public partial class Window {
         || hasEffect(effects, ReconcileEffects.Content)
         || hasEffect(effects, ReconcileEffects.Layout)
         || hasEffect(effects, ReconcileEffects.Rect) {
-        let inputTreeProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+        let inputTreeProfile = profiling ? profileStart() : FrameProfilePoint{}
         input.AfterTreeUpdated(n, resolver, true)
         if profiling {
-          profiler.Record(FrameProfileStage.InputTree, inputTreeProfile)
+          profileRecord(FrameProfileStage.InputTree, inputTreeProfile)
         }
         effects = combineEffects(effects, resolver.FlushEffects())
         if layout.NeedsLayout(n, viewW, viewH) {
@@ -270,25 +270,25 @@ public partial class Window {
             accessibilityScroll = true
             metricsChanged = true
             layout.RefreshRects(n)
-            let inputTreeProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+            let inputTreeProfile = profiling ? profileStart() : FrameProfilePoint{}
             if input.RefreshHover(n, resolver) {
               changed = true
               calculateLayout(n, viewW, viewH)
             }
             if profiling {
-              profiler.Record(FrameProfileStage.InputTree, inputTreeProfile)
+              profileRecord(FrameProfileStage.InputTree, inputTreeProfile)
             }
           }
         }
       }
       // Native repeats use a monotonic dispatch deadline. Test drivers use dt.
-      let inputTreeProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+      let inputTreeProfile = profiling ? profileStart() : FrameProfilePoint{}
       if input.Step(n, resolver, wallDt) {
         changed = true
         accessibility?.MarkDirty()
       }
       if profiling {
-        profiler.Record(FrameProfileStage.InputTree, inputTreeProfile)
+        profileRecord(FrameProfileStage.InputTree, inputTreeProfile)
       }
     }
     if hasEffect(effects, ReconcileEffects.Paint) {
@@ -327,13 +327,13 @@ public partial class Window {
   }
 
   private func calculateLayout(n Node, width float32, height float32) {
-    if !profiler.Enabled {
+    if !profileEnabled() {
       layout.Calculate(n, width, height)
       return
     }
-    let point = profiler.Start()
+    let point = profileStart()
     layout.Calculate(n, width, height)
-    profiler.Record(FrameProfileStage.Layout, point)
+    profileRecord(FrameProfileStage.Layout, point)
   }
 
   private func drain(rec Reconciler) {

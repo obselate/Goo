@@ -336,7 +336,7 @@ public partial class Window {
   private var cellHook Action[Cell]?
   private var layout Layout
   private var resolver Resolver
-  private let profiler FrameProfiler
+  private let profiler FrameProfiler?
   private let motionPump MotionPump
   private var timeS float64
 
@@ -418,7 +418,7 @@ public partial class Window {
     childDiffScratch = ChildDiffScratch()
     layout = Layout()
     resolver = Resolver{}
-    profiler = FrameProfiler()
+    profiler = FrameProfiler.Create()
     motionPump = MotionPump()
     motionPump.Wake = requestReconcile
 

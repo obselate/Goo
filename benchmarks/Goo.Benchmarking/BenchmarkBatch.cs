@@ -41,6 +41,11 @@ public static class BenchmarkBatchValidator
             Runs = summaries,
             Workloads = pooledWorkloads,
             RawArtifacts = rawArtifacts?.ToList() ?? [],
+            VisualArtifacts = options.VisualArtifacts?.ToList() ?? [],
+            PackageArtifacts = options.PackageArtifacts?.ToList() ?? [],
+            SourceConfigurationArtifacts = options.SourceConfigurationArtifacts?.ToList() ?? [],
+            Gates = options.Gates?.ToList() ?? [],
+            ValidationErrorCount = options.ValidationErrorCount,
         };
         var manifest = new BenchmarkBatchManifest
         {
@@ -60,6 +65,11 @@ public static class BenchmarkBatchValidator
             Runs = manifestWithoutHash.Runs,
             Workloads = manifestWithoutHash.Workloads,
             RawArtifacts = manifestWithoutHash.RawArtifacts,
+            VisualArtifacts = manifestWithoutHash.VisualArtifacts,
+            PackageArtifacts = manifestWithoutHash.PackageArtifacts,
+            SourceConfigurationArtifacts = manifestWithoutHash.SourceConfigurationArtifacts,
+            Gates = manifestWithoutHash.Gates,
+            ValidationErrorCount = manifestWithoutHash.ValidationErrorCount,
             ContentHash = manifestWithoutHash.ComputeContentHash(),
         };
         return new BenchmarkBatchResult(orderedRuns, pooledWorkloads, manifest);
@@ -1200,6 +1210,7 @@ public static class BenchmarkBatchValidator
     private static BenchmarkRunSummary BuildSummary(BenchmarkChildRun run) => new()
     {
         ProcessIndex = run.ProcessIndex,
+        ProcessId = run.ProcessId,
         Status = run.Status,
         Provenance = run.Provenance,
         Workloads = (run.Workloads ?? []).Select(workload => new BenchmarkWorkloadSummary
@@ -1215,8 +1226,11 @@ public static class BenchmarkBatchValidator
     private static bool IsWithin(string root, string path)
     {
         var normalizedRoot = Path.TrimEndingDirectorySeparator(root) + Path.DirectorySeparatorChar;
-        return path.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(path, Path.TrimEndingDirectorySeparator(root), StringComparison.OrdinalIgnoreCase);
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        return path.StartsWith(normalizedRoot, comparison)
+            || string.Equals(path, Path.TrimEndingDirectorySeparator(root), comparison);
     }
 }
 
@@ -1296,6 +1310,11 @@ public sealed class BenchmarkBatchRunner
                     $"process {processIndex} exited with code {output.ExitCode}"]);
             }
             var run = BenchmarkJson.DeserializeChildRun(output.StandardOutput);
+            if (output.ProcessId is not null && run.ProcessId != output.ProcessId)
+            {
+                throw new BenchmarkValidationException([
+                    $"process {processIndex} reported process id {run.ProcessId?.ToString() ?? "missing"}, expected {output.ProcessId}"]);
+            }
             runs.Add(run);
             if (directory is not null)
             {
