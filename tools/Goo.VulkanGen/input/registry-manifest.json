@@ -102,9 +102,15 @@
     "VkPhysicalDeviceVulkan13Features",
     "VkMemoryDedicatedRequirements",
     "VkMemoryDedicatedAllocateInfo",
-    "VkPipelineRenderingCreateInfo"
+    "VkPipelineRenderingCreateInfo",
+    "VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT",
+    "VkSwapchainPresentFenceInfoEXT"
   ],
   "requiredConstants": [
-    "VK_FORMAT_FEATURE_TRANSFER_SRC_BIT"
+    "VK_FORMAT_FEATURE_TRANSFER_SRC_BIT",
+    "VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME",
+    "VK_EXT_SWAPCHAIN_MAINTENANCE_1_SPEC_VERSION",
+    "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT",
+    "VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT"
   ]
 }

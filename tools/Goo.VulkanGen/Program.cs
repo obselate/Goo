@@ -101,6 +101,14 @@ internal static class Program
 					return (xElement2, xElement2.Attribute("extends")?.Value, extension.Attribute("name")?.Value ?? string.Empty, null, extension.Attribute("number")?.Value);
 				}
 			}
+			foreach (XElement extension2 in Root.Element("extensions")?.Elements("extension") ?? Enumerable.Empty<XElement>())
+			{
+				XElement xElement3 = extension2.Descendants("require").Elements("enum").FirstOrDefault((XElement value) => value.Attribute("name")?.Value == name);
+				if (xElement3 != null)
+				{
+					return (xElement3, xElement3.Attribute("extends")?.Value, extension2.Attribute("name")?.Value ?? string.Empty, null, extension2.Attribute("number")?.Value);
+				}
+			}
 			return null;
 		}
 	}
@@ -344,9 +352,9 @@ internal static class Program
 
 	private static readonly string[] ExpectedDeviceCommands = new string[58] { "vkDestroyDevice", "vkGetDeviceQueue", "vkCreateSwapchainKHR", "vkDestroySwapchainKHR", "vkGetSwapchainImagesKHR", "vkCreateCommandPool", "vkDestroyCommandPool", "vkAllocateCommandBuffers", "vkResetCommandBuffer", "vkCreateSemaphore", "vkDestroySemaphore", "vkCreateFence", "vkDestroyFence", "vkWaitForFences", "vkGetFenceStatus", "vkResetFences", "vkAcquireNextImageKHR", "vkBeginCommandBuffer", "vkEndCommandBuffer", "vkCmdPipelineBarrier2", "vkCmdClearColorImage", "vkQueueSubmit2", "vkQueuePresentKHR", "vkQueueWaitIdle", "vkCreateQueryPool", "vkDestroyQueryPool", "vkGetQueryPoolResults", "vkCmdResetQueryPool", "vkCmdWriteTimestamp2", "vkCreateImageView", "vkDestroyImageView", "vkCreateShaderModule", "vkDestroyShaderModule", "vkCreatePipelineLayout", "vkDestroyPipelineLayout", "vkCreateGraphicsPipelines", "vkDestroyPipeline", "vkCmdBeginRendering", "vkCmdEndRendering", "vkCmdBindPipeline", "vkCmdPushConstants", "vkCmdDraw", "vkCmdSetViewport", "vkCmdSetScissor", "vkCreateImage", "vkDestroyImage", "vkGetImageMemoryRequirements2", "vkAllocateMemory", "vkFreeMemory", "vkBindImageMemory2", "vkCreateBuffer", "vkDestroyBuffer", "vkGetBufferMemoryRequirements2", "vkBindBufferMemory2", "vkMapMemory", "vkUnmapMemory", "vkInvalidateMappedMemoryRanges", "vkCmdCopyImageToBuffer" };
 
-	private static readonly string[] ExpectedRequiredTypes = new string[7] { "VkClearValue", "VkPhysicalDeviceFeatures2", "VkPhysicalDeviceVulkan12Features", "VkPhysicalDeviceVulkan13Features", "VkMemoryDedicatedRequirements", "VkMemoryDedicatedAllocateInfo", "VkPipelineRenderingCreateInfo" };
+	private static readonly string[] ExpectedRequiredTypes = new string[9] { "VkClearValue", "VkPhysicalDeviceFeatures2", "VkPhysicalDeviceVulkan12Features", "VkPhysicalDeviceVulkan13Features", "VkMemoryDedicatedRequirements", "VkMemoryDedicatedAllocateInfo", "VkPipelineRenderingCreateInfo", "VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT", "VkSwapchainPresentFenceInfoEXT" };
 
-	private static readonly string[] ExpectedRequiredConstants = new string[1] { "VK_FORMAT_FEATURE_TRANSFER_SRC_BIT" };
+	private static readonly string[] ExpectedRequiredConstants = new string[5] { "VK_FORMAT_FEATURE_TRANSFER_SRC_BIT", "VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME", "VK_EXT_SWAPCHAIN_MAINTENANCE_1_SPEC_VERSION", "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT", "VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT" };
 
 	private static readonly string[] GsharpKeywords = new string[55]
 	{
@@ -571,7 +579,13 @@ internal static class Program
 			{
 				continue;
 			}
-			foreach (string item2 in definition.ReferencedTypes())
+			IEnumerable<string> referencedTypes = definition.ReferencedTypes();
+			if (definition.Category == "struct" && definition.Alias != null)
+			{
+				TypeDefinition aliasedDefinition = registry.GetDefinition(definition.Alias) ?? throw new InvalidDataException("aliased Vulkan struct definition missing: " + definition.Alias);
+				referencedTypes = aliasedDefinition.ReferencedTypes();
+			}
+			foreach (string item2 in referencedTypes)
 			{
 				AddType(item2, queue, registry);
 			}
@@ -790,6 +804,10 @@ internal static class Program
 		foreach (string item in selectedTypes.OrderBy<string, string>((string result) => result, StringComparer.Ordinal))
 		{
 			TypeDefinition typeDefinition = registry.GetDefinition(item) ?? throw new InvalidDataException("selected type missing: " + item);
+			if (typeDefinition.Category == "struct" && typeDefinition.Alias != null)
+			{
+				typeDefinition = registry.GetDefinition(typeDefinition.Alias) ?? throw new InvalidDataException("aliased Vulkan struct definition missing: " + typeDefinition.Alias);
+			}
 			string category = typeDefinition.Category;
 			if (category == "union")
 			{

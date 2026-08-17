@@ -302,6 +302,8 @@ class VkConstants {
         const VK_EVENT_SET VkResult = 3
         const VK_EXT_DEBUG_UTILS_EXTENSION_NAME string = "VK_EXT_debug_utils"
         const VK_EXT_DEBUG_UTILS_SPEC_VERSION int32 = 2
+        const VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME string = "VK_EXT_swapchain_maintenance1"
+        const VK_EXT_SWAPCHAIN_MAINTENANCE_1_SPEC_VERSION int32 = 1
         const VK_FALSE uint32 = 0u
         const VK_FENCE_CREATE_SIGNALED_BIT VkFenceCreateFlagBits = 1
         const VK_FORMAT_A1R5G5B5_UNORM_PACK16 VkFormat = 8
@@ -797,6 +799,8 @@ class VkConstants {
         const VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS VkStructureType = 1000127000
         const VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 VkStructureType = 1000146003
         const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 VkStructureType = 1000059000
+        const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT VkStructureType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR
+        const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR VkStructureType = 1000275000
         const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES VkStructureType = 51
         const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES VkStructureType = 53
         const VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO VkStructureType = 17
@@ -825,6 +829,8 @@ class VkConstants {
         const VK_STRUCTURE_TYPE_SUBMIT_INFO VkStructureType = 4
         const VK_STRUCTURE_TYPE_SUBMIT_INFO_2 VkStructureType = 1000314004
         const VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR VkStructureType = 1000001000
+        const VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT VkStructureType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR
+        const VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR VkStructureType = 1000275001
         const VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR VkStructureType = 1000006000
         const VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR VkStructureType = 1000009000
         const VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET VkStructureType = 35
@@ -1582,6 +1588,13 @@ unsafe struct VkPhysicalDeviceSparseProperties {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT {
+    var sType VkStructureType
+    var pNext *void
+    var swapchainMaintenance1 VkBool32
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkPhysicalDeviceVulkan12Features {
     var sType VkStructureType
     var pNext *void
@@ -1982,6 +1995,14 @@ unsafe struct VkSwapchainCreateInfoKHR {
     var presentMode VkPresentModeKHR
     var clipped VkBool32
     var oldSwapchain VkSwapchainKHR
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkSwapchainPresentFenceInfoEXT {
+    var sType VkStructureType
+    var pNext *void
+    var swapchainCount uint32
+    var pFences *VkFence
 }
 
 @StructLayout(LayoutKind.Sequential)
