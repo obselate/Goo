@@ -1,8 +1,8 @@
 # Goo Core Vulkan Implementation Plan
 
-Status: active, S00 through S10 complete, S11 active, compositor-driven lifecycle actions and Windows runtime qualification deferred
+Status: active, S00 through S10 complete, S11 reopened for O02/Q2 text-stack candidate evaluation; the existing HarfBuzz/FreeType proof is frozen as non-shipping evidence, compositor-driven lifecycle actions and Windows runtime qualification remain deferred
 
-Date: 2026-08-16
+Date: 2026-08-17
 
 Branch: `gaps-and-reductions`
 
@@ -27,13 +27,15 @@ Deliver a small, declarative G# Goo core with:
 - Goo core and every Goo-owned runtime helper are authored in G# only.
 - C# remains allowed in tests, benchmarks, development tools, external packages, and large vendored
   dependencies such as Yoga.Net.
-- HarfBuzz and FreeType with the same required fonts and policy on Windows and Linux.
+- A text stack selected through the reopened O02/Q2 evaluation with the same required fonts and
+  policy on Windows and Linux. No candidate is accepted by this plan yet.
 - CSS-like Yoga flexbox layout.
 - A compact typed frame plan with reusable storage and no steady-frame allocation.
 - Retained clean scene segments, stable GPU ranges, and per-swapchain-image damage history.
 - One process Vulkan instance and device with independent per-window presentation state.
 - Request-driven Vulkan offscreen readback for diagnostics.
-- A simple public G# API that does not expose Vulkan, SDL, FreeType, HarfBuzz, or native handles.
+- A simple public G# API that does not expose Vulkan, SDL, the selected text engine, or native
+  handles.
 - NativeAOT packages that meet all Q10 visual, performance, memory, lifecycle, dependency, and size
   gates.
 
@@ -107,7 +109,7 @@ These contracts must be accepted before renderer implementation starts.
 | ID | Contract |
 |---|---|
 | C01 | `Cell`, `Blob`, `Style`, declarative authoring, Yoga layout, and input behavior remain public Goo concepts |
-| C02 | No Vulkan, SDL, HarfBuzz, FreeType, GPU, or native handle crosses the public Goo API |
+| C02 | No Vulkan, SDL, selected text engine, GPU, or native handle crosses the public Goo API |
 | C03 | The renderer consumes a typed frame plan and never traverses the retained `Node` tree |
 | C04 | Frame records use reusable typed arrays with ordered references. No per-command objects, interfaces, delegates, reflection, or dynamic dispatch |
 | C05 | Every logical resource has a stable ID, version, byte charge, GPU generation, and fence-safe retirement state |
@@ -135,7 +137,7 @@ S00 scope and evidence lock
   -> S08 shared runtime, allocator, one-window WSI, and offscreen target
   -> S09 typed frame plan and basic pipelines
   -> S10 resource, shader, upload, and lifetime system
-  -> S11 common text stack
+  -> S11 reopened text-stack candidate evaluation and selected implementation
   -> S12 image provider and decoded-pixel path
   -> S13 reopen O03, implement arbitrary paths, then compile SVG assets
   -> S14 compositing, effects, readback, and O16 AA selection
@@ -146,8 +148,9 @@ S00 scope and evidence lock
   -> S19 Windows/Linux qualification and package release gate
 ```
 
-S11 and S12 can run in parallel after S10. All other arrows are hard ordering constraints unless the
-lead records evidence that a dependency is not real.
+S11 candidate evaluation and S12 can run in parallel after S10. S11 text implementation remains
+blocked until O02/Q2 accepts one candidate and its gates pass. All other arrows are hard ordering
+constraints unless the lead records evidence that a dependency is not real.
 
 ## 5. Phase summary
 
@@ -164,7 +167,7 @@ lead records evidence that a dependency is not real.
 | S08 | Runtime, allocator, offscreen target, and one-window WSI work | Clear, quad, resize, and retirement are validation-clean |
 | S09 | Typed plan drives the representative basic slice | Stable digest, correct pixels, zero warm allocation |
 | S10 | Resource, shader, upload, and lifetime systems plateau | No warm resource creation or unbounded cache growth |
-| S11 | HarfBuzz and FreeType replace Skia text services | Required text corpus matches on Windows and Linux |
+| S11 | O02/Q2 selects and implements one text stack after candidate evaluation | Minimal text corpus, resource, ABI, and parity gates pass on Windows and Linux |
 | S12 | Backend-neutral images replace Skia decoding ownership | Async provider and cache behavior pass |
 | S13 | Accepted O03 path solution and compiled SVG assets work | Required path, clip, hit-test, and SVG corpus passes |
 | S14 | Effects and async readback work and one AA policy is accepted | O16 is closed with measured evidence |
@@ -179,7 +182,7 @@ lead records evidence that a dependency is not real.
 | Decision | Implementation stages |
 |---|---|
 | O01 Skia transition | S08-S16 use a non-shipping proof. S18 is the first product Vulkan integration and removes Skia atomically |
-| O02 text stack | S11 uses one HarfBuzz and FreeType policy and identical required inputs on both platforms |
+| O02 text stack | S11 reopens O02/Q2, freezes the existing HarfBuzz/FreeType proof, and selects a candidate only after its SDK, license, corpus, ABI, resource, and both-RID gates pass |
 | O03 paths | S13 stops for Q&A when arbitrary paths become the real blocker |
 | O04 images and SVG | S12 owns decoded pixels and providers. S13 adds build-time compiled SVG assets |
 | O05 diagnostics | S08 and S14 use Vulkan offscreen readback. S18 removes CPU raster and raster-only APIs |
@@ -202,8 +205,9 @@ lead records evidence that a dependency is not real.
 Entry:
 
 - Branch is `gaps-and-reductions`.
-- `PLAN-FOR-REVIEW.md` records Q1, Q2, and Q4 through Q10 as accepted, Q3 as deferred,
-  O01 through O14 as accepted, O15 as out of scope, and O16 as later.
+- `PLAN-FOR-REVIEW.md` records Q1 and Q4 through Q10 as accepted, Q2 as reopened for text-stack
+  candidate evaluation, Q3 as deferred, O01 and O03 through O14 as accepted, O02 as reopened,
+  O15 as out of scope, and O16 as later.
 
 Work:
 
@@ -631,7 +635,7 @@ Required event categories:
 - Allocator and resource lifetime.
 - Pipeline and shader.
 - Frame plan and damage.
-- Text, glyph atlas, image, and path resources.
+- Text, curve/band text resources, image, and path resources.
 - Recovery and fatal state.
 
 Required specification:
@@ -870,8 +874,9 @@ Qualification evidence:
 Work:
 
 1. Implement generation-safe logical resource registry.
-2. Implement persistent buffer ranges, staging rings, images, samplers, descriptors, and atlases.
-3. Implement bounded pipeline, glyph, image, mesh, and offscreen caches.
+2. Implement persistent buffer ranges, staging rings, images, samplers, descriptors, and resource
+   caches.
+3. Implement bounded pipeline, selected-text, image, mesh, and offscreen caches.
 4. Implement fence-safe retirement and GPU-generation invalidation.
 5. Store or reference a logical reconstruction source for every GPU resource.
 6. Warm required pipelines outside measured steady frames.
@@ -925,85 +930,106 @@ Reopen when:
 - Fragmentation or memory waste breaks Q10 after reasonable block-policy tuning. VMA is the recorded
   contingency, not a default dependency.
 
-### S11. Replace text services with common HarfBuzz and FreeType behavior
+### S11. Reopen O02/Q2 and evaluate the text-stack candidates
 
-Keep:
+Status:
 
-- `Unicode.Bidi`.
-- Goo paragraph and editor layout.
-- Line breaking, caret, selection, hit testing, and editing geometry.
+- O02/Q2 is formally reopened. No text candidate, including Slug, is accepted by this plan.
+- The existing HarfBuzz/FreeType proof is frozen as a non-shipping fallback and evidence baseline.
+  Do not extend it, add more probes, integrate it into Goo, or treat it as a runtime fallback.
+- Slug 7.5 is a candidate under evaluation only. Implementation cannot pass the S11 entry gate until
+  the SDK, license, ABI, resource, corpus, and Windows/Linux parity requirements below are proven.
 
-Replace:
+Candidate gate:
 
-- `SKTypeface`.
-- `SKFont`.
-- `SKShaper`.
-- `SKTextBlob`.
-- `SKFontManager`.
-- Skia-backed shaped-run and glyph caches.
+- Acquire the licensed Slug 7.5 SDK, source, `slugfont` tool, headers, and build artifacts for Windows
+  x64 and Linux x64. Confirm explicit rights for a reusable Goo package to redistribute the required
+  static/runtime artifacts and generated shaders, and for consumers to ship their generated `.slug`
+  assets. Goo's core package does not own or redistribute application fonts.
+- Verify the exact SDK build, compiler/runtime dependencies, exports, shader variants, vertex and
+  triangle layouts, curve and band texture formats, error behavior, and per-RID hashes. Public Slug
+  documentation does not provide enough Vulkan ABI or SPIR-V detail to close this gate.
+- Pin the Slug Vulkan resource contract from the SDK: curve texture `VK_FORMAT_R16G16B16A16_SFLOAT`
+  or `VK_FORMAT_R32G32B32A32_SFLOAT`, band texture `VK_FORMAT_R16G16_UINT`, fixed width 4096 when a
+  texture has multiple rows, integer texel loads, triangle-list topology, `Vertex4U` (68 bytes) or
+  `VertexRGBA` (80 bytes), and `u16`/`u32` indices. The existing generic glyph-atlas shader ABI is
+  incompatible and is not reused.
+- Convert the exact approved `.ttf`/`.otf`/`.ttc`/`.otc` inputs offline with `slugfont` into `.slug`
+  assets. Record
+  the source font hash, Slug/tool hash, import options, output hash, and license provenance. The
+  runtime does not parse arbitrary font bytes or ship `slugfont`.
+- Preserve Goo-owned fallback order, face metadata, paragraph policy, line breaking, editor state,
+  caret, selection, hit testing, and IME geometry. Map Goo's UTF-16 offsets to the selected engine's
+  offsets without exposing the engine in the public API.
+- Slug's `Compile`/`Count`/`Build`/`Layout`/`Assemble`, `Break`/`BuildMultiLine`, `Measure`,
+  `Locate`, and `Test` operations use caller-owned compiled storage and reusable output buffers at
+  the native boundary. Choose exactly one bidi authority under O02/Q2: Goo's `Unicode.Bidi` policy or
+  Slug's bidi implementation. Do not apply bidi twice; preserve Goo's public paragraph/editor policy
+  whichever implementation is selected.
+- For Slug specifically, Goo owns the Vulkan curve-data and band-data images, views, descriptors,
+  staging, cache budgets, fence-safe retirement, and generation invalidation. Slug's analytical curve
+  rendering replaces a bitmap glyph atlas; do not add or retain a bitmap glyph atlas for this path.
+- Keep the native boundary narrow: an opaque-handle C ABI shim beside the native vendor integration
+  is the only native adapter, and G# NativeAOT bindings call caller-owned buffers and workspaces. All
+  Goo-owned managed core and runtime-helper code remains G#. No C# text interop is added to Goo core,
+  and no Slug or Vulkan handle crosses the public G# API.
+- On device loss, discard all Slug GPU handles from the failed generation and reconstruct curve/band
+  resources, compiled text, geometry, descriptors, and dependent draw ranges from logical `.slug`
+  assets and text state.
 
-Required specification:
+Known candidate gaps that must remain explicit:
 
-- Application-supplied font bytes are the authoritative font source.
-- Goo owns fallback order and face metadata.
-- HarfBuzz produces glyph IDs, clusters, advances, and offsets.
-- FreeType provides face metrics, extents, hinting, and rasterization on both platforms.
-- The same font bytes, library versions, variation coordinates, load flags, hinting, raster mode,
-  fallback order, and glyph composition apply on both platforms.
-- Glyph atlas keys include face version, glyph ID, size, DPI, variation, hinting, render mode, and
-  color mode.
-- Atlas memory is byte-bounded and fence-safe.
-- DirectWrite and Fontconfig may later provide optional system font discovery. They are not required
-  shaping, fallback, or raster authorities.
-- Required color emoji forms are identified from the corpus and implemented with identical assets.
-- Pin HarfBuzz and FreeType versions, source/native asset provenance, build options, license inputs,
-  and per-RID hashes.
-- Goo owns narrow G# NativeAOT bindings and native-handle lifetime. No Goo-owned C# text interop
-  remains in core.
-- ABI size, call, face lifetime, buffer lifetime, and shutdown behavior pass on both RIDs before text
-  integration exits.
+- Slug's public documentation does not document variable-font axes or variation-coordinate support.
+  The locked variable-weight requirement cannot be marked complete until the SDK proves it, or Q2
+  accepts a build-time static-instance policy.
+- Slug documents no support for bitmap `CBDT`/`SBIX` color glyphs. Required bitmap emoji therefore
+  cannot be assumed; the corpus must use supported COLR/CPAL assets or Q2 must accept a separate
+  provider and dependency.
+- Script coverage and shaping parity, especially CJK, RTL, combining marks, ligatures, fallback,
+  and language-specific behavior, must be verified against the fixed corpus. Marketing claims alone
+  do not close the Goo contract.
+- The official public Slug reference shaders document the algorithm under permissive licenses, but
+  runtime shader variant extraction and the commercial SDK's exact inputs still require the licensed
+  artifact. No public Slug SPIR-V or exact SDK descriptor contract is assumed.
 
-Text corpus:
+Minimal E2E corpus:
 
-- Primary Latin font.
-- Fallback.
-- CJK.
-- RTL.
-- Combining marks.
-- Ligatures.
-- Variable weight.
-- Caret, selection, hit test, and IME geometry.
-- Required color emoji forms.
+- One primary Latin font and one fallback font.
+- CJK, RTL, combining marks, ligatures, and a required color glyph using a supported color format.
+- Caret, selection, hit testing, IME geometry, and UTF-16/UTF-8 offset mapping.
+- Metrics, line layout, curve/band resource extraction, generated vertex/triangle output, and one
+  device-loss reconstruction.
+- The same source hashes, `.slug` hashes, fallback order, import options, output tolerances, and
+  policy run independently on Windows x64 and Linux x64. This is one behavior corpus, not one test
+  per glyph, script, or font table.
 
 Permanent verification:
 
-- Extend the text region of T02.
+- Extend the text region of T02 with the minimal corpus above.
 - Retain existing tests that prove public text/editor behavior.
-- Do not add one test per glyph, script, or font table.
-
-Ephemeral probe:
-
-- P05 load the fixed fonts on Windows and Linux and record face IDs, metrics, variations, glyph
-  bitmap modes, raster dimensions, and color-glyph paths. Delete the probe afterward.
-
-Logs:
-
-- Font source and face key.
-- Fallback decision and missing glyph.
-- Shaping run and glyph count.
-- Glyph atlas miss, upload, eviction, and byte total.
-- Color glyph path.
+- Keep logging for source/resource keys, fallback, shaping/layout counts, curve/band uploads,
+  generation changes, and reconstruction. Do not add broad text unit coverage.
 
 Exit:
 
-- T02 text and editor behavior passes on both platforms.
-- Placement stays within 0.5 logical pixels.
-- Required font and color emoji behavior is identical by policy and input.
-- Pinned native assets, G# bindings, NativeAOT calls, and handle lifetime pass on both RIDs.
+- O02/Q2 is explicitly accepted for one candidate only after the licensed SDK and redistribution
+  rights are documented, the candidate ABI and generated assets are reproducible, and the minimal
+  E2E corpus passes independently on Windows x64 and Linux x64.
+- Text/editor behavior and placement meet the Q10 gates, with no bitmap atlas in the Slug outline
+  path, no steady managed allocation, and no unbounded curve/band or compiled-text cache growth. Any
+  separately accepted color-image provider remains explicit under O02/Q2 and S12.
+- The selected candidate's C ABI, G# NativeAOT calls, lifetime, shutdown, and device-loss rebuild
+  pass on both RIDs.
+- Until this exit is reached, the frozen HarfBuzz/FreeType proof remains non-shipping evidence only.
 
 Reopen when:
 
-- A required font format cannot be reconstructed without a new optional parser or dependency.
+- The SDK or license artifact is unavailable, redistribution rights are insufficient, or either RID
+  lacks a supported build.
+- Variable axes, required color glyph forms, script coverage, shader integration, or resource
+  reconstruction cannot meet the Goo contract without a new dependency or policy decision.
+- Any text candidate misses the corpus, visual, performance, allocation, package, or device-loss
+  gates. Return to O02/Q2 rather than adding a hidden fallback.
 
 ### S12. Replace image ownership with decoded pixels and providers
 
@@ -1242,7 +1268,7 @@ Reopen when:
 Required ownership:
 
 - One process instance, physical device, logical device, allocator, queue set, pipelines, shaders,
-  samplers, atlases, and shared resources.
+  samplers, curve/band text resources, and shared resources.
 - Each window owns its surface, swapchain, views, frame slots, presentation synchronization, format,
   extent, damage journal, and image history.
 - Dirty scheduling and presentation are independent.
@@ -1383,6 +1409,8 @@ Entry:
 
 - S08 through S16 proof components pass T02, T03, and T04.
 - S17 required core mechanisms and platform adapters pass their exit gates.
+- S11 has accepted one text candidate under O02/Q2, and its text corpus, C ABI, G# NativeAOT,
+  resource, device-loss, and Windows/Linux gates pass independently.
 - O03 and O16 are accepted.
 - No required renderer behavior still depends on Skia.
 - T02 through T04 and every applicable Q10 workload have been rerun after S17. Pre-S17 evidence does
@@ -1400,9 +1428,11 @@ Atomic work:
 6. Remove `WindowRenderer`, `Window.Renderer`, and raster-only verification as approved by Q5.
 7. Move every still-required `Goo.InternalTextInterop` responsibility to the proven G# runtime
    implementation, then delete the C# helper project and assembly.
-8. Remove obsolete Skia-internal tests instead of porting them one-for-one.
-9. Wire Vulkan offscreen readback into the backend-neutral visual corpus.
-10. Update official package contents, dependency metadata, API baseline, XML documentation, and
+8. Remove the frozen non-shipping HarfBuzz/FreeType proof, bridge, native assets, and build metadata
+   only after the selected text candidate has passed both RID gates and no Goo-core consumer remains.
+9. Remove obsolete Skia-internal tests instead of porting them one-for-one.
+10. Wire Vulkan offscreen readback into the backend-neutral visual corpus.
+11. Update official package contents, dependency metadata, API baseline, XML documentation, and
    third-party notices.
 
 Required specification:
@@ -1428,6 +1458,8 @@ Removal verification:
 
 - Search product source, generated assets, dependencies, package contents, and NativeAOT outputs for
   Skia names and binaries.
+- Verify that frozen HarfBuzz/FreeType proof files and native assets are absent from the shipping
+  product only after the selected text candidate passes both Windows and Linux gates.
 - Search Goo core and Goo-owned runtime-helper source for authored C#.
 - Verify mandatory native-library count does not increase.
 
@@ -1435,6 +1467,8 @@ Exit:
 
 - Direct Vulkan is Goo's only product renderer.
 - Skia, OpenGL Ganesh, CPU raster, and Goo-owned C# runtime code are absent.
+- Exactly one O02/Q2-approved text candidate is shipped. No HarfBuzz/FreeType fallback or bitmap glyph
+  atlas remains.
 - All focused tests and package checks pass.
 
 Reopen when:
@@ -1470,10 +1504,11 @@ Package specification:
 
 - RID-specific native assets only.
 - No cross-RID leakage.
-- SDL, HarfBuzz, FreeType, Vulkan loader usage, shaders, and selected optional codec contents are
-  explicit.
-- Generator, shader compiler, probes, validation layers, software ICD, and unused SDL binding surface
-  do not ship.
+- SDL, the selected text runtime, Vulkan loader usage, shaders, consumer-supplied compiled-font
+  assets, and selected optional codec contents are explicit.
+- The Goo core package does not contain application fonts. `slugfont`, source fonts used only for
+  asset generation, shader compiler, generators, probes, validation layers, software ICD, and unused
+  SDL binding surface do not ship in the runtime package.
 - License and third-party notices match actual contents.
 
 Exit:
@@ -1559,7 +1594,7 @@ Allowed probe classes:
 | P02 | Which Vulkan core and extension capabilities exist across the four target configurations? |
 | P03 | Does G# emit correct Vulkan ABI layouts and direct function-pointer calls? |
 | P04 | Does SDL expose the required loader, extensions, surfaces, and presentation support? |
-| P05 | Do fixed HarfBuzz and FreeType inputs produce the required matching font facts? |
+| P05 | Does the licensed Slug 7.5 artifact satisfy the minimal text ABI, resource, and parity contract on both RIDs? |
 | P06 | Which O03 path candidate meets an observed blocker when existing evidence is insufficient? |
 
 Shader reflection is a deterministic build validation step when generated from the pinned compiler.
@@ -1669,7 +1704,7 @@ pass before the next row starts.
 | B03A | Typed frame-plan layout | Read-only semantic-digest fixture | Read-only counting/benchmark fixture | Frame-plan layout and IDs are locked |
 | B03B | Scene compiler | Basic pipeline recorder | T02/T03 harness integration | S09 basic slice and zero-allocation gate pass |
 | B04A | Resource/cache implementation | Read-only lifetime and budget audit | Rehydration/plateau harness | S10 resource IDs and lifetime are locked before consumers start |
-| B04B | HarfBuzz and FreeType service | Image provider and decoded-pixel lifetime | Text/image parity corpus | S11-S12 consume the locked resource contract |
+| B04B | Reopened text-stack candidate evaluation and service | Image provider and decoded-pixel lifetime | Text/image parity corpus | O02/Q2 is accepted and S11-S12 consume the locked resource contract |
 | B05A | Accepted O03 path implementation | Path hit-test and clip integration | Path mesh benchmark and visual fixture | S13 path contract passes before SVG integration starts |
 | B05B | Compiled SVG asset tool/runtime | Compositing and effects | Async readback and AA-independent T02 fixture | Effects/readback pass and the AA comparison corpus is ready |
 | B06A | AA candidate lane 1 | AA candidate lane 2 | AA comparison harness | O16 is accepted, comparison-only paths are deleted, and final T02 passes |
