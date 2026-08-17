@@ -1,6 +1,6 @@
 # Goo Core Vulkan Implementation Plan
 
-Status: active, S00 through S04 complete, Linux S05 through S07 slices complete, S08 next, Windows runtime qualification deferred until a Windows 11 VM is available
+Status: active, S00 through S04 complete, Linux S05 through the automatable S08 slice complete, S09 next, compositor-driven lifecycle actions and Windows runtime qualification deferred
 
 Date: 2026-08-16
 
@@ -674,6 +674,19 @@ Boundary:
 - This is a non-shipping Vulkan proof target.
 - Goo's product renderer remains Skia until S18.
 - The proof is not selectable through the public API and is not packed.
+
+Implementation status on 2026-08-17:
+
+- Commit `4ba96ee` completes the Linux default, requested readback, resize, close/reopen, and
+  current-metric WSI recovery paths without device or queue idle.
+- Release, Khronos validation with synchronization validation, and stripped NativeAOT pass for the
+  default, readback, and automatable lifecycle paths.
+- Strict cross-display DPI movement and programmatic unminimize remain real compositor-driven E2E
+  deferrals on KDE Wayland. The proof reports these deferrals explicitly and does not synthesize
+  success.
+- A real `VK_ERROR_SURFACE_LOST_KHR` event still needs an E2E source. Its failed-present fence is
+  retained and waited correctly if the driver returns it.
+- Windows runtime qualification remains deferred until the Windows 11 VM is available.
 
 Shared runtime specification:
 
