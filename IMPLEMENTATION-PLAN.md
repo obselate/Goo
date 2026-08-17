@@ -1,6 +1,6 @@
 # Goo Core Vulkan Implementation Plan
 
-Status: active, S00 through S09 complete, S10 active, compositor-driven lifecycle actions and Windows runtime qualification deferred
+Status: active, S00 through S10 complete, S11 active, compositor-driven lifecycle actions and Windows runtime qualification deferred
 
 Date: 2026-08-16
 
@@ -848,7 +848,24 @@ Reopen when:
 
 ### S10. Implement resources, shaders, uploads, and lifetime
 
-Status: active on 2026-08-17. S10 is not complete.
+Status: complete on 2026-08-17. Commits `1cbe3af` and `920f4e5` close the non-shipping S10 image
+resource vertical slice and activate S11.
+
+Qualification evidence:
+
+- Cached image readback digest: `12286913645295596837`.
+- The unchanged second render reached a plateau with `0` managed allocation and queued no upload.
+- Submitted and resident image retirement both respected fence completion.
+- Stale GPU-generation access was rejected before submission, and logical resources rehydrated after
+  generation replacement.
+- Khronos validation and synchronization validation reported `0` errors and `0` fatal errors.
+- Linux x64 NativeAOT output was `1,690,680` bytes with SHA-256
+  `44923f77ce793d6e4d1302699446420698de806a4878ccf21f538b4a32039e54`.
+- The proof remains non-shipping. Product `Goo/` is untouched, no Skia fallback exists, and Windows
+  runtime qualification remains deferred to the Windows 11 VM.
+- Mapped noncoherent memory uses a conservative whole-block flush and invalidate. This is safe and
+  non-blocking for S10. Range-granular, atom-aligned operations remain an S14 performance
+  optimization and reopen risk if later measurements require them.
 
 Work:
 
