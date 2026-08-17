@@ -13,13 +13,13 @@ layout(push_constant) uniform PushConstants {
 layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 outColor;
 
-vec4 unpackColor(uint packed)
+vec4 unpackColor(uint packedRgb, uint packedAlpha, uint alphaIndex)
 {
     return vec4(
-        float(packed & 0xffu),
-        float((packed >> 8u) & 0xffu),
-        float((packed >> 16u) & 0xffu),
-        float((packed >> 24u) & 0xffu)) / 255.0;
+        float(packedRgb & 0x7ffu) / 2047.0,
+        float((packedRgb >> 11u) & 0x7ffu) / 2047.0,
+        float((packedRgb >> 22u) & 0x3ffu) / 1023.0,
+        float((packedAlpha >> (alphaIndex * 10u)) & 0x3ffu) / 1023.0);
 }
 
 vec4 interpolateStops(float value, vec4 color0, vec4 color1, vec4 color2)
@@ -41,8 +41,8 @@ void main()
 {
     vec2 direction = pc.params.zw - pc.params.xy;
     float amount = dot(uv - pc.params.xy, direction) / max(dot(direction, direction), 0.0001);
-    vec4 color0 = unpackColor(pc.packedColors.x);
-    vec4 color1 = unpackColor(pc.packedColors.y);
-    vec4 color2 = unpackColor(pc.packedColors.z);
+    vec4 color0 = unpackColor(pc.packedColors.x, pc.packedColors.w, 0u);
+    vec4 color1 = unpackColor(pc.packedColors.y, pc.packedColors.w, 1u);
+    vec4 color2 = unpackColor(pc.packedColors.z, pc.packedColors.w, 2u);
     outColor = interpolateStops(clamp(amount, 0.0, 1.0), color0, color1, color2);
 }

@@ -106,9 +106,9 @@
       "source": "analytic_solid.frag.glsl",
       "output": "analytic_solid.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "aaadde57a66aaea4bb53cfaa17619a1aed8d89c67fe6dff8ea39329a802ac87f",
-      "outputSha256": "2b5deba845be2c7db9d9b02710600d8291d3b392a2af75d21f4e8a4435d60a28",
-      "outputBytes": 2304,
+      "sourceSha256": "2a4161608663098d5c7de3be88e4801fa7365e5ef3c1fbd068b216f544a8492c",
+      "outputSha256": "b01710d9f4b9da0e71e0f524593092003d6f3a8ea668befb02a73bae035f1207",
+      "outputBytes": 2388,
       "capabilities": [
         1
       ]
@@ -119,9 +119,9 @@
       "source": "analytic_linear3.frag.glsl",
       "output": "analytic_linear3.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "e18846ca139f4567f72e48b5c7a50098e8a75337bb1f6051765e371dfc12f07d",
-      "outputSha256": "0ef820ecddd8fcf5ef9cd79bc18afcb5ce51dc6c8554ad0d7ff8ce74357cb22c",
-      "outputBytes": 2744,
+      "sourceSha256": "ab2af725a758086110e93d3182b86db46618b47df08229d48ca4e959b3fd3c60",
+      "outputSha256": "3518f6fe918d88f12b251811afb928ae9b3b0e30f3f68122960152c21c34e272",
+      "outputBytes": 2980,
       "capabilities": [
         1
       ]
@@ -132,9 +132,9 @@
       "source": "analytic_radial3.frag.glsl",
       "output": "analytic_radial3.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "5b245447ccc18b9c1b2ca286d8566eaea5772161218cccb14996376a266a2e94",
-      "outputSha256": "d40e1aa6e85bffefc18773f35fc0b614e49e5d0acf717fcf6c97e75b7e25ded2",
-      "outputBytes": 2728,
+      "sourceSha256": "5eeef3f1b440f2d7e378cb4bb0d8294364f0b11a8c03ba4a39433671f90cbd73",
+      "outputSha256": "d43d75466c98a5834c0fad7189326e1441ee79a142eae80adbb257aa97ec3fd7",
+      "outputBytes": 2964,
       "capabilities": [
         1
       ]
@@ -299,6 +299,7 @@
       "colorFormat": "swapchain-sRGB",
       "sampleCount": 1,
       "blend": "source-over-premultiplied-linear",
+      "colorPacking": "rgb11-11-10-alpha10-premultiplied-linear",
       "depthStencil": "disabled",
       "cullMode": "none",
       "frontFace": "counter-clockwise",
@@ -396,6 +397,7 @@
       "colorFormat": "swapchain-sRGB",
       "sampleCount": 1,
       "blend": "source-over-premultiplied-linear",
+      "colorPacking": "rgb11-11-10-alpha10-premultiplied-linear",
       "depthStencil": "disabled",
       "cullMode": "none",
       "frontFace": "counter-clockwise",
@@ -493,6 +495,7 @@
       "colorFormat": "swapchain-sRGB",
       "sampleCount": 1,
       "blend": "source-over-premultiplied-linear",
+      "colorPacking": "rgb11-11-10-alpha10-premultiplied-linear",
       "depthStencil": "disabled",
       "cullMode": "none",
       "frontFace": "counter-clockwise",

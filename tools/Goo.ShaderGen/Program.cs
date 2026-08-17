@@ -205,6 +205,10 @@ internal static class Program
         [JsonPropertyName("blend")]
         public string Blend { get; set; } = string.Empty;
 
+        [JsonPropertyName("colorPacking")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ColorPacking { get; set; }
+
         [JsonPropertyName("depthStencil")]
         public string DepthStencil { get; set; } = string.Empty;
 
@@ -692,7 +696,7 @@ internal static class Program
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "color", Offset = 16, Type = "vec4" }
-        }, new[] { "vertex" }, "disabled", "solid_quad_vertex", "solid_quad_fragment", "vec4", "color");
+        }, new[] { "vertex" }, "disabled", null, "solid_quad_vertex", "solid_quad_fragment", "vec4", "color");
         RequirePipeline(manifest.Pipelines[1], "analytic_solid", "AnalyticSolidPushConstants.Generated.gs", "AnalyticSolidPushConstants", 112, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
@@ -702,7 +706,7 @@ internal static class Program
             new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
             new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "analytic_vertex", "analytic_solid_fragment", "vec2", "uv");
+        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_solid_fragment", "vec2", "uv");
         RequirePipeline(manifest.Pipelines[2], "analytic_linear3", "AnalyticLinear3PushConstants.Generated.gs", "AnalyticLinear3PushConstants", 112, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
@@ -712,7 +716,7 @@ internal static class Program
             new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
             new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "analytic_vertex", "analytic_linear3_fragment", "vec2", "uv");
+        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_linear3_fragment", "vec2", "uv");
         RequirePipeline(manifest.Pipelines[3], "analytic_radial3", "AnalyticRadial3PushConstants.Generated.gs", "AnalyticRadial3PushConstants", 112, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
@@ -722,10 +726,10 @@ internal static class Program
             new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
             new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "analytic_vertex", "analytic_radial3_fragment", "vec2", "uv");
+        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_radial3_fragment", "vec2", "uv");
     }
 
-    private static void RequirePipeline(Pipeline pipeline, string id, string hostPackingPath, string hostPackingTypeName, int pushConstantSize, IReadOnlyList<PushConstantMember> members, IReadOnlyList<string> pushStages, string blend, string vertexShader, string fragmentShader, string interfaceType, string interfaceName)
+    private static void RequirePipeline(Pipeline pipeline, string id, string hostPackingPath, string hostPackingTypeName, int pushConstantSize, IReadOnlyList<PushConstantMember> members, IReadOnlyList<string> pushStages, string blend, string? colorPacking, string vertexShader, string fragmentShader, string interfaceType, string interfaceName)
     {
         Require(pipeline.Id == id, $"pipeline[{id}].id", id);
         Require(pipeline.Topology == "triangle-list", $"pipeline[{id}].topology", "triangle-list");
@@ -734,6 +738,17 @@ internal static class Program
         Require(pipeline.ColorFormat == "swapchain-sRGB", $"pipeline[{id}].colorFormat", "swapchain-sRGB");
         Require(pipeline.SampleCount == 1, $"pipeline[{id}].sampleCount", "1");
         Require(pipeline.Blend == blend, $"pipeline[{id}].blend", blend);
+        if (colorPacking is null)
+        {
+            if (pipeline.ColorPacking is not null)
+            {
+                throw new InvalidOperationException($"Unexpected color packing metadata: {id}");
+            }
+        }
+        else
+        {
+            Require(pipeline.ColorPacking == colorPacking, $"pipeline[{id}].colorPacking", colorPacking);
+        }
         Require(pipeline.DepthStencil == "disabled", $"pipeline[{id}].depthStencil", "disabled");
         Require(pipeline.CullMode == "none", $"pipeline[{id}].cullMode", "none");
         Require(pipeline.FrontFace == "counter-clockwise", $"pipeline[{id}].frontFace", "counter-clockwise");

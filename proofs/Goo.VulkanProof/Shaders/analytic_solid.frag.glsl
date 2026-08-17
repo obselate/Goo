@@ -13,13 +13,13 @@ layout(push_constant) uniform PushConstants {
 layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 outColor;
 
-vec4 unpackColor(uint packed)
+vec4 unpackColor(uint packedRgb, uint packedAlpha, uint alphaIndex)
 {
     return vec4(
-        float(packed & 0xffu),
-        float((packed >> 8u) & 0xffu),
-        float((packed >> 16u) & 0xffu),
-        float((packed >> 24u) & 0xffu)) / 255.0;
+        float(packedRgb & 0x7ffu) / 2047.0,
+        float((packedRgb >> 11u) & 0x7ffu) / 2047.0,
+        float((packedRgb >> 22u) & 0x3ffu) / 1023.0,
+        float((packedAlpha >> (alphaIndex * 10u)) & 0x3ffu) / 1023.0);
 }
 
 float roundedDistance(vec2 point, vec2 size, vec4 cornerRadii)
@@ -38,5 +38,5 @@ void main()
     vec2 point = uv * pc.rect.zw;
     float distance = roundedDistance(point, pc.rect.zw, pc.radii);
     float coverage = 1.0 - smoothstep(0.0, max(fwidth(distance), 0.0001), distance);
-    outColor = unpackColor(pc.packedColors.x) * coverage;
+    outColor = unpackColor(pc.packedColors.x, pc.packedColors.w, 0u) * coverage;
 }
