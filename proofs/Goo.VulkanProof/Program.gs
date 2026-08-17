@@ -96,6 +96,35 @@ func TrackResult(diagnostics VulkanDiagnostics?, eventId uint64, result VkResult
     return result
 }
 
+func CountLiveObjects(
+    window bool,
+    instance bool,
+    surface bool,
+    device bool,
+    swapchain bool,
+    commandPool bool,
+    commandBuffer bool,
+    acquireSemaphore bool,
+    renderSemaphore bool,
+    fence bool,
+    validationMessenger bool,
+    queryPool bool) uint64 {
+    var count uint64 = 0uL
+    if window { count++ }
+    if instance { count++ }
+    if surface { count++ }
+    if device { count++ }
+    if swapchain { count++ }
+    if commandPool { count++ }
+    if commandBuffer { count++ }
+    if acquireSemaphore { count++ }
+    if renderSemaphore { count++ }
+    if fence { count++ }
+    if validationMessenger { count++ }
+    if queryPool { count++ }
+    return count
+}
+
 unsafe func Main() int32 {
     var diagnostics VulkanDiagnostics? = nil
     var validation VulkanValidation? = nil
@@ -142,6 +171,8 @@ unsafe func Main() int32 {
     var queryPoolCreated = false
     var destroyQueryPoolAddress nint = nint(0)
     var debugExtensionNameStorage nint = nint(0)
+    var frameIndex uint64 = 0uL
+    var generation uint64 = 1uL
 
     try {
         if SDL_Init(0x00004020u) == 0u {
@@ -205,6 +236,10 @@ unsafe func Main() int32 {
                 availableExtensionIndex++
             }
         }
+        if let diagnostics = diagnostics {
+            let debugUtilsFlag = debugUtilsAvailable ? 1u : 0u
+            diagnostics.CaptureInstanceFacts(apiVersion, availableExtensionCount, debugUtilsFlag)
+        }
         if diagnostics != nil && !debugUtilsAvailable {
             throw InvalidOperationException("VK_EXT_debug_utils is unavailable")
         }
@@ -214,6 +249,14 @@ unsafe func Main() int32 {
         if requiredExtensions == nil || requiredExtensionCount == 0u {
             throw InvalidOperationException("SDL Vulkan instance extensions are unavailable")
         }
+        let requiredExtensionPointers = *VulkanExtensionNamePointer(requiredExtensions)
+        if let diagnostics = diagnostics {
+            var requiredExtensionIndex uint32 = 0u
+            while requiredExtensionIndex < requiredExtensionCount {
+                diagnostics.CaptureExtension(1u, requiredExtensionPointers[requiredExtensionIndex].value)
+                requiredExtensionIndex++
+            }
+        }
         var instanceExtensionCount = requiredExtensionCount
         var instanceExtensionNames **int8 = requiredExtensions
         var debugMessengerCreateInfo = VkDebugUtilsMessengerCreateInfoEXT{}
@@ -222,10 +265,13 @@ unsafe func Main() int32 {
             let extensionNames *VulkanExtensionNamePointer = stackalloc [int32(requiredExtensionCount + 1u)]VulkanExtensionNamePointer
             var extensionIndex uint32 = 0u
             while extensionIndex < requiredExtensionCount {
-                extensionNames[extensionIndex].value = requiredExtensions[extensionIndex]
+                extensionNames[extensionIndex].value = requiredExtensionPointers[extensionIndex].value
                 extensionIndex++
             }
             extensionNames[requiredExtensionCount].value = *int8(debugExtensionNameStorage)
+            if let diagnostics = diagnostics {
+                diagnostics.CaptureExtension(1u, *int8(debugExtensionNameStorage))
+            }
             instanceExtensionNames = &extensionNames[0].value
             instanceExtensionCount++
             let callbackAddress = Marshal.GetFunctionPointerForDelegate(validation.Callback)
@@ -382,6 +428,9 @@ unsafe func Main() int32 {
             throw InvalidOperationException("SDL Vulkan surface creation failed")
         }
         surfaceCreated = true
+        if let diagnostics = diagnostics {
+            diagnostics.CaptureWsiFacts(uint64(window), surface, 0uL, frameIndex, generation)
+        }
 
         var physicalDeviceCount uint32 = 0u
         if TrackResult(diagnostics, 20uL, enumeratePhysicalDevices(instance, &physicalDeviceCount, nil)) != VkConstants.VK_SUCCESS || physicalDeviceCount == 0u {
@@ -404,6 +453,7 @@ unsafe func Main() int32 {
         var selectedSurfaceCapabilities = VkSurfaceCapabilitiesKHR{}
         var selectedSurfaceFormat = VkSurfaceFormatKHR{}
         var selectedPresentMode VkPresentModeKHR = VkConstants.VK_PRESENT_MODE_FIFO_KHR
+        var selectedDeviceExtensionCount uint32 = 0u
         var physicalIndex uint32 = 0u
         while physicalIndex < physicalDeviceCount && selectedPhysicalDevice == nint(0) {
             let physicalDevice = physicalDevices[physicalIndex]
@@ -414,6 +464,7 @@ unsafe func Main() int32 {
             var candidateTimestampValidBits uint32 = 0u
             var hasPresentationQueue = false
             var queueFamilyCount uint32 = 0u
+            var candidateDeviceExtensionCount uint32 = 0u
             if candidateQualified {
                 queueFamilyProperties(physicalDevice, &queueFamilyCount, nil)
                 if queueFamilyCount > 0u {
@@ -461,6 +512,7 @@ unsafe func Main() int32 {
                 if TrackResult(diagnostics, 23uL, enumerateDeviceExtensions(physicalDevice, nil, &deviceExtensionCount, nil)) != VkConstants.VK_SUCCESS || deviceExtensionCount == 0u {
                     candidateQualified = false
                 } else {
+                    candidateDeviceExtensionCount = deviceExtensionCount
                     let deviceExtensions *VkExtensionProperties = stackalloc [int32(deviceExtensionCount)]VkExtensionProperties
                     if TrackResult(diagnostics, 24uL, enumerateDeviceExtensions(physicalDevice, nil, &deviceExtensionCount, deviceExtensions)) != VkConstants.VK_SUCCESS {
                         candidateQualified = false
@@ -551,11 +603,27 @@ unsafe func Main() int32 {
                 selectedSurfaceCapabilities = candidateSurfaceCapabilities
                 selectedSurfaceFormat = candidateSurfaceFormat
                 selectedPresentMode = candidatePresentMode
+                selectedDeviceExtensionCount = candidateDeviceExtensionCount
             }
             physicalIndex++
         }
         if selectedPhysicalDevice == nint(0) {
             throw InvalidOperationException("No fully qualified Vulkan physical device is available")
+        }
+        var selectedPhysicalDeviceProperties = VkPhysicalDeviceProperties{}
+        getPhysicalDeviceProperties(selectedPhysicalDevice, &selectedPhysicalDeviceProperties)
+        if let diagnostics = diagnostics {
+            diagnostics.CaptureDeviceFacts(
+                selectedPhysicalDeviceProperties.apiVersion,
+                selectedPhysicalDeviceProperties.driverVersion,
+                selectedPhysicalDeviceProperties.vendorID,
+                selectedPhysicalDeviceProperties.deviceID,
+                int32(selectedPhysicalDeviceProperties.deviceType),
+                &selectedPhysicalDeviceProperties.deviceName[0],
+                1u,
+                1u,
+                1u)
+            diagnostics.CaptureDeviceExtensionCount(selectedDeviceExtensionCount)
         }
 
         var swapchainExtent = selectedSurfaceCapabilities.currentExtent
@@ -612,6 +680,9 @@ unsafe func Main() int32 {
 
         swapchainExtensionStorage = Marshal.StringToCoTaskMemUTF8(VkConstants.VK_KHR_SWAPCHAIN_EXTENSION_NAME)
         let swapchainExtensionName = *int8(swapchainExtensionStorage)
+        if let diagnostics = diagnostics {
+            diagnostics.CaptureExtension(2u, swapchainExtensionName)
+        }
         var deviceExtensionNamePointer *int8 = swapchainExtensionName
         let deviceExtensionNames = &deviceExtensionNamePointer
 
@@ -782,6 +853,9 @@ unsafe func Main() int32 {
             throw InvalidOperationException("vkCreateSwapchainKHR failed")
         }
         swapchainCreated = true
+        if let diagnostics = diagnostics {
+            diagnostics.CaptureWsiFacts(uint64(window), surface, swapchain, frameIndex, generation)
+        }
 
         var swapchainImageCount uint32 = 0u
         let getSwapchainImages = deviceDispatch.vkGetSwapchainImagesKHR
@@ -840,6 +914,10 @@ unsafe func Main() int32 {
             throw InvalidOperationException("vkAcquireNextImageKHR failed")
         }
         if imageIndex >= swapchainImageCount { throw InvalidOperationException("Acquired image index is invalid") }
+        frameIndex = 1uL
+        if let diagnostics = diagnostics {
+            diagnostics.CaptureWsiFacts(uint64(window), surface, swapchain, frameIndex, generation)
+        }
 
         var commandBufferBeginInfo = VkCommandBufferBeginInfo{}
         commandBufferBeginInfo.sType = VkConstants.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
@@ -936,6 +1014,9 @@ unsafe func Main() int32 {
         if TrackResult(diagnostics, 42uL, queueSubmit(queue, 1u, &submitInfo, fence)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("vkQueueSubmit2 failed")
         }
+        if let diagnostics = diagnostics {
+            diagnostics.CaptureSubmission(1uL, uint64(queue), fence)
+        }
 
         var presentInfo = VkPresentInfoKHR{}
         presentInfo.sType = VkConstants.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
@@ -973,11 +1054,25 @@ unsafe func Main() int32 {
                 throw InvalidOperationException("vkGetQueryPoolResults failed")
             }
         }
-        let queueWaitIdle = deviceDispatch.vkQueueWaitIdle
-        if TrackResult(diagnostics, 45uL, queueWaitIdle(queue)) != VkConstants.VK_SUCCESS {
-            throw InvalidOperationException("vkQueueWaitIdle failed")
-        }
         if let diagnostics = diagnostics {
+            diagnostics.CaptureWsiFacts(uint64(window), surface, swapchain, frameIndex, generation)
+            diagnostics.CaptureResourceFacts(
+                0uL,
+                0uL,
+                0uL,
+                CountLiveObjects(
+                    window != nint(0),
+                    instance != nint(0),
+                    surfaceCreated,
+                    deviceCreated,
+                    swapchainCreated,
+                    commandPoolCreated,
+                    commandBuffer != nint(0),
+                    acquireSemaphoreCreated,
+                    renderSemaphoreCreated,
+                    fenceCreated,
+                    validationMessengerCreated,
+                    queryPoolCreated))
             if diagnostics.ValidationErrorCount != 0 {
                 diagnostics.CaptureFatal(-2, uint64(diagnostics.ValidationErrorCount))
                 throw InvalidOperationException("Vulkan validation errors were captured")
@@ -991,6 +1086,24 @@ unsafe func Main() int32 {
         return 0
     } catch (error Exception) {
         if let diagnostics = diagnostics {
+            diagnostics.CaptureWsiFacts(uint64(window), surface, swapchain, frameIndex, generation)
+            diagnostics.CaptureResourceFacts(
+                0uL,
+                0uL,
+                0uL,
+                CountLiveObjects(
+                    window != nint(0),
+                    instance != nint(0),
+                    surfaceCreated,
+                    deviceCreated,
+                    swapchainCreated,
+                    commandPoolCreated,
+                    commandBuffer != nint(0),
+                    acquireSemaphoreCreated,
+                    renderSemaphoreCreated,
+                    fenceCreated,
+                    validationMessengerCreated,
+                    queryPoolCreated))
             diagnostics.CaptureFatal(-1, 0uL)
         }
         Console.Error.WriteLine(error.ToString())
