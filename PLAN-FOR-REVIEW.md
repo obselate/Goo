@@ -1,6 +1,6 @@
 # Goo Gaps and Reductions Plan
 
-Status: architecture Q&A accepted except O16, which remains a later measured AA decision. Non-shipping Vulkan proof active, Goo product implementation not started
+Status: architecture Q&A accepted except O16, which remains a later measured AA decision. S12-I01 versioned stable ImageSourceProvider contract accepted. Non-shipping Vulkan proof active, Goo product implementation not started
 
 Date: 2026-08-17
 
@@ -61,6 +61,7 @@ outside Goo core. O16 remains a later proof decision because its AA method needs
 | O02 | Text and font stack | Accepted | Use OpenType inputs with Slug 7.5 as the shared text and vector GPU backend, conditional on SDK, redistribution, corpus, ABI, resource, visual-quality, performance, allocation, lifecycle, package, and Windows/Linux gates |
 | O03 | Path geometry and hit testing | Accepted | Use Slug 7.5 for GPU path fill and stroke. Goo owns curve conversion, CPU hit testing, clipping, paint composition, caching, and lifetime. Add no second tessellator or path-algebra dependency without new evidence |
 | O04 | Image codecs and SVG ownership | Accepted | Optional codec providers plus build-time compiled SVG assets. No required runtime SVG parser |
+| S12-I01 | Versioned stable `ImageSourceProvider` contract | Accepted | Nonzero monotonic `uint64` versions, immutable per-version results, version-snapshot leases, owner-thread notifications, targeted invalidation, and cache identities independent of sampling and layout |
 | O05 | CPU raster diagnostics | Accepted | Remove the product CPU renderer. Use request-driven Vulkan offscreen readback |
 | O06 | Internal renderer command boundary | Accepted | Compact typed frame plan with reusable typed arrays, ordered references, and stable resource IDs. Evidence can reopen the direction |
 | O07 | Dirty-frame and retained-resource model | Accepted | Retained typed segments and GPU ranges plus per-swapchain-image damage history. No separate backing image or framebuffer tile cache |
@@ -355,6 +356,7 @@ Review one question at a time. Do not use a recommended answer as an accepted an
 | Q2 | Text and font stack | Accepted |
 | Q3 | Path geometry and hit testing | Accepted |
 | Q4 | Image codecs and SVG ownership | Accepted |
+| S12-I01 | Versioned stable ImageSourceProvider contract | Accepted |
 | Q5 | CPU raster diagnostics | Accepted |
 | Q6 | Internal renderer command boundary | Accepted |
 | Q7 | Dirty-frame and retained-resource model | Accepted |
@@ -469,6 +471,29 @@ Slug fails the shared SDK, license, ABI, quality, performance, or both-RID gates
 Accepted answer: split image responsibilities. Goo core owns decoded premultiplied RGBA data,
 `ImageSourceProvider` integration, asynchronous loading lifecycle, byte-bounded caching, Vulkan
 upload, sizing, sampling, and invalidation.
+
+S12-I01 locks the versioned stable provider contract:
+
+- S18 adds `ImageSourceProvider.ContentVersion` as a read-only `uint64` property and
+  `ImageSourceProvider.ContentChanged` as a parameterless event. `Acquire()` remains unchanged and
+  `ImageSourceLease` gains no public member. This is an intentional breaking change for custom
+  provider implementations and requires the approved API baseline and generated documentation to
+  change with the product cutover.
+- `ContentVersion` is a nonzero, monotonic `uint64`; every content bump advances it. Pixels,
+  dimensions, format, and the terminal result are immutable for one version. The public provider
+  surface has no `SourceId`.
+- Providers publish an explicit change notification on their owner thread. Goo coalesces changes
+  per provider and window, then invalidates only bound nodes for that provider.
+- Each acquisition creates a one-shot lease with a `ContentVersion` snapshot. A version bump
+  releases the old lease and reacquires a fresh snapshot. Completion for a stale snapshot is
+  rejected. Failure is terminal for that version; retry requires another version bump.
+- Active leases retain their version result. Pixel storage and Vulkan images remain retained until
+  active leases and submitted-work fences make release safe.
+- The decoded-pixel key is provider identity plus `ContentVersion`. A Vulkan image key additionally
+  includes device generation and format. Sampling is separate, so nearest and linear reuse one
+  `VkImage`. Fit, transform, opacity, and destination size are not key fields.
+- Decode may run off-thread, but publication and notification run on the owner thread. There is no
+  polling or runtime hashing, and warm reuse allocates zero managed memory.
 
 Raster file decoding belongs in an optional codec provider or package. Applications own allowed
 formats, hostile-input limits, and attachment policy. Keep the declarative `Image(path)` API simple

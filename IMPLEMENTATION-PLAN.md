@@ -1,6 +1,6 @@
 # Goo Core Vulkan Implementation Plan
 
-Status: active, S00 through S10 complete, S11 qualifies the accepted shared Slug 7.5 and OpenType text direction, O03 accepts the same Slug backend for arbitrary paths, and S12 has a Linux proof qualification on local commit `622ee82` but remains open for Windows 11 and S18 public-contract migration. The existing HarfBuzz/FreeType proof is frozen as non-shipping evidence, compositor-driven lifecycle actions and Windows runtime qualification remain deferred
+Status: active, S00 through S10 complete, S11 qualifies the accepted shared Slug 7.5 and OpenType text direction, O03 accepts the same Slug backend for arbitrary paths, and S12 has a Linux proof qualification on local commit `622ee82`; S12-I01 now locks the versioned stable ImageSourceProvider contract, while Windows 11 and S18 public-contract migration remain open. The existing HarfBuzz/FreeType proof is frozen as non-shipping evidence, compositor-driven lifecycle actions and Windows runtime qualification remain deferred
 
 Date: 2026-08-17
 
@@ -169,7 +169,7 @@ constraints unless the lead records evidence that a dependency is not real.
 | S09 | Typed plan drives the representative basic slice | Stable digest, correct pixels, zero warm allocation |
 | S10 | Resource, shader, upload, and lifetime systems plateau | No warm resource creation or unbounded cache growth |
 | S11 | Accepted Slug/OpenType text direction is qualified and implemented | Minimal text corpus, resource, ABI, and parity gates pass on Windows and Linux |
-| S12 | Backend-neutral images replace Skia decoding ownership | Linux proof qualification passes; Windows 11 and S18 public-contract migration remain open |
+| S12 | Backend-neutral images replace Skia decoding ownership | Linux proof qualification and the accepted S12-I01 provider contract are recorded; Windows 11 and S18 public-contract migration remain open |
 | S13 | Accepted shared Slug path solution and compiled SVG assets work | Required path, clip, hit-test, and SVG corpus passes |
 | S14 | Effects and async readback work and one AA policy is accepted | O16 is closed with measured evidence |
 | S15 | Sparse updates use retained ranges and image history | Required sparse P95 improvement passes |
@@ -186,6 +186,7 @@ constraints unless the lead records evidence that a dependency is not real.
 | O02 text stack | S11 qualifies the accepted Slug 7.5 and OpenType direction after freezing the existing HarfBuzz/FreeType proof. Shipping requires SDK, redistribution, corpus, ABI, resource, visual-quality, performance, allocation, lifecycle, package, and both-RID gates |
 | O03 paths | S13 uses the same Slug adapter and GPU curve resources. Goo owns conversion, CPU hit testing, clipping, paint composition, caching, and lifetime |
 | O04 images and SVG | S12 owns decoded pixels and providers. S13 adds build-time compiled SVG assets |
+| S12-I01 versioned provider | S12 owns immutable per-version results, owner-thread publication and notifications, one-shot version leases, targeted invalidation, and cache/image keys independent of sampling and layout state |
 | O05 diagnostics | S08 and S14 use Vulkan offscreen readback. S18 removes CPU raster and raster-only APIs |
 | O06 renderer boundary | S09 implements and measures the compact typed frame plan |
 | O07 dirty frames | S15 implements retained chunks, stable GPU ranges, and per-image damage history |
@@ -206,8 +207,8 @@ constraints unless the lead records evidence that a dependency is not real.
 Entry:
 
 - Branch is `gaps-and-reductions`.
-- `PLAN-FOR-REVIEW.md` records Q1 through Q10 as accepted, O01 through O14 as accepted, O15 as out
-  of scope, and O16 as later.
+- `PLAN-FOR-REVIEW.md` records Q1 through Q10 as accepted, O01 through O14 and S12-I01 as accepted,
+  O15 as out of scope, and O16 as later.
 
 Work:
 
@@ -1039,18 +1040,44 @@ Status and qualification evidence:
 - Local commit `622ee82` adds the proof-only G# image provider/source ownership path with dual nearest/linear Vulkan samplers. Async decoder completions must publish through the provider's constructing thread.
 - Linux JIT image E2E recorded nearest digest `2726448270383127845` and linear digest `10848324327350558369`. Warm recording and rehydration reported `allocated=0`; the resident plateau, fence-safe retirement, and logical-source rehydration gates passed.
 - Linux x64 NativeAOT produced `1,728,520` bytes with SHA-256 `ec24ac566e4af3aed568059a482e7b017784baf13185b9811a8268e7235edce6`.
-- Product Goo remains untouched. No codec was added. S12 remains open for Windows 11 VM qualification and S18 public-contract migration. The current `ImageSourceProvider` has no explicit content-version field, which remains an S18 contract decision.
+- Product Goo remains untouched. No codec was added. S12-I01 now locks the versioned stable
+  `ImageSourceProvider` contract. S12 remains open for Windows 11 VM qualification and S18
+  public-contract migration.
+
+S12-I01 accepted contract:
+
+- S18 adds the read-only `ImageSourceProvider.ContentVersion uint64` property and parameterless
+  `ImageSourceProvider.ContentChanged` event. `ImageSourceProvider.Acquire()` remains unchanged and
+  `ImageSourceLease` gains no public member. Treat the two interface additions as a breaking change
+  for custom providers and update the approved API baseline and generated documentation atomically.
+- `ContentVersion` is a nonzero, monotonic `uint64`; every content bump advances it. Pixels,
+  dimensions, format, and the terminal result are immutable for one version. The public provider
+  surface has no `SourceId`.
+- Providers publish an explicit change notification on their owner thread. Goo coalesces changes
+  per provider and window, then invalidates only bound nodes for that provider.
+- Each acquisition creates a one-shot lease with a `ContentVersion` snapshot. A version bump
+  releases the old lease and reacquires a fresh snapshot. Completion for a stale snapshot is
+  rejected. Failure is terminal for that version; retry requires another version bump.
+- Active leases retain their version result. Pixel storage and Vulkan images remain retained until
+  active leases and submitted-work fences make release safe.
+- The decoded-pixel key is provider identity plus `ContentVersion`. A Vulkan image key additionally
+  includes device generation and format. Sampling is separate, so nearest and linear reuse one
+  `VkImage`. Fit, transform, opacity, and destination size are not key fields.
+- Decode may run off-thread, but publication and notification run on the owner thread. There is no
+  polling or runtime hashing, and warm reuse allocates zero managed memory.
 
 Required specification:
 
 - `ImageSourceProvider` remains the public boundary.
-- Goo core owns immutable premultiplied RGBA pixels, intrinsic size, async completion, invalidation,
-  fit, sampling, lazy GPU upload, and byte-bounded caching.
+- Goo core owns immutable per-version premultiplied RGBA pixels, dimensions, format, terminal result,
+  async completion, invalidation, fit, sampling, lazy GPU upload, and byte-bounded caching.
 - Decoding stays off the UI thread.
 - Raster file decoders are optional providers or packages.
 - Applications own allowed formats, hostile-input limits, and attachment policy.
 - No Skia image object remains in the core image lifetime.
-- Cache identity includes provider content version and sampling-relevant data.
+- Decoded-pixel cache identity is provider identity plus `ContentVersion`. Vulkan image identity
+  additionally includes device generation and format. Sampling is separate, so nearest and linear
+  reuse the same `VkImage`; fit, transform, opacity, and destination size do not enter either key.
 - Vulkan images retire only after fence completion.
 
 Permanent verification:
@@ -1062,8 +1089,8 @@ Permanent verification:
 
 Logs:
 
-- Provider ID, content version, decode completion, pixel bytes, upload bytes, residency, cache bytes,
-  eviction, and invalidation.
+- Provider identity, content version, decode completion, owner-thread publication, pixel bytes, upload
+  bytes, residency, cache bytes, leases, eviction, and targeted invalidation.
 
 Exit:
 
