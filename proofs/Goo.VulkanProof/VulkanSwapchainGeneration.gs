@@ -170,9 +170,6 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
                 throw InvalidOperationException("vkWaitForFences failed for Vulkan swapchain present fence")
             }
             completedPresentId = presentIdsStorage!![int32(index)]
-            if completedPresentId == 0uL {
-                throw InvalidOperationException("Vulkan swapchain present fence has no present id")
-            }
             pending!![int32(index)] = false
             presentIdsStorage!![int32(index)] = 0uL
         }
@@ -203,6 +200,13 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
             }
             pending!![int32(index)] = true
             presentIdsStorage!![int32(index)] = presentId
+        } else if result == VkConstants.VK_ERROR_OUT_OF_DATE_KHR
+            || result == VkConstants.VK_ERROR_SURFACE_LOST_KHR {
+            if presentId != 0uL {
+                throw InvalidOperationException("Vulkan failed presentation must have a zero present id")
+            }
+            pending!![int32(index)] = true
+            presentIdsStorage!![int32(index)] = 0uL
         } else {
             if presentId != 0uL {
                 throw InvalidOperationException("Vulkan failed presentation must have a zero present id")
@@ -236,10 +240,9 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
                     return result
                 }
                 let completedPresentId = presentIdsStorage!![int32(index)]
-                if completedPresentId == 0uL {
-                    throw InvalidOperationException("Vulkan swapchain present fence has no present id")
+                if completedPresentId != 0uL {
+                    retirement.CompletePresent(completedPresentId)
                 }
-                retirement.CompletePresent(completedPresentId)
                 pending!![int32(index)] = false
                 presentIdsStorage!![int32(index)] = 0uL
             }

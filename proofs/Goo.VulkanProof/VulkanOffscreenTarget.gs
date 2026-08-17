@@ -232,6 +232,11 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             return
         }
         if submissionPending {
+            let waitForFences = dispatch.vkWaitForFences
+            let waitResult = waitForFences(device, 1u, &completionFence, VkConstants.VK_TRUE, VkConstants.VK_WHOLE_SIZE)
+            if waitResult != VkConstants.VK_SUCCESS {
+                throw InvalidOperationException("vkWaitForFences failed for Vulkan offscreen submission")
+            }
             let completion = PollCompletion()
             if completion != VkConstants.VK_SUCCESS {
                 throw InvalidOperationException("Vulkan offscreen submission is still pending")

@@ -29,6 +29,9 @@ func SDL_CreateWindow(title string, width int32, height int32, flags uint64) nin
 @DllImport("SDL3", EntryPoint: "SDL_DestroyWindow", CallingConvention: CallingConvention.Cdecl)
 func SDL_DestroyWindow(window nint) void;
 
+@DllImport("SDL3", EntryPoint: "SDL_PushEvent", CallingConvention: CallingConvention.Cdecl)
+unsafe func SDL_PushEvent(event *SdlEvent) uint8;
+
 @DllImport("SDL3", EntryPoint: "SDL_Vulkan_CreateSurface", CallingConvention: CallingConvention.Cdecl)
 unsafe func SDL_Vulkan_CreateSurface(window nint, instance VkInstance, allocator *VkAllocationCallbacks, ref surface VkSurfaceKHR) uint8;
 
@@ -134,6 +137,172 @@ func CountLiveObjects(
     return count
 }
 
+unsafe func WaitForVulkanGenerationCompletion(
+    generation VulkanSwapchainGeneration,
+    frameSlot0 VulkanFrameSlot,
+    frameSlot1 VulkanFrameSlot,
+    retirement VulkanPresentationRetirement) {
+    let slot0Result = frameSlot0.PrepareAcquire()
+    if slot0Result != VkConstants.VK_SUCCESS {
+        throw InvalidOperationException("Vulkan frame-slot 0 retirement wait failed")
+    }
+    retirement.CollectCompleted(0u, frameSlot0.LastCompletedSerial)
+    frameSlot0.AbortPrepared()
+    let slot1Result = frameSlot1.PrepareAcquire()
+    if slot1Result != VkConstants.VK_SUCCESS {
+        throw InvalidOperationException("Vulkan frame-slot 1 retirement wait failed")
+    }
+    retirement.CollectCompleted(1u, frameSlot1.LastCompletedSerial)
+    frameSlot1.AbortPrepared()
+    let presentResult = generation.WaitForPresentCompletion(retirement)
+    if presentResult != VkConstants.VK_SUCCESS {
+        throw InvalidOperationException("Vulkan presentation retirement wait failed")
+    }
+}
+
+unsafe func SyncSdlLifecycle(lifecycle SdlLifecycle, window nint) int32 {
+    lifecycle.SyncWindow(window)
+    let result = lifecycle.DrainEvents()
+    if result < 0 {
+        throw InvalidOperationException("SDL lifecycle event drain failed")
+    }
+    lifecycle.RefreshMetrics(window)
+    return result
+}
+
+func LifecycleExtent(lifecycle SdlLifecycle) VkExtent2D {
+    if lifecycle.PixelWidth <= 0 || lifecycle.PixelHeight <= 0 {
+        throw InvalidOperationException("SDL lifecycle pixel extent is zero")
+    }
+    var extent = VkExtent2D{}
+    extent.width = uint32(lifecycle.PixelWidth)
+    extent.height = uint32(lifecycle.PixelHeight)
+    return extent
+}
+
+func ResolveLifecycleExtent(lifecycle SdlLifecycle, capabilities VkSurfaceCapabilitiesKHR) VkExtent2D {
+    if capabilities.currentExtent.width != uint32.MaxValue {
+        return capabilities.currentExtent
+    }
+    var extent = LifecycleExtent(lifecycle)
+    if extent.width < capabilities.minImageExtent.width {
+        extent.width = capabilities.minImageExtent.width
+    } else if extent.width > capabilities.maxImageExtent.width {
+        extent.width = capabilities.maxImageExtent.width
+    }
+    if extent.height < capabilities.minImageExtent.height {
+        extent.height = capabilities.minImageExtent.height
+    } else if extent.height > capabilities.maxImageExtent.height {
+        extent.height = capabilities.maxImageExtent.height
+    }
+    return extent
+}
+
+func LifecycleRecoveryRenderStep(step uint32) uint32 {
+    switch step {
+        case 1u { return 0u }
+        case 4u { return 3u }
+        case 6u { return 5u }
+        case 9u { return 8u }
+        default { return step }
+    }
+}
+
+unsafe data struct VulkanSwapchainSelection {
+    var capabilities VkSurfaceCapabilitiesKHR
+    var format VkSurfaceFormatKHR
+    var presentMode VkPresentModeKHR
+    var compositeAlpha VkCompositeAlphaFlagBitsKHR
+}
+
+unsafe func QuerySwapchainSelection(
+    physicalDevice VkPhysicalDevice,
+    surface VkSurfaceKHR,
+    instanceDispatch VkInstanceDispatch,
+    diagnostics VulkanDiagnostics?,
+    eventBase uint64) VulkanSwapchainSelection {
+    let getSurfaceCapabilities = instanceDispatch.vkGetPhysicalDeviceSurfaceCapabilitiesKHR
+    let getSurfaceFormats = instanceDispatch.vkGetPhysicalDeviceSurfaceFormatsKHR
+    let getPresentModes = instanceDispatch.vkGetPhysicalDeviceSurfacePresentModesKHR
+    var result = VulkanSwapchainSelection{}
+    if TrackResult(diagnostics, eventBase, getSurfaceCapabilities(physicalDevice, surface, &result.capabilities)) != VkConstants.VK_SUCCESS {
+        throw InvalidOperationException("Vulkan surface capabilities query failed")
+    }
+    if (result.capabilities.supportedUsageFlags & uint32(VkConstants.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) == 0u {
+        throw InvalidOperationException("Vulkan surface does not support color attachment swapchain images")
+    }
+
+    var formatCount uint32 = 0u
+    if TrackResult(diagnostics, eventBase + 1uL, getSurfaceFormats(physicalDevice, surface, &formatCount, nil)) != VkConstants.VK_SUCCESS || formatCount == 0u {
+        throw InvalidOperationException("Vulkan surface formats are unavailable")
+    }
+    let formats *VkSurfaceFormatKHR = stackalloc [int32(formatCount)]VkSurfaceFormatKHR
+    if TrackResult(diagnostics, eventBase + 2uL, getSurfaceFormats(physicalDevice, surface, &formatCount, formats)) != VkConstants.VK_SUCCESS {
+        throw InvalidOperationException("Vulkan surface format query failed")
+    }
+    if formatCount == 1u && formats[0].format == VkConstants.VK_FORMAT_UNDEFINED {
+        result.format.format = VkConstants.VK_FORMAT_B8G8R8A8_SRGB
+        result.format.colorSpace = VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
+    } else {
+        var foundFormat = false
+        var formatIndex uint32 = 0u
+        while formatIndex < formatCount && !foundFormat {
+            let candidate = formats[formatIndex]
+            if candidate.format == VkConstants.VK_FORMAT_B8G8R8A8_SRGB && candidate.colorSpace == VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR {
+                result.format = candidate
+                foundFormat = true
+            }
+            formatIndex++
+        }
+        formatIndex = 0u
+        while formatIndex < formatCount && !foundFormat {
+            let candidate = formats[formatIndex]
+            if candidate.format == VkConstants.VK_FORMAT_R8G8B8A8_SRGB && candidate.colorSpace == VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR {
+                result.format = candidate
+                foundFormat = true
+            }
+            formatIndex++
+        }
+        if !foundFormat {
+            result.format = formats[0]
+        }
+    }
+
+    var presentModeCount uint32 = 0u
+    if TrackResult(diagnostics, eventBase + 3uL, getPresentModes(physicalDevice, surface, &presentModeCount, nil)) != VkConstants.VK_SUCCESS || presentModeCount == 0u {
+        throw InvalidOperationException("Vulkan surface present modes are unavailable")
+    }
+    let presentModes *VkPresentModeKHR = stackalloc [int32(presentModeCount)]VkPresentModeKHR
+    if TrackResult(diagnostics, eventBase + 4uL, getPresentModes(physicalDevice, surface, &presentModeCount, presentModes)) != VkConstants.VK_SUCCESS {
+        throw InvalidOperationException("Vulkan surface present mode query failed")
+    }
+    var foundFifo = false
+    var presentModeIndex uint32 = 0u
+    while presentModeIndex < presentModeCount {
+        if presentModes[presentModeIndex] == VkConstants.VK_PRESENT_MODE_FIFO_KHR {
+            foundFifo = true
+        }
+        presentModeIndex++
+    }
+    if !foundFifo {
+        throw InvalidOperationException("Vulkan FIFO present mode is unavailable")
+    }
+    result.presentMode = VkConstants.VK_PRESENT_MODE_FIFO_KHR
+
+    if (result.capabilities.supportedCompositeAlpha & uint32(VkConstants.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)) != 0u {
+        result.compositeAlpha = VkConstants.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
+    } else if (result.capabilities.supportedCompositeAlpha & uint32(VkConstants.VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR)) != 0u {
+        result.compositeAlpha = VkConstants.VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR
+    } else if (result.capabilities.supportedCompositeAlpha & uint32(VkConstants.VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR)) != 0u {
+        result.compositeAlpha = VkConstants.VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR
+    } else if (result.capabilities.supportedCompositeAlpha & uint32(VkConstants.VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR)) != 0u {
+        result.compositeAlpha = VkConstants.VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR
+    } else {
+        throw InvalidOperationException("No supported swapchain composite alpha mode is available")
+    }
+    return result
+}
+
 unsafe func Main() int32 {
     var diagnostics VulkanDiagnostics? = nil
     var validation VulkanValidation? = nil
@@ -187,6 +356,23 @@ unsafe func Main() int32 {
     var resetCommandBufferAddress nint = nint(0)
     var frameIndex uint64 = 0uL
     var generation uint64 = 1uL
+    var lifecycle SdlLifecycle? = nil
+    let lifecycleRequested = Environment.GetEnvironmentVariable("GOO_VK_LIFECYCLE") == "1"
+    let lifecycleDpiDeferred = Environment.GetEnvironmentVariable("GOO_VK_SKIP_DPI") == "1"
+    let lifecycleMinimizeDeferred = Environment.GetEnvironmentVariable("GOO_VK_SKIP_MINIMIZE") == "1"
+    var pendingRetiredGeneration VulkanSwapchainGeneration? = nil
+    var acquireAttemptCount uint64 = 0uL
+    var acquireResultCount uint64 = 0uL
+    var acquireSuccessCount uint64 = 0uL
+    var submitAttemptCount uint64 = 0uL
+    var submitResultCount uint64 = 0uL
+    var submitSuccessCount uint64 = 0uL
+    var presentAttemptCount uint64 = 0uL
+    var presentResultCount uint64 = 0uL
+    var presentSuccessCount uint64 = 0uL
+    var recordCount uint64 = 0uL
+    var lifecycleDpiChanged = false
+    var lifecycleCloseEventHandled = false
 
     try {
         if SDL_Init(0x00004020u) == 0u {
@@ -467,6 +653,18 @@ unsafe func Main() int32 {
             throw InvalidOperationException("SDL Vulkan surface creation failed")
         }
         surfaceCreated = true
+        if lifecycleRequested {
+            let lifecycleValue = SdlLifecycle()
+            lifecycle = lifecycleValue
+            lifecycleValue.BeginOpen(window)
+            lifecycleValue.ShowWindow(window)
+            lifecycleValue.SyncWindow(window)
+            if lifecycleValue.DrainEvents() < 0 {
+                throw InvalidOperationException("SDL lifecycle event drain failed")
+            }
+            lifecycleValue.RefreshMetrics(window)
+            lifecycleValue.MarkReady()
+        }
         if let diagnostics = diagnostics {
             diagnostics.CaptureWsiFacts(uint64(window), surface, 0uL, frameIndex, generation)
         }
@@ -717,6 +915,9 @@ unsafe func Main() int32 {
             } else if swapchainExtent.height > selectedSurfaceCapabilities.maxImageExtent.height {
                 swapchainExtent.height = selectedSurfaceCapabilities.maxImageExtent.height
             }
+        }
+        if lifecycleRequested {
+            swapchainExtent = ResolveLifecycleExtent(lifecycle!!, selectedSurfaceCapabilities)
         }
         var compositeAlpha VkCompositeAlphaFlagBitsKHR = VkConstants.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
         var hasCompositeAlpha = false
@@ -1034,7 +1235,7 @@ unsafe func Main() int32 {
         getDeviceQueue(device, selectedQueueFamilyIndex, 0u, &queue)
         if queue == nint(0) { throw InvalidOperationException("Vulkan queue acquisition failed") }
 
-        let generationValue = VulkanSwapchainGeneration(
+        var generationValue = VulkanSwapchainGeneration(
             device,
             deviceDispatch,
             surface,
@@ -1106,7 +1307,468 @@ unsafe func Main() int32 {
         let queueSubmit = deviceDispatch.vkQueueSubmit2
         let queuePresent = deviceDispatch.vkQueuePresentKHR
         var frameNumber uint64 = 0uL
-        while frameNumber < 5uL {
+        var lifecycleStep uint32 = 0u
+        var lifecycleRecoveryStep uint32 = 0u
+        var lifecycleScriptedResize = false
+        var lifecycleDone = !lifecycleRequested
+        while ((!lifecycleRequested && frameNumber < 5uL) || (lifecycleRequested && !lifecycleDone)) {
+            if lifecycleRequested {
+                let lifecycleValue = lifecycle!!
+                if lifecycleStep == 0u {
+                    if lifecycleValue.State != SdlLifecycleState.Ready || !lifecycleValue.RenderDirty {
+                        throw InvalidOperationException("SDL lifecycle did not request its initial frame")
+                    }
+                } else if lifecycleStep == 1u {
+                    let acquireAttemptsBefore = acquireAttemptCount
+                    let acquireResultsBefore = acquireResultCount
+                    let acquireSuccessesBefore = acquireSuccessCount
+                    let submitAttemptsBefore = submitAttemptCount
+                    let submitResultsBefore = submitResultCount
+                    let submitSuccessesBefore = submitSuccessCount
+                    let presentAttemptsBefore = presentAttemptCount
+                    let presentResultsBefore = presentResultCount
+                    let presentSuccessesBefore = presentSuccessCount
+                    let recordsBefore = recordCount
+                    lifecycleValue.SyncWindow(window)
+                    let syncEvents = lifecycleValue.DrainEvents()
+                    if syncEvents < 0 {
+                        throw InvalidOperationException("SDL lifecycle clean wait drain failed")
+                    }
+                    lifecycleValue.RefreshMetrics(window)
+                    if lifecycleValue.RenderDirty {
+                        if lifecycleValue.State != SdlLifecycleState.Ready {
+                            throw InvalidOperationException("SDL lifecycle clean wait found a non-ready dirty window")
+                        }
+                    } else {
+                        let waitEvents = lifecycleValue.WaitAndDrain(25)
+                        if waitEvents < 0 {
+                            throw InvalidOperationException("SDL lifecycle clean wait failed")
+                        }
+                        lifecycleValue.RefreshMetrics(window)
+                        if waitEvents != 0 || lifecycleValue.RenderDirty {
+                            throw InvalidOperationException("SDL lifecycle clean wait became dirty")
+                        }
+                        if acquireAttemptsBefore != acquireAttemptCount || acquireResultsBefore != acquireResultCount || acquireSuccessesBefore != acquireSuccessCount
+                            || submitAttemptsBefore != submitAttemptCount || submitResultsBefore != submitResultCount || submitSuccessesBefore != submitSuccessCount
+                            || presentAttemptsBefore != presentAttemptCount || presentResultsBefore != presentResultCount || presentSuccessesBefore != presentSuccessCount
+                            || recordsBefore != recordCount {
+                            throw InvalidOperationException("SDL lifecycle clean wait submitted or recorded work")
+                        }
+                        Console.WriteLine("Lifecycle clean wait: true")
+                        lifecycleScriptedResize = true
+                        lifecycleStep = 2u
+                        continue
+                    }
+                } else if lifecycleStep == 2u {
+                    if pendingRetiredGeneration != nil {
+                        WaitForVulkanGenerationCompletion(
+                            generationValue,
+                            frameSlot0!!,
+                            frameSlot1!!,
+                            presentationRetirement!!)
+                        WaitForVulkanGenerationCompletion(
+                            pendingRetiredGeneration!!,
+                            frameSlot0!!,
+                            frameSlot1!!,
+                            presentationRetirement!!)
+                        pendingRetiredGeneration!!.Dispose()
+                        pendingRetiredGeneration = nil
+                    }
+                    let originalLogicalWidth = lifecycleValue.LogicalWidth
+                    let originalLogicalHeight = lifecycleValue.LogicalHeight
+                    var resizeEvents int32 = 0
+                    if lifecycleScriptedResize {
+                        lifecycleValue.SetWindowSize(window, 720, 540)
+                        lifecycleValue.SetWindowSize(window, 800, 600)
+                        lifecycleValue.SetWindowSize(window, 960, 720)
+                        resizeEvents = SyncSdlLifecycle(lifecycleValue, window)
+                        if lifecycleValue.LogicalWidth != 960 || lifecycleValue.LogicalHeight != 720 {
+                            throw InvalidOperationException("SDL lifecycle resize did not coalesce to the latest logical extent")
+                        }
+                    } else {
+                        resizeEvents = SyncSdlLifecycle(lifecycleValue, window)
+                    }
+                    if lifecycleValue.PixelWidth <= 0 || lifecycleValue.PixelHeight <= 0 {
+                        throw InvalidOperationException("SDL lifecycle recreation produced a zero pixel extent")
+                    }
+                    let resizedSelection = QuerySwapchainSelection(
+                        selectedPhysicalDevice,
+                        surface,
+                        instanceDispatch,
+                        diagnostics,
+                        170uL)
+                    let resizedCapabilities = resizedSelection.capabilities
+                    let resizedExtent = ResolveLifecycleExtent(lifecycleValue, resizedCapabilities)
+                    let previousGeneration = generationValue
+                    let previousHandle = previousGeneration.Handle
+                    let nextGenerationId = generation + 1uL
+                    let nextGeneration = VulkanSwapchainGeneration(
+                        device,
+                        deviceDispatch,
+                        surface,
+                        resizedCapabilities,
+                        resizedSelection.format,
+                        resizedSelection.presentMode,
+                        resizedExtent,
+                        resizedSelection.compositeAlpha,
+                        previousHandle,
+                        nextGenerationId)
+                    generationValue = nextGeneration
+                    swapchainGeneration = nextGeneration
+                    swapchain = nextGeneration.Handle
+                    swapchainCreated = true
+                    swapchainImageCount = nextGeneration.ImageCount
+                    generation = nextGenerationId
+                    pendingRetiredGeneration = previousGeneration
+                    WaitForVulkanGenerationCompletion(
+                        previousGeneration,
+                        frameSlot0!!,
+                        frameSlot1!!,
+                        presentationRetirement!!)
+                    let resizedFormatChanged = resizedSelection.format.format != selectedSurfaceFormat.format || resizedSelection.format.colorSpace != selectedSurfaceFormat.colorSpace
+                    if resizedFormatChanged {
+                        if solidQuad != nil {
+                            solidQuad!!.Dispose()
+                        }
+                        solidQuad = VulkanSolidQuad(device, deviceDispatch, resizedSelection.format.format)
+                    }
+                    selectedSurfaceCapabilities = resizedCapabilities
+                    selectedSurfaceFormat = resizedSelection.format
+                    selectedPresentMode = resizedSelection.presentMode
+                    compositeAlpha = resizedSelection.compositeAlpha
+                    if let diagnostics = diagnostics {
+                        diagnostics.CaptureWsiFacts(uint64(window), surface, swapchain, frameIndex, generation)
+                    }
+                    if lifecycleScriptedResize {
+                        Console.WriteLine("Lifecycle resize coalesced: ${originalLogicalWidth}x${originalLogicalHeight} -> ${lifecycleValue.PixelWidth}x${lifecycleValue.PixelHeight}")
+                        if resizeEvents == 0 {
+                            Console.WriteLine("Lifecycle resize events: metrics")
+                        }
+                        lifecycleStep = 3u
+                    } else {
+                        lifecycleStep = lifecycleRecoveryStep
+                    }
+                    lifecycleScriptedResize = false
+                    continue
+                } else if lifecycleStep == 3u {
+                    if lifecycleValue.State != SdlLifecycleState.Ready || !lifecycleValue.RenderDirty {
+                        throw InvalidOperationException("SDL lifecycle resize did not request a frame")
+                    }
+                } else if lifecycleStep == 4u {
+                    if lifecycleDpiDeferred {
+                        Console.WriteLine("Lifecycle DPI scale changed: deferred")
+                        lifecycleStep = 6u
+                        continue
+                    }
+                    let originalScale = lifecycleValue.DisplayScale
+                    let originalPixelDensity = lifecycleValue.PixelDensity
+                    if originalScale > 1.25F {
+                        lifecycleValue.SetWindowPosition(window, 4000, 500)
+                    } else {
+                        lifecycleValue.SetWindowPosition(window, 1400, 500)
+                    }
+                    SyncSdlLifecycle(lifecycleValue, window)
+                    let changedScale = lifecycleValue.DisplayScale != originalScale
+                    let changedPixelDensity = lifecycleValue.PixelDensity != originalPixelDensity
+                    if !changedScale && !changedPixelDensity {
+                        throw InvalidOperationException("SDL lifecycle DPI move did not change display scale or pixel density")
+                    }
+                    lifecycleDpiChanged = true
+                    Console.WriteLine("Lifecycle DPI scale changed: true")
+                    let dpiSelection = QuerySwapchainSelection(
+                        selectedPhysicalDevice,
+                        surface,
+                        instanceDispatch,
+                        diagnostics,
+                        180uL)
+                    let dpiCapabilities = dpiSelection.capabilities
+                    let dpiExtent = ResolveLifecycleExtent(lifecycleValue, dpiCapabilities)
+                    let previousGeneration = generationValue
+                    let previousHandle = previousGeneration.Handle
+                    let nextGenerationId = generation + 1uL
+                    let nextGeneration = VulkanSwapchainGeneration(
+                        device,
+                        deviceDispatch,
+                        surface,
+                        dpiCapabilities,
+                        dpiSelection.format,
+                        dpiSelection.presentMode,
+                        dpiExtent,
+                        dpiSelection.compositeAlpha,
+                        previousHandle,
+                        nextGenerationId)
+                    generationValue = nextGeneration
+                    swapchainGeneration = nextGeneration
+                    swapchain = nextGeneration.Handle
+                    swapchainCreated = true
+                    swapchainImageCount = nextGeneration.ImageCount
+                    generation = nextGenerationId
+                    pendingRetiredGeneration = previousGeneration
+                    WaitForVulkanGenerationCompletion(
+                        previousGeneration,
+                        frameSlot0!!,
+                        frameSlot1!!,
+                        presentationRetirement!!)
+                    let dpiFormatChanged = dpiSelection.format.format != selectedSurfaceFormat.format || dpiSelection.format.colorSpace != selectedSurfaceFormat.colorSpace
+                    if dpiFormatChanged {
+                        if solidQuad != nil {
+                            solidQuad!!.Dispose()
+                        }
+                        solidQuad = VulkanSolidQuad(device, deviceDispatch, dpiSelection.format.format)
+                    }
+                    selectedSurfaceCapabilities = dpiCapabilities
+                    selectedSurfaceFormat = dpiSelection.format
+                    selectedPresentMode = dpiSelection.presentMode
+                    compositeAlpha = dpiSelection.compositeAlpha
+                    if let diagnostics = diagnostics {
+                        diagnostics.CaptureWsiFacts(uint64(window), surface, swapchain, frameIndex, generation)
+                    }
+                    lifecycleStep = 5u
+                    continue
+                } else if lifecycleStep == 5u {
+                    if lifecycleValue.State != SdlLifecycleState.Ready || !lifecycleValue.RenderDirty {
+                        throw InvalidOperationException("SDL lifecycle DPI change did not request a frame")
+                    }
+                } else if lifecycleStep == 6u {
+                    if lifecycleMinimizeDeferred {
+                        Console.WriteLine("Lifecycle minimize/restore: deferred")
+                        lifecycleStep = 9u
+                        continue
+                    }
+                    lifecycleValue.MinimizeWindow(window)
+                    lifecycleValue.SyncWindow(window)
+                    let minimizeEvents = lifecycleValue.DrainEvents()
+                    if minimizeEvents < 0 {
+                        throw InvalidOperationException("SDL lifecycle minimize drain failed")
+                    }
+                    lifecycleValue.RefreshMetrics(window)
+                    let minimized = lifecycleValue.Minimized || lifecycleValue.State == SdlLifecycleState.Suspended
+                        || lifecycleValue.PixelWidth == 0 || lifecycleValue.PixelHeight == 0
+                    if !minimized {
+                        throw InvalidOperationException("SDL lifecycle minimize did not suspend the window")
+                    }
+                    let acquireAttemptsBefore = acquireAttemptCount
+                    let acquireResultsBefore = acquireResultCount
+                    let acquireSuccessesBefore = acquireSuccessCount
+                    let submitAttemptsBefore = submitAttemptCount
+                    let submitResultsBefore = submitResultCount
+                    let submitSuccessesBefore = submitSuccessCount
+                    let presentAttemptsBefore = presentAttemptCount
+                    let presentResultsBefore = presentResultCount
+                    let presentSuccessesBefore = presentSuccessCount
+                    let recordsBefore = recordCount
+                    let waitEvents = lifecycleValue.WaitAndDrain(25)
+                    if waitEvents < 0 {
+                        throw InvalidOperationException("SDL lifecycle minimized wait failed")
+                    }
+                    if acquireAttemptsBefore != acquireAttemptCount || acquireResultsBefore != acquireResultCount || acquireSuccessesBefore != acquireSuccessCount
+                        || submitAttemptsBefore != submitAttemptCount || submitResultsBefore != submitResultCount || submitSuccessesBefore != submitSuccessCount
+                        || presentAttemptsBefore != presentAttemptCount || presentResultsBefore != presentResultCount || presentSuccessesBefore != presentSuccessCount
+                        || recordsBefore != recordCount {
+                        throw InvalidOperationException("SDL lifecycle minimized window submitted or recorded work")
+                    }
+                    Console.WriteLine("Lifecycle minimized suppression: true")
+                    lifecycleStep = 7u
+                    continue
+                } else if lifecycleStep == 7u {
+                    lifecycleValue.RestoreWindow(window)
+                    lifecycleValue.ShowWindow(window)
+                    var restoreEvents = SyncSdlLifecycle(lifecycleValue, window)
+                    var restoreAttempt int32 = 0
+                    while (lifecycleValue.State != SdlLifecycleState.Ready || lifecycleValue.Minimized)
+                        && restoreAttempt < 20 {
+                        let drained = lifecycleValue.WaitAndDrain(50)
+                        if drained < 0 {
+                            throw InvalidOperationException("SDL lifecycle restore event wait failed")
+                        }
+                        restoreEvents += drained
+                        lifecycleValue.RefreshMetrics(window)
+                        restoreAttempt++
+                    }
+                    if restoreEvents < 0 || lifecycleValue.State != SdlLifecycleState.Ready
+                        || lifecycleValue.Minimized || lifecycleValue.PixelWidth <= 0 || lifecycleValue.PixelHeight <= 0 {
+                        throw InvalidOperationException("SDL lifecycle restore did not produce a pixel extent: state="
+                            + lifecycleValue.State.ToString() + ", minimized=" + lifecycleValue.Minimized.ToString()
+                            + ", pixels=" + lifecycleValue.PixelWidth.ToString() + "x" + lifecycleValue.PixelHeight.ToString()
+                            + ", events=" + restoreEvents.ToString())
+                    }
+                    lifecycleValue.MarkReady()
+                    let restoredSelection = QuerySwapchainSelection(
+                        selectedPhysicalDevice,
+                        surface,
+                        instanceDispatch,
+                        diagnostics,
+                        220uL)
+                    let restoredCapabilities = restoredSelection.capabilities
+                    let restoredExtent = ResolveLifecycleExtent(lifecycleValue, restoredCapabilities)
+                    let previousGeneration = generationValue
+                    let previousHandle = previousGeneration.Handle
+                    let nextGenerationId = generation + 1uL
+                    let nextGeneration = VulkanSwapchainGeneration(
+                        device,
+                        deviceDispatch,
+                        surface,
+                        restoredCapabilities,
+                        restoredSelection.format,
+                        restoredSelection.presentMode,
+                        restoredExtent,
+                        restoredSelection.compositeAlpha,
+                        previousHandle,
+                        nextGenerationId)
+                    generationValue = nextGeneration
+                    swapchainGeneration = nextGeneration
+                    swapchain = nextGeneration.Handle
+                    swapchainCreated = true
+                    swapchainImageCount = nextGeneration.ImageCount
+                    generation = nextGenerationId
+                    pendingRetiredGeneration = previousGeneration
+                    WaitForVulkanGenerationCompletion(
+                        previousGeneration,
+                        frameSlot0!!,
+                        frameSlot1!!,
+                        presentationRetirement!!)
+                    let restoredFormatChanged = restoredSelection.format.format != selectedSurfaceFormat.format || restoredSelection.format.colorSpace != selectedSurfaceFormat.colorSpace
+                    if restoredFormatChanged {
+                        if solidQuad != nil {
+                            solidQuad!!.Dispose()
+                        }
+                        solidQuad = VulkanSolidQuad(device, deviceDispatch, restoredSelection.format.format)
+                    }
+                    selectedSurfaceCapabilities = restoredCapabilities
+                    selectedSurfaceFormat = restoredSelection.format
+                    selectedPresentMode = restoredSelection.presentMode
+                    compositeAlpha = restoredSelection.compositeAlpha
+                    if let diagnostics = diagnostics {
+                        diagnostics.CaptureWsiFacts(uint64(window), surface, swapchain, frameIndex, generation)
+                    }
+                    lifecycleStep = 8u
+                    continue
+                } else if lifecycleStep == 8u {
+                    if lifecycleValue.State != SdlLifecycleState.Ready || !lifecycleValue.RenderDirty {
+                        throw InvalidOperationException("SDL lifecycle restore did not request a frame")
+                    }
+                } else if lifecycleStep == 9u {
+                    var closeEvent = SdlEvent{}
+                    let closeWindowEvent = *SdlWindowEvent(*void(&closeEvent))
+                    closeWindowEvent->eventType = SdlEventConstants.WindowCloseRequested
+                    closeWindowEvent->windowIdentifier = lifecycleValue.WindowId
+                    if SDL_PushEvent(&closeEvent) == 0u {
+                        throw InvalidOperationException("SDL lifecycle close event enqueue failed")
+                    }
+                    lifecycleValue.SyncWindow(window)
+                    let closeEvents = lifecycleValue.DrainEvents()
+                    if closeEvents < 1 || !lifecycleValue.CloseRequested || lifecycleValue.State != SdlLifecycleState.Closing {
+                        throw InvalidOperationException("SDL lifecycle close event was not handled")
+                    }
+                    lifecycleCloseEventHandled = true
+                    let instanceBeforeReopen = instance
+                    let deviceBeforeReopen = device
+                    let queueBeforeReopen = queue
+                    WaitForVulkanGenerationCompletion(
+                        generationValue,
+                        frameSlot0!!,
+                        frameSlot1!!,
+                        presentationRetirement!!)
+                    generationValue.Dispose()
+                    swapchainGeneration = nil
+                    swapchain = uint64(0)
+                    swapchainCreated = false
+                    if surfaceCreated {
+                        SDL_Vulkan_DestroySurface(instance, surface, nil)
+                    }
+                    surface = uint64(0)
+                    surfaceCreated = false
+                    let destroyedWindowId = lifecycleValue.WindowId
+                    SDL_DestroyWindow(window)
+                    window = nint(0)
+                    var destroyedEvent = SdlEvent{}
+                    let destroyedWindowEvent = *SdlWindowEvent(*void(&destroyedEvent))
+                    destroyedWindowEvent->eventType = SdlEventConstants.WindowDestroyed
+                    destroyedWindowEvent->windowIdentifier = destroyedWindowId
+                    if SDL_PushEvent(&destroyedEvent) == 0u {
+                        throw InvalidOperationException("SDL lifecycle destroyed event enqueue failed")
+                    }
+                    if lifecycleValue.DrainEvents() < 1 || !lifecycleValue.Destroyed || lifecycleValue.State != SdlLifecycleState.Closing {
+                        throw InvalidOperationException("SDL lifecycle destroyed event was not handled")
+                    }
+                    lifecycleValue.ResetClosed()
+                    window = SDL_CreateWindow("Goo Vulkan Proof", 960, 720, uint64(0x0000000010000000))
+                    if window == nint(0) {
+                        throw InvalidOperationException("SDL Vulkan window reopen failed")
+                    }
+                    lifecycleValue.BeginOpen(window)
+                    lifecycleValue.ShowWindow(window)
+                    lifecycleValue.SyncWindow(window)
+                    if lifecycleValue.DrainEvents() < 0 {
+                        throw InvalidOperationException("SDL lifecycle reopen drain failed")
+                    }
+                    lifecycleValue.RefreshMetrics(window)
+                    lifecycleValue.MarkReady()
+                    if SDL_Vulkan_CreateSurface(window, instance, nil, ref surface) == 0u {
+                        throw InvalidOperationException("SDL Vulkan reopened surface creation failed")
+                    }
+                    surfaceCreated = true
+                    var reopenedSupported VkBool32 = VkConstants.VK_FALSE
+                    if TrackResult(diagnostics, 173uL, surfaceSupport(selectedPhysicalDevice, selectedQueueFamilyIndex, surface, &reopenedSupported)) != VkConstants.VK_SUCCESS {
+                        throw InvalidOperationException("Vulkan reopened surface support query failed")
+                    }
+                    let reopenedSdlSupported = SDL_Vulkan_GetPresentationSupport(instance, selectedPhysicalDevice, selectedQueueFamilyIndex)
+                    if reopenedSupported == VkConstants.VK_FALSE || reopenedSdlSupported == 0u {
+                        throw InvalidOperationException("Vulkan selected queue lost presentation support after reopen")
+                    }
+                    let reopenedSelection = QuerySwapchainSelection(
+                        selectedPhysicalDevice,
+                        surface,
+                        instanceDispatch,
+                        diagnostics,
+                        190uL)
+                    let reopenedCapabilities = reopenedSelection.capabilities
+                    let reopenedFormat = reopenedSelection.format
+                    let reopenedPresentMode = reopenedSelection.presentMode
+                    let reopenedCompositeAlpha = reopenedSelection.compositeAlpha
+                    let formatChanged = reopenedFormat.format != selectedSurfaceFormat.format || reopenedFormat.colorSpace != selectedSurfaceFormat.colorSpace
+                    selectedSurfaceFormat = reopenedFormat
+                    selectedPresentMode = reopenedPresentMode
+                    compositeAlpha = reopenedCompositeAlpha
+                    if formatChanged {
+                        if solidQuad != nil {
+                            solidQuad!!.Dispose()
+                        }
+                        solidQuad = VulkanSolidQuad(device, deviceDispatch, selectedSurfaceFormat.format)
+                    }
+                    let reopenedExtent = ResolveLifecycleExtent(lifecycleValue, reopenedCapabilities)
+                    let nextGenerationId = generation + 1uL
+                    let nextGeneration = VulkanSwapchainGeneration(
+                        device,
+                        deviceDispatch,
+                        surface,
+                        reopenedCapabilities,
+                        reopenedFormat,
+                        reopenedPresentMode,
+                        reopenedExtent,
+                        reopenedCompositeAlpha,
+                        uint64(0),
+                        nextGenerationId)
+                    generationValue = nextGeneration
+                    swapchainGeneration = nextGeneration
+                    swapchain = nextGeneration.Handle
+                    swapchainCreated = true
+                    swapchainImageCount = nextGeneration.ImageCount
+                    generation = nextGenerationId
+                    selectedSurfaceCapabilities = reopenedCapabilities
+                    if instance != instanceBeforeReopen || device != deviceBeforeReopen || queue != queueBeforeReopen {
+                        throw InvalidOperationException("Vulkan close/reopen did not reuse instance, device, and queue")
+                    }
+                    Console.WriteLine("Lifecycle close/reopen reused device and queue: true")
+                    Console.WriteLine("Lifecycle queue present support after reopen: true")
+                    lifecycleStep = 10u
+                    continue
+                } else if lifecycleStep == 10u {
+                    if lifecycleValue.State != SdlLifecycleState.Ready || !lifecycleValue.RenderDirty {
+                        throw InvalidOperationException("SDL lifecycle reopen did not request a frame")
+                    }
+                }
+            }
             var slot VulkanFrameSlot? = nil
             var slotIndex uint32 = 0u
             if (frameNumber & 1uL) == 0uL {
@@ -1123,14 +1785,31 @@ unsafe func Main() int32 {
             }
             presentationRetirement!!.CollectCompleted(slotIndex, activeSlot.LastCompletedSerial)
             var imageIndex uint32 = 0u
+            acquireAttemptCount = acquireAttemptCount + 1uL
             let acquireResult = TrackResult(
                 diagnostics,
                 37uL + frameNumber * 20uL,
                 acquireNextImage(device, swapchain, VkConstants.VK_WHOLE_SIZE, activeSlot.AcquireSemaphore, uint64(0), &imageIndex))
+            acquireResultCount = acquireResultCount + 1uL
+            if acquireResult == VkConstants.VK_ERROR_OUT_OF_DATE_KHR {
+                let outOfDateMarkedResult = activeSlot.MarkAcquired(acquireResult)
+                if outOfDateMarkedResult != VkConstants.VK_ERROR_OUT_OF_DATE_KHR {
+                    throw InvalidOperationException("Vulkan out-of-date acquire state was not consumed")
+                }
+                if lifecycleRequested {
+                    lifecycle!!.RequestRender()
+                    lifecycleRecoveryStep = lifecycleStep
+                    lifecycleScriptedResize = false
+                    lifecycleStep = 2u
+                    continue
+                }
+                throw InvalidOperationException("vkAcquireNextImageKHR returned VK_ERROR_OUT_OF_DATE_KHR")
+            }
             let markedAcquireResult = activeSlot.MarkAcquired(acquireResult)
             if markedAcquireResult != VkConstants.VK_SUCCESS && markedAcquireResult != VkConstants.VK_SUBOPTIMAL_KHR {
                 throw InvalidOperationException("vkAcquireNextImageKHR failed")
             }
+            acquireSuccessCount = acquireSuccessCount + 1uL
             if imageIndex >= swapchainImageCount {
                 throw InvalidOperationException("Acquired image index is invalid")
             }
@@ -1208,6 +1887,7 @@ unsafe func Main() int32 {
             if TrackResult(diagnostics, 39uL + frameNumber * 20uL, endCommandBuffer(activeSlot.CommandBuffer)) != VkConstants.VK_SUCCESS {
                 throw InvalidOperationException("vkEndCommandBuffer failed")
             }
+            recordCount = recordCount + 1uL
 
             let prepareSubmitResult = activeSlot.PrepareSubmit(true)
             if TrackResult(diagnostics, 40uL + frameNumber * 20uL, prepareSubmitResult) != VkConstants.VK_SUCCESS {
@@ -1232,11 +1912,14 @@ unsafe func Main() int32 {
             submitInfo.pCommandBufferInfos = &commandBufferSubmitInfo
             submitInfo.signalSemaphoreInfoCount = 1u
             submitInfo.pSignalSemaphoreInfos = &signalSemaphoreInfo
+            submitAttemptCount = submitAttemptCount + 1uL
             let submitResult = TrackResult(diagnostics, 41uL + frameNumber * 20uL, queueSubmit(queue, 1u, &submitInfo, activeSlot.SubmissionFence))
+            submitResultCount = submitResultCount + 1uL
             let markedSubmitResult = activeSlot.MarkSubmitted(submitResult)
             if markedSubmitResult != VkConstants.VK_SUCCESS {
                 throw InvalidOperationException("vkQueueSubmit2 failed")
             }
+            submitSuccessCount = submitSuccessCount + 1uL
             if hadPriorPresentation {
                 presentationRetirement!!.BindPriorSameImageToProof(generationValue.Generation, imageIndex, slotIndex, activeSlot.SubmissionSerial)
             }
@@ -1261,17 +1944,91 @@ unsafe func Main() int32 {
             presentInfo.swapchainCount = 1u
             presentInfo.pSwapchains = &swapchain
             presentInfo.pImageIndices = &imageIndex
+            presentAttemptCount = presentAttemptCount + 1uL
             let presentResult = TrackResult(diagnostics, 42uL + frameNumber * 20uL, queuePresent(queue, &presentInfo))
+            presentResultCount = presentResultCount + 1uL
             var presentId uint64 = 0uL
             if presentResult == VkConstants.VK_SUCCESS || presentResult == VkConstants.VK_SUBOPTIMAL_KHR {
+                presentSuccessCount = presentSuccessCount + 1uL
                 presentId = presentationRetirement!!.RecordPresent(generationValue.Generation, imageIndex)
             }
             let markedPresentResult = generationValue.MarkPresented(imageIndex, presentResult, presentId)
-            if markedPresentResult != VkConstants.VK_SUCCESS && markedPresentResult != VkConstants.VK_SUBOPTIMAL_KHR {
+            if markedPresentResult != VkConstants.VK_SUCCESS && markedPresentResult != VkConstants.VK_SUBOPTIMAL_KHR && markedPresentResult != VkConstants.VK_ERROR_OUT_OF_DATE_KHR {
                 throw InvalidOperationException("vkQueuePresentKHR failed")
             }
-            generationValue.CommitLayout(imageIndex, VkConstants.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+            if presentResult == VkConstants.VK_ERROR_OUT_OF_DATE_KHR && !lifecycleRequested {
+                throw InvalidOperationException("vkQueuePresentKHR returned VK_ERROR_OUT_OF_DATE_KHR")
+            }
+            if presentResult == VkConstants.VK_SUCCESS || presentResult == VkConstants.VK_SUBOPTIMAL_KHR {
+                generationValue.CommitLayout(imageIndex, VkConstants.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+            }
             frameNumber = frameNumber + 1uL
+            if lifecycleRequested {
+                let lifecycleValue = lifecycle!!
+                lifecycleValue.MarkPresented()
+                if pendingRetiredGeneration != nil {
+                    if presentResult == VkConstants.VK_SUCCESS || presentResult == VkConstants.VK_SUBOPTIMAL_KHR {
+                        let completionResult = generationValue.WaitForPresentCompletion(presentationRetirement!!)
+                        if completionResult != VkConstants.VK_SUCCESS {
+                            throw InvalidOperationException("Vulkan lifecycle generation anchor completion failed")
+                        }
+                        presentationRetirement!!.QueueRetiredGeneration(pendingRetiredGeneration!!.Generation)
+                        presentationRetirement!!.AnchorRetiredGenerations(generationValue.Generation)
+                        var retiredGenerationId uint64 = 0uL
+                        if !presentationRetirement!!.TryPopRetiredGeneration(out retiredGenerationId) {
+                            throw InvalidOperationException("Vulkan lifecycle generation retirement is not proven")
+                        }
+                        let retiredGeneration = pendingRetiredGeneration!!
+                        if retiredGeneration.Generation != retiredGenerationId {
+                            throw InvalidOperationException("Vulkan lifecycle retired generation id mismatch")
+                        }
+                        retiredGeneration.Dispose()
+                        pendingRetiredGeneration = nil
+                    } else if presentResult == VkConstants.VK_ERROR_OUT_OF_DATE_KHR {
+                        WaitForVulkanGenerationCompletion(
+                            generationValue,
+                            frameSlot0!!,
+                            frameSlot1!!,
+                            presentationRetirement!!)
+                        pendingRetiredGeneration!!.Dispose()
+                        pendingRetiredGeneration = nil
+                    }
+                }
+                if presentResult == VkConstants.VK_ERROR_OUT_OF_DATE_KHR {
+                    lifecycleValue.RequestRender()
+                    lifecycleRecoveryStep = lifecycleStep
+                    lifecycleScriptedResize = false
+                    lifecycleStep = 2u
+                } else {
+                    var nextLifecycleStep = lifecycleStep
+                    var lifecycleWouldComplete = false
+                    if lifecycleStep == 0u {
+                        nextLifecycleStep = 1u
+                    } else if lifecycleStep == 3u {
+                        nextLifecycleStep = 4u
+                    } else if lifecycleStep == 5u {
+                        nextLifecycleStep = 6u
+                    } else if lifecycleStep == 8u {
+                        nextLifecycleStep = 9u
+                    } else if lifecycleStep == 10u {
+                        lifecycleWouldComplete = true
+                    }
+                    if markedAcquireResult == VkConstants.VK_SUBOPTIMAL_KHR
+                        || presentResult == VkConstants.VK_SUBOPTIMAL_KHR {
+                        lifecycleValue.RequestRender()
+                        lifecycleRecoveryStep = if lifecycleWouldComplete {
+                            10u
+                        } else {
+                            LifecycleRecoveryRenderStep(nextLifecycleStep)
+                        }
+                        lifecycleScriptedResize = false
+                        lifecycleStep = 2u
+                    } else {
+                        lifecycleStep = nextLifecycleStep
+                        lifecycleDone = lifecycleWouldComplete
+                    }
+                }
+            }
         }
 
         let finalSlot0 = frameSlot0!!
@@ -1418,9 +2175,9 @@ unsafe func Main() int32 {
             var retiredBytes uint64 = 0uL
             if readbackAllocator != nil {
                 let counters = readbackAllocator!!.Counters
-                heapAllocated = uint64(counters.liveBytes)
+                heapAllocated = uint64(counters.residentBytes)
                 retiredBytes = uint64(counters.retiredBytes)
-                liveObjects = liveObjects + counters.liveAllocations + counters.retiredAllocations
+                liveObjects = liveObjects + counters.residentAllocations
             }
             diagnostics.CaptureResourceFacts(
                 0uL,
@@ -1436,7 +2193,20 @@ unsafe func Main() int32 {
         Console.WriteLine("Physical devices: ${physicalDeviceCount}")
         Console.WriteLine("Queue family: ${selectedQueueFamilyIndex}")
         Console.WriteLine("Swapchain images: ${swapchainImageCount}")
-        Console.WriteLine("Persistent 5-frame solid quad/present: true")
+        if lifecycleRequested {
+            if lifecycleDpiDeferred {
+                Console.WriteLine("Lifecycle E2E display-scale proof: deferred")
+            } else {
+                Console.WriteLine("Lifecycle E2E display-scale proof: ${lifecycleDpiChanged}")
+            }
+            Console.WriteLine("Lifecycle counters: acquireAttempts=${acquireAttemptCount} acquireResults=${acquireResultCount} acquireSuccesses=${acquireSuccessCount} submitAttempts=${submitAttemptCount} submitResults=${submitResultCount} submitSuccesses=${submitSuccessCount} presentAttempts=${presentAttemptCount} presentResults=${presentResultCount} presentSuccesses=${presentSuccessCount} records=${recordCount}")
+            Console.WriteLine("Lifecycle close event handled: ${lifecycleCloseEventHandled}")
+        }
+        if lifecycleRequested {
+            Console.WriteLine("Lifecycle persistent solid quad/present: true")
+        } else {
+            Console.WriteLine("Persistent 5-frame solid quad/present: true")
+        }
         return 0
     } catch (error Exception) {
         if let diagnostics = diagnostics {
@@ -1462,9 +2232,9 @@ unsafe func Main() int32 {
             var retiredBytes uint64 = 0uL
             if readbackAllocator != nil {
                 let counters = readbackAllocator!!.Counters
-                heapAllocated = uint64(counters.liveBytes)
+                heapAllocated = uint64(counters.residentBytes)
                 retiredBytes = uint64(counters.retiredBytes)
-                liveObjects = liveObjects + counters.liveAllocations + counters.retiredAllocations
+                liveObjects = liveObjects + counters.residentAllocations
             }
             diagnostics.CaptureResourceFacts(
                 0uL,
@@ -1479,12 +2249,45 @@ unsafe func Main() int32 {
         try {
             if offscreenTarget != nil {
                 offscreenTarget!!.Dispose()
+                offscreenTarget = nil
             }
         } catch (error Exception) {
             Console.Error.WriteLine("Vulkan cleanup offscreen target failed: " + error.ToString())
         }
-        offscreenTarget = nil
-        readbackAllocator = nil
+
+        if offscreenTarget == nil {
+            try {
+                if readbackAllocator != nil {
+                    readbackAllocator!!.Dispose()
+                }
+                readbackAllocator = nil
+            } catch (error Exception) {
+                Console.Error.WriteLine("Vulkan cleanup readback allocator failed: " + error.ToString())
+            }
+        }
+
+        try {
+            if pendingRetiredGeneration != nil {
+                if frameSlot0 != nil && frameSlot1 != nil && presentationRetirement != nil {
+                    WaitForVulkanGenerationCompletion(
+                        pendingRetiredGeneration!!,
+                        frameSlot0!!,
+                        frameSlot1!!,
+                        presentationRetirement!!)
+                } else if presentationRetirement != nil {
+                    let pendingResult = pendingRetiredGeneration!!.WaitForPresentCompletion(presentationRetirement!!)
+                    if pendingResult != VkConstants.VK_SUCCESS {
+                        throw InvalidOperationException("Vulkan cleanup retired swapchain wait failed")
+                    }
+                } else {
+                    throw InvalidOperationException("Vulkan cleanup retired swapchain wait skipped because presentation retirement is unavailable")
+                }
+                pendingRetiredGeneration!!.Dispose()
+                pendingRetiredGeneration = nil
+            }
+        } catch (error Exception) {
+            Console.Error.WriteLine("Vulkan cleanup retired swapchain failed: " + error.ToString())
+        }
 
         try {
             if frameSlot0 != nil {

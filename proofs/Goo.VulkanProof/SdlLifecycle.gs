@@ -5,6 +5,9 @@ import System.Runtime.InteropServices
 @DllImport("SDL3", EntryPoint: "SDL_GetWindowID", CallingConvention: CallingConvention.Cdecl)
 func SDL_GetWindowID(window nint) uint32;
 
+@DllImport("SDL3", EntryPoint: "SDL_GetWindowFlags", CallingConvention: CallingConvention.Cdecl)
+func SDL_GetWindowFlags(window nint) uint64;
+
 @DllImport("SDL3", EntryPoint: "SDL_SetWindowPosition", CallingConvention: CallingConvention.Cdecl)
 func SDL_SetWindowPosition(window nint, x int32, y int32) uint8;
 
@@ -76,6 +79,7 @@ internal class SdlEventConstants {
         const WindowDisplayScaleChanged uint32 = 0x214u
         const WindowDestroyed uint32 = 0x219u
         const WindowLast uint32 = 0x21Au
+        const WindowMinimizedFlag uint64 = 0x0000000000000040uL
         const Last uint32 = 0xFFFFu
         const PeekEvent int32 = 1
         const GetEvent int32 = 2
@@ -213,9 +217,11 @@ internal unsafe class SdlLifecycle {
         }
         let nextPixelDensity = SDL_GetWindowPixelDensity(window)
         let nextDisplayScale = SDL_GetWindowDisplayScale(window)
+        let nextMinimized = (SDL_GetWindowFlags(window) & SdlEventConstants.WindowMinimizedFlag) != 0uL
         let changed = nextLogicalWidth != logicalWidth || nextLogicalHeight != logicalHeight
             || nextPixelWidth != pixelWidth || nextPixelHeight != pixelHeight
             || nextPixelDensity != pixelDensity || nextDisplayScale != displayScale
+            || nextMinimized != minimized
         if nextLogicalWidth != logicalWidth || nextLogicalHeight != logicalHeight {
             logicalDirty = true
             renderDirty = true
@@ -229,6 +235,18 @@ internal unsafe class SdlLifecycle {
             logicalDirty = true
             renderDirty = true
         }
+        if nextMinimized != minimized {
+            minimized = nextMinimized
+            if minimized {
+                state = SdlLifecycleState.Suspended
+                renderDirty = false
+            } else {
+                restored = true
+                logicalDirty = true
+                pixelDirty = true
+                renderDirty = true
+            }
+        }
         logicalWidth = nextLogicalWidth
         logicalHeight = nextLogicalHeight
         pixelWidth = nextPixelWidth
@@ -236,7 +254,7 @@ internal unsafe class SdlLifecycle {
         pixelDensity = nextPixelDensity
         displayScale = nextDisplayScale
         if state == SdlLifecycleState.Ready || state == SdlLifecycleState.Suspended {
-            if pixelWidth == 0 || pixelHeight == 0 {
+            if minimized || pixelWidth == 0 || pixelHeight == 0 {
                 state = SdlLifecycleState.Suspended
             } else {
                 state = SdlLifecycleState.Ready
@@ -247,7 +265,7 @@ internal unsafe class SdlLifecycle {
 
     internal func MarkReady() {
         if state == SdlLifecycleState.OpenPending || state == SdlLifecycleState.Suspended {
-            if pixelWidth == 0 || pixelHeight == 0 {
+            if minimized || pixelWidth == 0 || pixelHeight == 0 {
                 state = SdlLifecycleState.Suspended
             } else {
                 state = SdlLifecycleState.Ready
@@ -283,7 +301,7 @@ internal unsafe class SdlLifecycle {
             return
         }
         closeRequested = false
-        if pixelWidth == 0 || pixelHeight == 0 {
+        if minimized || pixelWidth == 0 || pixelHeight == 0 {
             state = SdlLifecycleState.Suspended
             renderDirty = false
         } else {
@@ -335,7 +353,6 @@ internal unsafe class SdlLifecycle {
         pixelDirty = false
         scaleDirty = false
         exposed = false
-        minimized = false
         restored = false
         return result
     }
@@ -440,6 +457,7 @@ internal unsafe class SdlLifecycle {
                 renderDirty = false
             }
             case SdlEventConstants.WindowMaximized {
+                minimized = false
                 restored = true
                 logicalDirty = true
                 pixelDirty = true
@@ -449,6 +467,7 @@ internal unsafe class SdlLifecycle {
                 }
             }
             case SdlEventConstants.WindowRestored {
+                minimized = false
                 restored = true
                 logicalDirty = true
                 pixelDirty = true
