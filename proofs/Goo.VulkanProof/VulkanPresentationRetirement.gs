@@ -113,6 +113,32 @@ internal class VulkanPresentationRetirement {
         throw InvalidOperationException("No unresolved Vulkan presentation matches the acquired image")
     }
 
+    internal func CompletePresent(presentId uint64) {
+        if presentId == 0uL {
+            throw InvalidOperationException("Vulkan presentation id must be nonzero")
+        }
+        if let storage = presentations {
+            var index int32 = 0
+            while index < presentationCount {
+                let record = storage[index]
+                if record.presentId == presentId {
+                    RememberCompleted(record)
+                    MarkRetiredAnchorsComplete(record.presentId)
+                    var readIndex = index + 1
+                    while readIndex < presentationCount {
+                        storage[readIndex - 1] = storage[readIndex]
+                        readIndex = readIndex + 1
+                    }
+                    presentationCount = presentationCount - 1
+                    return
+                }
+                index = index + 1
+            }
+            throw InvalidOperationException("Unknown Vulkan presentation id")
+        }
+        throw InvalidOperationException("Vulkan presentation history is uninitialized")
+    }
+
     internal func CollectCompleted(proofSlot uint32, lastCompletedSerial uint64) int32 {
         if let storage = presentations {
             var readIndex int32 = 0
