@@ -164,6 +164,7 @@ unsafe func Main() int32 {
     var destroyCommandPoolAddress nint = nint(0)
     var destroySwapchainAddress nint = nint(0)
     var destroyDeviceAddress nint = nint(0)
+    var destroyImageViewAddress nint = nint(0)
     var validationMessenger VkDebugUtilsMessengerEXT = uint64(0)
     var validationMessengerCreated = false
     var destroyValidationMessengerAddress nint = nint(0)
@@ -171,6 +172,9 @@ unsafe func Main() int32 {
     var queryPoolCreated = false
     var destroyQueryPoolAddress nint = nint(0)
     var debugExtensionNameStorage nint = nint(0)
+    var swapchainImageViews *VkImageView = nil
+    var swapchainImageViewCount uint32 = 0u
+    var solidQuad VulkanSolidQuad? = nil
     var frameIndex uint64 = 0uL
     var generation uint64 = 1uL
 
@@ -531,7 +535,7 @@ unsafe func Main() int32 {
             }
 
             if candidateQualified {
-                if TrackResult(diagnostics, 25uL, getSurfaceCapabilities(physicalDevice, surface, &candidateSurfaceCapabilities)) != VkConstants.VK_SUCCESS || (candidateSurfaceCapabilities.supportedUsageFlags & uint32(VkConstants.VK_IMAGE_USAGE_TRANSFER_DST_BIT)) == 0u {
+                if TrackResult(diagnostics, 25uL, getSurfaceCapabilities(physicalDevice, surface, &candidateSurfaceCapabilities)) != VkConstants.VK_SUCCESS || (candidateSurfaceCapabilities.supportedUsageFlags & uint32(VkConstants.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) == 0u {
                     candidateQualified = false
                 }
             }
@@ -775,10 +779,6 @@ unsafe func Main() int32 {
         let pipelineBarrierNullable = pipelineBarrierAddress as (unmanaged[Cdecl] (VkCommandBuffer, *VkDependencyInfo) -> void)?
         if pipelineBarrierNullable == nil { throw InvalidOperationException("vkCmdPipelineBarrier2 is unavailable") }
         deviceDispatch.vkCmdPipelineBarrier2 = pipelineBarrierNullable!!
-        let clearColorAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCmdClearColorImage")
-        let clearColorNullable = clearColorAddress as (unmanaged[Cdecl] (VkCommandBuffer, VkImage, VkImageLayout, *VkClearColorValue, uint32, *VkImageSubresourceRange) -> void)?
-        if clearColorNullable == nil { throw InvalidOperationException("vkCmdClearColorImage is unavailable") }
-        deviceDispatch.vkCmdClearColorImage = clearColorNullable!!
         let queueSubmitAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkQueueSubmit2")
         let queueSubmitNullable = queueSubmitAddress as (unmanaged[Cdecl] (VkQueue, uint32, *VkSubmitInfo2, VkFence) -> VkResult)?
         if queueSubmitNullable == nil { throw InvalidOperationException("vkQueueSubmit2 is unavailable") }
@@ -791,6 +791,68 @@ unsafe func Main() int32 {
         let queueWaitIdleNullable = queueWaitIdleAddress as (unmanaged[Cdecl] (VkQueue) -> VkResult)?
         if queueWaitIdleNullable == nil { throw InvalidOperationException("vkQueueWaitIdle is unavailable") }
         deviceDispatch.vkQueueWaitIdle = queueWaitIdleNullable!!
+
+        let createImageViewAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCreateImageView")
+        let createImageViewNullable = createImageViewAddress as (unmanaged[Cdecl] (VkDevice, *VkImageViewCreateInfo, *VkAllocationCallbacks, *VkImageView) -> VkResult)?
+        if createImageViewNullable == nil { throw InvalidOperationException("vkCreateImageView is unavailable") }
+        deviceDispatch.vkCreateImageView = createImageViewNullable!!
+        let destroyImageViewAddressLoaded = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkDestroyImageView")
+        destroyImageViewAddress = destroyImageViewAddressLoaded
+        let destroyImageViewNullable = destroyImageViewAddressLoaded as (unmanaged[Cdecl] (VkDevice, VkImageView, *VkAllocationCallbacks) -> void)?
+        if destroyImageViewNullable == nil { throw InvalidOperationException("vkDestroyImageView is unavailable") }
+        deviceDispatch.vkDestroyImageView = destroyImageViewNullable!!
+        let createShaderModuleAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCreateShaderModule")
+        let createShaderModuleNullable = createShaderModuleAddress as (unmanaged[Cdecl] (VkDevice, *VkShaderModuleCreateInfo, *VkAllocationCallbacks, *VkShaderModule) -> VkResult)?
+        if createShaderModuleNullable == nil { throw InvalidOperationException("vkCreateShaderModule is unavailable") }
+        deviceDispatch.vkCreateShaderModule = createShaderModuleNullable!!
+        let destroyShaderModuleAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkDestroyShaderModule")
+        let destroyShaderModuleNullable = destroyShaderModuleAddress as (unmanaged[Cdecl] (VkDevice, VkShaderModule, *VkAllocationCallbacks) -> void)?
+        if destroyShaderModuleNullable == nil { throw InvalidOperationException("vkDestroyShaderModule is unavailable") }
+        deviceDispatch.vkDestroyShaderModule = destroyShaderModuleNullable!!
+        let createPipelineLayoutAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCreatePipelineLayout")
+        let createPipelineLayoutNullable = createPipelineLayoutAddress as (unmanaged[Cdecl] (VkDevice, *VkPipelineLayoutCreateInfo, *VkAllocationCallbacks, *VkPipelineLayout) -> VkResult)?
+        if createPipelineLayoutNullable == nil { throw InvalidOperationException("vkCreatePipelineLayout is unavailable") }
+        deviceDispatch.vkCreatePipelineLayout = createPipelineLayoutNullable!!
+        let destroyPipelineLayoutAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkDestroyPipelineLayout")
+        let destroyPipelineLayoutNullable = destroyPipelineLayoutAddress as (unmanaged[Cdecl] (VkDevice, VkPipelineLayout, *VkAllocationCallbacks) -> void)?
+        if destroyPipelineLayoutNullable == nil { throw InvalidOperationException("vkDestroyPipelineLayout is unavailable") }
+        deviceDispatch.vkDestroyPipelineLayout = destroyPipelineLayoutNullable!!
+        let createGraphicsPipelinesAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCreateGraphicsPipelines")
+        let createGraphicsPipelinesNullable = createGraphicsPipelinesAddress as (unmanaged[Cdecl] (VkDevice, VkPipelineCache, uint32, *VkGraphicsPipelineCreateInfo, *VkAllocationCallbacks, *VkPipeline) -> VkResult)?
+        if createGraphicsPipelinesNullable == nil { throw InvalidOperationException("vkCreateGraphicsPipelines is unavailable") }
+        deviceDispatch.vkCreateGraphicsPipelines = createGraphicsPipelinesNullable!!
+        let destroyPipelineAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkDestroyPipeline")
+        let destroyPipelineNullable = destroyPipelineAddress as (unmanaged[Cdecl] (VkDevice, VkPipeline, *VkAllocationCallbacks) -> void)?
+        if destroyPipelineNullable == nil { throw InvalidOperationException("vkDestroyPipeline is unavailable") }
+        deviceDispatch.vkDestroyPipeline = destroyPipelineNullable!!
+        let beginRenderingAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCmdBeginRendering")
+        let beginRenderingNullable = beginRenderingAddress as (unmanaged[Cdecl] (VkCommandBuffer, *VkRenderingInfo) -> void)?
+        if beginRenderingNullable == nil { throw InvalidOperationException("vkCmdBeginRendering is unavailable") }
+        deviceDispatch.vkCmdBeginRendering = beginRenderingNullable!!
+        let endRenderingAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCmdEndRendering")
+        let endRenderingNullable = endRenderingAddress as (unmanaged[Cdecl] (VkCommandBuffer) -> void)?
+        if endRenderingNullable == nil { throw InvalidOperationException("vkCmdEndRendering is unavailable") }
+        deviceDispatch.vkCmdEndRendering = endRenderingNullable!!
+        let bindPipelineAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCmdBindPipeline")
+        let bindPipelineNullable = bindPipelineAddress as (unmanaged[Cdecl] (VkCommandBuffer, VkPipelineBindPoint, VkPipeline) -> void)?
+        if bindPipelineNullable == nil { throw InvalidOperationException("vkCmdBindPipeline is unavailable") }
+        deviceDispatch.vkCmdBindPipeline = bindPipelineNullable!!
+        let pushConstantsAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCmdPushConstants")
+        let pushConstantsNullable = pushConstantsAddress as (unmanaged[Cdecl] (VkCommandBuffer, VkPipelineLayout, VkShaderStageFlags, uint32, uint32, *void) -> void)?
+        if pushConstantsNullable == nil { throw InvalidOperationException("vkCmdPushConstants is unavailable") }
+        deviceDispatch.vkCmdPushConstants = pushConstantsNullable!!
+        let drawAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCmdDraw")
+        let drawNullable = drawAddress as (unmanaged[Cdecl] (VkCommandBuffer, uint32, uint32, uint32, uint32) -> void)?
+        if drawNullable == nil { throw InvalidOperationException("vkCmdDraw is unavailable") }
+        deviceDispatch.vkCmdDraw = drawNullable!!
+        let setViewportAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCmdSetViewport")
+        let setViewportNullable = setViewportAddress as (unmanaged[Cdecl] (VkCommandBuffer, uint32, uint32, *VkViewport) -> void)?
+        if setViewportNullable == nil { throw InvalidOperationException("vkCmdSetViewport is unavailable") }
+        deviceDispatch.vkCmdSetViewport = setViewportNullable!!
+        let setScissorAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCmdSetScissor")
+        let setScissorNullable = setScissorAddress as (unmanaged[Cdecl] (VkCommandBuffer, uint32, uint32, *VkRect2D) -> void)?
+        if setScissorNullable == nil { throw InvalidOperationException("vkCmdSetScissor is unavailable") }
+        deviceDispatch.vkCmdSetScissor = setScissorNullable!!
 
         if diagnostics != nil && selectedTimestampValidBits != 0u {
             let createQueryPoolAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCreateQueryPool")
@@ -842,7 +904,7 @@ unsafe func Main() int32 {
         swapchainCreateInfo.imageColorSpace = selectedSurfaceFormat.colorSpace
         swapchainCreateInfo.imageExtent = swapchainExtent
         swapchainCreateInfo.imageArrayLayers = 1u
-        swapchainCreateInfo.imageUsage = uint32(VkConstants.VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+        swapchainCreateInfo.imageUsage = uint32(VkConstants.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
         swapchainCreateInfo.imageSharingMode = VkConstants.VK_SHARING_MODE_EXCLUSIVE
         swapchainCreateInfo.preTransform = selectedSurfaceCapabilities.currentTransform
         swapchainCreateInfo.compositeAlpha = compositeAlpha
@@ -866,6 +928,38 @@ unsafe func Main() int32 {
         if TrackResult(diagnostics, 33uL, getSwapchainImages(device, swapchain, &swapchainImageCount, swapchainImages)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("Swapchain image enumeration failed")
         }
+
+        let imageViewCapacity = swapchainImageCount
+        let imageViewStorage *VkImageView = stackalloc [int32(imageViewCapacity)]VkImageView
+        swapchainImageViews = imageViewStorage
+        swapchainImageViewCount = 0u
+        var imageViewIndex uint32 = 0u
+        while imageViewIndex < imageViewCapacity {
+            var imageViewCreateInfo = VkImageViewCreateInfo{}
+            imageViewCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
+            imageViewCreateInfo.image = swapchainImages[imageViewIndex]
+            imageViewCreateInfo.viewType = VkConstants.VK_IMAGE_VIEW_TYPE_2D
+            imageViewCreateInfo.format = selectedSurfaceFormat.format
+            imageViewCreateInfo.components.r = VkConstants.VK_COMPONENT_SWIZZLE_IDENTITY
+            imageViewCreateInfo.components.g = VkConstants.VK_COMPONENT_SWIZZLE_IDENTITY
+            imageViewCreateInfo.components.b = VkConstants.VK_COMPONENT_SWIZZLE_IDENTITY
+            imageViewCreateInfo.components.a = VkConstants.VK_COMPONENT_SWIZZLE_IDENTITY
+            imageViewCreateInfo.subresourceRange.aspectMask = uint32(VkConstants.VK_IMAGE_ASPECT_COLOR_BIT)
+            imageViewCreateInfo.subresourceRange.baseMipLevel = 0u
+            imageViewCreateInfo.subresourceRange.levelCount = 1u
+            imageViewCreateInfo.subresourceRange.baseArrayLayer = 0u
+            imageViewCreateInfo.subresourceRange.layerCount = 1u
+            let createImageView = deviceDispatch.vkCreateImageView
+            if TrackResult(diagnostics, 345uL, createImageView(device, &imageViewCreateInfo, nil, &swapchainImageViews[imageViewIndex])) != VkConstants.VK_SUCCESS {
+                throw InvalidOperationException("vkCreateImageView failed")
+            }
+            swapchainImageViewCount++
+            imageViewIndex++
+        }
+        if swapchainImageViewCount != swapchainImageCount {
+            throw InvalidOperationException("Swapchain image view enumeration failed")
+        }
+        solidQuad = VulkanSolidQuad(device, deviceDispatch, selectedSurfaceFormat.format)
 
         var commandPoolCreateInfo = VkCommandPoolCreateInfo{}
         commandPoolCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO
@@ -941,10 +1035,10 @@ unsafe func Main() int32 {
         toTransferBarrier.sType = VkConstants.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2
         toTransferBarrier.srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
         toTransferBarrier.srcAccessMask = VkConstants.VK_ACCESS_2_NONE
-        toTransferBarrier.dstStageMask = VkConstants.VK_PIPELINE_STAGE_2_TRANSFER_BIT
-        toTransferBarrier.dstAccessMask = VkConstants.VK_ACCESS_2_TRANSFER_WRITE_BIT
+        toTransferBarrier.dstStageMask = VkConstants.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+        toTransferBarrier.dstAccessMask = VkConstants.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
         toTransferBarrier.oldLayout = VkConstants.VK_IMAGE_LAYOUT_UNDEFINED
-        toTransferBarrier.newLayout = VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+        toTransferBarrier.newLayout = VkConstants.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         toTransferBarrier.srcQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
         toTransferBarrier.dstQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
         toTransferBarrier.image = swapchainImages[imageIndex]
@@ -957,20 +1051,28 @@ unsafe func Main() int32 {
         pipelineBarrier(commandBuffer, &firstDependency)
 
         var clearColor = VkClearColorValue{}
-        clearColor.float32.values[0] = 0.05F
-        clearColor.float32.values[1] = 0.30F
-        clearColor.float32.values[2] = 0.90F
+        clearColor.float32.values[0] = 0.03F
+        clearColor.float32.values[1] = 0.04F
+        clearColor.float32.values[2] = 0.08F
         clearColor.float32.values[3] = 1.0F
-        let clearColorImage = deviceDispatch.vkCmdClearColorImage
-        clearColorImage(commandBuffer, swapchainImages[imageIndex], VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1u, &subresourceRange)
+        var pushConstants = SolidQuadPushConstants{}
+        pushConstants.rect_x = -0.72F
+        pushConstants.rect_y = -0.62F
+        pushConstants.rect_z = 1.44F
+        pushConstants.rect_w = 1.24F
+        pushConstants.color_x = 0.88F
+        pushConstants.color_y = 0.18F
+        pushConstants.color_z = 0.65F
+        pushConstants.color_w = 1.0F
+        solidQuad!!.Record(commandBuffer, swapchainImageViews[imageIndex], swapchainExtent, clearColor, pushConstants)
 
         var toPresentBarrier = VkImageMemoryBarrier2{}
         toPresentBarrier.sType = VkConstants.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2
-        toPresentBarrier.srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_TRANSFER_BIT
-        toPresentBarrier.srcAccessMask = VkConstants.VK_ACCESS_2_TRANSFER_WRITE_BIT
+        toPresentBarrier.srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+        toPresentBarrier.srcAccessMask = VkConstants.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
         toPresentBarrier.dstStageMask = VkConstants.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
         toPresentBarrier.dstAccessMask = VkConstants.VK_ACCESS_2_NONE
-        toPresentBarrier.oldLayout = VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+        toPresentBarrier.oldLayout = VkConstants.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         toPresentBarrier.newLayout = VkConstants.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
         toPresentBarrier.srcQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
         toPresentBarrier.dstQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
@@ -1082,7 +1184,7 @@ unsafe func Main() int32 {
         Console.WriteLine("Physical devices: ${physicalDeviceCount}")
         Console.WriteLine("Queue family: ${selectedQueueFamilyIndex}")
         Console.WriteLine("Swapchain images: ${swapchainImageCount}")
-        Console.WriteLine("One-frame clear/present: true")
+        Console.WriteLine("One-frame solid quad/present: true")
         return 0
     } catch (error Exception) {
         if let diagnostics = diagnostics {
@@ -1144,6 +1246,22 @@ unsafe func Main() int32 {
                 let destroySemaphore = destroySemaphoreNullable!!
                 destroySemaphore(device, acquireSemaphore, nil)
             }
+        }
+        if solidQuad != nil {
+            solidQuad!!.Dispose()
+            solidQuad = nil
+        }
+        if swapchainImageViewCount > 0u && destroyImageViewAddress != nint(0) {
+            let destroyImageView = deviceDispatch.vkDestroyImageView
+            var imageViewIndex uint32 = 0u
+            while imageViewIndex < swapchainImageViewCount {
+                let imageView = swapchainImageViews[imageViewIndex]
+                if imageView != 0uL {
+                    destroyImageView(device, imageView, nil)
+                }
+                imageViewIndex++
+            }
+            swapchainImageViewCount = 0u
         }
         if commandPoolCreated && destroyCommandPoolAddress != nint(0) {
             let destroyCommandPoolNullable = destroyCommandPoolAddress as (unmanaged[Cdecl] (VkDevice, VkCommandPool, *VkAllocationCallbacks) -> void)?
