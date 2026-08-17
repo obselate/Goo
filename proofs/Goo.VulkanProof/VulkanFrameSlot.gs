@@ -153,6 +153,8 @@ internal unsafe class VulkanFrameSlot : IDisposable {
             submissionSerial++
             inFlight = true
         } else {
+            acquired = false
+            submitPrepared = false
             submissionFailed = true
         }
         return submitResult
@@ -172,7 +174,7 @@ internal unsafe class VulkanFrameSlot : IDisposable {
         if disposed {
             return
         }
-        if submissionFailed || acquired || submitPrepared {
+        if acquired || submitPrepared {
             throw InvalidOperationException("VulkanFrameSlot has unconsumed acquired work")
         }
         if inFlight {
