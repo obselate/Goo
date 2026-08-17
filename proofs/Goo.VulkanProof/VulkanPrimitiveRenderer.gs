@@ -33,31 +33,36 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
     private let device VkDevice
     private let dispatch VkDeviceDispatch
     private let targetFormat VkFormat
+    private let imageResources VulkanImageResources?
+    private let resourceGeneration uint64
     private let clipStack []PrimitiveClip
     private let linearChannels []float32
     private var pipelineLayout VkPipelineLayout
     private var solidPipeline VkPipeline
     private var linearPipeline VkPipeline
     private var radialPipeline VkPipeline
+    private var sampledPipeline VkPipeline
     private var activePipeline VkPipeline
     private var clipDepth int32
     private var activeExtent VkExtent2D
     private var disposed bool
 
     internal prop ClipCapacity int32 { get { return clipStack.Length } }
-
-    internal convenience init(
-        nativeDevice VkDevice,
-        nativeDispatch VkDeviceDispatch,
-        colorFormat VkFormat) {
-        init(nativeDevice, nativeDispatch, colorFormat, DefaultClipDepth)
+    internal prop LiveObjectCount uint32 {
+        get {
+            var count uint32 = 4u
+            if sampledPipeline != 0uL { count++ }
+            return count
+        }
     }
 
     internal init(
         nativeDevice VkDevice,
         nativeDispatch VkDeviceDispatch,
         colorFormat VkFormat,
-        maxClipDepth int32) {
+        maxClipDepth int32,
+        nativeImageResources VulkanImageResources?,
+        expectedGeneration uint64) {
         if nativeDevice == nint(0) {
             throw ArgumentException("Vulkan device is null", "nativeDevice")
         }
@@ -71,6 +76,11 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         this.device = nativeDevice
         this.dispatch = nativeDispatch
         this.targetFormat = colorFormat
+        this.imageResources = nativeImageResources
+        this.resourceGeneration = expectedGeneration
+        if nativeImageResources != nil && expectedGeneration == 0uL {
+            throw ArgumentOutOfRangeException("expectedGeneration")
+        }
         this.clipStack = [maxClipDepth]PrimitiveClip
         this.linearChannels = [256]float32
         BuildLinearChannelTable()
@@ -186,7 +196,9 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
                     ResolveTransform(frame, reference.Index)
                 }
                 case SceneDrawKind.CachedImage {
-                    throw NotSupportedException("Vulkan primitive renderer does not support cached images")
+                    RequireRecordIndex(reference.Index, frame.CachedImageCount, "cached image index")
+                    let value = frame.CachedImages[reference.Index]
+                    EmitImage(commandBuffer, extent, value, frame)
                 }
                 case SceneDrawKind.CachedGlyphRun {
                     throw NotSupportedException("Vulkan primitive renderer does not support cached glyph runs")
@@ -227,6 +239,11 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
             destroyPipeline(device, radialPipeline, nil)
             radialPipeline = 0uL
         }
+        if sampledPipeline != 0uL {
+            let destroyPipeline = dispatch.vkDestroyPipeline
+            destroyPipeline(device, sampledPipeline, nil)
+            sampledPipeline = 0uL
+        }
         if linearPipeline != 0uL {
             let destroyPipeline = dispatch.vkDestroyPipeline
             destroyPipeline(device, linearPipeline, nil)
@@ -266,21 +283,29 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         var solidModule VkShaderModule = 0uL
         var linearModule VkShaderModule = 0uL
         var radialModule VkShaderModule = 0uL
+        var sampledModule VkShaderModule = 0uL
         var createdLayout VkPipelineLayout = 0uL
         var createdSolid VkPipeline = 0uL
         var createdLinear VkPipeline = 0uL
         var createdRadial VkPipeline = 0uL
+        var createdSampled VkPipeline = 0uL
         var entryPointStorage nint = nint(0)
         try {
             vertexModule = CreateShaderModule("analytic.vert.spv")
             solidModule = CreateShaderModule("analytic_solid.frag.spv")
             linearModule = CreateShaderModule("analytic_linear3.frag.spv")
             radialModule = CreateShaderModule("analytic_radial3.frag.spv")
+            if imageResources != nil {
+                sampledModule = CreateShaderModule("analytic_sampled_image.frag.spv")
+            }
             createdLayout = CreatePipelineLayout()
             entryPointStorage = Marshal.StringToCoTaskMemUTF8("main")
             createdSolid = CreatePipeline(vertexModule, solidModule, createdLayout, entryPointStorage)
             createdLinear = CreatePipeline(vertexModule, linearModule, createdLayout, entryPointStorage)
             createdRadial = CreatePipeline(vertexModule, radialModule, createdLayout, entryPointStorage)
+            if imageResources != nil {
+                createdSampled = CreatePipeline(vertexModule, sampledModule, createdLayout, entryPointStorage)
+            }
             let destroyShaderModule = dispatch.vkDestroyShaderModule
             destroyShaderModule(device, vertexModule, nil)
             vertexModule = 0uL
@@ -290,6 +315,10 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
             linearModule = 0uL
             destroyShaderModule(device, radialModule, nil)
             radialModule = 0uL
+            if sampledModule != 0uL {
+                destroyShaderModule(device, sampledModule, nil)
+                sampledModule = 0uL
+            }
             pipelineLayout = createdLayout
             createdLayout = 0uL
             solidPipeline = createdSolid
@@ -298,10 +327,15 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
             createdLinear = 0uL
             radialPipeline = createdRadial
             createdRadial = 0uL
+            sampledPipeline = createdSampled
+            createdSampled = 0uL
         } catch (error Exception) {
             let destroyPipeline = dispatch.vkDestroyPipeline
             if createdRadial != 0uL {
                 destroyPipeline(device, createdRadial, nil)
+            }
+            if createdSampled != 0uL {
+                destroyPipeline(device, createdSampled, nil)
             }
             if createdLinear != 0uL {
                 destroyPipeline(device, createdLinear, nil)
@@ -316,6 +350,9 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
             let destroyShaderModule = dispatch.vkDestroyShaderModule
             if radialModule != 0uL {
                 destroyShaderModule(device, radialModule, nil)
+            }
+            if sampledModule != 0uL {
+                destroyShaderModule(device, sampledModule, nil)
             }
             if linearModule != 0uL {
                 destroyShaderModule(device, linearModule, nil)
@@ -365,6 +402,14 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         pushRange.size = PushConstantSize
         var createInfo = VkPipelineLayoutCreateInfo{}
         createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
+        if imageResources != nil {
+            var descriptorLayout VkDescriptorSetLayout = imageResources!!.DescriptorSetLayout
+            if descriptorLayout == 0uL {
+                throw InvalidOperationException("Vulkan sampled image descriptor layout is unavailable")
+            }
+            createInfo.setLayoutCount = 1u
+            createInfo.pSetLayouts = &descriptorLayout
+        }
         createInfo.pushConstantRangeCount = 1u
         createInfo.pPushConstantRanges = &pushRange
         var result VkPipelineLayout = 0uL
@@ -745,6 +790,72 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         BindAndDraw(commandBuffer, radialPipeline, *void(&push))
     }
 
+    private func EmitImage(
+        commandBuffer VkCommandBuffer,
+        extent VkExtent2D,
+        value CachedImageRefRecord,
+        frame SceneFrame) {
+        if imageResources == nil {
+            throw NotSupportedException("Vulkan primitive renderer has no image resources")
+        }
+        ValidateBounds(value.Bounds)
+        ValidateOpacity(value.Opacity)
+        ValidateTransformIndex(frame, value.TransformIndex)
+        if !value.ImageId.IsValid || value.ImageId.Kind != SceneResourceKind.Image {
+            throw ArgumentException("cached image id is not an image")
+        }
+        if !value.SamplerId.IsValid || value.SamplerId.Kind != SceneResourceKind.Sampler {
+            throw ArgumentException("cached image sampler id is not a sampler")
+        }
+        ValidateFinite(value.SourceX, "cached image source x")
+        ValidateFinite(value.SourceY, "cached image source y")
+        ValidateFinite(value.SourceWidth, "cached image source width")
+        ValidateFinite(value.SourceHeight, "cached image source height")
+        if value.SourceX < 0.0F || value.SourceY < 0.0F
+            || value.SourceWidth <= 0.0F || value.SourceHeight <= 0.0F
+            || value.SourceX + value.SourceWidth > 1.0F
+            || value.SourceY + value.SourceHeight > 1.0F {
+            throw ArgumentOutOfRangeException("cached image source rectangle")
+        }
+        let lookup = imageResources!!.Lookup(value.ImageId, resourceGeneration)
+        if !lookup.Found || !lookup.Renderable {
+            throw InvalidOperationException("Vulkan cached image is not renderable")
+        }
+        if lookup.SamplerId.Kind != value.SamplerId.Kind
+            || lookup.SamplerId.LogicalId != value.SamplerId.LogicalId
+            || lookup.SamplerId.Version != value.SamplerId.Version {
+            throw InvalidOperationException("Vulkan cached image sampler identity mismatch")
+        }
+        let expectedSampling = if lookup.SamplerMode == VulkanImageSamplerMode.Nearest { 0u } else { 1u }
+        if value.Sampling != expectedSampling {
+            throw InvalidOperationException("Vulkan cached image sampling policy mismatch")
+        }
+        if value.Bounds.IsEmpty {
+            return
+        }
+        let transform = ResolveTransform(frame, value.TransformIndex)
+        var push = SampledImagePushConstants{}
+        FillTransform(&push, value.Bounds, transform, extent)
+        push.radii_x = value.Opacity
+        push.params_x = value.SourceX
+        push.params_y = value.SourceY
+        push.params_z = value.SourceWidth
+        push.params_w = value.SourceHeight
+        imageResources!!.BindDescriptor(commandBuffer, pipelineLayout, value.ImageId, resourceGeneration)
+        if activePipeline != sampledPipeline {
+            let bindPipeline = dispatch.vkCmdBindPipeline
+            bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, sampledPipeline)
+            activePipeline = sampledPipeline
+        }
+        let pushConstants = dispatch.vkCmdPushConstants
+        pushConstants(commandBuffer, pipelineLayout,
+            uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
+                | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT),
+            0u, PushConstantSize, *void(&push))
+        let draw = dispatch.vkCmdDraw
+        draw(commandBuffer, 6u, 1u, 0u, 0u)
+    }
+
     private func FillTransform(
         push *AnalyticSolidPushConstants,
         bounds ConservativeBounds,
@@ -789,6 +900,27 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
 
     private func FillTransform(
         push *AnalyticRadial3PushConstants,
+        bounds ConservativeBounds,
+        transform PrimitiveTransform,
+        extent VkExtent2D) {
+        push->rect_x = bounds.X
+        push->rect_y = bounds.Y
+        push->rect_z = bounds.Width
+        push->rect_w = bounds.Height
+        let width = float32(extent.width)
+        let height = float32(extent.height)
+        push->transform0_x = 2.0F * transform.A / width
+        push->transform0_y = 2.0F * transform.C / width
+        push->transform0_z = 2.0F * transform.TX / width - 1.0F
+        push->transform0_w = 0.0F
+        push->transform1_x = 2.0F * transform.B / height
+        push->transform1_y = 2.0F * transform.D / height
+        push->transform1_z = 2.0F * transform.TY / height - 1.0F
+        push->transform1_w = 0.0F
+    }
+
+    private func FillTransform(
+        push *SampledImagePushConstants,
         bounds ConservativeBounds,
         transform PrimitiveTransform,
         extent VkExtent2D) {

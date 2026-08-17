@@ -16,6 +16,8 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
     private let byteSize VkDeviceSize
     private let mode VulkanOffscreenMode
     private let targetFormat VkFormat
+    private let imageResources VulkanImageResources?
+    private let resourceGeneration uint64
     private var image VkImage
     private var imageView VkImageView
     private var imageAllocation VulkanMemoryAllocation? = nil
@@ -50,7 +52,7 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             if stagingBuffer != 0uL { count = count + 1u }
             if completionFence != 0uL { count = count + 1u }
             if solidQuad != nil { count = count + 2u }
-            if primitiveRenderer != nil { count = count + 4u }
+            if primitiveRenderer != nil { count = count + primitiveRenderer!!.LiveObjectCount }
             return count
         }
     }
@@ -63,27 +65,15 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
         }
     }
 
-    internal convenience init(
-        nativeDevice VkDevice,
-        nativeDispatch VkDeviceDispatch,
-        nativeAllocator VulkanMemoryAllocator,
-        targetExtent VkExtent2D) {
-        init(
-            nativeDevice,
-            nativeDispatch,
-            nativeAllocator,
-            targetExtent,
-            VulkanOffscreenMode.SolidQuad,
-            VkConstants.VK_FORMAT_R8G8B8A8_UNORM)
-    }
-
     internal init(
         nativeDevice VkDevice,
         nativeDispatch VkDeviceDispatch,
         nativeAllocator VulkanMemoryAllocator,
         targetExtent VkExtent2D,
         targetMode VulkanOffscreenMode,
-        colorFormat VkFormat) {
+        colorFormat VkFormat,
+        nativeImageResources VulkanImageResources?,
+        expectedGeneration uint64) {
         if nativeDevice == nint(0) {
             throw ArgumentException("Vulkan device is null", "nativeDevice")
         }
@@ -104,6 +94,8 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
         this.byteSize = VkDeviceSize(rowBytes * uint64(targetExtent.height))
         this.mode = targetMode
         this.targetFormat = colorFormat
+        this.imageResources = nativeImageResources
+        this.resourceGeneration = expectedGeneration
         if targetMode == VulkanOffscreenMode.SolidQuad && colorFormat != VkConstants.VK_FORMAT_R8G8B8A8_UNORM {
             throw ArgumentException("SolidQuad offscreen mode requires R8G8B8A8_UNORM", "colorFormat")
         }
@@ -506,7 +498,11 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             if mode == VulkanOffscreenMode.SolidQuad {
                 solidQuad = VulkanSolidQuad(device, dispatch, targetFormat)
             } else {
-                primitiveRenderer = VulkanPrimitiveRenderer(device, dispatch, targetFormat)
+                primitiveRenderer = if imageResources != nil {
+                    VulkanPrimitiveRenderer(device, dispatch, targetFormat, 64, imageResources, resourceGeneration)
+                } else {
+                    VulkanPrimitiveRenderer(device, dispatch, targetFormat, 64, nil, 0uL)
+                }
             }
         } catch (error Exception) {
             Dispose()
