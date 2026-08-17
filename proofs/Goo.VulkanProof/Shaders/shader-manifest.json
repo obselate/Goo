@@ -66,14 +66,20 @@
       "stage": "vertex",
       "source": "solid_quad.vert.glsl",
       "output": "solid_quad.vert.spv",
-      "entryPoint": "main"
+      "entryPoint": "main",
+      "capabilities": [
+        1
+      ]
     },
     {
       "id": "solid_quad_fragment",
       "stage": "fragment",
       "source": "solid_quad.frag.glsl",
       "output": "solid_quad.frag.spv",
-      "entryPoint": "main"
+      "entryPoint": "main",
+      "capabilities": [
+        1
+      ]
     }
   ],
   "pipeline": {
@@ -99,6 +105,7 @@
         }
       ]
     },
+    "descriptorCount": 0,
     "stages": [
       {
         "shader": "solid_quad_vertex",

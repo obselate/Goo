@@ -10,6 +10,7 @@ internal static class Program
     private const string ShaderDirectory = "proofs/Goo.VulkanProof/Shaders";
     private const string GeneratedDirectory = "proofs/Goo.VulkanProof/Generated/Shaders";
     private const string InputManifestName = "shader-manifest.json";
+    private const string HostPackingFileName = "SolidQuadPushConstants.Generated.gs";
     private const string CompilerVersionMarker = "1:";
 
     private sealed class Manifest
@@ -31,6 +32,10 @@ internal static class Program
 
         [JsonPropertyName("pipeline")]
         public Pipeline Pipeline { get; set; } = new();
+
+        [JsonPropertyName("hostPacking")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public HostPacking? HostPacking { get; set; }
     }
 
     private sealed class Toolchain
@@ -154,6 +159,21 @@ internal static class Program
         [JsonPropertyName("outputBytes")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public long? OutputBytes { get; set; }
+
+        [JsonPropertyName("capabilities")]
+        public List<uint> Capabilities { get; set; } = new();
+    }
+
+    private sealed class HostPacking
+    {
+        [JsonPropertyName("path")]
+        public string Path { get; set; } = string.Empty;
+
+        [JsonPropertyName("sha256")]
+        public string Sha256 { get; set; } = string.Empty;
+
+        [JsonPropertyName("bytes")]
+        public long Bytes { get; set; }
     }
 
     private sealed class Pipeline
@@ -169,6 +189,9 @@ internal static class Program
 
         [JsonPropertyName("pushConstants")]
         public PushConstants PushConstants { get; set; } = new();
+
+        [JsonPropertyName("descriptorCount")]
+        public int DescriptorCount { get; set; }
 
         [JsonPropertyName("stages")]
         public List<PipelineStage> Stages { get; set; } = new();
@@ -259,12 +282,15 @@ internal static class Program
 
         public byte[] Output { get; }
 
-        public BuiltShader(Shader spec, string temporaryOutput, byte[] source, byte[] output)
+        public SpirvModuleReflection Reflection { get; }
+
+        public BuiltShader(Shader spec, string temporaryOutput, byte[] source, byte[] output, SpirvModuleReflection reflection)
         {
             Spec = spec;
             TemporaryOutput = temporaryOutput;
             Source = source;
             Output = output;
+            Reflection = reflection;
         }
     }
 
@@ -336,16 +362,17 @@ internal static class Program
         try
         {
             List<BuiltShader> builtShaders = BuildShaders(manifest, shaderRoot, temporaryRoot, compilerPath, validatorPath);
-            string generatedManifest = BuildGeneratedManifest(manifest, builtShaders);
+            byte[] hostPackingBytes = BuildHostPacking(manifest, builtShaders);
+            string generatedManifest = BuildGeneratedManifest(manifest, builtShaders, hostPackingBytes);
             byte[] generatedManifestBytes = Encoding.UTF8.GetBytes(generatedManifest);
             if (mode == "generate")
             {
-                WriteGenerated(generatedRoot, builtShaders, generatedManifestBytes);
+                WriteGenerated(generatedRoot, builtShaders, hostPackingBytes, generatedManifestBytes);
                 Console.WriteLine($"Generated {builtShaders.Count} shaders and {generatedManifestPath}");
                 return 0;
             }
 
-            CheckGenerated(generatedRoot, generatedManifestPath, builtShaders, generatedManifestBytes, validatorPath);
+            CheckGenerated(generatedRoot, generatedManifestPath, builtShaders, hostPackingBytes, generatedManifestBytes, validatorPath);
             Console.WriteLine($"Checked {builtShaders.Count} shaders and {generatedManifestPath}");
             return 0;
         }
@@ -369,7 +396,7 @@ internal static class Program
         return JsonSerializer.Serialize(manifest, JsonOptions) + "\n";
     }
 
-    private static string BuildGeneratedManifest(Manifest manifest, IReadOnlyList<BuiltShader> builtShaders)
+    private static string BuildGeneratedManifest(Manifest manifest, IReadOnlyList<BuiltShader> builtShaders, byte[] hostPackingBytes)
     {
         foreach (BuiltShader builtShader in builtShaders)
         {
@@ -377,6 +404,12 @@ internal static class Program
             builtShader.Spec.OutputSha256 = HashBytes(builtShader.Output);
             builtShader.Spec.OutputBytes = builtShader.Output.LongLength;
         }
+        manifest.HostPacking = new HostPacking
+        {
+            Path = HostPackingFileName,
+            Sha256 = HashBytes(hostPackingBytes),
+            Bytes = hostPackingBytes.LongLength
+        };
         return SerializeManifest(manifest);
     }
 
@@ -404,23 +437,116 @@ internal static class Program
             }
             ToolResult validatorResult = RunTool(validatorPath, new[] { "--target-env", "vulkan1.3", temporaryOutput });
             RequireSuccess(validatorPath, validatorResult);
-            builtShaders.Add(new BuiltShader(shader, temporaryOutput, sourceBytes, File.ReadAllBytes(temporaryOutput)));
+            byte[] outputBytes = File.ReadAllBytes(temporaryOutput);
+            SpirvModuleReflection reflection = SpirvReflection.Read(outputBytes);
+            ValidateShaderReflection(manifest, shader, reflection);
+            builtShaders.Add(new BuiltShader(shader, temporaryOutput, sourceBytes, outputBytes, reflection));
         }
         return builtShaders;
     }
 
-    private static void WriteGenerated(string generatedRoot, IReadOnlyList<BuiltShader> builtShaders, byte[] generatedManifestBytes)
+    private static byte[] BuildHostPacking(Manifest manifest, IReadOnlyList<BuiltShader> builtShaders)
     {
-        Directory.CreateDirectory(generatedRoot);
-        foreach (BuiltShader builtShader in builtShaders)
+        BuiltShader vertexShader = builtShaders.Single(value => value.Spec.Stage == "vertex");
+        SpirvPushConstant pushConstant = vertexShader.Reflection.PushConstant
+            ?? throw new InvalidOperationException("Vertex shader has no reflected push constants");
+        PushConstants expected = manifest.Pipeline.PushConstants;
+        StringBuilder text = new();
+        text.AppendLine("package Goo.Vulkan.Generated");
+        text.AppendLine();
+        text.AppendLine("import System.Runtime.InteropServices");
+        text.AppendLine();
+        text.Append("@StructLayout(LayoutKind.Explicit, Size: ").Append(pushConstant.Size).AppendLine(")");
+        text.AppendLine("unsafe struct SolidQuadPushConstants {");
+        for (int index = 0; index < pushConstant.Members.Count; index++)
         {
-            string outputPath = ResolveChildPath(generatedRoot, builtShader.Spec.Output, "output");
-            File.WriteAllBytes(outputPath, builtShader.Output);
+            AppendHostMember(text, expected.Members[index].Name, pushConstant.Members[index]);
         }
-        File.WriteAllBytes(Path.Combine(generatedRoot, InputManifestName), generatedManifestBytes);
+        text.AppendLine("}");
+        return Encoding.UTF8.GetBytes(text.ToString());
     }
 
-    private static void CheckGenerated(string generatedRoot, string generatedManifestPath, IReadOnlyList<BuiltShader> builtShaders, byte[] generatedManifestBytes, string validatorPath)
+    private static void AppendHostMember(StringBuilder text, string name, SpirvPushConstantMember member)
+    {
+        (string scalarType, string[] suffixes) = member.Type switch
+        {
+            "float" => ("float32", new[] { string.Empty }),
+            "vec2" => ("float32", new[] { "_x", "_y" }),
+            "vec3" => ("float32", new[] { "_x", "_y", "_z" }),
+            "vec4" => ("float32", new[] { "_x", "_y", "_z", "_w" }),
+            "int" => ("int32", new[] { string.Empty }),
+            "ivec2" => ("int32", new[] { "_x", "_y" }),
+            "ivec3" => ("int32", new[] { "_x", "_y", "_z" }),
+            "ivec4" => ("int32", new[] { "_x", "_y", "_z", "_w" }),
+            "uint" => ("uint32", new[] { string.Empty }),
+            "uvec2" => ("uint32", new[] { "_x", "_y" }),
+            "uvec3" => ("uint32", new[] { "_x", "_y", "_z" }),
+            "uvec4" => ("uint32", new[] { "_x", "_y", "_z", "_w" }),
+            _ => throw new InvalidOperationException($"Unsupported host push-constant type: {member.Type}")
+        };
+        for (int index = 0; index < suffixes.Length; index++)
+        {
+            text.Append("    @FieldOffset(").Append(member.Offset + index * 4).Append(") var ")
+                .Append(name).Append(suffixes[index]).Append(' ').AppendLine(scalarType);
+        }
+    }
+
+    private static void WriteGenerated(string generatedRoot, IReadOnlyList<BuiltShader> builtShaders, byte[] hostPackingBytes, byte[] generatedManifestBytes)
+    {
+        string parent = Directory.GetParent(generatedRoot)?.FullName
+            ?? throw new InvalidOperationException($"Generated directory has no parent: {generatedRoot}");
+        Directory.CreateDirectory(parent);
+        string publicationRoot = generatedRoot + ".publish-" + Guid.NewGuid().ToString("N");
+        string previousRoot = generatedRoot + ".previous-" + Guid.NewGuid().ToString("N");
+        Directory.CreateDirectory(publicationRoot);
+        try
+        {
+            foreach (BuiltShader builtShader in builtShaders)
+            {
+                string outputPath = ResolveChildPath(publicationRoot, builtShader.Spec.Output, "output");
+                Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+                File.WriteAllBytes(outputPath, builtShader.Output);
+            }
+            File.WriteAllBytes(ResolveChildPath(publicationRoot, HostPackingFileName, "host packing"), hostPackingBytes);
+            File.WriteAllBytes(Path.Combine(publicationRoot, InputManifestName), generatedManifestBytes);
+
+            bool movedPrevious = false;
+            if (Directory.Exists(generatedRoot))
+            {
+                Directory.Move(generatedRoot, previousRoot);
+                movedPrevious = true;
+            }
+            try
+            {
+                Directory.Move(publicationRoot, generatedRoot);
+            }
+            catch
+            {
+                if (movedPrevious && !Directory.Exists(generatedRoot))
+                {
+                    Directory.Move(previousRoot, generatedRoot);
+                }
+                throw;
+            }
+            if (movedPrevious)
+            {
+                Directory.Delete(previousRoot, true);
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(publicationRoot))
+            {
+                Directory.Delete(publicationRoot, true);
+            }
+            if (Directory.Exists(previousRoot) && Directory.Exists(generatedRoot))
+            {
+                Directory.Delete(previousRoot, true);
+            }
+        }
+    }
+
+    private static void CheckGenerated(string generatedRoot, string generatedManifestPath, IReadOnlyList<BuiltShader> builtShaders, byte[] hostPackingBytes, byte[] generatedManifestBytes, string validatorPath)
     {
         if (!File.Exists(generatedManifestPath))
         {
@@ -431,6 +557,17 @@ internal static class Program
         if (!checkedManifestBytes.AsSpan().SequenceEqual(generatedManifestBytes))
         {
             throw new InvalidOperationException($"Generated manifest differs: {generatedManifestPath}");
+        }
+        string hostPackingPath = ResolveChildPath(generatedRoot, HostPackingFileName, "host packing");
+        if (!File.Exists(hostPackingPath))
+        {
+            throw new InvalidOperationException($"Missing generated host packing: {hostPackingPath}");
+        }
+        byte[] checkedHostPackingBytes = File.ReadAllBytes(hostPackingPath);
+        EnsureLf(hostPackingPath, checkedHostPackingBytes);
+        if (!checkedHostPackingBytes.AsSpan().SequenceEqual(hostPackingBytes))
+        {
+            throw new InvalidOperationException($"Generated host packing differs: {hostPackingPath}");
         }
 
         foreach (BuiltShader builtShader in builtShaders)
@@ -475,6 +612,10 @@ internal static class Program
         }
         RequireShader(manifest.Shaders[0], "solid_quad_vertex", "vertex", "solid_quad.vert.glsl", "solid_quad.vert.spv");
         RequireShader(manifest.Shaders[1], "solid_quad_fragment", "fragment", "solid_quad.frag.glsl", "solid_quad.frag.spv");
+        if (manifest.HostPacking is not null)
+        {
+            throw new InvalidOperationException("Source manifest contains generated host packing metadata");
+        }
         foreach (Shader shader in manifest.Shaders)
         {
             if (shader.SourceSha256 is not null || shader.OutputSha256 is not null || shader.OutputBytes is not null)
@@ -485,6 +626,7 @@ internal static class Program
         Require(manifest.Pipeline.Id == "solid_quad", "pipeline.id", "solid_quad");
         Require(manifest.Pipeline.Topology == "triangle-list", "pipeline.topology", "triangle-list");
         Require(manifest.Pipeline.VertexInput == "none", "pipeline.vertexInput", "none");
+        Require(manifest.Pipeline.DescriptorCount == 0, "pipeline.descriptorCount", "0");
         Require(manifest.Pipeline.ColorFormat == "swapchain-sRGB", "pipeline.colorFormat", "swapchain-sRGB");
         Require(manifest.Pipeline.SampleCount == 1, "pipeline.sampleCount", "1");
         Require(manifest.Pipeline.Blend == "disabled", "pipeline.blend", "disabled");
@@ -546,6 +688,7 @@ internal static class Program
         Require(shader.Source == source, $"shader[{id}].source", source);
         Require(shader.Output == output, $"shader[{id}].output", output);
         Require(shader.EntryPoint == "main", $"shader[{id}].entryPoint", "main");
+        RequireCapabilities(shader.Capabilities, new uint[] { 1 }, $"shader[{id}].capabilities");
         if (shader.Source.Contains('\\') || shader.Output.Contains('\\') || shader.Source.Contains('/') || shader.Output.Contains('/'))
         {
             throw new InvalidOperationException($"Shader paths must be file names: {id}");
@@ -579,6 +722,71 @@ internal static class Program
             Require(actual[index].Location == expected[index].Location, $"{path}[{index}].location", expected[index].Location.ToString());
             Require(actual[index].Type == expected[index].Type, $"{path}[{index}].type", expected[index].Type);
             Require(actual[index].Name == expected[index].Name, $"{path}[{index}].name", expected[index].Name);
+        }
+    }
+
+    private static void ValidateShaderReflection(Manifest manifest, Shader shader, SpirvModuleReflection reflection)
+    {
+        PipelineStage stage = manifest.Pipeline.Stages.SingleOrDefault(value => value.Shader == shader.Id)
+            ?? throw new InvalidOperationException($"Missing pipeline stage for shader: {shader.Id}");
+        Require(reflection.Stage == shader.Stage, $"shader[{shader.Id}].reflection.stage", shader.Stage);
+        Require(reflection.EntryPoint == shader.EntryPoint, $"shader[{shader.Id}].reflection.entryPoint", shader.EntryPoint);
+        RequireCapabilities(reflection.Capabilities, shader.Capabilities, $"shader[{shader.Id}].reflection.capabilities");
+        RequireReflectedLocations(reflection.Inputs, stage.Inputs, $"shader[{shader.Id}].reflection.inputs");
+        RequireReflectedLocations(reflection.Outputs, stage.Outputs, $"shader[{shader.Id}].reflection.outputs");
+        Require(reflection.DescriptorCount == manifest.Pipeline.DescriptorCount, $"shader[{shader.Id}].reflection.descriptorCount", manifest.Pipeline.DescriptorCount.ToString());
+        bool hasPushConstants = manifest.Pipeline.PushConstants.Stages.Contains(shader.Stage, StringComparer.Ordinal);
+        if (!hasPushConstants)
+        {
+            if (reflection.PushConstant is not null)
+            {
+                throw new InvalidOperationException($"Shader has unexpected push constants: {shader.Id}");
+            }
+            return;
+        }
+        SpirvPushConstant reflected = reflection.PushConstant
+            ?? throw new InvalidOperationException($"Shader has no reflected push constants: {shader.Id}");
+        PushConstants expected = manifest.Pipeline.PushConstants;
+        Require(reflected.Size == expected.Size, $"shader[{shader.Id}].reflection.pushConstants.size", expected.Size.ToString());
+        if (reflected.Members.Count != expected.Members.Count)
+        {
+            throw new InvalidOperationException($"shader[{shader.Id}].reflection.pushConstants.members count must be {expected.Members.Count}");
+        }
+        for (int index = 0; index < expected.Members.Count; index++)
+        {
+            SpirvPushConstantMember actual = reflected.Members[index];
+            PushConstantMember member = expected.Members[index];
+            Require(actual.Offset == member.Offset, $"shader[{shader.Id}].reflection.pushConstants.members[{index}].offset", member.Offset.ToString());
+            Require(actual.Type == member.Type, $"shader[{shader.Id}].reflection.pushConstants.members[{index}].type", member.Type);
+        }
+    }
+
+    private static void RequireReflectedLocations(IReadOnlyList<SpirvInterface> actual, IReadOnlyList<InterfaceLocation> expected, string path)
+    {
+        if (actual.Select(value => value.Location).Distinct().Count() != actual.Count)
+        {
+            throw new InvalidOperationException($"{path} contains duplicate locations");
+        }
+        if (actual.Count != expected.Count)
+        {
+            throw new InvalidOperationException($"{path} count must be {expected.Count}");
+        }
+        for (int index = 0; index < expected.Count; index++)
+        {
+            Require(actual[index].Location == expected[index].Location, $"{path}[{index}].location", expected[index].Location.ToString());
+            Require(actual[index].Type == expected[index].Type, $"{path}[{index}].type", expected[index].Type);
+        }
+    }
+
+    private static void RequireCapabilities(IReadOnlyList<uint> actual, IReadOnlyList<uint> expected, string path)
+    {
+        if (actual.Count != expected.Count)
+        {
+            throw new InvalidOperationException($"{path} count must be {expected.Count}");
+        }
+        for (int index = 0; index < expected.Count; index++)
+        {
+            Require(actual[index] == expected[index], $"{path}[{index}]", expected[index].ToString());
         }
     }
 

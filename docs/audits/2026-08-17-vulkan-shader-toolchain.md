@@ -1,6 +1,6 @@
-# S05 Vulkan shader toolchain
+# Vulkan shader toolchain audit
 
-Status: shader-toolchain slice implemented and verified on Linux on 2026-08-17. Full S05 platform qualification remains open. Windows runtime qualification is deferred until a Windows 11 VM is available.
+Status: shader-toolchain and S08 shader artifact closure implemented and verified on Linux on 2026-08-17. Windows runtime qualification is deferred until a Windows 11 VM is available.
 
 The build-only tool is `tools/Goo.ShaderGen`. It has no project reference from Goo core, no runtime compiler, and no runtime package. It emits checked-in SPIR-V and a deterministic manifest for the S08 runtime to consume later.
 
@@ -34,7 +34,13 @@ Validation uses:
 spirv-val --target-env vulkan1.3 <generated.spv>
 ```
 
-The shaders are a solid quad with no vertex input. The vertex stage uses six `gl_VertexIndex` vertices. The push-constant range starts at offset `0`, is `32` bytes, and is visible to the vertex stage:
+The shaders are a solid quad with no vertex input. The vertex stage uses six `gl_VertexIndex` vertices. The final SPIR-V is reflected during generation and checking. The accepted contract is one `main` entry point with the manifest stage, capability `1` (`Shader`), zero descriptors, exact interface locations and types, and the declared push-constant layout:
+
+- Vertex: no inputs, location `0` `vec4` output, push constants at offset `0`, size `32`.
+- Fragment: location `0` `vec4` input, location `0` `vec4` output, no push constants.
+- Both modules: SPIR-V `1.6`, capability `1`, descriptor count `0`.
+
+The push-constant members are:
 
 | Member | Type | Offset |
 | --- | --- | ---: |
@@ -58,20 +64,24 @@ Generated binaries and the generated manifest are under `proofs/Goo.VulkanProof/
 | --- | ---: | --- |
 | `solid_quad.vert.spv` | 1232 | `1b06771f89e2a446dff2ad8cc26b5b4a1d3d2b7b6f658d07f32c3aeaae12dd66` |
 | `solid_quad.frag.spv` | 312 | `0a3563abcb74db08a7263045b7fa23462249ed069cd7289b80c96812ef1db500` |
-| `shader-manifest.json` | 3962 | `1d08da728e71a5a443fac6403e261b4bd1543119e5b6cb81279ca80f707a5f49` |
+| `SolidQuadPushConstants.Generated.gs` | 476 | `801ed20e71cc24186daea9e0628253412ed04bb84d1613c8aa2e9b9d64d8b31d` |
+| `shader-manifest.json` | 4248 | `db23f3c0b719bb234dd5439c80d9d1a2d48e30ba70234db2433a8fbee58c8657` |
 
-The generated manifest stores source hashes, output hashes, output byte counts, toolchain pins, compile flags, and the pipeline interface. It is serialized with stable property order, two-space indentation, UTF-8, and a final LF. `.gitattributes` marks GLSL as LF text and SPIR-V as binary.
+The generated manifest stores source hashes, output hashes, output byte counts, toolchain pins, compile flags, capabilities, descriptor count, and the pipeline interface. It also stores the generated host-packing path, SHA-256, and byte count. `SolidQuadPushConstants.Generated.gs` is generated from the reflected member offsets, types, and size with explicit `FieldOffset` attributes. The generated directory is published transactionally as one artifact set. It is serialized with stable property order, two-space indentation, UTF-8, and a final LF. `.gitattributes` marks GLSL as LF text and SPIR-V as binary.
+
+Reflection runs only in `Goo.ShaderGen` while compiling or checking artifacts. No runtime compiler, SPIR-V reflection dependency, or runtime package is introduced.
 
 ## Commands and evidence
 
 Run from the repository root with the pinned SDK on `PATH` or through `VULKAN_SDK`:
 
 ```text
-dotnet build tools/Goo.ShaderGen/Goo.ShaderGen.csproj -c Release --no-restore -warnaserror
+dotnet build tools/Goo.ShaderGen/Goo.ShaderGen.csproj -c Release --no-restore -p:WarnAsError=true
 dotnet run --project tools/Goo.ShaderGen/Goo.ShaderGen.csproj -c Release --no-build -- generate
 dotnet run --project tools/Goo.ShaderGen/Goo.ShaderGen.csproj -c Release --no-build -- check
 spirv-val --target-env vulkan1.3 proofs/Goo.VulkanProof/Generated/Shaders/solid_quad.vert.spv
 spirv-val --target-env vulkan1.3 proofs/Goo.VulkanProof/Generated/Shaders/solid_quad.frag.spv
+dotnet build proofs/Goo.VulkanProof/Goo.VulkanProof.gsproj -c Release --no-restore -p:WarnAsError=true
 git diff --check
 ```
 
@@ -86,7 +96,7 @@ spirv-val --version
 SPIRV-Tools v2026.3 vulkan-sdk-1.4.357.0-0-g9a49b0883
 ```
 
-The build completed with `0 Warning(s)` and `0 Error(s)`. `generate` completed for both shaders. `check` regenerated both stages, compared the generated SPIR-V and manifest byte-for-byte, and validated the checked-in binaries. Direct `spirv-val` validation and `git diff --check` also completed successfully.
+The build completed with `0 Warning(s)` and `0 Error(s)`. `generate` completed for both shaders and published the SPIR-V, host packing, and manifest together. A second generation produced identical manifest and host-packing SHA-256 values. `check` regenerated both stages, reflected the final SPIR-V, compared the generated SPIR-V, host packing, and manifest byte-for-byte, and validated the checked-in binaries. Direct `spirv-val`, proof build, and `git diff --check` also completed successfully.
 
 ## Official sources
 

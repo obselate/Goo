@@ -69,7 +69,10 @@
       "entryPoint": "main",
       "sourceSha256": "8036438d2d1ef522d23ef8f2121d2db8e7019546ed094841f98cbb073df95ddd",
       "outputSha256": "1b06771f89e2a446dff2ad8cc26b5b4a1d3d2b7b6f658d07f32c3aeaae12dd66",
-      "outputBytes": 1232
+      "outputBytes": 1232,
+      "capabilities": [
+        1
+      ]
     },
     {
       "id": "solid_quad_fragment",
@@ -79,7 +82,10 @@
       "entryPoint": "main",
       "sourceSha256": "e97231f17ab1e568bd56de7d9f0465097c618628ce4c728af096dd77e4c30c3a",
       "outputSha256": "0a3563abcb74db08a7263045b7fa23462249ed069cd7289b80c96812ef1db500",
-      "outputBytes": 312
+      "outputBytes": 312,
+      "capabilities": [
+        1
+      ]
     }
   ],
   "pipeline": {
@@ -105,6 +111,7 @@
         }
       ]
     },
+    "descriptorCount": 0,
     "stages": [
       {
         "shader": "solid_quad_vertex",
@@ -145,5 +152,10 @@
     "depthStencil": "disabled",
     "cullMode": "none",
     "frontFace": "counter-clockwise"
+  },
+  "hostPacking": {
+    "path": "SolidQuadPushConstants.Generated.gs",
+    "sha256": "801ed20e71cc24186daea9e0628253412ed04bb84d1613c8aa2e9b9d64d8b31d",
+    "bytes": 476
   }
 }
