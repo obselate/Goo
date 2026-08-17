@@ -1,6 +1,6 @@
 # Goo Core Vulkan Implementation Plan
 
-Status: active, S00 through S10 complete, S11 reopened for O02/Q2 text-stack candidate evaluation, and S12 has a Linux proof qualification on local commit `622ee82` but remains open for Windows 11 and S18 public-contract migration; the existing HarfBuzz/FreeType proof is frozen as non-shipping evidence, compositor-driven lifecycle actions and Windows runtime qualification remain deferred
+Status: active, S00 through S10 complete, S11 qualifies the accepted shared Slug 7.5 and OpenType text direction, O03 accepts the same Slug backend for arbitrary paths, and S12 has a Linux proof qualification on local commit `622ee82` but remains open for Windows 11 and S18 public-contract migration. The existing HarfBuzz/FreeType proof is frozen as non-shipping evidence, compositor-driven lifecycle actions and Windows runtime qualification remain deferred
 
 Date: 2026-08-17
 
@@ -27,8 +27,9 @@ Deliver a small, declarative G# Goo core with:
 - Goo core and every Goo-owned runtime helper are authored in G# only.
 - C# remains allowed in tests, benchmarks, development tools, external packages, and large vendored
   dependencies such as Yoga.Net.
-- A text stack selected through the reopened O02/Q2 evaluation with the same required fonts and
-  policy on Windows and Linux. No candidate is accepted by this plan yet.
+- OpenType inputs with Slug 7.5 as one conditional text and arbitrary-vector GPU backend on Windows
+  and Linux. Shipping remains blocked on the accepted SDK, license, ABI, resource, corpus, quality,
+  performance, and both-RID gates.
 - CSS-like Yoga flexbox layout.
 - A compact typed frame plan with reusable storage and no steady-frame allocation.
 - Retained clean scene segments, stable GPU ranges, and per-swapchain-image damage history.
@@ -137,9 +138,9 @@ S00 scope and evidence lock
   -> S08 shared runtime, allocator, one-window WSI, and offscreen target
   -> S09 typed frame plan and basic pipelines
   -> S10 resource, shader, upload, and lifetime system
-  -> S11 reopened text-stack candidate evaluation and selected implementation
+  -> S11 qualify the accepted Slug/OpenType text direction and implement the shared service
   -> S12 image provider and decoded-pixel path
-  -> S13 reopen O03, implement arbitrary paths, then compile SVG assets
+  -> S13 integrate the accepted Slug path direction, then compile SVG assets
   -> S14 compositing, effects, readback, and O16 AA selection
   -> S15 retained segments and per-image damage
   -> S16 multi-window scheduling and bounded recovery
@@ -148,8 +149,8 @@ S00 scope and evidence lock
   -> S19 Windows/Linux qualification and package release gate
 ```
 
-S11 candidate evaluation and S12 can run in parallel after S10. S11 text implementation remains
-blocked until O02/Q2 accepts one candidate and its gates pass. All other arrows are hard ordering
+S11 qualification and S12 can run in parallel after S10. S11 text implementation remains blocked
+until the accepted Slug/OpenType direction passes its external artifact and implementation gates. All other arrows are hard ordering
 constraints unless the lead records evidence that a dependency is not real.
 
 ## 5. Phase summary
@@ -167,9 +168,9 @@ constraints unless the lead records evidence that a dependency is not real.
 | S08 | Runtime, allocator, offscreen target, and one-window WSI work | Clear, quad, resize, and retirement are validation-clean |
 | S09 | Typed plan drives the representative basic slice | Stable digest, correct pixels, zero warm allocation |
 | S10 | Resource, shader, upload, and lifetime systems plateau | No warm resource creation or unbounded cache growth |
-| S11 | O02/Q2 selects and implements one text stack after candidate evaluation | Minimal text corpus, resource, ABI, and parity gates pass on Windows and Linux |
+| S11 | Accepted Slug/OpenType text direction is qualified and implemented | Minimal text corpus, resource, ABI, and parity gates pass on Windows and Linux |
 | S12 | Backend-neutral images replace Skia decoding ownership | Linux proof qualification passes; Windows 11 and S18 public-contract migration remain open |
-| S13 | Accepted O03 path solution and compiled SVG assets work | Required path, clip, hit-test, and SVG corpus passes |
+| S13 | Accepted shared Slug path solution and compiled SVG assets work | Required path, clip, hit-test, and SVG corpus passes |
 | S14 | Effects and async readback work and one AA policy is accepted | O16 is closed with measured evidence |
 | S15 | Sparse updates use retained ranges and image history | Required sparse P95 improvement passes |
 | S16 | Shared-device multi-window lifecycle and recovery work | Q10 lifecycle endurance passes |
@@ -182,8 +183,8 @@ constraints unless the lead records evidence that a dependency is not real.
 | Decision | Implementation stages |
 |---|---|
 | O01 Skia transition | S08-S16 use a non-shipping proof. S18 is the first product Vulkan integration and removes Skia atomically |
-| O02 text stack | S11 reopens O02/Q2, freezes the existing HarfBuzz/FreeType proof, and selects a candidate only after its SDK, license, corpus, ABI, resource, and both-RID gates pass |
-| O03 paths | S13 stops for Q&A when arbitrary paths become the real blocker |
+| O02 text stack | S11 qualifies the accepted Slug 7.5 and OpenType direction after freezing the existing HarfBuzz/FreeType proof. Shipping requires SDK, redistribution, corpus, ABI, resource, visual-quality, performance, allocation, lifecycle, package, and both-RID gates |
+| O03 paths | S13 uses the same Slug adapter and GPU curve resources. Goo owns conversion, CPU hit testing, clipping, paint composition, caching, and lifetime |
 | O04 images and SVG | S12 owns decoded pixels and providers. S13 adds build-time compiled SVG assets |
 | O05 diagnostics | S08 and S14 use Vulkan offscreen readback. S18 removes CPU raster and raster-only APIs |
 | O06 renderer boundary | S09 implements and measures the compact typed frame plan |
@@ -205,9 +206,8 @@ constraints unless the lead records evidence that a dependency is not real.
 Entry:
 
 - Branch is `gaps-and-reductions`.
-- `PLAN-FOR-REVIEW.md` records Q1 and Q4 through Q10 as accepted, Q2 as reopened for text-stack
-  candidate evaluation, Q3 as deferred, O01 and O03 through O14 as accepted, O02 as reopened,
-  O15 as out of scope, and O16 as later.
+- `PLAN-FOR-REVIEW.md` records Q1 through Q10 as accepted, O01 through O14 as accepted, O15 as out
+  of scope, and O16 as later.
 
 Work:
 
@@ -215,7 +215,7 @@ Work:
 2. Treat existing dirty files as user-owned unless their changes are explicitly assigned.
 3. Record the exact files in the current G# 0.4.1 migration.
 4. Create a requirements-to-stage matrix from the accepted decision IDs.
-5. Mark O03 and O16 as explicit stop gates, not background implementation choices.
+5. Mark O16 and any failure of the accepted shared Slug gates as explicit stop gates.
 
 Required specification:
 
@@ -930,17 +930,17 @@ Reopen when:
 - Fragmentation or memory waste breaks Q10 after reasonable block-policy tuning. VMA is the recorded
   contingency, not a default dependency.
 
-### S11. Reopen O02/Q2 and evaluate the text-stack candidates
+### S11. Qualify the accepted Slug/OpenType text direction
 
 Status:
 
-- O02/Q2 is formally reopened. No text candidate, including Slug, is accepted by this plan.
-- The existing HarfBuzz/FreeType proof is frozen as a non-shipping fallback and evidence baseline.
+- O02/Q2 accepts Slug 7.5 with OpenType inputs as Goo's conditional text and vector GPU backend.
+- The existing HarfBuzz/FreeType proof is frozen as a non-shipping evidence baseline.
   Do not extend it, add more probes, integrate it into Goo, or treat it as a runtime fallback.
-- Slug 7.5 is a candidate under evaluation only. Implementation cannot pass the S11 entry gate until
-  the SDK, license, ABI, resource, corpus, and Windows/Linux parity requirements below are proven.
+- Slug cannot ship or enter Goo product integration until the SDK, license, ABI, resource, corpus,
+  quality, performance, and Windows/Linux parity requirements below are proven.
 
-Candidate gate:
+Qualification gate:
 
 - Acquire the licensed Slug 7.5 SDK, source, `slugfont` tool, headers, and build artifacts for Windows
   x64 and Linux x64. Confirm explicit rights for a reusable Goo package to redistribute the required
@@ -954,10 +954,11 @@ Candidate gate:
   texture has multiple rows, integer texel loads, triangle-list topology, `Vertex4U` (68 bytes) or
   `VertexRGBA` (80 bytes), and `u16`/`u32` indices. The existing generic glyph-atlas shader ABI is
   incompatible and is not reused.
-- Convert the exact approved `.ttf`/`.otf`/`.ttc`/`.otc` inputs offline with `slugfont` into `.slug`
-  assets. Record
+- Treat OpenType as the font technology and input contract. Convert the exact approved
+  `.ttf`/`.otf`/`.ttc`/`.otc` inputs offline with `slugfont` into `.slug` assets. Record
   the source font hash, Slug/tool hash, import options, output hash, and license provenance. The
-  runtime does not parse arbitrary font bytes or ship `slugfont`.
+  runtime does not parse arbitrary font bytes or ship `slugfont`. Identify and pin any separately
+  redistributed OpenType component required by the licensed SDK.
 - Preserve Goo-owned fallback order, face metadata, paragraph policy, line breaking, editor state,
   caret, selection, hit testing, and IME geometry. Map Goo's UTF-16 offsets to the selected engine's
   offsets without exposing the engine in the public API.
@@ -977,7 +978,7 @@ Candidate gate:
   resources, compiled text, geometry, descriptors, and dependent draw ranges from logical `.slug`
   assets and text state.
 
-Known candidate gaps that must remain explicit:
+Known Slug gaps that must remain explicit:
 
 - Slug's public documentation does not document variable-font axes or variation-coordinate support.
   The locked variable-weight requirement cannot be marked complete until the SDK proves it, or Q2
@@ -1012,13 +1013,13 @@ Permanent verification:
 
 Exit:
 
-- O02/Q2 is explicitly accepted for one candidate only after the licensed SDK and redistribution
-  rights are documented, the candidate ABI and generated assets are reproducible, and the minimal
-  E2E corpus passes independently on Windows x64 and Linux x64.
+- The accepted Slug/OpenType direction can ship only after the licensed SDK and redistribution
+  rights are documented, its ABI and generated assets are reproducible, and the minimal E2E corpus
+  passes independently on Windows x64 and Linux x64.
 - Text/editor behavior and placement meet the Q10 gates, with no bitmap atlas in the Slug outline
   path, no steady managed allocation, and no unbounded curve/band or compiled-text cache growth. Any
   separately accepted color-image provider remains explicit under O02/Q2 and S12.
-- The selected candidate's C ABI, G# NativeAOT calls, lifetime, shutdown, and device-loss rebuild
+- Slug's C ABI, G# NativeAOT calls, lifetime, shutdown, and device-loss rebuild
   pass on both RIDs.
 - Until this exit is reached, the frozen HarfBuzz/FreeType proof remains non-shipping evidence only.
 
@@ -1028,8 +1029,8 @@ Reopen when:
   lacks a supported build.
 - Variable axes, required color glyph forms, script coverage, shader integration, or resource
   reconstruction cannot meet the Goo contract without a new dependency or policy decision.
-- Any text candidate misses the corpus, visual, performance, allocation, package, or device-loss
-  gates. Return to O02/Q2 rather than adding a hidden fallback.
+- Slug misses the corpus, visual, performance, allocation, package, or device-loss gates. Return to
+  O02/Q2 rather than adding a hidden fallback.
 
 ### S12. Replace image ownership with decoded pixels and providers
 
@@ -1074,31 +1075,37 @@ Reopen when:
 
 - A required core behavior depends on a specific file codec. Return codec ownership to Q4 Q&A.
 
-### S13. Reopen O03, implement arbitrary paths, then compile SVG assets
+### S13. Integrate the accepted Slug path direction, then compile SVG assets
 
 Entry:
 
 - Analytic primitives and prebuilt path meshes already work.
 - Arbitrary paths are now the actual blocker.
 
-Mandatory decision step:
+Accepted implementation direction:
 
-1. Reopen O03 with measured requirements and candidates.
-2. Compare only candidates that meet the current path contract and target performance.
-3. Record the accepted path implementation before adding its dependency or code.
+1. Reuse the S11 Slug native adapter, quadratic curve representation, curve/band resources, shader
+   family, descriptors, cache accounting, retirement, and device-loss reconstruction.
+2. Keep Goo's immutable `VectorPath` as the logical source and lower cubic and elliptical arcs to
+   deterministic quadratic sequences only when retained geometry changes.
+3. Use Slug caller-owned fill and stroke output. Generate no path geometry during submission or
+   paint.
 
 Required path contract:
 
-- Line, quadratic, cubic, and arc flattening.
-- Fill rules.
-- Stroke expansion.
+- Line and quadratic input plus deterministic cubic and elliptical-arc conversion.
+- NonZero and EvenOdd fill rules.
+- Slug fill and stroke output in caller-owned retained buffers.
 - Caps, joins, miter limits, dashes, and required corner effects.
-- Boolean operations and offset/inset behavior where current Goo behavior requires them.
-- Path clips.
-- CPU hit testing from the same retained geometry source.
-- Stable mesh IDs and conservative bounds.
+- Arbitrary path clips through Goo-owned cached coverage masks.
+- CPU bounds and hit testing from the same normalized retained geometry source.
+- Goo-owned coverage composition with solid, multi-stop gradient, and image paints.
+- Shadow, inset-shadow, and spread behavior through S14 bounded masks. Do not add Clipper2 or another
+  boolean, offset, or tessellation dependency now. If masks cannot meet measured required Goo
+  behavior, return to Q3 before adding anything.
+- Stable path-resource IDs and conservative bounds.
 - No geometry generation during submission or paint.
-- Explicit mesh byte budgets and fence-safe retirement.
+- Explicit geometry, curve, and band byte budgets with fence-safe retirement.
 
 Required SVG compiler contract after paths work:
 
@@ -1119,18 +1126,19 @@ Permanent verification:
 
 Ephemeral probe:
 
-- P06 only if candidate documentation and logs cannot answer a path correctness or performance
+- P06 only if the licensed Slug artifact and logs cannot answer a path correctness or performance
   question. Delete it after O03 evidence is recorded.
 
 Exit:
 
-- O03 is accepted.
+- The accepted O03 Slug direction passes its implementation gates.
 - Required path, hit-test, clip, and compiled SVG behavior passes T02 and T03.
 
 Reopen when:
 
-- The selected implementation misses a required operation or violates frame, memory, allocation, or
-  binary gates.
+- Slug misses a required operation or violates frame, memory, allocation, or binary gates.
+- A measured required Goo behavior needs explicit boolean or offset geometry that S14 masks cannot
+  provide. Return to Q3 before adding another dependency.
 
 ### S14. Implement compositing, effects, async readback, and select O16 AA
 
@@ -1416,8 +1424,10 @@ Entry:
 
 - S08 through S16 proof components pass T02, T03, and T04.
 - S17 required core mechanisms and platform adapters pass their exit gates.
-- S11 has accepted one text candidate under O02/Q2, and its text corpus, C ABI, G# NativeAOT,
+- S11 has qualified the accepted Slug/OpenType text direction, and its text corpus, C ABI, G# NativeAOT,
   resource, device-loss, and Windows/Linux gates pass independently.
+- S13's shared Slug path corpus, ABI, resource lifetime, visual-quality, performance, allocation, and
+  Windows/Linux gates pass independently.
 - O03 and O16 are accepted.
 - No required renderer behavior still depends on Skia.
 - T02 through T04 and every applicable Q10 workload have been rerun after S17. Pre-S17 evidence does
@@ -1436,7 +1446,7 @@ Atomic work:
 7. Move every still-required `Goo.InternalTextInterop` responsibility to the proven G# runtime
    implementation, then delete the C# helper project and assembly.
 8. Remove the frozen non-shipping HarfBuzz/FreeType proof, bridge, native assets, and build metadata
-   only after the selected text candidate has passed both RID gates and no Goo-core consumer remains.
+   only after Slug has passed both RID gates and no Goo-core consumer remains.
 9. Remove obsolete Skia-internal tests instead of porting them one-for-one.
 10. Wire Vulkan offscreen readback into the backend-neutral visual corpus.
 11. Update official package contents, dependency metadata, API baseline, XML documentation, and
@@ -1466,7 +1476,7 @@ Removal verification:
 - Search product source, generated assets, dependencies, package contents, and NativeAOT outputs for
   Skia names and binaries.
 - Verify that frozen HarfBuzz/FreeType proof files and native assets are absent from the shipping
-  product only after the selected text candidate passes both Windows and Linux gates.
+  product only after Slug passes both Windows and Linux gates.
 - Search Goo core and Goo-owned runtime-helper source for authored C#.
 - Verify mandatory native-library count does not increase.
 
@@ -1474,8 +1484,8 @@ Exit:
 
 - Direct Vulkan is Goo's only product renderer.
 - Skia, OpenGL Ganesh, CPU raster, and Goo-owned C# runtime code are absent.
-- Exactly one O02/Q2-approved text candidate is shipped. No HarfBuzz/FreeType fallback or bitmap glyph
-  atlas remains.
+- The approved shared Slug/OpenType text-and-vector backend is shipped. No HarfBuzz/FreeType fallback,
+  bitmap glyph atlas, or separate tessellator remains.
 - All focused tests and package checks pass.
 
 Reopen when:
@@ -1602,7 +1612,7 @@ Allowed probe classes:
 | P03 | Does G# emit correct Vulkan ABI layouts and direct function-pointer calls? |
 | P04 | Does SDL expose the required loader, extensions, surfaces, and presentation support? |
 | P05 | Does the licensed Slug 7.5 artifact satisfy the minimal text ABI, resource, and parity contract on both RIDs? |
-| P06 | Which O03 path candidate meets an observed blocker when existing evidence is insufficient? |
+| P06 | Does the licensed Slug path surface satisfy the accepted O03 contract when existing evidence is insufficient? |
 
 Shader reflection is a deterministic build validation step when generated from the pinned compiler.
 It does not require a permanent runtime probe.
@@ -1711,8 +1721,8 @@ pass before the next row starts.
 | B03A | Typed frame-plan layout | Read-only semantic-digest fixture | Read-only counting/benchmark fixture | Frame-plan layout and IDs are locked |
 | B03B | Scene compiler | Basic pipeline recorder | T02/T03 harness integration | S09 basic slice and zero-allocation gate pass |
 | B04A | Resource/cache implementation | Read-only lifetime and budget audit | Rehydration/plateau harness | S10 resource IDs and lifetime are locked before consumers start |
-| B04B | Reopened text-stack candidate evaluation and service | Image provider and decoded-pixel lifetime | Text/image parity corpus | O02/Q2 is accepted and S11-S12 consume the locked resource contract |
-| B05A | Accepted O03 path implementation | Path hit-test and clip integration | Path mesh benchmark and visual fixture | S13 path contract passes before SVG integration starts |
+| B04B | Accepted Slug/OpenType text qualification and service | Image provider and decoded-pixel lifetime | Text/image parity corpus | S11-S12 consume the locked resource contract after the Slug gates pass |
+| B05A | Accepted shared Slug path implementation | Path hit-test and clip integration | Path benchmark and visual fixture | S13 path contract passes before SVG integration starts |
 | B05B | Compiled SVG asset tool/runtime | Compositing and effects | Async readback and AA-independent T02 fixture | Effects/readback pass and the AA comparison corpus is ready |
 | B06A | AA candidate lane 1 | AA candidate lane 2 | AA comparison harness | O16 is accepted, comparison-only paths are deleted, and final T02 passes |
 | B06B | Retained segment/damage implementation | Sparse workload measurement | Damage-journal lifecycle scenarios | S15 single-window sparse gates pass |
@@ -1782,7 +1792,7 @@ All rows are independent hard gates.
 
 Stop implementation and return to Q&A when:
 
-- O03 needs a path dependency or technique selection.
+- The accepted Slug path direction fails a required operation or needs a new dependency or policy.
 - O16 needs the final AA policy selection.
 - A required Vulkan capability is absent on a target configuration.
 - G# 0.4.1 cannot emit a required ABI or NativeAOT path safely.

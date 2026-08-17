@@ -1,6 +1,6 @@
 # Goo Gaps and Reductions Plan
 
-Status: architecture Q&A accepted except O02/Q2, which is formally reopened for text-stack candidate evaluation; non-shipping Vulkan proof active, Goo product implementation not started
+Status: architecture Q&A accepted except O16, which remains a later measured AA decision. Non-shipping Vulkan proof active, Goo product implementation not started
 
 Date: 2026-08-17
 
@@ -51,15 +51,15 @@ benchmarks, development tools, external packages, and large vendored dependencie
 
 ## 2. Decision register
 
-All immediate Q&A decisions are accepted except O02/Q2, which is formally reopened for text-stack
-candidate evaluation. O03 is deferred until arbitrary Vulkan paths require a replacement. O15 is
+All immediate Q&A decisions are accepted. O02 and O03 select one shared Slug 7.5 and OpenType
+direction for text and arbitrary vector paths, subject to the recorded implementation gates. O15 is
 outside Goo core. O16 remains a later proof decision because its AA method needs Vulkan measurements.
 
 | ID | Decision | Status | Accepted direction or remaining scope |
 |---|---|---|---|
 | O01 | Skia transition and removal gate | Accepted | Remove Skia with the first direct Vulkan implementation. No live oracle, Ganesh Vulkan, fallback, or hybrid |
-| O02 | Text and font stack | Reopened | Evaluate Slug 7.5 against the frozen non-shipping HarfBuzz/FreeType proof; no candidate is accepted until the SDK, license, corpus, ABI, resource, and Windows/Linux gates pass |
-| O03 | Path geometry and hit testing | Deferred | Keep the current behavior until arbitrary Vulkan paths require a replacement decision |
+| O02 | Text and font stack | Accepted | Use OpenType inputs with Slug 7.5 as the shared text and vector GPU backend, conditional on SDK, redistribution, corpus, ABI, resource, visual-quality, performance, allocation, lifecycle, package, and Windows/Linux gates |
+| O03 | Path geometry and hit testing | Accepted | Use Slug 7.5 for GPU path fill and stroke. Goo owns curve conversion, CPU hit testing, clipping, paint composition, caching, and lifetime. Add no second tessellator or path-algebra dependency without new evidence |
 | O04 | Image codecs and SVG ownership | Accepted | Optional codec providers plus build-time compiled SVG assets. No required runtime SVG parser |
 | O05 | CPU raster diagnostics | Accepted | Remove the product CPU renderer. Use request-driven Vulkan offscreen readback |
 | O06 | Internal renderer command boundary | Accepted | Compact typed frame plan with reusable typed arrays, ordered references, and stable resource IDs. Evidence can reopen the direction |
@@ -104,10 +104,12 @@ presentation layer. It does not replace Skia's 2D engine. Goo must provide the r
 primitives, clipping, compositing, caching, lifetime, and recovery rules. Narrow specialist services
 can provide the font, geometry, and codec work that Vulkan does not define.
 
-The former HarfBuzz and FreeType direction is formally reopened under O02. Its existing proof is
-frozen as non-shipping evidence and receives no further work. Slug 7.5 is a candidate only, not an
-accepted dependency. DirectWrite, Fontconfig, Vulkan Memory Allocator, Lyon, Wuffs, stb, resvg, and
-other named options remain unselected. GPUI remains a comparison source only.
+The former HarfBuzz and FreeType direction is withdrawn under O02. Its existing proof is frozen as
+non-shipping evidence and receives no further work. O02 and O03 accept Slug 7.5 as one conditional
+text and vector dependency. OpenType remains the font technology and input contract. The Slug
+toolchain ingests the approved OpenType inputs and produces the runtime assets. DirectWrite,
+Fontconfig, Vulkan Memory Allocator, Lyon, Kurbo, Clipper2, Wuffs, stb, resvg, and other named options
+remain unselected. GPUI remains a comparison source only.
 
 The full service-by-service map, candidate evidence, and replacement proof corpus are in
 `VULKAN-SKIA-REPLACEMENT.md`.
@@ -118,8 +120,8 @@ The full service-by-service map, candidate evidence, and replacement proof corpu
 
 1. Correct this artifact.
 2. Lock the order of work.
-3. Reopen O02/Q2 for the text-stack candidate evaluation, then review O03 through O10 one at a time
-   in the Q&A ledger.
+3. Record the accepted shared Slug/OpenType direction for O02/Q2 and O03/Q3, then review any later
+   evidence-triggered decisions one at a time in the Q&A ledger.
 4. Record accepted answers in this artifact before they affect later work.
 5. Do not implement architecture changes before this review is complete.
 
@@ -202,12 +204,12 @@ production backend work starts.
 2. Prove common UI paths with boxes, per-edge borders, gradients, images, transforms, clipping,
    offscreen targets, readback, and transparent composition.
 3. Prove the highest-risk losses before broad primitive coverage. Include font fallback and color
-   emoji, stroked and boolean paths, path clips and hit tests, opacity groups, advanced blends,
-   shadows, nested masks, and color-space parity.
+   emoji, stroked arbitrary paths, path clips and hit tests, opacity groups, advanced blends, masked
+   shadow spread and inset behavior, nested masks, and color-space parity.
 4. For text proof, use one minimal end-to-end corpus with identical approved inputs, fallback order,
-   policy, and expected geometry on both platforms. The selected candidate must document its asset,
+   policy, and expected geometry on both platforms. Slug must document its asset,
    shaping, rendering, and resource behavior. The frozen HarfBuzz/FreeType proof is not extended or
-   shipped while O02/Q2 is reopened.
+   shipped while the accepted Slug/OpenType direction is qualified.
 5. Run the fixed proof scene and Hivemind-derived reference hot paths against captured visual and
    performance baselines plus the approved Goo core behavior contract.
 6. Report Windows and Linux feature coverage, unsupported behavior, pixel differences, total frame time,
@@ -219,7 +221,7 @@ managed packages, native assets, and package contents. Do not build Ganesh Vulka
 hybrid, or a live Skia oracle. O06 and O07 define the accepted command and retention boundaries.
 
 Exit: direct Vulkan replacement feasibility is measured, the uncovered Skia services are explicit,
-and O03 can be reopened with implementation evidence instead of candidate speculation.
+and the accepted O03 Slug path direction has implementation evidence.
 
 ### P5. Evaluate whole-window work independently
 
@@ -250,8 +252,8 @@ Only after P4 and P5 decisions:
 1. Implement the chosen UI-to-renderer boundary.
 2. Implement direct Vulkan ownership with no Skia backend or fallback.
 3. Implement shared or per-window GPU ownership as approved.
-4. Implement only the text stack selected after O02/Q2 is accepted. Until then, keep the frozen
-   HarfBuzz/FreeType proof outside Goo runtime integration.
+4. Implement the accepted Slug/OpenType text stack only after its gates pass. Until then, keep the
+   frozen HarfBuzz/FreeType proof outside Goo runtime integration.
 5. Add required image, path, clip, layer, effect, readback, and recovery paths.
 6. Preserve declarative G# authoring and Yoga behavior.
 7. Keep public additions limited to mechanisms that consumers cannot compose themselves.
@@ -332,10 +334,10 @@ Do not add one test per primitive, Vulkan result code, component state, or inter
 - Using a separate full-window backing image or framebuffer tile cache as the initial retention model.
 - Handwriting Vulkan ABI structs, constants, or command signatures instead of generating them from
   the pinned Khronos registry.
-- Adding or shipping HarfBuzz, FreeType, Slug, or another text-stack candidate before O02/Q2 accepts
-  it. DirectWrite, Fontconfig, Vulkan Memory Allocator, Lyon, Wuffs, stb, and resvg also remain
-  unselected.
-- Replacing the current image, SVG, or path stack before its Q&A decision.
+- Adding or shipping Slug before its SDK, license, ABI, resource, corpus, and both-RID gates pass.
+  HarfBuzz, FreeType, DirectWrite, Fontconfig, Vulkan Memory Allocator, Lyon, Kurbo, Clipper2, Wuffs,
+  stb, and resvg remain unselected.
+- Replacing the current image or SVG stack before its accepted implementation gate.
 - Copying GPUI's renderer or its Windows and Linux platform split.
 - Moving composed controls or application-specific behavior into Goo core.
 - Changing or removing Avalonia or other Hivemind application dependencies in this Goo core plan.
@@ -350,8 +352,8 @@ Review one question at a time. Do not use a recommended answer as an accepted an
 | Order | Decision | Status |
 |---:|---|---|
 | Q1 | Skia transition and removal gate | Accepted |
-| Q2 | Text and font stack | Reopened |
-| Q3 | Path geometry and hit testing | Deferred |
+| Q2 | Text and font stack | Accepted |
+| Q3 | Path geometry and hit testing | Accepted |
 | Q4 | Image codecs and SVG ownership | Accepted |
 | Q5 | CPU raster diagnostics | Accepted |
 | Q6 | Internal renderer command boundary | Accepted |
@@ -372,12 +374,15 @@ comparison. Q10 defines the quantitative performance, memory, and package gates.
 
 ### Q2. Text and font stack
 
-Reopened question: select one text stack for identical Windows x64 and Linux x64 behavior. The former
-HarfBuzz plus FreeType answer is withdrawn as an accepted architecture decision. The existing
-HarfBuzz/FreeType proof is frozen as a non-shipping fallback and evidence baseline. It receives no
-further implementation or probing and is not a runtime fallback in Goo.
+Accepted answer: use OpenType inputs with Slug 7.5 as Goo's one conditional text and vector GPU
+backend on Windows x64 and Linux x64. OpenType remains the font technology and source format. The
+licensed Slug toolchain supplies the OpenType ingestion path and produces `.slug` runtime assets.
+Any separately redistributed OpenType component required by the licensed SDK must be identified and
+pinned by the same dependency gate.
 
-Slug 7.5 is a candidate only. Do not claim it is accepted until all of the following gates pass:
+The former HarfBuzz plus FreeType answer is withdrawn. Its proof is frozen as non-shipping evidence,
+receives no further implementation or probing, and is not a runtime fallback in Goo. The accepted
+Slug direction cannot ship until all of the following gates pass:
 
 - Acquire the licensed Slug 7.5 SDK, source, `slugfont` tool, headers, and Windows x64/Linux x64 build
   artifacts. Confirm explicit rights for a reusable Goo package to redistribute the native artifacts
@@ -392,20 +397,20 @@ Slug 7.5 is a candidate only. Do not claim it is accepted until all of the follo
   source font hashes, Slug/tool hashes, import options, `.slug` hashes, and license provenance. Goo
   runtime does not parse arbitrary font bytes and does not ship `slugfont`.
 - Retain Goo ownership of paragraph layout, line breaking, editor state, caret, selection, hit
-  testing, IME geometry, and fallback policy. Map Goo UTF-16 offsets to the candidate's offsets while
+  testing, IME geometry, and fallback policy. Map Goo UTF-16 offsets to Slug's offsets while
   keeping the public G# API engine-neutral.
-- The candidate boundary must cover `Compile`/`Count`/`Build`/`Layout`/`Assemble`,
+- The Slug boundary must cover `Compile`/`Count`/`Build`/`Layout`/`Assemble`,
   `Break`/`BuildMultiLine`, `Measure`, `Locate`, and `Test` with caller-owned compiled storage and
   reusable output buffers. Choose exactly one bidi authority under Q2: Goo's `Unicode.Bidi` policy or
   Slug's bidi implementation. Never apply bidi twice, and preserve Goo's public paragraph/editor
   policy whichever implementation is selected.
 - For Slug, Goo owns curve-data and band-data Vulkan images, views, descriptors, staging, bounded
   caches, fence-safe retirement, and generation invalidation. Slug's analytical curves replace a
-  bitmap glyph atlas; no bitmap atlas is part of the candidate design.
+  bitmap glyph atlas. No bitmap atlas is part of the accepted design.
 - Use a narrow opaque-handle C ABI shim beside the native vendor integration with caller-owned
   buffers and workspaces, called from G# NativeAOT. All Goo-owned managed core and runtime-helper code
   remains G#. No C# text interop is added to Goo core and no Slug/Vulkan handle crosses the public API.
-- Device loss discards all candidate GPU handles from the failed generation and reconstructs curve,
+- Device loss discards all Slug GPU handles from the failed generation and reconstructs curve,
   band, compiled-text, geometry, and descriptor resources from logical `.slug` assets and text state.
 
 Known gaps remain open and must be proven or returned to Q&A:
@@ -431,23 +436,33 @@ Minimal permanent E2E corpus:
 - Identical source and `.slug` hashes, fallback order, import options, tolerances, and policy on both
   RIDs. This is one behavior corpus, not one test per glyph, script, or font table.
 
-Q2 exit: accept exactly one candidate only after the SDK/license gate, reproducible assets, ABI and
-G# NativeAOT calls, curve/band resource ownership, device-loss reconstruction, minimal corpus, and
-all Windows/Linux visual, performance, allocation, package, and lifecycle gates pass independently.
-Until then, no text runtime dependency is accepted and the frozen HarfBuzz/FreeType proof remains
+Q2 implementation exit: ship Slug only after the SDK/license gate, reproducible assets, ABI and G#
+NativeAOT calls, curve/band resource ownership, device-loss reconstruction, minimal corpus, and all
+Windows/Linux visual, performance, allocation, package, and lifecycle gates pass independently.
+Until then, the accepted direction remains unshipped and the frozen HarfBuzz/FreeType proof remains
 non-shipping evidence only.
 
 Reopen Q2 if the SDK/license artifact is unavailable, either RID lacks a supported build, variable
 axes or required color glyphs are unsupported, script coverage fails, shader integration is not
-reproducible, or any candidate requires a new dependency or policy.
+reproducible, or Slug requires a new dependency or policy.
 
 ### Q3. Path geometry and hit testing
 
-Deferred answer: keep Goo's current path and tessellation behavior while the G# 0.4.1 upgrade and the
-other renderer decisions are resolved. Do not select or add a replacement dependency now.
+Accepted answer: use Slug 7.5 as the GPU fill and stroke backend for arbitrary Goo paths, sharing the
+same native adapter, quadratic curve representation, curve/band resources, shader family,
+descriptors, cache accounting, retirement, and device-loss reconstruction used by text.
 
-Reopen this decision when arbitrary Vulkan paths become an implementation blocker and before the
-final Skia integration and packages are removed.
+Goo retains its immutable `VectorPath` contract. It converts cubic and elliptical-arc commands to
+deterministic quadratic sequences when retained geometry changes. Slug produces caller-owned fill
+and stroke geometry for NonZero and EvenOdd fills, caps, joins, miter limits, and dashes. No geometry
+is generated during submission or paint.
+
+Goo owns CPU bounds and hit testing from the same normalized retained source, arbitrary path clip
+integration through cached coverage masks, and coverage composition with solid, multi-stop gradient,
+and image paints. S14 owns shadow, inset-shadow, and spread effects through bounded masks. Do not add
+Clipper2, Lyon, Kurbo, micro-tess, or another tessellator now. Reopen Q3 only if measured required Goo
+behavior needs explicit boolean or offset geometry that the accepted mask path cannot provide, or if
+Slug fails the shared SDK, license, ABI, quality, performance, or both-RID gates.
 
 ### Q4. Image codecs and SVG ownership
 
@@ -742,8 +757,8 @@ Accepted answer: remove an old dependency after its final Goo-core consumer has 
 the relevant Windows and Linux feature, behavior, lifecycle, package, and fallback gates pass. Skia
 follows the earlier removal boundary accepted under O01.
 
-For the reopened text decision, the frozen HarfBuzz/FreeType proof and its native assets remain
-non-shipping evidence until one O02/Q2 candidate passes both RID gates. Remove that proof only after
+For the accepted Slug/OpenType text direction, the frozen HarfBuzz/FreeType proof and its native
+assets remain non-shipping evidence until Slug passes both RID gates. Remove that proof only after
 the selected text stack has no remaining Goo-core consumer, its `.slug`/shader/native assets are
 reproducible, and the Windows/Linux package and device-loss gates pass. No hidden text fallback is
 permitted.
