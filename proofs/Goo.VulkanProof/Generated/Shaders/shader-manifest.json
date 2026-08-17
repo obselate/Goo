@@ -86,76 +86,422 @@
       "capabilities": [
         1
       ]
-    }
-  ],
-  "pipeline": {
-    "id": "solid_quad",
-    "topology": "triangle-list",
-    "vertexInput": "none",
-    "pushConstants": {
-      "offset": 0,
-      "size": 32,
-      "stages": [
-        "vertex"
-      ],
-      "members": [
-        {
-          "name": "rect",
-          "offset": 0,
-          "type": "vec4"
-        },
-        {
-          "name": "color",
-          "offset": 16,
-          "type": "vec4"
-        }
+    },
+    {
+      "id": "analytic_vertex",
+      "stage": "vertex",
+      "source": "analytic.vert.glsl",
+      "output": "analytic.vert.spv",
+      "entryPoint": "main",
+      "sourceSha256": "fddebacfb2a0e17530d296d2b4710d64c6324eb18d663b49cff33cb31ecf7516",
+      "outputSha256": "cd132fb640a747524fd5eab420b96d9789585afaaf3bd13ca34950e16d0ed724",
+      "outputBytes": 1648,
+      "capabilities": [
+        1
       ]
     },
-    "descriptorCount": 0,
-    "stages": [
-      {
-        "shader": "solid_quad_vertex",
-        "stage": "vertex",
-        "entryPoint": "main",
-        "inputs": [],
-        "outputs": [
+    {
+      "id": "analytic_solid_fragment",
+      "stage": "fragment",
+      "source": "analytic_solid.frag.glsl",
+      "output": "analytic_solid.frag.spv",
+      "entryPoint": "main",
+      "sourceSha256": "aaadde57a66aaea4bb53cfaa17619a1aed8d89c67fe6dff8ea39329a802ac87f",
+      "outputSha256": "2b5deba845be2c7db9d9b02710600d8291d3b392a2af75d21f4e8a4435d60a28",
+      "outputBytes": 2304,
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "analytic_linear3_fragment",
+      "stage": "fragment",
+      "source": "analytic_linear3.frag.glsl",
+      "output": "analytic_linear3.frag.spv",
+      "entryPoint": "main",
+      "sourceSha256": "e18846ca139f4567f72e48b5c7a50098e8a75337bb1f6051765e371dfc12f07d",
+      "outputSha256": "0ef820ecddd8fcf5ef9cd79bc18afcb5ce51dc6c8554ad0d7ff8ce74357cb22c",
+      "outputBytes": 2744,
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "analytic_radial3_fragment",
+      "stage": "fragment",
+      "source": "analytic_radial3.frag.glsl",
+      "output": "analytic_radial3.frag.spv",
+      "entryPoint": "main",
+      "sourceSha256": "5b245447ccc18b9c1b2ca286d8566eaea5772161218cccb14996376a266a2e94",
+      "outputSha256": "d40e1aa6e85bffefc18773f35fc0b614e49e5d0acf717fcf6c97e75b7e25ded2",
+      "outputBytes": 2728,
+      "capabilities": [
+        1
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "id": "solid_quad",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 32,
+        "stages": [
+          "vertex"
+        ],
+        "members": [
           {
-            "location": 0,
-            "type": "vec4",
-            "name": "color"
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "color",
+            "offset": 16,
+            "type": "vec4"
           }
         ]
       },
-      {
-        "shader": "solid_quad_fragment",
-        "stage": "fragment",
-        "entryPoint": "main",
-        "inputs": [
-          {
-            "location": 0,
-            "type": "vec4",
-            "name": "color"
-          }
+      "descriptorCount": 0,
+      "stages": [
+        {
+          "shader": "solid_quad_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "color"
+            }
+          ]
+        },
+        {
+          "shader": "solid_quad_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "color"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "disabled",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "SolidQuadPushConstants.Generated.gs",
+        "typeName": "SolidQuadPushConstants",
+        "sha256": "801ed20e71cc24186daea9e0628253412ed04bb84d1613c8aa2e9b9d64d8b31d",
+        "bytes": 476
+      }
+    },
+    {
+      "id": "analytic_solid",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 112,
+        "stages": [
+          "vertex",
+          "fragment"
         ],
-        "outputs": [
+        "members": [
           {
-            "location": 0,
-            "type": "vec4",
-            "name": "outColor"
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
           }
         ]
+      },
+      "descriptorCount": 0,
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_solid_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "AnalyticSolidPushConstants.Generated.gs",
+        "typeName": "AnalyticSolidPushConstants",
+        "sha256": "9e0aea6c796cbdb38d317fad704cffbc2016711f399a14c8f8f13bb39ffb2f04",
+        "bytes": 1404
       }
-    ],
-    "colorFormat": "swapchain-sRGB",
-    "sampleCount": 1,
-    "blend": "disabled",
-    "depthStencil": "disabled",
-    "cullMode": "none",
-    "frontFace": "counter-clockwise"
-  },
-  "hostPacking": {
-    "path": "SolidQuadPushConstants.Generated.gs",
-    "sha256": "801ed20e71cc24186daea9e0628253412ed04bb84d1613c8aa2e9b9d64d8b31d",
-    "bytes": 476
-  }
+    },
+    {
+      "id": "analytic_linear3",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 112,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 0,
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_linear3_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "AnalyticLinear3PushConstants.Generated.gs",
+        "typeName": "AnalyticLinear3PushConstants",
+        "sha256": "804513d362b13043c43838f54ee8eb10b13a38aad92ced4ae91e7947246af234",
+        "bytes": 1406
+      }
+    },
+    {
+      "id": "analytic_radial3",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 112,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 0,
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_radial3_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "AnalyticRadial3PushConstants.Generated.gs",
+        "typeName": "AnalyticRadial3PushConstants",
+        "sha256": "a3fef01a91640db424ec07dd6aa5a9a68d8dce9288d866cd8e71d003cc4c5b58",
+        "bytes": 1406
+      }
+    }
+  ]
 }
