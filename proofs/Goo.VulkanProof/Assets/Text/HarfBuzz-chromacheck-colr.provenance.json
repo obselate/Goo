@@ -1,0 +1,12 @@
+{
+  "source": "https://github.com/harfbuzz/harfbuzz/releases/download/14.3.1/harfbuzz-14.3.1.tar.xz",
+  "sourcePath": "test/api/fonts/chromacheck-colr.ttf",
+  "archiveSha256": "9dae9538aae2ffdf70cec31f2c27bf68e2aaeeae3112688467697d5faf6194f7",
+  "fixtureSha256": "27a64326c60ebb377102ee6803780ed756177b84baeec9b1837f603e084b5534",
+  "license": "MIT",
+  "licenseFile": "ChromaCheck-MIT.txt",
+  "upstreamNotice": "test/api/fonts/README identifies this fixture as a ChromaCheck font by Roel Nieskens and Google.",
+  "format": "COLR v0 with CPAL v0",
+  "glyphId": 1,
+  "codepoint": "U+E900"
+}

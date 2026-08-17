@@ -38,6 +38,60 @@ def linux_needed(path):
     return sorted(set(re.findall(r"Shared library: \[([^]]+)\]", result.stdout)))
 
 
+def linux_dynamic_paths(path):
+    result = subprocess.run(["readelf", "--dynamic", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    values = {"rpath": [], "runpath": []}
+    for line in result.stdout.splitlines():
+        for name, marker in (("rpath", "Library rpath:"), ("runpath", "Library runpath:")):
+            if marker in line:
+                match = re.search(r"\[([^]]*)\]", line)
+                if match is None:
+                    raise SystemExit(f"{path.name} has malformed {name}")
+                values[name] = [item for item in match.group(1).split(":") if item]
+    return values
+
+
+def linux_format(path):
+    result = subprocess.run(["file", "-b", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    return result.stdout.strip()
+
+
+def linux_glibc_versions(path):
+    result = subprocess.run(["readelf", "--version-info", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    values = set(re.findall(r"GLIBC_([0-9]+(?:\.[0-9]+)+)", result.stdout))
+    return sorted(values, key=lambda value: tuple(int(item) for item in value.split(".")))
+
+
+def normalize_environment_value(name, value):
+    if name in ("CFLAGS", "CXXFLAGS"):
+        return re.sub(r"-ffile-prefix-map=[^ ]+=\.", "-ffile-prefix-map=<temporary-source-root>=.", value)
+    return value
+
+
+def verify_source_patches(manifest, manifest_path):
+    patches = manifest.get("build", {}).get("sourcePatches")
+    if not isinstance(patches, list) or len(patches) != 1:
+        raise SystemExit("expected one HarfBuzz source patch")
+    repo_root = manifest_path.resolve().parents[2]
+    for patch in patches:
+        path = repo_root / patch["path"]
+        if not path.is_file():
+            raise SystemExit(f"source patch missing: {path}")
+        if sha256(path) != patch["sha256"]:
+            raise SystemExit(f"source patch SHA-256 drift: {path}")
+
+
+def verify_environment(manifest, target):
+    expected = manifest["build"]["environments"].get(target)
+    if expected is None:
+        raise SystemExit(f"missing target environment: {target}")
+    for name, value in expected.items():
+        actual = os.environ.get(name)
+        if actual is None or normalize_environment_value(name, actual) != value:
+            raise SystemExit(f"{target} environment drift for {name}")
+    return dict(expected)
+
+
 def windows_symbols(path, tool_prefix):
     result = subprocess.run([f"{tool_prefix}-objdump", "-p", str(path)], check=True, stdout=subprocess.PIPE, text=True)
     values = set()
@@ -47,7 +101,7 @@ def windows_symbols(path, tool_prefix):
             active = True
             continue
         if active:
-            match = re.search(r"\s+\d+\s+[0-9a-fA-F]+\s+([A-Za-z_][A-Za-z0-9_]*)\s*$", line)
+            match = re.search(r"(?:\]\s+\+base\[\s*\d+\]\s+[0-9a-fA-F]+|\[\s*\d+\])\s+([A-Za-z_][A-Za-z0-9_]*)\s*$", line)
             if match:
                 values.add(match.group(1).lstrip("_"))
             elif line.strip() and not line[0].isspace():
@@ -60,6 +114,21 @@ def windows_needed(path, tool_prefix):
     return sorted(set(re.findall(r"DLL Name: ([^\n]+)", result.stdout)))
 
 
+def windows_format(path, tool_prefix):
+    result = subprocess.run([f"{tool_prefix}-objdump", "-f", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    if "file format pei-x86-64" not in result.stdout:
+        raise SystemExit(f"{path.name} is not PE32+ x86-64")
+    return "PE32+ x86-64"
+
+
+def windows_image_name(path, tool_prefix):
+    result = subprocess.run([f"{tool_prefix}-objdump", "-p", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    match = re.search(r"^\s*Name\s+[0-9a-fA-F]+\s+([^\s]+)\s*$", result.stdout, re.MULTILINE)
+    if match is None:
+        raise SystemExit(f"{path.name} has no PE image name")
+    return match.group(1)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", required=True, type=Path)
@@ -69,7 +138,13 @@ def main():
     parser.add_argument("--tool-prefix", default="")
     args = parser.parse_args()
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+    verify_source_patches(manifest, args.manifest)
+    environment = verify_environment(manifest, args.target)
     artifacts = {}
+    prefixes = {
+        "harfbuzz": ("hb_",),
+        "gpu": ("hb_gpu_",),
+    }
     for spec in args.artifact:
         name, separator, value = spec.partition("=")
         if separator == "" or name not in manifest["outputs"][args.target]:
@@ -80,28 +155,56 @@ def main():
         if args.target == "linux-x64":
             symbols = linux_symbols(path)
             needed = linux_needed(path)
+            dynamic_paths = linux_dynamic_paths(path)
+            image_format = linux_format(path)
+            linux_policy = manifest["build"]["linux"]
+            required_format = linux_policy["requiredFormat"]
+            if required_format not in image_format:
+                raise SystemExit(f"{path.name} format drift: {image_format}")
+            if needed != sorted(linux_policy["requiredNeeded"][name]):
+                raise SystemExit(f"{name} Linux dependency drift: {needed}")
+            if dynamic_paths["rpath"] != linux_policy["requiredRpath"][name]:
+                raise SystemExit(f"{name} Linux RPATH drift: {dynamic_paths['rpath']}")
+            if dynamic_paths["runpath"] != linux_policy["requiredRunpath"][name]:
+                raise SystemExit(f"{name} Linux RUNPATH drift: {dynamic_paths['runpath']}")
+            glibc_versions = linux_glibc_versions(path)
+            maximum = manifest["build"]["linux"]["maxGlibc"]
+            if glibc_versions and tuple(int(item) for item in glibc_versions[-1].split(".")) > tuple(int(item) for item in maximum.split(".")):
+                raise SystemExit(f"{name} GLIBC drift: {glibc_versions[-1]}")
+            image_name = None
         else:
             if not args.tool_prefix:
                 raise SystemExit("Windows tool prefix is required")
             symbols = windows_symbols(path, args.tool_prefix)
             needed = windows_needed(path, args.tool_prefix)
-        prefixes = {
-            "harfbuzz": ("hb_",),
-            "freetype": ("FT_",),
-            "bridge": ("goo_ft_",),
-        }
+            image_format = windows_format(path, args.tool_prefix)
+            image_name = windows_image_name(path, args.tool_prefix)
+            if needed != sorted(manifest["build"]["windows"]["requiredNeeded"][name]):
+                raise SystemExit(f"{name} Windows dependency drift: {needed}")
+            if image_name.casefold() != path.name.casefold():
+                raise SystemExit(f"{name} PE image name drift: {image_name}")
         symbols = sorted(value for value in symbols if value.startswith(prefixes[name]))
         required = set(manifest["requiredExports"][name])
         missing = sorted(required - set(symbols))
         if missing:
             raise SystemExit(f"{name} export check failed: {', '.join(missing)}")
-        artifacts[name] = {
+        artifact = {
             "file": path.name,
             "bytes": path.stat().st_size,
             "sha256": sha256(path),
             "exports": symbols,
             "needed": needed,
         }
+        if args.target == "linux-x64":
+            artifact["format"] = image_format
+            artifact["rpath"] = dynamic_paths["rpath"]
+            artifact["runpath"] = dynamic_paths["runpath"]
+            artifact["glibcVersions"] = glibc_versions
+            artifact["maxGlibc"] = glibc_versions[-1] if glibc_versions else None
+        else:
+            artifact["format"] = image_format
+            artifact["imageName"] = image_name
+        artifacts[name] = artifact
     if set(artifacts) != set(manifest["outputs"][args.target]):
         raise SystemExit("artifact set is incomplete")
     if args.target == "linux-x64":
@@ -112,25 +215,21 @@ def main():
             "cc": command_text(compiler, ["--version"]),
             "strip": command_text("strip", ["--version"]),
         }
-        linker_flags = "-Wl,--build-id=none"
     else:
         toolchain = {
             "meson": command_text("meson", ["--version"]),
             "ninja": command_text("ninja", ["--version"]),
             "cc": command_text(f"{args.tool_prefix}-gcc", ["--version"]),
+            "cpp": command_text(f"{args.tool_prefix}-g++", ["--version"]),
+            "objdump": command_text(f"{args.tool_prefix}-objdump", ["--version"]),
             "strip": command_text(f"{args.tool_prefix}-strip", ["--version"]),
         }
-        linker_flags = "-Wl,--build-id=none -static-libgcc -static-libstdc++"
     build = dict(manifest["build"])
+    build.pop("environments", None)
     build["target"] = args.target
     build["toolchain"] = toolchain
     build["sourceDirectory"] = "temporary"
-    build["environment"] = {
-        "SOURCE_DATE_EPOCH": "0",
-        "CFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
-        "CXXFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
-        "LDFLAGS": linker_flags,
-    }
+    build["environment"] = environment
     if args.target == "win-x64":
         build["crossFile"] = {
             "c": f"{args.tool_prefix}-gcc",
@@ -138,11 +237,14 @@ def main():
             "ar": f"{args.tool_prefix}-ar",
             "nm": f"{args.tool_prefix}-nm",
             "strip": f"{args.tool_prefix}-strip",
+            "objdump": f"{args.tool_prefix}-objdump",
+            "windres": f"{args.tool_prefix}-windres",
             "system": "windows",
             "cpu": "x86_64",
         }
     manifest["buildEvidence"] = build
     manifest["artifacts"] = artifacts
+    args.output.mkdir(parents=True, exist_ok=True)
     (args.output / "text-native-build.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 

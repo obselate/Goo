@@ -138,6 +138,7 @@ internal static class SpirvReflection
     private const uint StorageOutput = 3;
     private const uint StoragePushConstant = 9;
     private const uint StorageStorageBuffer = 12;
+    private const uint DimBuffer = 5;
 
     public static SpirvModuleReflection Read(byte[] bytes)
     {
@@ -369,6 +370,10 @@ internal static class SpirvReflection
             {
                 throw new InvalidOperationException($"Image descriptor %{typeId} lacks its sampled operand");
             }
+            if (type.Operands[1] == DimBuffer && type.Operands[5] == 1)
+            {
+                return ("uniform-texel-buffer", 1);
+            }
             return type.Operands[5] switch
             {
                 1 => ("sampled-image", 1),
@@ -456,7 +461,18 @@ internal static class SpirvReflection
         }
         if (type.Opcode == OpTypeMatrix)
         {
-            return "mat" + type.Operands[1] + "x" + RenderType(type.Operands[0], types, constants);
+            TypeInfo column = RequireType(types, type.Operands[0]);
+            if (column.Opcode == OpTypeVector && column.Operands.Length == 2)
+            {
+                string scalar = RenderType(column.Operands[0], types, constants);
+                if (scalar == "float")
+                {
+                    return type.Operands[1] == column.Operands[1]
+                        ? "mat" + type.Operands[1]
+                        : "mat" + type.Operands[1] + "x" + column.Operands[1];
+                }
+            }
+            throw new InvalidOperationException($"Unsupported matrix type %{typeId}");
         }
         if (type.Opcode == OpTypeArray)
         {

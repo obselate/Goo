@@ -1,0 +1,8 @@
+{
+  "asset": "HarfBuzz-TTC.ttc",
+  "sourceArchive": "harfbuzz-14.3.1",
+  "sourcePath": "test/shape/data/in-house/fonts/TTC.ttc",
+  "sha256": "a8521588045ed5f1f8b07eecaac06ed3186c644655bfac00dd4507cd316fbdc5",
+  "faceCount": 2,
+  "license": "SIL Open Font License 1.1 via HarfBuzz-test-fonts-COPYING.txt"
+}

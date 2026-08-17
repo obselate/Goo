@@ -253,6 +253,52 @@ unsafe data struct VulkanSwapchainSelection {
     var compositeAlpha VkCompositeAlphaFlagBitsKHR
 }
 
+func IsSupportedSrgbSurfaceFormat(value VkSurfaceFormatKHR) bool {
+    if value.colorSpace != VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR {
+        return false
+    }
+    return value.format == VkConstants.VK_FORMAT_B8G8R8A8_SRGB
+        || value.format == VkConstants.VK_FORMAT_R8G8B8A8_SRGB
+}
+
+unsafe func TrySelectSrgbSurfaceFormat(
+    formats *VkSurfaceFormatKHR,
+    formatCount uint32,
+    ref selected VkSurfaceFormatKHR) bool {
+    if formatCount == 0u {
+        return false
+    }
+    if formatCount == 1u && formats[0].format == VkConstants.VK_FORMAT_UNDEFINED {
+        if formats[0].colorSpace != VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR {
+            return false
+        }
+        selected.format = VkConstants.VK_FORMAT_B8G8R8A8_SRGB
+        selected.colorSpace = VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
+        return true
+    }
+    var formatIndex uint32 = 0u
+    while formatIndex < formatCount {
+        let candidate = formats[formatIndex]
+        if candidate.format == VkConstants.VK_FORMAT_B8G8R8A8_SRGB
+            && candidate.colorSpace == VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR {
+            selected = candidate
+            return true
+        }
+        formatIndex++
+    }
+    formatIndex = 0u
+    while formatIndex < formatCount {
+        let candidate = formats[formatIndex]
+        if candidate.format == VkConstants.VK_FORMAT_R8G8B8A8_SRGB
+            && candidate.colorSpace == VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR {
+            selected = candidate
+            return true
+        }
+        formatIndex++
+    }
+    return false
+}
+
 unsafe func QuerySwapchainSelection(
     physicalDevice VkPhysicalDevice,
     surface VkSurfaceKHR,
@@ -262,6 +308,7 @@ unsafe func QuerySwapchainSelection(
     let getSurfaceCapabilities = instanceDispatch.vkGetPhysicalDeviceSurfaceCapabilitiesKHR
     let getSurfaceFormats = instanceDispatch.vkGetPhysicalDeviceSurfaceFormatsKHR
     let getPresentModes = instanceDispatch.vkGetPhysicalDeviceSurfacePresentModesKHR
+    let getPhysicalDeviceFormatProperties = instanceDispatch.vkGetPhysicalDeviceFormatProperties
     var result = VulkanSwapchainSelection{}
     if TrackResult(diagnostics, eventBase, getSurfaceCapabilities(physicalDevice, surface, &result.capabilities)) != VkConstants.VK_SUCCESS {
         throw InvalidOperationException("Vulkan surface capabilities query failed")
@@ -278,32 +325,21 @@ unsafe func QuerySwapchainSelection(
     if TrackResult(diagnostics, eventBase + 2uL, getSurfaceFormats(physicalDevice, surface, &formatCount, formats)) != VkConstants.VK_SUCCESS {
         throw InvalidOperationException("Vulkan surface format query failed")
     }
-    if formatCount == 1u && formats[0].format == VkConstants.VK_FORMAT_UNDEFINED {
-        result.format.format = VkConstants.VK_FORMAT_B8G8R8A8_SRGB
-        result.format.colorSpace = VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
-    } else {
-        var foundFormat = false
-        var formatIndex uint32 = 0u
-        while formatIndex < formatCount && !foundFormat {
-            let candidate = formats[formatIndex]
-            if candidate.format == VkConstants.VK_FORMAT_B8G8R8A8_SRGB && candidate.colorSpace == VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR {
-                result.format = candidate
-                foundFormat = true
-            }
-            formatIndex++
-        }
-        formatIndex = 0u
-        while formatIndex < formatCount && !foundFormat {
-            let candidate = formats[formatIndex]
-            if candidate.format == VkConstants.VK_FORMAT_R8G8B8A8_SRGB && candidate.colorSpace == VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR {
-                result.format = candidate
-                foundFormat = true
-            }
-            formatIndex++
-        }
-        if !foundFormat {
-            result.format = formats[0]
-        }
+    if !TrySelectSrgbSurfaceFormat(formats, formatCount, ref result.format) {
+        throw InvalidOperationException("Vulkan surface exposes no supported sRGB swapchain format with VK_COLOR_SPACE_SRGB_NONLINEAR_KHR")
+    }
+    if !IsSupportedSrgbSurfaceFormat(result.format) {
+        throw InvalidOperationException("Vulkan selected surface format is outside Goo's sRGB swapchain contract")
+    }
+    var surfaceFormatProperties = VkFormatProperties{}
+    getPhysicalDeviceFormatProperties(
+        physicalDevice,
+        result.format.format,
+        &surfaceFormatProperties)
+    let requiredSurfaceFormatFeatures = uint32(VkConstants.VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
+        | uint32(VkConstants.VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT)
+    if (surfaceFormatProperties.optimalTilingFeatures & requiredSurfaceFormatFeatures) != requiredSurfaceFormatFeatures {
+        throw InvalidOperationException("Vulkan selected sRGB surface format lacks optimal color attachment blend support")
     }
 
     var presentModeCount uint32 = 0u
@@ -344,6 +380,10 @@ unsafe func QuerySwapchainSelection(
 unsafe func Main() int32 {
     if Environment.GetEnvironmentVariable("GOO_VK_TEXT_E2E") == "1" {
         RunVulkanTextE2E()
+        return 0
+    }
+    if Environment.GetEnvironmentVariable("GOO_VK_TEXT_PAINT_E2E") == "1" {
+        VulkanTextPaintE2E().Run()
         return 0
     }
     if Environment.GetEnvironmentVariable("GOO_VK_SCENE_PLAN") == "1" {
@@ -405,12 +445,17 @@ unsafe func Main() int32 {
     var presentationRetirement VulkanPresentationRetirement? = nil
     let sceneReadbackRequested = Environment.GetEnvironmentVariable("GOO_VK_SCENE_READBACK") == "1"
     let imageReadbackRequested = Environment.GetEnvironmentVariable("GOO_VK_IMAGE_READBACK") == "1"
-    var readbackRequested = sceneReadbackRequested || imageReadbackRequested
+    let textReadbackRequested = Environment.GetEnvironmentVariable("GOO_VK_TEXT_READBACK") == "1"
+    let textPaintReadbackRequested = Environment.GetEnvironmentVariable("GOO_VK_TEXT_PAINT_READBACK") == "1"
+    var readbackRequested = sceneReadbackRequested || imageReadbackRequested || textReadbackRequested
+        || textPaintReadbackRequested
         || Environment.GetEnvironmentVariable("GOO_VK_READBACK") == "1"
     var readbackMemoryProperties = VkPhysicalDeviceMemoryProperties{}
     var readbackAllocator VulkanMemoryAllocator? = nil
     var offscreenTarget VulkanOffscreenTarget? = nil
     var sceneFrame SceneFrame? = nil
+    var textFixture VulkanTextReadbackFixture? = nil
+    var textPaintFixture VulkanTextPaintReadbackFixture? = nil
     var sceneDigest uint64 = 0uL
     var imageDigest uint64 = 0uL
     var imagePreflightHandlesBefore uint64 = 0uL
@@ -427,6 +472,8 @@ unsafe func Main() int32 {
     let imageSourceStorage *uint32 = stackalloc [4]uint32
     imageSourcePixels = *uint8(imageSourceStorage)
     var offscreenCommandBuffer VkCommandBuffer = nint(0)
+    var offscreenCommandBufferNeedsReset = false
+    var offscreenQueueAccepted = false
     var allocatedCommandBufferCount uint32 = 0u
     var resetCommandBufferAddress nint = nint(0)
     var frameIndex uint64 = 0uL
@@ -664,6 +711,13 @@ unsafe func Main() int32 {
         }
         instanceDispatch.vkGetPhysicalDeviceProperties = physicalDevicePropertiesNullable!!
 
+        let getPhysicalDeviceFormatPropertiesAddress = LoadGlobalProc(getProcAddress, instance, "vkGetPhysicalDeviceFormatProperties")
+        let getPhysicalDeviceFormatPropertiesNullable = getPhysicalDeviceFormatPropertiesAddress as (unmanaged[Cdecl] (VkPhysicalDevice, VkFormat, *VkFormatProperties) -> void)?
+        if getPhysicalDeviceFormatPropertiesNullable == nil {
+            throw InvalidOperationException("vkGetPhysicalDeviceFormatProperties is unavailable")
+        }
+        instanceDispatch.vkGetPhysicalDeviceFormatProperties = getPhysicalDeviceFormatPropertiesNullable!!
+
         let surfaceSupportAddress = LoadGlobalProc(getProcAddress, instance, "vkGetPhysicalDeviceSurfaceSupportKHR")
         let surfaceSupportNullable = surfaceSupportAddress as (unmanaged[Cdecl] (VkPhysicalDevice, uint32, VkSurfaceKHR, *VkBool32) -> VkResult)?
         if surfaceSupportNullable == nil {
@@ -755,6 +809,7 @@ unsafe func Main() int32 {
 
         let getPhysicalDeviceFeatures2 = instanceDispatch.vkGetPhysicalDeviceFeatures2
         let getPhysicalDeviceProperties = instanceDispatch.vkGetPhysicalDeviceProperties
+        let getPhysicalDeviceFormatProperties = instanceDispatch.vkGetPhysicalDeviceFormatProperties
         let enumerateDeviceExtensions = instanceDispatch.vkEnumerateDeviceExtensionProperties
         let getSurfaceCapabilities = instanceDispatch.vkGetPhysicalDeviceSurfaceCapabilitiesKHR
         let getSurfaceFormats = instanceDispatch.vkGetPhysicalDeviceSurfaceFormatsKHR
@@ -773,6 +828,13 @@ unsafe func Main() int32 {
             var candidateProperties = VkPhysicalDeviceProperties{}
             getPhysicalDeviceProperties(physicalDevice, &candidateProperties)
             var candidateQualified = candidateProperties.apiVersion >= VkConstants.VK_API_VERSION_1_3
+            var textAtlasFormatProperties = VkFormatProperties{}
+            getPhysicalDeviceFormatProperties(physicalDevice,
+                VkConstants.VK_FORMAT_R16G16B16A16_SINT, &textAtlasFormatProperties)
+            candidateQualified = candidateQualified
+                && (textAtlasFormatProperties.bufferFeatures
+                    & uint32(VkConstants.VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT))
+                    == uint32(VkConstants.VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)
             var candidateQueueFamilyIndex uint32 = 0u
             var candidateTimestampValidBits uint32 = 0u
             var hasPresentationQueue = false
@@ -866,32 +928,22 @@ unsafe func Main() int32 {
                     let surfaceFormats *VkSurfaceFormatKHR = stackalloc [int32(surfaceFormatCount)]VkSurfaceFormatKHR
                     if TrackResult(diagnostics, 27uL, getSurfaceFormats(physicalDevice, surface, &surfaceFormatCount, surfaceFormats)) != VkConstants.VK_SUCCESS {
                         candidateQualified = false
-                    } else if surfaceFormatCount == 1u && surfaceFormats[0].format == VkConstants.VK_FORMAT_UNDEFINED {
-                        candidateSurfaceFormat.format = VkConstants.VK_FORMAT_B8G8R8A8_SRGB
-                        candidateSurfaceFormat.colorSpace = VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
-                    } else {
-                        var hasPreferredFormat = false
-                        var formatIndex uint32 = 0u
-                        while formatIndex < surfaceFormatCount && !hasPreferredFormat {
-                            let format = surfaceFormats[formatIndex]
-                            if format.format == VkConstants.VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR {
-                                candidateSurfaceFormat = format
-                                hasPreferredFormat = true
-                            }
-                            formatIndex++
-                        }
-                        formatIndex = 0u
-                        while formatIndex < surfaceFormatCount && !hasPreferredFormat {
-                            let format = surfaceFormats[formatIndex]
-                            if format.format == VkConstants.VK_FORMAT_R8G8B8A8_SRGB && format.colorSpace == VkConstants.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR {
-                                candidateSurfaceFormat = format
-                                hasPreferredFormat = true
-                            }
-                            formatIndex++
-                        }
-                        if !hasPreferredFormat {
-                            candidateSurfaceFormat = surfaceFormats[0]
-                        }
+                    } else if !TrySelectSrgbSurfaceFormat(
+                        surfaceFormats,
+                        surfaceFormatCount,
+                        ref candidateSurfaceFormat) {
+                        candidateQualified = false
+                    }
+                    if candidateQualified {
+                        var candidateSurfaceFormatProperties = VkFormatProperties{}
+                        getPhysicalDeviceFormatProperties(
+                            physicalDevice,
+                            candidateSurfaceFormat.format,
+                            &candidateSurfaceFormatProperties)
+                        let requiredSurfaceFormatFeatures = uint32(VkConstants.VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
+                            | uint32(VkConstants.VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT)
+                        candidateQualified = (candidateSurfaceFormatProperties.optimalTilingFeatures
+                            & requiredSurfaceFormatFeatures) == requiredSurfaceFormatFeatures
                     }
                 }
             }
@@ -931,10 +983,10 @@ unsafe func Main() int32 {
             physicalIndex++
         }
         if selectedPhysicalDevice == nint(0) {
-            throw InvalidOperationException("VK_EXT_swapchain_maintenance1 with swapchainMaintenance1 is required for persistent presentation cleanup")
+            throw InvalidOperationException("No Vulkan physical device satisfies Vulkan 1.3, swapchain maintenance, sRGB surface blending, and R16G16B16A16_SINT uniform texel-buffer support")
         }
         if !selectedSwapchainMaintenance {
-            throw InvalidOperationException("VK_EXT_swapchain_maintenance1 with swapchainMaintenance1 is required for persistent presentation cleanup")
+            throw InvalidOperationException("Vulkan swapchain maintenance is required for persistent presentation cleanup")
         }
         var selectedPhysicalDeviceProperties = VkPhysicalDeviceProperties{}
         getPhysicalDeviceProperties(selectedPhysicalDevice, &selectedPhysicalDeviceProperties)
@@ -958,24 +1010,24 @@ unsafe func Main() int32 {
                 throw InvalidOperationException("vkGetPhysicalDeviceMemoryProperties is unavailable")
             }
             instanceDispatch.vkGetPhysicalDeviceMemoryProperties = getMemoryPropertiesNullable!!
-            let getFormatPropertiesAddress = LoadGlobalProc(getProcAddress, instance, "vkGetPhysicalDeviceFormatProperties")
-            let getFormatPropertiesNullable = getFormatPropertiesAddress as (unmanaged[Cdecl] (VkPhysicalDevice, VkFormat, *VkFormatProperties) -> void)?
-            if getFormatPropertiesNullable == nil {
-                throw InvalidOperationException("vkGetPhysicalDeviceFormatProperties is unavailable")
-            }
-            instanceDispatch.vkGetPhysicalDeviceFormatProperties = getFormatPropertiesNullable!!
-            let getFormatProperties = instanceDispatch.vkGetPhysicalDeviceFormatProperties
-            let readbackFormat = if sceneReadbackRequested {
+            let readbackUsesBlending = sceneReadbackRequested || imageReadbackRequested
+                || textReadbackRequested || textPaintReadbackRequested
+            let readbackFormat = if readbackUsesBlending {
                 VkConstants.VK_FORMAT_R8G8B8A8_SRGB
             } else {
                 VkConstants.VK_FORMAT_R8G8B8A8_UNORM
             }
             var readbackFormatProperties = VkFormatProperties{}
-            getFormatProperties(selectedPhysicalDevice, readbackFormat, &readbackFormatProperties)
+            getPhysicalDeviceFormatProperties(selectedPhysicalDevice, readbackFormat, &readbackFormatProperties)
             let requiredReadbackFeatures = uint32(VkConstants.VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
                 | uint32(VkConstants.VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)
-            if (readbackFormatProperties.optimalTilingFeatures & requiredReadbackFeatures) != requiredReadbackFeatures {
-                throw InvalidOperationException("Vulkan offscreen target format lacks optimal color attachment and transfer source support")
+            var requiredOffscreenFeatures = requiredReadbackFeatures
+            if readbackUsesBlending {
+                requiredOffscreenFeatures = requiredOffscreenFeatures
+                    | uint32(VkConstants.VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT)
+            }
+            if (readbackFormatProperties.optimalTilingFeatures & requiredOffscreenFeatures) != requiredOffscreenFeatures {
+                throw InvalidOperationException("Vulkan offscreen target format lacks the required optimal color attachment, transfer source, or blend support")
             }
             let getMemoryProperties = instanceDispatch.vkGetPhysicalDeviceMemoryProperties
             getMemoryProperties(selectedPhysicalDevice, &readbackMemoryProperties)
@@ -1275,7 +1327,7 @@ unsafe func Main() int32 {
             let invalidateMappedMemoryRangesNullable = invalidateMappedMemoryRangesAddress as (unmanaged[Cdecl] (VkDevice, uint32, *VkMappedMemoryRange) -> VkResult)?
             if invalidateMappedMemoryRangesNullable == nil { throw InvalidOperationException("vkInvalidateMappedMemoryRanges is unavailable") }
             deviceDispatch.vkInvalidateMappedMemoryRanges = invalidateMappedMemoryRangesNullable!!
-            if imageReadbackRequested {
+            if imageReadbackRequested || textReadbackRequested || textPaintReadbackRequested {
                 let flushMappedMemoryRangesAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkFlushMappedMemoryRanges")
                 let flushMappedMemoryRangesNullable = flushMappedMemoryRangesAddress as (unmanaged[Cdecl] (VkDevice, uint32, *VkMappedMemoryRange) -> VkResult)?
                 if flushMappedMemoryRangesNullable == nil { throw InvalidOperationException("vkFlushMappedMemoryRanges is unavailable") }
@@ -1284,6 +1336,14 @@ unsafe func Main() int32 {
                 let copyBufferNullable = copyBufferAddress as (unmanaged[Cdecl] (VkCommandBuffer, VkBuffer, VkBuffer, uint32, *VkBufferCopy) -> void)?
                 if copyBufferNullable == nil { throw InvalidOperationException("vkCmdCopyBuffer is unavailable") }
                 deviceDispatch.vkCmdCopyBuffer = copyBufferNullable!!
+                let createBufferViewAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCreateBufferView")
+                let createBufferViewNullable = createBufferViewAddress as (unmanaged[Cdecl] (VkDevice, *VkBufferViewCreateInfo, *VkAllocationCallbacks, *VkBufferView) -> VkResult)?
+                if createBufferViewNullable == nil { throw InvalidOperationException("vkCreateBufferView is unavailable") }
+                deviceDispatch.vkCreateBufferView = createBufferViewNullable!!
+                let destroyBufferViewAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkDestroyBufferView")
+                let destroyBufferViewNullable = destroyBufferViewAddress as (unmanaged[Cdecl] (VkDevice, VkBufferView, *VkAllocationCallbacks) -> void)?
+                if destroyBufferViewNullable == nil { throw InvalidOperationException("vkDestroyBufferView is unavailable") }
+                deviceDispatch.vkDestroyBufferView = destroyBufferViewNullable!!
                 let copyBufferToImageAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCmdCopyBufferToImage")
                 let copyBufferToImageNullable = copyBufferToImageAddress as (unmanaged[Cdecl] (VkCommandBuffer, VkBuffer, VkImage, VkImageLayout, uint32, *VkBufferImageCopy) -> void)?
                 if copyBufferToImageNullable == nil { throw InvalidOperationException("vkCmdCopyBufferToImage is unavailable") }
@@ -2244,6 +2304,30 @@ unsafe func Main() int32 {
             offscreenExtent.width = 64u
             offscreenExtent.height = 64u
             let sceneOffscreenRequested = sceneReadbackRequested || imageReadbackRequested
+                || textReadbackRequested || textPaintReadbackRequested
+            if textReadbackRequested || textPaintReadbackRequested {
+                if sceneReadbackRequested || imageReadbackRequested
+                    || (textReadbackRequested && textPaintReadbackRequested) {
+                    throw InvalidOperationException("Vulkan text readback modes cannot be combined with another scene readback mode")
+                }
+            }
+            if textReadbackRequested {
+                let textFixtureValue = VulkanTextReadbackFixture(
+                    device,
+                    deviceDispatch,
+                    readbackAllocatorValue,
+                    selectedPhysicalDeviceProperties.limits.maxTexelBufferElements)
+                textFixture = textFixtureValue
+                sceneFrame = textFixtureValue.Frame
+            } else if textPaintReadbackRequested {
+                let textPaintFixtureValue = VulkanTextPaintReadbackFixture(
+                    device,
+                    deviceDispatch,
+                    readbackAllocatorValue,
+                    selectedPhysicalDeviceProperties.limits.maxTexelBufferElements)
+                textPaintFixture = textPaintFixtureValue
+                sceneFrame = textPaintFixtureValue.Frame
+            }
             if sceneOffscreenRequested {
                 RecordSceneStage(diagnostics, VulkanSceneStageEvents.Tree, VkConstants.VK_SUCCESS, 0uL, 0uL)
                 let planStartTicks int64 = if diagnostics != nil {
@@ -2257,7 +2341,7 @@ unsafe func Main() int32 {
                     if sceneFrame!!.DrawRefCount != 1 || sceneFrame!!.CachedImageCount != 1 {
                         throw InvalidOperationException("Vulkan image scene plan is invalid")
                     }
-                } else {
+                } else if !textReadbackRequested && !textPaintReadbackRequested {
                     sceneFrame = SceneFrame(16)
                     BuildPixelScene(sceneFrame!!, 1uL)
                     sceneDigest = PixelSceneSemanticDigest(sceneFrame!!)
@@ -2645,6 +2729,28 @@ unsafe func Main() int32 {
                     offscreenFormat,
                     imageResources,
                     imageGeneration)
+            } else if textReadbackRequested {
+                VulkanOffscreenTarget(
+                    device,
+                    deviceDispatch,
+                    readbackAllocatorValue,
+                    offscreenExtent,
+                    offscreenMode,
+                    offscreenFormat,
+                    nil,
+                    0uL,
+                    textFixture!!.Atlas)
+            } else if textPaintReadbackRequested {
+                VulkanOffscreenTarget(
+                    device,
+                    deviceDispatch,
+                    readbackAllocatorValue,
+                    offscreenExtent,
+                    offscreenMode,
+                    offscreenFormat,
+                    nil,
+                    0uL,
+                    textPaintFixture!!.Atlas)
             } else {
                 VulkanOffscreenTarget(
                     device,
@@ -2682,6 +2788,7 @@ unsafe func Main() int32 {
                 if TrackResult(diagnostics, 46uL, beginCommandBuffer(offscreenCommandBuffer, &offscreenCommandBufferBeginInfo)) != VkConstants.VK_SUCCESS {
                     throw InvalidOperationException("vkBeginCommandBuffer failed for offscreen readback")
                 }
+                offscreenCommandBufferNeedsReset = true
                 if sceneOffscreenRequested && queryPoolCreated {
                     let resetQueryPool = deviceDispatch.vkCmdResetQueryPool
                     resetQueryPool(offscreenCommandBuffer, queryPool, 0u, 2u)
@@ -2692,7 +2799,8 @@ unsafe func Main() int32 {
                     var sceneClearColor = VkClearColorValue{}
                     sceneClearColor.float32.values[0] = 0.0F
                     sceneClearColor.float32.values[1] = 0.0F
-                    sceneClearColor.float32.values[2] = if imageReadbackRequested { 0.0F } else { 1.0F }
+                    sceneClearColor.float32.values[2] = if imageReadbackRequested
+                        || textReadbackRequested || textPaintReadbackRequested { 0.0F } else { 1.0F }
                     sceneClearColor.float32.values[3] = if imageReadbackRequested { 0.0F } else { 1.0F }
                     offscreenTargetValue.RecordScene(offscreenCommandBuffer, sceneFrame!!, sceneClearColor)
                 } else {
@@ -2705,6 +2813,16 @@ unsafe func Main() int32 {
                 if TrackResult(diagnostics, 47uL, endCommandBuffer(offscreenCommandBuffer)) != VkConstants.VK_SUCCESS {
                     throw InvalidOperationException("vkEndCommandBuffer failed for offscreen readback")
                 }
+                if textReadbackRequested || textPaintReadbackRequested {
+                    let flushResult = if textReadbackRequested {
+                        TrackResult(diagnostics, 49uL, textFixture!!.FlushBeforeSubmit())
+                    } else {
+                        TrackResult(diagnostics, 49uL, textPaintFixture!!.FlushBeforeSubmit())
+                    }
+                    if flushResult != VkConstants.VK_SUCCESS {
+                        throw InvalidOperationException("Vulkan text atlas flush failed")
+                    }
+                }
                 if sceneOffscreenRequested {
                     let recordEndTicks int64 = if diagnostics != nil {
                         Stopwatch.GetTimestamp()
@@ -2715,7 +2833,26 @@ unsafe func Main() int32 {
                         recordEndTicks - recordStartTicks)
                 }
             } catch (error Exception) {
+                if offscreenCommandBufferNeedsReset {
+                    let resetResult = resetCommandBuffer(offscreenCommandBuffer, VkCommandBufferResetFlags(0u))
+                    if resetResult == VkConstants.VK_SUCCESS {
+                        offscreenCommandBufferNeedsReset = false
+                    } else {
+                        Console.Error.WriteLine("Vulkan cleanup offscreen command buffer reset failed: " + resetResult.ToString())
+                    }
+                }
                 offscreenTargetValue.AbortPrepared()
+                if textReadbackRequested && textFixture != nil {
+                    let atlasStats = textFixture!!.Atlas.Stats
+                    if atlasStats.UploadPending && !atlasStats.UploadSubmitted {
+                        textFixture!!.AbortUpload(offscreenCommandBuffer)
+                    }
+                } else if textPaintReadbackRequested && textPaintFixture != nil {
+                    let atlasStats = textPaintFixture!!.Atlas.Stats
+                    if atlasStats.UploadPending && !atlasStats.UploadSubmitted {
+                        textPaintFixture!!.AbortUpload(offscreenCommandBuffer)
+                    }
+                }
                 throw error
             }
 
@@ -2742,9 +2879,17 @@ unsafe func Main() int32 {
                 RecordSceneCpuStage(diagnostics, VulkanSceneStageEvents.Submit, rawOffscreenSubmitResult,
                     submitEndTicks - submitStartTicks)
             }
+            if trackedOffscreenSubmitResult == VkConstants.VK_SUCCESS {
+                offscreenQueueAccepted = true
+            }
             offscreenTargetValue.MarkSubmitted(trackedOffscreenSubmitResult)
             if trackedOffscreenSubmitResult != VkConstants.VK_SUCCESS {
                 throw InvalidOperationException("vkQueueSubmit2 failed for offscreen readback")
+            }
+            if textReadbackRequested {
+                textFixture!!.MarkSubmitted(offscreenCommandBuffer, uint64(offscreenTargetValue.CompletionFence))
+            } else if textPaintReadbackRequested {
+                textPaintFixture!!.MarkSubmitted(offscreenCommandBuffer, uint64(offscreenTargetValue.CompletionFence))
             }
             if imageReadbackRequested {
                 imageResources!!.MarkUsed(VulkanImageResourceId(), imageGeneration, 3uL)
@@ -2761,6 +2906,17 @@ unsafe func Main() int32 {
                     Console.WriteLine("Offscreen clear/quad readback: false")
                 }
                 throw InvalidOperationException("Vulkan offscreen readback did not complete")
+            }
+            if textReadbackRequested {
+                let atlasStats = textFixture!!.Atlas.Stats
+                if !atlasStats.UploadSubmitted || !textFixture!!.Collect(atlasStats.UploadFence) {
+                    throw InvalidOperationException("Vulkan text atlas upload did not collect")
+                }
+            } else if textPaintReadbackRequested {
+                let atlasStats = textPaintFixture!!.Atlas.Stats
+                if !atlasStats.UploadSubmitted || !textPaintFixture!!.Collect(atlasStats.UploadFence) {
+                    throw InvalidOperationException("Vulkan COLR paint atlas upload did not collect")
+                }
             }
             if sceneOffscreenRequested {
                 var sceneGpuResult VkResult = VkConstants.VK_NOT_READY
@@ -2796,7 +2952,27 @@ unsafe func Main() int32 {
                     sceneGpuDelta, sceneGpuNanoseconds)
             }
             let readbackBytes = *uint8(offscreenTargetValue.ReadbackPointer)
-            if imageReadbackRequested {
+            if textReadbackRequested {
+                if offscreenTargetValue.LastRecordAllocatedBytes != 0L {
+                    throw InvalidOperationException("Vulkan text recording allocated managed bytes")
+                }
+                let textReadback = AnalyzeVulkanTextReadback(readbackBytes, offscreenExtent.width, offscreenExtent.height)
+                Console.WriteLine("Text readback: digest=${textReadback.Digest} ink=${textReadback.InkPixels} background=${textReadback.BackgroundPixels} bounds=${textReadback.MinInkX},${textReadback.MinInkY}-${textReadback.MaxInkX},${textReadback.MaxInkY} opaque=${textReadback.OpaquePixels} nongray=${textReadback.NonGrayPixels} allocated=${offscreenTargetValue.LastRecordAllocatedBytes}")
+                if !VerifyVulkanTextReadback(readbackBytes, offscreenExtent.width, offscreenExtent.height, textReadback) {
+                    throw InvalidOperationException("Vulkan text readback ink or background pixels are invalid")
+                }
+            } else if textPaintReadbackRequested {
+                if offscreenTargetValue.LastRecordAllocatedBytes != 0L {
+                    throw InvalidOperationException("Vulkan COLR paint recording allocated managed bytes")
+                }
+                let paintReadback = AnalyzeVulkanTextPaintReadback(readbackBytes,
+                    offscreenExtent.width, offscreenExtent.height)
+                Console.WriteLine("Text paint readback: digest=${paintReadback.Digest} ink=${paintReadback.InkPixels} background=${paintReadback.BackgroundPixels} colored=${paintReadback.ColoredPixels} leftColored=${paintReadback.LeftColoredPixels} rightColored=${paintReadback.RightColoredPixels} opaque=${paintReadback.OpaquePixels} allocated=${offscreenTargetValue.LastRecordAllocatedBytes}")
+                if !VerifyVulkanTextPaintReadback(readbackBytes,
+                    offscreenExtent.width, offscreenExtent.height, paintReadback) {
+                    throw InvalidOperationException("Vulkan COLR paint readback pixels are invalid")
+                }
+            } else if imageReadbackRequested {
                 if offscreenTargetValue.LastRecordAllocatedBytes != 0L {
                     throw InvalidOperationException("Vulkan image recording allocated managed bytes: "
                         + offscreenTargetValue.LastRecordAllocatedBytes.ToString())
@@ -2929,6 +3105,7 @@ unsafe func Main() int32 {
                 }
                 offscreenTargetValue.Dispose()
                 offscreenTarget = nil
+                offscreenQueueAccepted = false
                 let staleGeneration = imageGeneration
                 let nextImageGeneration = imageGeneration + 1uL
                 imageResources!!.SetGeneration(nextImageGeneration, 4uL)
@@ -3104,6 +3281,7 @@ unsafe func Main() int32 {
                 }
                 rehydratedTarget.Dispose()
                 offscreenTarget = nil
+                offscreenQueueAccepted = false
                 imageResources!!.Dispose()
                 imageResources = nil
                 Console.WriteLine("Image E2E: nearestDigest=${imageDigest} linearDigest=${imageLinearDigest} plateau=true handles=${plateauStatsBefore.LiveObjectCount} residentAllocations=${plateauAllocatorBefore.residentAllocations} residentBytes=${plateauAllocatorBefore.residentBytes} retirement=true handles=${retainedStatsAfterCollect.LiveObjectCount}->${releasedStats.LiveObjectCount} liveAllocations=${retainedAllocator.liveAllocations}->${releasedAllocator.liveAllocations} preflight=true handles=${imagePreflightHandlesBefore}->${imagePreflightHandlesAfter} liveAllocations=${imagePreflightLiveAllocationsBefore}->${imagePreflightLiveAllocationsAfter} liveBytes=${imagePreflightLiveBytesBefore}->${imagePreflightLiveBytesAfter} rehydration=true allocated=0")
@@ -3225,6 +3403,106 @@ unsafe func Main() int32 {
         Console.Error.WriteLine(error.ToString())
         throw error
     } finally {
+        var offscreenSubmissionCompleted = !offscreenQueueAccepted
+        try {
+            if offscreenQueueAccepted {
+                if offscreenTarget == nil || device == nint(0) {
+                    throw InvalidOperationException("Vulkan cleanup lost the accepted offscreen submission fence")
+                }
+                var completionFence = offscreenTarget!!.CompletionFence
+                let waitForFences = deviceDispatch.vkWaitForFences
+                let waitResult = waitForFences(device, 1u, &completionFence,
+                    VkConstants.VK_TRUE, VkConstants.VK_WHOLE_SIZE)
+                if waitResult != VkConstants.VK_SUCCESS {
+                    throw InvalidOperationException("vkWaitForFences failed for accepted offscreen submission cleanup")
+                }
+                offscreenSubmissionCompleted = true
+            }
+        } catch (error Exception) {
+            Console.Error.WriteLine("Vulkan cleanup accepted offscreen submission failed: " + error.ToString())
+        }
+
+        try {
+            if offscreenCommandBufferNeedsReset && offscreenSubmissionCompleted {
+                let resetCommandBufferNullable = resetCommandBufferAddress as (unmanaged[Cdecl] (VkCommandBuffer, VkCommandBufferResetFlags) -> VkResult)?
+                if resetCommandBufferNullable == nil {
+                    throw InvalidOperationException("vkResetCommandBuffer is unavailable during offscreen cleanup")
+                }
+                let resetCommandBuffer = resetCommandBufferNullable!!
+                let resetResult = resetCommandBuffer(offscreenCommandBuffer, VkCommandBufferResetFlags(0u))
+                if resetResult != VkConstants.VK_SUCCESS {
+                    throw InvalidOperationException("vkResetCommandBuffer failed during offscreen cleanup")
+                }
+                offscreenCommandBufferNeedsReset = false
+            }
+        } catch (error Exception) {
+            Console.Error.WriteLine("Vulkan cleanup offscreen command buffer failed: " + error.ToString())
+        }
+
+        try {
+            if textFixture != nil {
+                var atlasStats = textFixture!!.Atlas.Stats
+                if atlasStats.UploadPending {
+                    if atlasStats.UploadSubmitted {
+                        if !offscreenQueueAccepted || !offscreenSubmissionCompleted {
+                            throw InvalidOperationException("Vulkan text atlas upload is submitted without a completed offscreen fence")
+                        }
+                        if !textFixture!!.Collect(atlasStats.UploadFence) {
+                            throw InvalidOperationException("Vulkan text atlas upload did not collect during cleanup")
+                        }
+                    } else if offscreenQueueAccepted {
+                        if !offscreenSubmissionCompleted || offscreenTarget == nil {
+                            throw InvalidOperationException("Vulkan accepted text upload has no completed offscreen fence")
+                        }
+                        textFixture!!.MarkSubmitted(
+                            offscreenCommandBuffer,
+                            uint64(offscreenTarget!!.CompletionFence))
+                        atlasStats = textFixture!!.Atlas.Stats
+                        if !atlasStats.UploadSubmitted
+                            || !textFixture!!.Collect(atlasStats.UploadFence) {
+                            throw InvalidOperationException("Vulkan accepted text atlas upload did not collect during cleanup")
+                        }
+                    } else {
+                        textFixture!!.AbortUpload(offscreenCommandBuffer)
+                    }
+                }
+            }
+        } catch (error Exception) {
+            Console.Error.WriteLine("Vulkan cleanup text upload failed: " + error.ToString())
+        }
+
+        try {
+            if textPaintFixture != nil {
+                var atlasStats = textPaintFixture!!.Atlas.Stats
+                if atlasStats.UploadPending {
+                    if atlasStats.UploadSubmitted {
+                        if !offscreenQueueAccepted || !offscreenSubmissionCompleted {
+                            throw InvalidOperationException("Vulkan COLR paint atlas upload is submitted without a completed offscreen fence")
+                        }
+                        if !textPaintFixture!!.Collect(atlasStats.UploadFence) {
+                            throw InvalidOperationException("Vulkan COLR paint atlas upload did not collect during cleanup")
+                        }
+                    } else if offscreenQueueAccepted {
+                        if !offscreenSubmissionCompleted || offscreenTarget == nil {
+                            throw InvalidOperationException("Vulkan accepted COLR paint upload has no completed offscreen fence")
+                        }
+                        textPaintFixture!!.MarkSubmitted(
+                            offscreenCommandBuffer,
+                            uint64(offscreenTarget!!.CompletionFence))
+                        atlasStats = textPaintFixture!!.Atlas.Stats
+                        if !atlasStats.UploadSubmitted
+                            || !textPaintFixture!!.Collect(atlasStats.UploadFence) {
+                            throw InvalidOperationException("Vulkan accepted COLR paint atlas upload did not collect during cleanup")
+                        }
+                    } else {
+                        textPaintFixture!!.AbortUpload(offscreenCommandBuffer)
+                    }
+                }
+            }
+        } catch (error Exception) {
+            Console.Error.WriteLine("Vulkan cleanup COLR paint upload failed: " + error.ToString())
+        }
+
         try {
             if offscreenTarget != nil {
                 offscreenTarget!!.Dispose()
@@ -3232,6 +3510,24 @@ unsafe func Main() int32 {
             }
         } catch (error Exception) {
             Console.Error.WriteLine("Vulkan cleanup offscreen target failed: " + error.ToString())
+        }
+
+        try {
+            if textFixture != nil {
+                textFixture!!.Dispose()
+                textFixture = nil
+            }
+        } catch (error Exception) {
+            Console.Error.WriteLine("Vulkan cleanup text fixture failed: " + error.ToString())
+        }
+
+        try {
+            if textPaintFixture != nil {
+                textPaintFixture!!.Dispose()
+                textPaintFixture = nil
+            }
+        } catch (error Exception) {
+            Console.Error.WriteLine("Vulkan cleanup COLR paint fixture failed: " + error.ToString())
         }
 
         try {

@@ -1,0 +1,12 @@
+{
+  "source": "https://github.com/harfbuzz/harfbuzz/releases/download/14.3.1/harfbuzz-14.3.1.tar.xz",
+  "sourcePath": "test/api/fonts/adwaita.ttf",
+  "archiveSha256": "9dae9538aae2ffdf70cec31f2c27bf68e2aaeeae3112688467697d5faf6194f7",
+  "fixtureSha256": "36705114c57176f77e80a14171cfeeb8b59d53241d7d41756078fd2e722f9a25",
+  "license": "SIL Open Font License 1.1 as distributed in HarfBuzz test/COPYING",
+  "licenseFile": "HarfBuzz-test-fonts-COPYING.txt",
+  "upstreamNotice": "This exact fixture is shipped in the pinned HarfBuzz API test corpus.",
+  "format": "COLR v1 with CPAL v0",
+  "glyphId": 2,
+  "codepoint": "U+0041"
+}

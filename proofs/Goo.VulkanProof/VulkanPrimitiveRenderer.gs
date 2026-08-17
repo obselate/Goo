@@ -29,11 +29,13 @@ internal struct PackedPrimitiveColor {
 internal unsafe class VulkanPrimitiveRenderer : IDisposable {
     private const DefaultClipDepth int32 = 64
     private const PushConstantSize uint32 = 112u
+    private const TextPushConstantSize uint32 = 128u
 
     private let device VkDevice
     private let dispatch VkDeviceDispatch
     private let targetFormat VkFormat
     private let imageResources VulkanImageResources?
+    private let textAtlas VulkanTextAtlas?
     private let resourceGeneration uint64
     private let clipStack []PrimitiveClip
     private let linearChannels []float32
@@ -42,6 +44,9 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
     private var linearPipeline VkPipeline
     private var radialPipeline VkPipeline
     private var sampledPipeline VkPipeline
+    private var textPipelineLayout VkPipelineLayout
+    private var textPipeline VkPipeline
+    private var textPaintPipeline VkPipeline
     private var activePipeline VkPipeline
     private var clipDepth int32
     private var activeExtent VkExtent2D
@@ -52,8 +57,21 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         get {
             var count uint32 = 4u
             if sampledPipeline != 0uL { count++ }
+            if textPipeline != 0uL { count = count + 2u }
+            if textPaintPipeline != 0uL { count++ }
             return count
         }
+    }
+
+    internal convenience init(
+        nativeDevice VkDevice,
+        nativeDispatch VkDeviceDispatch,
+        colorFormat VkFormat,
+        maxClipDepth int32,
+        nativeImageResources VulkanImageResources?,
+        expectedGeneration uint64) {
+        init(nativeDevice, nativeDispatch, colorFormat, maxClipDepth,
+            nativeImageResources, expectedGeneration, nil)
     }
 
     internal init(
@@ -62,7 +80,8 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         colorFormat VkFormat,
         maxClipDepth int32,
         nativeImageResources VulkanImageResources?,
-        expectedGeneration uint64) {
+        expectedGeneration uint64,
+        nativeTextAtlas VulkanTextAtlas?) {
         if nativeDevice == nint(0) {
             throw ArgumentException("Vulkan device is null", "nativeDevice")
         }
@@ -77,6 +96,7 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         this.dispatch = nativeDispatch
         this.targetFormat = colorFormat
         this.imageResources = nativeImageResources
+        this.textAtlas = nativeTextAtlas
         this.resourceGeneration = expectedGeneration
         if nativeImageResources != nil && expectedGeneration == 0uL {
             throw ArgumentOutOfRangeException("expectedGeneration")
@@ -201,7 +221,9 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
                     EmitImage(commandBuffer, extent, value, frame)
                 }
                 case SceneDrawKind.CachedGlyphRun {
-                    throw NotSupportedException("Vulkan primitive renderer does not support cached glyph runs")
+                    RequireRecordIndex(reference.Index, frame.CachedGlyphRunCount, "cached glyph run index")
+                    let value = frame.CachedGlyphRuns[reference.Index]
+                    EmitText(commandBuffer, extent, value, frame)
                 }
                 case SceneDrawKind.PrebuiltPathMesh {
                     throw NotSupportedException("Vulkan primitive renderer does not support path meshes")
@@ -234,6 +256,21 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
             return
         }
         disposed = true
+        if textPipeline != 0uL {
+            let destroyPipeline = dispatch.vkDestroyPipeline
+            destroyPipeline(device, textPipeline, nil)
+            textPipeline = 0uL
+        }
+        if textPaintPipeline != 0uL {
+            let destroyPipeline = dispatch.vkDestroyPipeline
+            destroyPipeline(device, textPaintPipeline, nil)
+            textPaintPipeline = 0uL
+        }
+        if textPipelineLayout != 0uL {
+            let destroyPipelineLayout = dispatch.vkDestroyPipelineLayout
+            destroyPipelineLayout(device, textPipelineLayout, nil)
+            textPipelineLayout = 0uL
+        }
         if radialPipeline != 0uL {
             let destroyPipeline = dispatch.vkDestroyPipeline
             destroyPipeline(device, radialPipeline, nil)
@@ -284,11 +321,17 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         var linearModule VkShaderModule = 0uL
         var radialModule VkShaderModule = 0uL
         var sampledModule VkShaderModule = 0uL
+        var textVertexModule VkShaderModule = 0uL
+        var textFragmentModule VkShaderModule = 0uL
+        var textPaintFragmentModule VkShaderModule = 0uL
         var createdLayout VkPipelineLayout = 0uL
+        var createdTextLayout VkPipelineLayout = 0uL
         var createdSolid VkPipeline = 0uL
         var createdLinear VkPipeline = 0uL
         var createdRadial VkPipeline = 0uL
         var createdSampled VkPipeline = 0uL
+        var createdText VkPipeline = 0uL
+        var createdTextPaint VkPipeline = 0uL
         var entryPointStorage nint = nint(0)
         try {
             vertexModule = CreateShaderModule("analytic.vert.spv")
@@ -298,6 +341,11 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
             if imageResources != nil {
                 sampledModule = CreateShaderModule("analytic_sampled_image.frag.spv")
             }
+            if textAtlas != nil {
+                textVertexModule = CreateShaderModule("hb_gpu.vert.spv")
+                textFragmentModule = CreateShaderModule("hb_gpu_draw.frag.spv")
+                textPaintFragmentModule = CreateShaderModule("hb_gpu_paint.frag.spv")
+            }
             createdLayout = CreatePipelineLayout()
             entryPointStorage = Marshal.StringToCoTaskMemUTF8("main")
             createdSolid = CreatePipeline(vertexModule, solidModule, createdLayout, entryPointStorage)
@@ -305,6 +353,13 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
             createdRadial = CreatePipeline(vertexModule, radialModule, createdLayout, entryPointStorage)
             if imageResources != nil {
                 createdSampled = CreatePipeline(vertexModule, sampledModule, createdLayout, entryPointStorage)
+            }
+            if textAtlas != nil {
+                createdTextLayout = CreateTextPipelineLayout()
+                createdText = CreatePipeline(textVertexModule, textFragmentModule,
+                    createdTextLayout, entryPointStorage)
+                createdTextPaint = CreatePipeline(textVertexModule, textPaintFragmentModule,
+                    createdTextLayout, entryPointStorage)
             }
             let destroyShaderModule = dispatch.vkDestroyShaderModule
             destroyShaderModule(device, vertexModule, nil)
@@ -319,6 +374,18 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
                 destroyShaderModule(device, sampledModule, nil)
                 sampledModule = 0uL
             }
+            if textVertexModule != 0uL {
+                destroyShaderModule(device, textVertexModule, nil)
+                textVertexModule = 0uL
+            }
+            if textFragmentModule != 0uL {
+                destroyShaderModule(device, textFragmentModule, nil)
+                textFragmentModule = 0uL
+            }
+            if textPaintFragmentModule != 0uL {
+                destroyShaderModule(device, textPaintFragmentModule, nil)
+                textPaintFragmentModule = 0uL
+            }
             pipelineLayout = createdLayout
             createdLayout = 0uL
             solidPipeline = createdSolid
@@ -329,8 +396,20 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
             createdRadial = 0uL
             sampledPipeline = createdSampled
             createdSampled = 0uL
+            textPipelineLayout = createdTextLayout
+            createdTextLayout = 0uL
+            textPipeline = createdText
+            createdText = 0uL
+            textPaintPipeline = createdTextPaint
+            createdTextPaint = 0uL
         } catch (error Exception) {
             let destroyPipeline = dispatch.vkDestroyPipeline
+            if createdText != 0uL {
+                destroyPipeline(device, createdText, nil)
+            }
+            if createdTextPaint != 0uL {
+                destroyPipeline(device, createdTextPaint, nil)
+            }
             if createdRadial != 0uL {
                 destroyPipeline(device, createdRadial, nil)
             }
@@ -347,7 +426,20 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
                 let destroyPipelineLayout = dispatch.vkDestroyPipelineLayout
                 destroyPipelineLayout(device, createdLayout, nil)
             }
+            if createdTextLayout != 0uL {
+                let destroyPipelineLayout = dispatch.vkDestroyPipelineLayout
+                destroyPipelineLayout(device, createdTextLayout, nil)
+            }
             let destroyShaderModule = dispatch.vkDestroyShaderModule
+            if textFragmentModule != 0uL {
+                destroyShaderModule(device, textFragmentModule, nil)
+            }
+            if textVertexModule != 0uL {
+                destroyShaderModule(device, textVertexModule, nil)
+            }
+            if textPaintFragmentModule != 0uL {
+                destroyShaderModule(device, textPaintFragmentModule, nil)
+            }
             if radialModule != 0uL {
                 destroyShaderModule(device, radialModule, nil)
             }
@@ -416,6 +508,30 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         let createPipelineLayout = dispatch.vkCreatePipelineLayout
         if createPipelineLayout(device, &createInfo, nil, &result) != VkConstants.VK_SUCCESS || result == 0uL {
             throw InvalidOperationException("vkCreatePipelineLayout failed")
+        }
+        return result
+    }
+
+    private func CreateTextPipelineLayout() VkPipelineLayout {
+        if textAtlas == nil || textAtlas!!.DescriptorSetLayout == 0uL {
+            throw InvalidOperationException("Vulkan text atlas descriptor layout is unavailable")
+        }
+        var descriptorLayout VkDescriptorSetLayout = textAtlas!!.DescriptorSetLayout
+        var pushRange = VkPushConstantRange{}
+        pushRange.stageFlags = uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
+            | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT)
+        pushRange.offset = 0u
+        pushRange.size = TextPushConstantSize
+        var createInfo = VkPipelineLayoutCreateInfo{}
+        createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
+        createInfo.setLayoutCount = 1u
+        createInfo.pSetLayouts = &descriptorLayout
+        createInfo.pushConstantRangeCount = 1u
+        createInfo.pPushConstantRanges = &pushRange
+        var result VkPipelineLayout = 0uL
+        let createPipelineLayout = dispatch.vkCreatePipelineLayout
+        if createPipelineLayout(device, &createInfo, nil, &result) != VkConstants.VK_SUCCESS || result == 0uL {
+            throw InvalidOperationException("vkCreatePipelineLayout failed for Vulkan text")
         }
         return result
     }
@@ -853,6 +969,113 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
             uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
                 | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT),
             0u, PushConstantSize, *void(&push))
+        let draw = dispatch.vkCmdDraw
+        draw(commandBuffer, 6u, 1u, 0u, 0u)
+    }
+
+    private func EmitText(
+        commandBuffer VkCommandBuffer,
+        extent VkExtent2D,
+        value CachedGlyphRunRefRecord,
+        frame SceneFrame) {
+        if textAtlas == nil || textPipelineLayout == 0uL {
+            throw NotSupportedException("Vulkan primitive renderer has no text atlas pipeline")
+        }
+        ValidateBounds(value.Bounds)
+        ValidateTransformIndex(frame, value.TransformIndex)
+        if !value.GlyphRunId.IsValid || value.GlyphRunId.Kind != SceneResourceKind.GlyphRun {
+            throw ArgumentException("cached glyph run id is not a glyph run")
+        }
+        if !value.AtlasId.IsValid || value.AtlasId.Kind != SceneResourceKind.Atlas {
+            throw ArgumentException("cached glyph atlas id is not an atlas")
+        }
+        var selectedPipeline VkPipeline = 0uL
+        if value.RenderMode == 2u {
+            selectedPipeline = textPipeline
+        } else if value.RenderMode == 3u {
+            selectedPipeline = textPaintPipeline
+        } else {
+            throw NotSupportedException("Vulkan text proof supports only monochrome and COLR paint glyphs")
+        }
+        if selectedPipeline == 0uL {
+            throw NotSupportedException("Vulkan primitive renderer has no selected text pipeline")
+        }
+        if value.Bounds.IsEmpty {
+            return
+        }
+        let atlasTexelOffset = uint64(value.AtlasTexelOffset)
+        let atlasTexelCount = uint64(value.AtlasTexelCount)
+        let atlasTexelTotal = uint64(textAtlas!!.TexelCount)
+        if atlasTexelCount == 0uL || atlasTexelOffset >= atlasTexelTotal {
+            throw ArgumentOutOfRangeException("cached glyph atlas range")
+        }
+        let atlasTexelAvailable = atlasTexelTotal - atlasTexelOffset
+        if atlasTexelCount > atlasTexelAvailable {
+            throw ArgumentOutOfRangeException("cached glyph atlas range")
+        }
+        ValidateFinite(value.GlyphMinX, "cached glyph min x")
+        ValidateFinite(value.GlyphMinY, "cached glyph min y")
+        ValidateFinite(value.GlyphMaxX, "cached glyph max x")
+        ValidateFinite(value.GlyphMaxY, "cached glyph max y")
+        if value.GlyphMinX >= value.GlyphMaxX || value.GlyphMinY >= value.GlyphMaxY {
+            throw ArgumentOutOfRangeException("cached glyph extents")
+        }
+        let transform = ResolveTransform(frame, value.TransformIndex)
+        let width = float32(extent.width)
+        let height = float32(extent.height)
+        var push = HbGpuTextPushConstants{}
+        push.transform_m00 = 2.0F * transform.A / width
+        push.transform_m01 = 2.0F * transform.B / height
+        push.transform_m02 = 0.0F
+        push.transform_m03 = 0.0F
+        push.transform_m10 = 2.0F * transform.C / width
+        push.transform_m11 = 2.0F * transform.D / height
+        push.transform_m12 = 0.0F
+        push.transform_m13 = 0.0F
+        push.transform_m20 = 0.0F
+        push.transform_m21 = 0.0F
+        push.transform_m22 = 1.0F
+        push.transform_m23 = 0.0F
+        push.transform_m30 = 2.0F * transform.TX / width - 1.0F
+        push.transform_m31 = 2.0F * transform.TY / height - 1.0F
+        push.transform_m32 = 0.0F
+        push.transform_m33 = 1.0F
+        push.viewport_x = width
+        push.viewport_y = height
+        push.viewport_z = 0.0F
+        push.viewport_w = 0.0F
+        push.glyphBounds_x = value.GlyphMinX
+        push.glyphBounds_y = value.GlyphMinY
+        push.glyphBounds_z = value.GlyphMaxX
+        push.glyphBounds_w = value.GlyphMaxY
+        push.glyphInput_x = value.AtlasTexelOffset
+        push.glyphInput_y = 0u
+        push.glyphInput_z = 0u
+        push.glyphInput_w = 0u
+        let rgba = int32(value.Color)
+        let red = (rgba >> int32(24)) & int32(255)
+        let green = (rgba >> int32(16)) & int32(255)
+        let blue = (rgba >> int32(8)) & int32(255)
+        let alpha = float32(rgba & int32(255)) / 255.0F
+        if value.RenderMode == 2u {
+            push.foreground_x = linearChannels[red] * alpha
+            push.foreground_y = linearChannels[green] * alpha
+            push.foreground_z = linearChannels[blue] * alpha
+        } else {
+            push.foreground_x = linearChannels[red]
+            push.foreground_y = linearChannels[green]
+            push.foreground_z = linearChannels[blue]
+        }
+        push.foreground_w = alpha
+        textAtlas!!.BindDescriptor(commandBuffer, textPipelineLayout)
+        let bindPipeline = dispatch.vkCmdBindPipeline
+        bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline)
+        activePipeline = selectedPipeline
+        let pushConstants = dispatch.vkCmdPushConstants
+        pushConstants(commandBuffer, textPipelineLayout,
+            uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
+                | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT),
+            0u, TextPushConstantSize, *void(&push))
         let draw = dispatch.vkCmdDraw
         draw(commandBuffer, 6u, 1u, 0u, 0u)
     }

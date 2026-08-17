@@ -1,13 +1,13 @@
 # Goo Gaps and Reductions Plan
 
-Status: architecture Q&A accepted except O16, which remains a later measured AA decision. S12-I01 versioned stable ImageSourceProvider contract accepted. The public Slug shader repository is accepted as the rendering-stage upstream. Open CPU-side text and vector implementation gates remain before Goo product integration. Non-shipping Vulkan proof active, Goo product implementation not started
+Status: architecture Q&A accepted except O16, which remains a later measured AA decision. S12-I01 versioned stable ImageSourceProvider contract accepted. The locked text stack now has an active non-shipping Vulkan proof exercising the proposed Goo-internal provider boundary. The proof is partially implemented and its remaining gates are listed below. Goo product integration has not started. Goo.InternalTextInterop remains live until the atomic Vulkan cutover.
 
 Date: 2026-08-17
 
 Branch: `gaps-and-reductions`
 
-This artifact records the accepted architecture direction and the work that remains before
-implementation. The larger
+This artifact records the accepted architecture direction and the work that remains before Goo
+product integration and shipping. The larger
 `GAPS-AND-REDUCTIONS.md` file is supporting research, not an approved architecture decision. The
 completed Skia responsibility inventory is in `VULKAN-SKIA-REPLACEMENT.md`.
 
@@ -44,24 +44,23 @@ benchmarks, development tools, external packages, and large vendored dependencie
 | L17 | Structural changes inside Goo are allowed if they improve the result. The declarative API must stay simple |
 | L18 | Review the remaining architecture decisions one at a time in the stated Q&A order |
 | L19 | A candidate dependency or technique is not selected until its Q&A decision is accepted |
-| L20 | Use the same required text shaping, font inputs, fallback policy, rasterization, and glyph composition behavior on Windows and Linux |
+| L20 | Use the same locked text provider, shaping, registered font inputs, fallback policy, glyph composition, and Vulkan resource behavior on Windows and Linux |
 | L21 | Limit this plan and its implementation to Goo core. Hivemind is only a requirements and benchmark reference corpus |
 | L22 | Use the newest qualifying Skia benchmark results as the frozen historical baseline, then continually improve accepted Vulkan results from that floor |
 | L23 | Goo core and Goo-owned runtime helpers contain only G# source. C# tests, benchmarks, tools, packages, and vendors remain allowed |
 
 ## 2. Decision register
 
-All immediate Q&A decisions are accepted. O02 and O03 select an OpenType and Goo-owned or freely
-redistributable implementation direction for text and arbitrary vector paths, subject to the recorded
-implementation gates. Slug's algorithm patent is public domain and its two official MIT/Apache-2.0
-HLSL shaders are reference only. O15 is outside Goo core.
+All immediate Q&A decisions are accepted. O02 locks the text stack below. O03 selects a Goo-owned or
+freely redistributable implementation direction for arbitrary vector paths, subject to the recorded
+implementation gates. O15 is outside Goo core.
 O16 remains a later proof decision because its AA method needs Vulkan measurements.
 
 | ID | Decision | Status | Accepted direction or remaining scope |
 |---|---|---|---|
 | O01 | Skia transition and removal gate | Accepted | Remove Skia with the first direct Vulkan implementation. No live oracle, Ganesh Vulkan, fallback, or hybrid |
-| O02 | Text and font stack | Accepted | Use OpenType inputs with a Goo-owned or freely redistributable ingestion, shaping, and layout implementation. Adopt the official MIT/Apache-2.0 Slug HLSL shaders as the rendering-stage upstream under the public-domain algorithm. The selected stack must pass source, license, ABI, resource, corpus, visual-quality, performance, allocation, lifecycle, package, and Windows/Linux gates |
-| O03 | Path geometry and hit testing | Accepted | Use a Goo-owned or freely redistributable curve, band, fill, stroke, and Vulkan implementation. Slug's public-domain algorithm and official MIT/Apache-2.0 HLSL shaders may inform the implementation but create no runtime dependency. Goo owns curve conversion, CPU hit testing, clipping, paint composition, caching, and lifetime |
+| O02 | Text and font stack | Accepted | Use runtime `.ttf`/`.otf`/`.ttc`/`.otc` inputs with a trimmed vendored HarfBuzz 14.3.1 core plus `hb-gpu` behind a stable Goo-internal provider ABI. Use .NET 10 `StringInfo` graphemes initially, `Unicode.Bidi` 0.3.18 with a pinned Unicode 16 profile, and generated G# UAX #14, UAX #29, Scripts, and ScriptExtensions tables. Goo owns itemization, registered-font-first fallback, layout, wrapping, editing, caret, selection, hit testing, and IME. Vulkan consumes `hb-gpu` encoded monochrome and COLR/CPAL v0/v1 glyph resources through Goo-owned pipelines. Exact parity requires identical registered font bytes and fallback order; system catalog discovery is optional best effort. Defer CBDT/CBLC, `sbix`, SVG fonts, and language hyphenation. Do not use FreeType, ICU, ClearType, platform text rasterizers, or a CPU text raster path. Text AA remains O16. The stack must pass source, license, ABI, resource, corpus, visual-quality, performance, allocation, lifecycle, package, and Windows/Linux gates |
+| O03 | Path geometry and hit testing | Accepted | Use a Goo-owned or freely redistributable curve, band, fill, stroke, and Vulkan implementation. Goo owns curve conversion, CPU hit testing, clipping, paint composition, caching, and lifetime |
 | O04 | Image codecs and SVG ownership | Accepted | Optional codec providers plus build-time compiled SVG assets. No required runtime SVG parser |
 | S12-I01 | Versioned stable `ImageSourceProvider` contract | Accepted | Nonzero monotonic `uint64` versions, immutable per-version results, version-snapshot leases, owner-thread notifications, targeted invalidation, and cache identities independent of sampling and layout |
 | O05 | CPU raster diagnostics | Accepted | Remove the product CPU renderer. Use request-driven Vulkan offscreen readback |
@@ -92,7 +91,7 @@ These are observed facts. They do not select the future renderer.
 | E07 | Historical source and size estimates are planning evidence only. They are not approved budgets |
 | E08 | Vulkan provides the GPU substrate. It does not provide a canvas, paths, font services, codecs, filters, a scene, invalidation, or cache policy |
 | E09 | Current production Skia reach is 24 files, 44 unique `SK*` symbols, 534 references, and 6,480 lines in files with direct Skia use |
-| E10 | Goo can retain Yoga, `Unicode.Bidi`, its text and editing state, the public `VectorPath` source model, and the `ImageSourceProvider` pixel boundary |
+| E10 | Goo can retain Yoga, `Unicode.Bidi` 0.3.18, its text and editing state, the public `VectorPath` source model, and the `ImageSourceProvider` pixel boundary |
 | E11 | The highest-risk Skia losses are text and color emoji, path expansion and algebra, group opacity and advanced blends, masks and shadows, and color-space parity |
 | E12 | Removing Skia can remove its raw native package asset, but replacement font, path, codec, and allocation dependencies reduce the net size gain |
 
@@ -107,18 +106,78 @@ presentation layer. It does not replace Skia's 2D engine. Goo must provide the r
 primitives, clipping, compositing, caching, lifetime, and recovery rules. Narrow specialist services
 can provide the font, geometry, and codec work that Vulkan does not define.
 
-The former HarfBuzz and FreeType proof is frozen as non-shipping evidence until O02 selects the open
-implementation, but it is not permanently withdrawn. OpenType remains the font technology and input
-contract. Goo must select or implement an open stack covering font ingestion, shaping, layout, curve
-and band construction, vector paths, build-time asset compilation, and Vulkan resource and shader
-integration. A proprietary SDK, paid runtime, closed headers or tools, or non-redistributable artifact
-cannot enter Goo. Slug's algorithm patent is public domain, and its two official MIT/Apache-2.0 HLSL
-shaders are the accepted rendering-stage upstream and may be ported or compiled with the required notices. DirectWrite, Fontconfig,
-Vulkan Memory Allocator, Lyon, Kurbo, Clipper2, Wuffs, stb, resvg, and other named options remain
-unselected until the open implementation gate qualifies them. GPUI remains a comparison source only.
+The locked text path targets runtime OpenType inputs with a trimmed vendored HarfBuzz 14.3.1 core plus
+`hb-gpu` and a stable versioned Goo-internal provider ABI. Ship the native core and `hb-gpu` together as a
+private Goo runtime payload per RID, with no external HarfBuzz installation. HarfBuzz provides table
+parsing, shaping, metrics, variation coordinates, coverage, outline extraction, and COLR/CPAL paint
+traversal. `hb-gpu` encodes monochrome and COLR/CPAL v0/v1 glyph data into compact CPU blobs and
+provides shader source. Goo compiles the pinned GLSL-compatible shader source into SPIR-V at build time
+and ships validated SPIR-V only. Goo owns the
+Vulkan texel-buffer atlas (`VkBufferView`), descriptors, pipelines, draw ranges, synchronization,
+cache lifetime, and device-loss rebuild. The proof has no OpenGL dependency and no CPU text raster
+fallback. Its G# provider directly P/Invokes the vendored upstream HarfBuzz and `hb-gpu` C ABIs to
+exercise the proposed boundary. The locked stable versioned provider ABI is not implemented yet. The
+private RID payload is built from the pinned upstream source archive. No Goo-owned C or C# runtime
+helper or shim is introduced.
+
+The runtime accepts `.ttf`, `.otf`, `.ttc`, and `.otc` bytes. .NET 10 `StringInfo` is the initial
+grapheme implementation. `Unicode.Bidi` 0.3.18 and generated G# UAX #14, UAX #29, Scripts, and
+ScriptExtensions tables use the pinned Unicode 16 supported behavior profile. Goo owns mixed-run
+itemization, registered-font-first fallback, paragraph layout, wrapping, ellipsis, caret, selection,
+hit testing, and IME geometry. Exact parity is defined by identical registered font bytes, variation
+settings, shaping options, Unicode 16 profile, and explicit fallback order on Windows x64 and Linux
+x64. System font catalog discovery is optional best effort and is not an exact-parity input.
+
+The initial glyph set is monochrome analytical outlines plus COLR/CPAL v0/v1. CBDT/CBLC, `sbix`, SVG
+fonts, and language-specific hyphenation are deferred. FreeType, ICU, DirectWrite, Fontconfig,
+ClearType, platform text rasterizers, and CPU text rasterization are not allowed. Text antialiasing
+remains the O16 measured policy decision. The locked provider ABI must use caller-owned buffers and
+workspaces, stable versioned results, and no public text-engine handles. It must reconstruct encoded
+glyph data, SPIR-V resources, descriptors, and dependent draw ranges from registered font bytes and
+logical text state after device loss.
+
+The earlier HarfBuzz/FreeType proof and public Slug shader references are superseded evidence only.
+They make no compatibility claim for Goo's Vulkan text path and are not runtime dependencies, fallback
+paths, or implementation candidates. DirectWrite,
+Fontconfig, Vulkan Memory Allocator, Lyon, Kurbo, Clipper2, Wuffs, stb, resvg, and other named options
+remain outside the accepted stack. GPUI remains a comparison source only.
 
 The full service-by-service map, candidate evidence, and replacement proof corpus are in
 `VULKAN-SKIA-REPLACEMENT.md`.
+
+### Implemented non-shipping Vulkan text proof state
+
+This is proof status only. It is not Goo product integration, and it does not retire
+`Goo.InternalTextInterop`. That path remains live as the current Skia baseline until the atomic
+Vulkan cutover passes its gates.
+
+The proof provider is implemented in G# and directly P/Invokes the pinned upstream HarfBuzz and
+`hb-gpu` C ABIs to exercise the proposed Goo-internal provider boundary. It carries pinned,
+reproducible, source-built Linux x64 and Windows x64 payloads. Linux JIT and NativeAOT execution are
+covered. Windows cross-build and package validation are prepared, but Windows runtime execution is
+deferred by the user. The locked stable versioned provider ABI is not implemented by this proof.
+
+The proof payload has no FreeType, no Goo-owned C shim, and no bitmap shader path. Shaping uses
+UTF-16 input and reports UTF-16 clusters. The explicit provider contract covers face index,
+variation coordinates, direction, script, language, feature records, flags, and cluster level.
+
+The proof compiles and validates precompiled `hb-gpu` SPIR-V, uses bounded Vulkan texel-atlas
+records, and has real Vulkan readbacks for analytical monochrome glyphs and COLRv0 and COLRv1
+glyphs. The deterministic CPAL sRGB-to-linear Q15 vendor patch is applied. sRGB and blend format
+gates are present. The recording hot paths report zero managed allocations.
+
+Remaining text proof gates, not completed features:
+
+- Registered-font fallback and mixed-run itemization.
+- Stable versioned provider ABI with bounded caller-owned output buffers, workspaces, and explicit
+  status values.
+- `Unicode.Bidi` integration and generated Unicode 16 tables.
+- Full layout, editing, caret, selection, hit-testing, and IME corpus coverage.
+- Multi-atlas residency, cache policy, and batching behavior.
+- Device-loss reconstruction of text resources and dependent draw ranges.
+- Windows runtime execution and runtime lifecycle validation.
+- Final color-policy details beyond the current CPAL conversion and format gates.
+- O16 fixed cross-platform antialiasing policy and measurement.
 
 ## 4. Work sequence
 
@@ -126,10 +185,11 @@ The full service-by-service map, candidate evidence, and replacement proof corpu
 
 1. Correct this artifact.
 2. Lock the order of work.
-3. Record the accepted open OpenType and Goo-owned vector direction for O02/Q2 and O03/Q3, then review any later
+3. Record the locked text stack in O02/Q2 and the Goo-owned vector direction in O03/Q3, then review any later
    evidence-triggered decisions one at a time in the Q&A ledger.
 4. Record accepted answers in this artifact before they affect later work.
-5. Do not implement architecture changes before this review is complete.
+5. Do not start Goo product architecture changes before this review is complete. Non-shipping proof
+   work remains separately identified from product integration.
 
 Exit: the requirements, open questions, evidence, and decision points match the user's intent.
 
@@ -151,8 +211,8 @@ Exit: the requirements, open questions, evidence, and decision points match the 
 
 Exit: a clean clone restores, builds, packages, and runs the current Goo behavior with G# 0.4.1,
 with the current helper and package shape preserved. The final direct Vulkan cutover removes the
-Goo-owned C# helper after all required replacements pass. External C# vendors such as Yoga.Net
-remain unchanged.
+legacy Goo-owned C# helper after all required replacements pass; the locked text provider introduces
+no new Goo-owned C# runtime helper. External C# vendors such as Yoga.Net remain unchanged.
 
 ### P2. Establish the Goo core and platform requirements
 
@@ -209,13 +269,13 @@ production backend work starts.
    surface loss, and declared device-loss handling on Windows and Linux.
 2. Prove common UI paths with boxes, per-edge borders, gradients, images, transforms, clipping,
    offscreen targets, readback, and transparent composition.
-3. Prove the highest-risk losses before broad primitive coverage. Include font fallback and color
-   emoji, stroked arbitrary paths, path clips and hit tests, opacity groups, advanced blends, masked
-   shadow spread and inset behavior, nested masks, and color-space parity.
-4. For text proof, use one minimal end-to-end corpus with identical approved inputs, fallback order,
-   policy, and expected geometry on both platforms. The selected open implementation must document
-   its asset, shaping, rendering, and resource behavior. The frozen HarfBuzz/FreeType proof is not
-   extended or shipped until the open OpenType implementation is selected and qualified.
+3. Prove the highest-risk losses before broad primitive coverage. Include registered-font fallback and
+   supported COLR/CPAL v0/v1 color glyphs, stroked arbitrary paths, path clips and hit tests, opacity
+   groups, advanced blends, masked shadow spread and inset behavior, nested masks, and color-space parity.
+4. For text proof, use the locked provider with runtime `.ttf`/`.otf`/`.ttc`/`.otc` inputs, identical
+   registered font bytes, variation settings, shaping options, Unicode 16 profile, fallback order,
+   and expected geometry on both platforms. Compile its pinned shader source to SPIR-V and prove the
+   Vulkan atlas resources, descriptor bindings, resource lifetime, and device-loss reconstruction.
 5. Run the fixed proof scene and Hivemind-derived reference hot paths against captured visual and
    performance baselines plus the approved Goo core behavior contract.
 6. Report Windows and Linux feature coverage, unsupported behavior, pixel differences, total frame time,
@@ -258,8 +318,9 @@ Only after P4 and P5 decisions:
 1. Implement the chosen UI-to-renderer boundary.
 2. Implement direct Vulkan ownership with no Skia backend or fallback.
 3. Implement shared or per-window GPU ownership as approved.
-4. Implement the accepted open OpenType text stack only after its gates pass. Until then, keep the
-   frozen HarfBuzz/FreeType proof outside Goo runtime integration.
+4. Implement the locked text provider only after its source, license, reproducibility, ABI, resource,
+   corpus, visual, performance, allocation, lifecycle, package, and Windows/Linux gates pass. Do not
+   add a temporary text backend or fallback.
 5. Add required image, path, clip, layer, effect, readback, and recovery paths.
 6. Preserve declarative G# authoring and Yoga behavior.
 7. Keep public additions limited to mechanisms that consumers cannot compose themselves.
@@ -340,11 +401,12 @@ Do not add one test per primitive, Vulkan result code, component state, or inter
 - Using a separate full-window backing image or framebuffer tile cache as the initial retention model.
 - Handwriting Vulkan ABI structs, constants, or command signatures instead of generating them from
   the pinned Khronos registry.
-- Adding a proprietary or paid Slug SDK, closed headers or tools, or a non-redistributable runtime
-  artifact to Goo. Slug remains a public-domain algorithm and MIT/Apache-2.0 HLSL shader reference
-  only. The open OpenType, vector, asset, and Vulkan implementation must pass its source, license,
-  ABI, resource, corpus, and both-RID gates before shipping. HarfBuzz, FreeType, DirectWrite,
-  Fontconfig, Vulkan Memory Allocator, Lyon, Kurbo, Clipper2, Wuffs, stb, and resvg remain unselected.
+- Adding a proprietary or paid text or vector SDK, closed headers or tools, or a non-redistributable
+  runtime artifact to Goo. The locked HarfBuzz provider, generated Unicode tables, vector path,
+  asset, and Vulkan implementations must pass their source, license, ABI, resource, corpus, and
+  both-RID gates before shipping. FreeType, ICU, DirectWrite, Fontconfig, ClearType, platform text
+  rasterizers, CPU text rasterization, Vulkan Memory Allocator, Lyon, Kurbo, Clipper2, Wuffs, stb,
+  and resvg are not part of the accepted stack.
 - Replacing the current image or SVG stack before its accepted implementation gate.
 - Copying GPUI's renderer or its Windows and Linux platform split.
 - Moving composed controls or application-specific behavior into Goo core.
@@ -383,79 +445,70 @@ comparison. Q10 defines the quantitative performance, memory, and package gates.
 
 ### Q2. Text and font stack
 
-Accepted answer: use OpenType inputs with a Goo-owned or freely redistributable implementation for
-font ingestion, shaping, layout, curve and band construction, asset compilation, and Vulkan resource
-integration on Windows x64 and Linux x64. No proprietary SDK, paid runtime, closed headers or tools,
-or non-redistributable artifact may enter Goo.
+Accepted answer: lock a Vulkan-compatible runtime text stack behind a stable Goo-internal provider
+ABI. Goo vendors a trimmed HarfBuzz 14.3.1 core plus `hb-gpu` as a private native payload per RID.
+The provider ABI hides all HarfBuzz handles and experimental `hb-gpu` APIs from public G# code. Build
+without FreeType, ICU, GLib, platform integrations, bitmap/vector/raster helpers, subsetting,
+utilities, or other unused modules. No proprietary SDK, paid runtime, closed headers or tools, or
+non-redistributable artifact may enter Goo.
 
-The official Slug repository is accepted as the rendering-stage shader upstream. Its algorithm patent
-has been dedicated to the public domain, and its two HLSL reference shaders are MIT/Apache-2.0. Goo
-will pin the initial import to commit `be3c13eb7d63f9e8aa5c583e42d92c374cb91d98` and vendor the
-selected license, `NOTICE`, and source hashes. Goo may port or compile those shaders with the required
-notices. The repository does not supply
-the CPU runtime, OpenType ingestion, shaping/layout, curve/band builder, vector path builder, asset
-compiler, or SDK headers.
+The proof provider is implemented in G# and directly P/Invokes the vendored upstream HarfBuzz and
+`hb-gpu` C ABIs to exercise the proposed boundary. The locked stable versioned provider ABI remains
+unimplemented. The private RID payload is built from the pinned upstream source archive. No Goo-owned
+C or C# runtime helper or shim is introduced, and no text-engine handle crosses the public API.
 
-The former HarfBuzz plus FreeType proof is frozen as non-shipping evidence until the open
-implementation is selected. It may be reconsidered as a candidate, but no text dependency is
-accepted by name here. The open implementation gate must close all of the following gates:
+The provider accepts runtime `.ttf`, `.otf`, `.ttc`, and `.otc` bytes. HarfBuzz owns OpenType table
+parsing, shaping, glyph metrics, variation coordinates, coverage, outline extraction, and COLR/CPAL
+paint traversal. `hb-gpu` encodes monochrome outlines and COLR/CPAL v0/v1 paint data into compact CPU
+blobs and supplies the shader source. Goo compiles the pinned GLSL-compatible shader source into
+SPIR-V at build time and ships validated SPIR-V only. Goo owns the Vulkan atlas resources, descriptors, pipelines, draw ranges, synchronization,
+cache lifetime, and device-loss rebuild. The atlas binding is a Vulkan texel buffer (`VkBufferView`)
+using the signed-integer format required by the pinned encoder. No OpenGL API, bitmap glyph rasterizer,
+CPU text rasterizer, platform rasterizer, or ClearType path is used.
 
-- Parse approved `.ttf`/`.otf`/`.ttc`/`.otc` inputs and produce deterministic retained font or compiled
-  text assets without requiring proprietary build tools.
-- Provide shaping, bidi authority, fallback, variation coordinates, script coverage, line breaking,
-  metrics, hit location, and reusable caller-owned output buffers. Preserve Goo's UTF-16 offsets,
-  paragraph policy, editor state, caret, selection, and IME geometry.
-- Provide curve and band data, or an equivalent Vulkan-ready representation, with documented formats,
-  vertex/index layouts, shader inputs, descriptor/resource behavior, and deterministic offline
-  compilation. The generic bitmap glyph-atlas ABI is not reused for analytical outlines.
-- Keep asset source hashes, implementation/tool hashes, import options, generated asset hashes, and
-  license provenance. The runtime does not parse arbitrary font bytes unless the selected open design
-  explicitly proves that path is required and meets the size and allocation gates.
-- Permit Goo to redistribute the required source, binaries, generated shaders, generated assets, and
-  build tools under terms compatible with Goo's public packages and downstream applications.
-- Use a narrow opaque-handle C ABI only where a freely redistributable native component requires it.
-  G# NativeAOT bindings use caller-owned buffers and workspaces. Goo core and Goo-owned runtime
-  helpers remain G#. No text-engine handle crosses the public API.
-- Reconstruct compiled text, curve/band resources, descriptors, and dependent draw ranges after
-  device loss from logical assets and text state.
+The initial grapheme implementation is .NET 10 `StringInfo`. `Unicode.Bidi` 0.3.18 is vendored for
+bidi, with the initial supported behavior profile pinned to Unicode 16. Build-time generators emit G#
+tables from the same profile for UAX #14 line breaking, UAX #29 word breaking, Scripts, and
+ScriptExtensions. Goo owns mixed-run itemization, registered-font-first fallback, paragraph layout,
+wrapping, ellipsis, caret, selection, hit testing, and IME geometry. Exact parity is defined by
+identical registered font bytes, variation settings, shaping options, Unicode 16 profile, and explicit
+fallback order on Windows x64 and Linux x64. System font catalog discovery is optional best effort and
+is not an exact-parity input.
 
-Known gaps remain open and must be proven or returned to Q&A:
+Initial glyph support is monochrome analytical outlines plus COLR/CPAL v0/v1. CBDT/CBLC, `sbix`, SVG
+fonts, and language-specific hyphenation are deferred. Text antialiasing remains the O16 measured
+policy decision. The locked provider ABI must use caller-owned buffers and workspaces, stable versioned
+results, explicit status values, and no public text-engine handles. Reconstruct encoded glyph data,
+SPIR-V resources, descriptors, and dependent draw ranges from registered font bytes and logical text
+state after device loss.
 
-- Variable-font axes, color glyph forms, script coverage, and shaping parity, especially CJK, RTL,
-  combining marks, ligatures, fallback, and language-specific behavior, must be verified against the
-  fixed corpus.
-- The official Slug repository supplies only reference HLSL shaders and notices. It does not supply a
-  CPU runtime, OpenType ingestion, shaping/layout, curve/band builder, vector path builder, `.slug`
-  asset tooling, SDK headers, or Vulkan SPIR-V contract. Goo must provide or freely redistribute each
-  missing service.
-- Existing build tooling is GLSL and `glslc`. Translating the licensed HLSL into a licensed GLSL
-  derivative or using pinned build-only DXC is a later implementation choice. Neither is a runtime
-  dependency or an accepted selection in Q2.
+The provider must pass source, license, reproducibility, ABI, resource, G# NativeAOT, device-loss,
+corpus, visual, performance, allocation, package, lifecycle, and Windows/Linux gates independently.
+The permanent corpus includes a primary and fallback font, CJK, RTL, combining marks, ligatures, a
+supported COLR/CPAL color glyph, variation settings, UTF-16 offsets, grapheme boundaries, line and
+word breaks, caret, selection, hit testing, IME geometry, generated glyph blobs, Vulkan upload,
+SPIR-V pipeline use, and one device-loss reconstruction. Use identical source hashes, fallback order,
+import options, tolerances, and policy on both RIDs.
 
-Minimal permanent E2E corpus:
+Superseded evidence: the earlier HarfBuzz/FreeType proof and public Slug shader references are
+archived for historical comparison only. They make no compatibility claim for Goo's Vulkan text path
+and are not runtime dependencies, fallback paths, or implementation candidates. Do not extend or ship
+them.
 
-- One primary Latin font and one fallback font.
-- CJK, RTL, combining marks, ligatures, a supported color glyph, and the required caret,
-  selection, hit-test, IME, and UTF-16/UTF-8 offset behavior.
-- Metrics, line layout, curve/band extraction, generated vertex/triangle output, resource upload,
-  and one device-loss reconstruction.
-- Identical source and generated-asset hashes, fallback order, import options, tolerances, and policy
-  on both RIDs. This is one behavior corpus, not one test per glyph, script, or font table.
+Q2 implementation exit: the locked provider and every required component pass source, license,
+reproducibility, ABI, resource, G# NativeAOT, device-loss, corpus, visual, performance, allocation,
+package, lifecycle, and Windows/Linux gates independently. Until then, the accepted direction remains
+unshipped. The superseded evidence above is not used as a runtime implementation or fallback.
 
-Q2 implementation exit: the selected implementation and every required component pass source,
-license, reproducibility, ABI, resource, G# NativeAOT, device-loss, corpus, visual, performance,
-allocation, package, lifecycle, and Windows/Linux gates independently. Until then, the accepted
-direction remains unshipped and the frozen HarfBuzz/FreeType proof remains non-shipping evidence.
-
-Reopen Q2 if no open implementation satisfies the contract, either RID lacks a supported build,
-required font behavior is unsupported, shader integration is not reproducible, or a new dependency
-or policy is required.
+Reopen Q2 if either RID lacks a supported provider build, required font behavior is unsupported,
+shader-to-SPIR-V integration is not reproducible, Vulkan resource requirements cannot be met, or a new
+dependency or policy is required.
 
 ### Q3. Path geometry and hit testing
 
 Accepted answer: use a Goo-owned or freely redistributable curve, band, fill, stroke, and Vulkan
-implementation for arbitrary Goo paths. Slug's public-domain algorithm and official MIT/Apache-2.0
-HLSL shaders may inform the implementation but create no runtime dependency.
+implementation for arbitrary Goo paths. The path implementation owns its shader source and SPIR-V
+resources and has no dependency on superseded text or shader imports.
 
 Goo retains its immutable `VectorPath` contract. It converts cubic and elliptical-arc commands to
 deterministic quadratic sequences when retained geometry changes. The selected implementation
@@ -786,11 +839,10 @@ Accepted answer: remove an old dependency after its final Goo-core consumer has 
 the relevant Windows and Linux feature, behavior, lifecycle, package, and fallback gates pass. Skia
 follows the earlier removal boundary accepted under O01.
 
-For the accepted open OpenType text direction, the frozen HarfBuzz/FreeType proof and its native
-assets remain non-shipping evidence until the selected stack passes both RID gates. Remove that proof
-only after the selected text stack has no remaining Goo-core consumer, its generated assets, shaders,
-and native components are reproducible, and the Windows/Linux package and device-loss gates pass. No
-hidden text fallback is permitted.
+For the locked text provider, remove any proof-only assets and old text implementation after the
+HarfBuzz 14.3.1 plus `hb-gpu` payload, generated Unicode tables, shader-to-SPIR-V build, and Goo
+provider have no remaining replacement gaps and pass both RID gates. The superseded evidence named in
+Q2 remains historical only. No hidden text fallback is permitted.
 
 ### O16. Antialiasing selection constraint
 

@@ -168,6 +168,13 @@ internal struct CachedGlyphRunRefRecord {
     internal var Bounds ConservativeBounds
     internal var GlyphRunId ResourceId
     internal var AtlasId ResourceId
+    internal var GlyphId uint32
+    internal var AtlasTexelOffset uint32
+    internal var AtlasTexelCount uint32
+    internal var GlyphMinX float32
+    internal var GlyphMinY float32
+    internal var GlyphMaxX float32
+    internal var GlyphMaxY float32
     internal var Color uint32
     internal var RenderMode uint32
     internal var TransformIndex int32
@@ -555,6 +562,9 @@ internal class SceneFrame {
     internal func AddCachedGlyphRun(value CachedGlyphRunRefRecord) int32 {
         RequireOpenChunk()
         ValidateTransformIndex(value.TransformIndex)
+        if value.AtlasTexelCount == 0u {
+            throw ArgumentOutOfRangeException("atlas texel count")
+        }
         GrowCachedGlyphRuns(NextCount(cachedGlyphRunCount))
         let index = cachedGlyphRunCount
         cachedGlyphRuns[index] = value
@@ -1011,6 +1021,13 @@ internal class SceneFrame {
             hash = HashBounds(hash, value.Bounds)
             hash = HashResource(hash, value.GlyphRunId)
             hash = HashResource(hash, value.AtlasId)
+            hash = Mix(hash, uint64(value.GlyphId))
+            hash = Mix(hash, uint64(value.AtlasTexelOffset))
+            hash = Mix(hash, uint64(value.AtlasTexelCount))
+            hash = HashFloat(hash, value.GlyphMinX)
+            hash = HashFloat(hash, value.GlyphMinY)
+            hash = HashFloat(hash, value.GlyphMaxX)
+            hash = HashFloat(hash, value.GlyphMaxY)
             hash = Mix(hash, uint64(value.Color))
             hash = Mix(hash, uint64(value.RenderMode))
             hash = Mix(hash, uint64(value.TransformIndex))

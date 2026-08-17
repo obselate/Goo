@@ -1,7 +1,7 @@
 {
   "artifacts": {
     "gpu": {
-      "bytes": 195160,
+      "bytes": 200036,
       "exports": [
         "hb_gpu_draw_clear",
         "hb_gpu_draw_create_or_fail",
@@ -39,29 +39,36 @@
         "hb_gpu_paint_shader_source",
         "hb_gpu_shader_source"
       ],
-      "file": "libgoo-harfbuzz-gpu.so",
-      "format": "ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, stripped",
-      "glibcVersions": [
-        "2.2.5",
-        "2.4",
-        "2.14",
-        "2.35"
-      ],
-      "maxGlibc": "2.35",
+      "file": "goo-harfbuzz-gpu.dll",
+      "format": "PE32+ x86-64",
+      "imageName": "goo-harfbuzz-gpu.dll",
       "needed": [
-        "libc.so.6",
-        "libgoo-harfbuzz.so",
-        "libm.so.6"
+        "KERNEL32.dll",
+        "goo-harfbuzz.dll",
+        "msvcrt.dll"
       ],
-      "rpath": [],
-      "runpath": [
-        "$ORIGIN/"
-      ],
-      "sha256": "3c469222b9256f2a16ae2384583b505d9422021272d5564c55e975c1d3f1c891"
+      "sha256": "6bc7b65c965724eb83f03ffd3d5e9620ec1adf1f8b814f16a2b3d439bfe7f60f"
     },
     "harfbuzz": {
-      "bytes": 1636320,
+      "bytes": 1679634,
       "exports": [
+        "hb_CrapPool",
+        "hb_NullPool",
+        "hb_Null_AAT_Lookup",
+        "hb_Null_AAT_SettingName",
+        "hb_Null_OT_ClipRecord",
+        "hb_Null_OT_CmapSubtableLongGroup",
+        "hb_Null_OT_Index",
+        "hb_Null_OT_LangSys",
+        "hb_Null_OT_RangeRecord",
+        "hb_Null_OT_VarIdx",
+        "hb_Null_hb_buffer_t",
+        "hb_Null_hb_draw_funcs_t",
+        "hb_Null_hb_face_t",
+        "hb_Null_hb_font_funcs_t",
+        "hb_Null_hb_font_t",
+        "hb_Null_hb_paint_funcs_t",
+        "hb_Null_hb_unicode_funcs_t",
         "hb_aat_layout_feature_type_get_name_id",
         "hb_aat_layout_feature_type_get_selector_infos",
         "hb_aat_layout_get_feature_types",
@@ -211,6 +218,11 @@
         "hb_face_set_index",
         "hb_face_set_upem",
         "hb_face_set_user_data",
+        "hb_fallback_shape",
+        "hb_fallback_shaper_face_data_create",
+        "hb_fallback_shaper_face_data_destroy",
+        "hb_fallback_shaper_font_data_create",
+        "hb_fallback_shaper_font_data_destroy",
         "hb_feature_from_string",
         "hb_feature_to_string",
         "hb_font_add_glyph_origin_for_direction",
@@ -348,6 +360,7 @@
         "hb_map_set_user_data",
         "hb_map_update",
         "hb_map_values",
+        "hb_modified_combining_class",
         "hb_ot_color_get_svg_document_count",
         "hb_ot_color_get_svg_document_glyph_range",
         "hb_ot_color_glyph_get_layers",
@@ -434,10 +447,26 @@
         "hb_ot_name_get_utf32",
         "hb_ot_name_get_utf8",
         "hb_ot_name_list_names",
+        "hb_ot_shape",
         "hb_ot_shape_get_buffer_format_serial",
         "hb_ot_shape_glyphs_closure",
         "hb_ot_shape_plan_collect_lookups",
         "hb_ot_shape_plan_get_feature_tags",
+        "hb_ot_shaper_arabic",
+        "hb_ot_shaper_default",
+        "hb_ot_shaper_dumber",
+        "hb_ot_shaper_face_data_create",
+        "hb_ot_shaper_face_data_destroy",
+        "hb_ot_shaper_font_data_create",
+        "hb_ot_shaper_font_data_destroy",
+        "hb_ot_shaper_hangul",
+        "hb_ot_shaper_hebrew",
+        "hb_ot_shaper_indic",
+        "hb_ot_shaper_khmer",
+        "hb_ot_shaper_myanmar",
+        "hb_ot_shaper_myanmar_zawgyi",
+        "hb_ot_shaper_thai",
+        "hb_ot_shaper_use",
         "hb_ot_tag_from_language",
         "hb_ot_tag_to_language",
         "hb_ot_tag_to_script",
@@ -564,6 +593,7 @@
         "hb_style_get_value",
         "hb_tag_from_string",
         "hb_tag_to_string",
+        "hb_ucd_get_unicode_funcs",
         "hb_unicode_combining_class",
         "hb_unicode_compose",
         "hb_unicode_decompose",
@@ -596,25 +626,14 @@
         "hb_version_atleast",
         "hb_version_string"
       ],
-      "file": "libgoo-harfbuzz.so",
-      "format": "ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, stripped",
-      "glibcVersions": [
-        "2.2.5",
-        "2.3",
-        "2.3.4",
-        "2.4",
-        "2.14",
-        "2.33",
-        "2.35"
-      ],
-      "maxGlibc": "2.35",
+      "file": "goo-harfbuzz.dll",
+      "format": "PE32+ x86-64",
+      "imageName": "goo-harfbuzz.dll",
       "needed": [
-        "libc.so.6",
-        "libm.so.6"
+        "KERNEL32.dll",
+        "msvcrt.dll"
       ],
-      "rpath": [],
-      "runpath": [],
-      "sha256": "c40fc5e7d035bea49bf1def1dabbe0375f1ad02f64b5c744d81462964a1deca2"
+      "sha256": "6aa0350a52f360a6883f34ec27e7dca168daff51a1e35d815f13d76e53e7fb1e"
     }
   },
   "build": {
@@ -758,10 +777,21 @@
       "--default-library=shared",
       "--wrap-mode=nodownload"
     ],
+    "crossFile": {
+      "ar": "x86_64-w64-mingw32-ar",
+      "c": "x86_64-w64-mingw32-gcc",
+      "cpp": "x86_64-w64-mingw32-g++",
+      "cpu": "x86_64",
+      "nm": "x86_64-w64-mingw32-nm",
+      "objdump": "x86_64-w64-mingw32-objdump",
+      "strip": "x86_64-w64-mingw32-strip",
+      "system": "windows",
+      "windres": "x86_64-w64-mingw32-windres"
+    },
     "environment": {
       "CFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
       "CXXFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
-      "LDFLAGS": "-Wl,--build-id=none",
+      "LDFLAGS": "-Wl,--no-insert-timestamp -static-libgcc -static-libstdc++",
       "SOURCE_DATE_EPOCH": "0"
     },
     "harfbuzzOptions": [
@@ -838,12 +868,14 @@
       }
     ],
     "system": "Meson and Ninja",
-    "target": "linux-x64",
+    "target": "win-x64",
     "toolchain": {
-      "cc": "cc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0",
+      "cc": "x86_64-w64-mingw32-gcc (GCC) 10-win32 20220113",
+      "cpp": "x86_64-w64-mingw32-g++ (GCC) 10-win32 20220113",
       "meson": "0.61.2",
       "ninja": "1.10.1",
-      "strip": "GNU strip (GNU Binutils for Ubuntu) 2.38"
+      "objdump": "GNU objdump (GNU Binutils) 2.38",
+      "strip": "GNU strip (GNU Binutils) 2.38"
     },
     "windows": {
       "forbiddenImports": [

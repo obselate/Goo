@@ -96,6 +96,8 @@
     "vkCmdCopyImageToBuffer",
     "vkCmdCopyBuffer",
     "vkCmdCopyBufferToImage",
+    "vkCreateBufferView",
+    "vkDestroyBufferView",
     "vkCreateSampler",
     "vkDestroySampler",
     "vkCreateDescriptorSetLayout",
@@ -115,7 +117,8 @@
     "VkMemoryDedicatedAllocateInfo",
     "VkPipelineRenderingCreateInfo",
     "VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT",
-    "VkSwapchainPresentFenceInfoEXT"
+    "VkSwapchainPresentFenceInfoEXT",
+    "VkBufferViewCreateInfo"
   ],
   "requiredConstants": [
     "VK_FORMAT_FEATURE_TRANSFER_SRC_BIT",

@@ -16,16 +16,29 @@
     <Content Include="Generated/Shaders/analytic_linear3.frag.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="Generated/Shaders/analytic_radial3.frag.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="Generated/Shaders/analytic_sampled_image.frag.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="Generated/Shaders/glyph.vert.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="Generated/Shaders/glyph_alpha.frag.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Generated/Shaders/hb_gpu.vert.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Generated/Shaders/hb_gpu_draw.frag.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Generated/Shaders/hb_gpu_paint.frag.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="Assets/Text/VendSans-VariableFont_wght.ttf" Link="VendSans-VariableFont_wght.ttf" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="Assets/Text/VendSans-OFL.txt" Link="VendSans-OFL.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="Assets/Text/VendSans.provenance.json" Link="VendSans.provenance.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Assets/Text/HarfBuzz-chromacheck-colr.ttf" Link="HarfBuzz-chromacheck-colr.ttf" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Assets/Text/ChromaCheck-MIT.txt" Link="ChromaCheck-MIT.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Assets/Text/HarfBuzz-chromacheck-colr.provenance.json" Link="HarfBuzz-chromacheck-colr.provenance.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Assets/Text/HarfBuzz-adwaita-colrv1.ttf" Link="HarfBuzz-adwaita-colrv1.ttf" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Assets/Text/HarfBuzz-adwaita-colrv1.provenance.json" Link="HarfBuzz-adwaita-colrv1.provenance.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Assets/Text/HarfBuzz-TTC.ttc" Link="HarfBuzz-TTC.ttc" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Assets/Text/HarfBuzz-TTC.provenance.json" Link="HarfBuzz-TTC.provenance.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Assets/Text/HarfBuzz-test-fonts-COPYING.txt" Link="HarfBuzz-test-fonts-COPYING.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
   </ItemGroup>
   <ItemGroup Condition="'$(RuntimeIdentifier)' == 'linux-x64' Or ('$(RuntimeIdentifier)' == '' And $([MSBuild]::IsOSPlatform('Linux')))">
     <Content Include="Runtime/libgoo-harfbuzz.so" Link="libgoo-harfbuzz.so" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="Runtime/libgoo-freetype.so" Link="libgoo-freetype.so" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="Runtime/libgoo-text-native.so" Link="libgoo-text-native.so" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Runtime/libgoo-harfbuzz-gpu.so" Link="libgoo-harfbuzz-gpu.so" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="Runtime/text-native-build.json" Link="text-native-build.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64' Or ('$(RuntimeIdentifier)' == '' And $([MSBuild]::IsOSPlatform('Windows')))">
+    <Content Include="Runtime/win-x64/goo-harfbuzz.dll" Link="goo-harfbuzz.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Runtime/win-x64/goo-harfbuzz-gpu.dll" Link="goo-harfbuzz-gpu.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Runtime/win-x64/text-native-build.json" Link="text-native-build.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
   </ItemGroup>
 </Project>

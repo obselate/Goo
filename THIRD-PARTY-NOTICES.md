@@ -6,33 +6,55 @@ pinned to the source revision or release used by Goo.
 ## G# runtime support
 
 Goo's Linux bundle redistributes `Gsharp.Extensions.dll` from
-Gsharp.NET.Sdk 0.3.633.
+Gsharp.NET.Sdk 0.4.1.
 
 - Copyright (c) 2019 David Obando.
 - License: MIT.
-- [G# license](https://github.com/DavidObando/gsharp/blob/f5642aff1598630710f29737baf3416273b0dcf4/LICENSE)
+- Release commit: `d670ac98c03e0b0f7c9ac965f5fa3914712f09de`.
+- [G# license](https://github.com/DavidObando/gsharp/blob/d670ac98c03e0b0f7c9ac965f5fa3914712f09de/LICENSE)
 
-## Frozen Goo native text proof
+## HarfBuzz and hb-gpu text proof
 
-The non-shipping Vulkan proof builds and carries direct Linux native libraries
-from the upstream releases below. These files are frozen evidence for the
-reopened O02/Q2 decision. They are not an accepted Goo runtime dependency or a
-runtime fallback. The Goo-owned files use stable names `libgoo-harfbuzz.so`,
-`libgoo-freetype.so`, and `libgoo-text-native.so`.
+The non-shipping Vulkan proof carries private Linux and Windows native payloads
+built from the pinned HarfBuzz 14.3.1 upstream archive with `hb-gpu` enabled:
+`libgoo-harfbuzz.so` and `libgoo-harfbuzz-gpu.so` on Linux, with
+`goo-harfbuzz.dll` and `goo-harfbuzz-gpu.dll` on Windows. They are private Goo
+artifacts, not system-library replacements or a runtime fallback.
 
-- HarfBuzz 14.3.1: HarfBuzz Old MIT license.
+- HarfBuzz 14.3.1, including hb-gpu: HarfBuzz Old MIT license.
 - Signed tag commit: `ab5ecbb83985034a76214ac0b2b833dcd590d774`.
 - Source archive SHA-256:
   `9dae9538aae2ffdf70cec31f2c27bf68e2aaeeae3112688467697d5faf6194f7`.
+- Goo applies the checked-in
+  `tools/Goo.TextNative/patches/harfbuzz-14.3.1-cpal-linear-light.patch`
+  with SHA-256
+  `225d5b7e5a656e96ee850f41c662e625d9c29ac518c1b834b3c53b7949358b67`.
+  It patches `src/hb-gpu-paint.cc` at upstream SHA-256
+  `78c12e63968ae3de1d56cc6bc788930f8474bd0e34beed66ca24375ad137a463`
+  to encode explicit CPAL RGB bytes as linear-light Q15 through a fixed
+  256-entry lookup. Alpha and foreground color semantics remain unchanged.
+- The selected hb-gpu GLSL inputs and retained `COPYING` text are vendored at
+  `tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/`; the native libraries are
+  built from the pinned upstream archive above.
 - [HarfBuzz 14.3.1 license](https://github.com/harfbuzz/harfbuzz/blob/14.3.1/COPYING)
-- FreeType 2.14.3: FreeType License or GPL-2.0-or-later.
-- Signed tag commit: `0a0221a1347e2f1e07c395263540026e9a0aa7c7`.
-- Source archive SHA-256:
-  `36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f`.
-- [FreeType 2.14.3 license](https://gitlab.freedesktop.org/freetype/freetype/-/blob/VER-2-14-3/LICENSE.TXT)
-- Builds disable the HarfBuzz FreeType backend and the FreeType HarfBuzz
-  auto-hinter integration. The two shared libraries therefore have no
-  dependency cycle.
+
+The proof's deterministic color-font fixtures are copied from the same pinned
+HarfBuzz test archive. `HarfBuzz-chromacheck-colr.ttf` is covered by the
+ChromaCheck MIT notice in `proofs/Goo.VulkanProof/Assets/Text/ChromaCheck-MIT.txt`.
+`HarfBuzz-adwaita-colrv1.ttf` is covered by the HarfBuzz test-font OFL notice
+in `proofs/Goo.VulkanProof/Assets/Text/HarfBuzz-test-fonts-COPYING.txt`.
+The `HarfBuzz-TTC.ttc` collection fixture is covered by that same OFL 1.1
+notice. Its two-face source path, SHA-256, and license mapping are recorded in
+`proofs/Goo.VulkanProof/Assets/Text/HarfBuzz-TTC.provenance.json`. Each fixture
+has a SHA-256 and source record beside it.
+
+The hb-gpu GLSL inputs are the pinned HarfBuzz sources
+`src/hb-gpu-vertex.glsl`, `src/hb-gpu-fragment.glsl`,
+`src/hb-gpu-draw-fragment.glsl`, and `src/hb-gpu-paint-fragment.glsl`.
+Goo's Vulkan wrapper GLSL and checked-in SPIR-V under
+`proofs/Goo.VulkanProof/Shaders/` and
+`proofs/Goo.VulkanProof/Generated/Shaders/` are derivative inclusions of those
+sources and retain the same attribution and license terms.
 
 ## Yoga.Net 3.2.3, based on Meta Yoga v3.2.1
 

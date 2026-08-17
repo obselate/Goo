@@ -122,6 +122,13 @@ internal func BuildScenePlanProof(frame SceneFrame, version uint64) {
         Bounds: ConservativeBounds{ X: 12.0F, Y: 23.0F, Width: 20.0F, Height: 8.0F },
         GlyphRunId: ProofResource(SceneResourceKind.GlyphRun, 9201uL),
         AtlasId: ProofResource(SceneResourceKind.Atlas, 9202uL),
+        GlyphId: 0u,
+        AtlasTexelOffset: 0u,
+        AtlasTexelCount: 1u,
+        GlyphMinX: 0.0F,
+        GlyphMinY: 0.0F,
+        GlyphMaxX: 20.0F,
+        GlyphMaxY: 8.0F,
         Color: 0xFFFFFFFFu,
         RenderMode: 2u,
         TransformIndex: transformIndex,
@@ -187,7 +194,7 @@ internal func RunScenePlanProof() bool {
     let frame = SceneFrame(1)
     let version uint64 = 1uL
     BuildScenePlanProof(frame, version)
-    let expectedDigest uint64 = 14043598012074296026uL
+    let expectedDigest uint64 = 602956050187730187uL
     let expectedGrowth = frame.GrowthOperations
     RequireScenePlanProof(frame.ChunkCount == 1, "S09 scene plan chunk count")
     RequireScenePlanProof(frame.DrawRefCount == 18, "S09 scene plan draw count")

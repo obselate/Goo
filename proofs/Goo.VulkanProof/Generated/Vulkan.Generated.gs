@@ -18,6 +18,7 @@ type VkBufferCreateFlags = VkFlags
 type VkBufferUsageFlagBits = int32
 type VkBufferUsageFlags = VkFlags
 type VkBufferView = uint64
+type VkBufferViewCreateFlags = VkFlags
 type VkColorComponentFlagBits = int32
 type VkColorComponentFlags = VkFlags
 type VkColorSpaceKHR = int32
@@ -996,6 +997,17 @@ unsafe struct VkBufferMemoryRequirementsInfo2 {
     var sType VkStructureType
     var pNext *void
     var buffer VkBuffer
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkBufferViewCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkBufferViewCreateFlags
+    var buffer VkBuffer
+    var format VkFormat
+    var offset VkDeviceSize
+    var _range VkDeviceSize
 }
 
 @StructLayout(LayoutKind.Sequential)
@@ -2277,6 +2289,8 @@ unsafe struct VkDeviceDispatch {
     var vkCmdCopyImageToBuffer unmanaged[Cdecl] (VkCommandBuffer, VkImage, VkImageLayout, VkBuffer, uint32, *VkBufferImageCopy) -> void
     var vkCmdCopyBuffer unmanaged[Cdecl] (VkCommandBuffer, VkBuffer, VkBuffer, uint32, *VkBufferCopy) -> void
     var vkCmdCopyBufferToImage unmanaged[Cdecl] (VkCommandBuffer, VkBuffer, VkImage, VkImageLayout, uint32, *VkBufferImageCopy) -> void
+    var vkCreateBufferView unmanaged[Cdecl] (VkDevice, *VkBufferViewCreateInfo, *VkAllocationCallbacks, *VkBufferView) -> VkResult
+    var vkDestroyBufferView unmanaged[Cdecl] (VkDevice, VkBufferView, *VkAllocationCallbacks) -> void
     var vkCreateSampler unmanaged[Cdecl] (VkDevice, *VkSamplerCreateInfo, *VkAllocationCallbacks, *VkSampler) -> VkResult
     var vkDestroySampler unmanaged[Cdecl] (VkDevice, VkSampler, *VkAllocationCallbacks) -> void
     var vkCreateDescriptorSetLayout unmanaged[Cdecl] (VkDevice, *VkDescriptorSetLayoutCreateInfo, *VkAllocationCallbacks, *VkDescriptorSetLayout) -> VkResult

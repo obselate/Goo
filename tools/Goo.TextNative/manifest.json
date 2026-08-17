@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 3,
   "name": "Goo.TextNative",
   "source": {
     "harfbuzz": {
@@ -10,21 +10,10 @@
       "archiveSha256": "9dae9538aae2ffdf70cec31f2c27bf68e2aaeeae3112688467697d5faf6194f7",
       "license": "HarfBuzz Old MIT",
       "licenseUrl": "https://github.com/harfbuzz/harfbuzz/blob/14.3.1/COPYING"
-    },
-    "freetype": {
-      "version": "2.14.3",
-      "tag": "VER-2-14-3",
-      "signedTagCommit": "0a0221a1347e2f1e07c395263540026e9a0aa7c7",
-      "archiveUrl": "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz",
-      "archiveSha256": "36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f",
-      "license": "FreeType License or GPL-2.0-or-later",
-      "licenseUrl": "https://gitlab.freedesktop.org/freetype/freetype/-/blob/VER-2-14-3/LICENSE.TXT"
     }
   },
   "build": {
     "system": "Meson and Ninja",
-    "mesonVersion": "1.12.0",
-    "ninjaVersion": "1.13.2",
     "commonOptions": [
       "--prefix=/usr",
       "--libdir=lib",
@@ -32,31 +21,98 @@
       "--default-library=shared",
       "--wrap-mode=nodownload"
     ],
-    "environment": {
-      "CFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
-      "CXXFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
-      "LDFLAGS": "-Wl,--build-id=none"
+    "environments": {
+      "linux-x64": {
+        "SOURCE_DATE_EPOCH": "0",
+        "CFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
+        "CXXFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
+        "LDFLAGS": "-Wl,--build-id=none"
+      },
+      "win-x64": {
+        "SOURCE_DATE_EPOCH": "0",
+        "CFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
+        "CXXFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
+        "LDFLAGS": "-Wl,--no-insert-timestamp -static-libgcc -static-libstdc++"
+      }
     },
-    "bridge": {
-      "source": "proofs/Goo.VulkanProof/Native/goo_text_native.c",
-      "link": "shared Goo-owned bridge against libgoo-freetype.so",
-      "visibility": "hidden except goo_ft_* exports"
-    },
+    "sourcePatch": "Set the core and GPU shared-library identities to Goo-owned private names before the pinned Meson build; Linux keeps private SONAMEs and Windows uses unversioned DLL names.",
+    "sourcePatches": [
+      {
+        "name": "cpal-linear-light",
+        "path": "tools/Goo.TextNative/patches/harfbuzz-14.3.1-cpal-linear-light.patch",
+        "sha256": "225d5b7e5a656e96ee850f41c662e625d9c29ac518c1b834b3c53b7949358b67",
+        "upstreamPath": "src/hb-gpu-paint.cc",
+        "upstreamSha256": "78c12e63968ae3de1d56cc6bc788930f8474bd0e34beed66ca24375ad137a463",
+        "patchedSha256": "b2cc4e10551ff8e49c0e801c5aea1a7886e7468c5e61770df0804ac322de191c",
+        "description": "Convert explicit CPAL RGB bytes to linear-light Q15 with a fixed 256-entry lookup. Preserve alpha and foreground encoding."
+      }
+    ],
     "soname": {
       "harfbuzz": "libgoo-harfbuzz.so",
-      "freetype": "libgoo-freetype.so",
-      "bridge": "libgoo-text-native.so"
+      "gpu": "libgoo-harfbuzz-gpu.so"
     },
-    "freetypeOptions": [
-      "-Dharfbuzz=disabled",
-      "-Dbrotli=disabled",
-      "-Dbzip2=disabled",
-      "-Dpng=disabled",
-      "-Dtests=disabled",
-      "-Derror_strings=false",
-      "-Dmmap=enabled",
-      "-Dzlib=disabled"
-    ],
+    "linux": {
+      "requiredFormat": "ELF 64-bit LSB shared object, x86-64",
+      "maxGlibc": "2.35",
+      "requiredRpath": {
+        "harfbuzz": [],
+        "gpu": []
+      },
+      "requiredRunpath": {
+        "harfbuzz": [],
+        "gpu": [
+          "$ORIGIN/"
+        ]
+      },
+      "requiredNeeded": {
+        "harfbuzz": [
+          "libc.so.6",
+          "libm.so.6"
+        ],
+        "gpu": [
+          "libc.so.6",
+          "libgoo-harfbuzz.so",
+          "libm.so.6"
+        ]
+      }
+    },
+    "windows": {
+      "target": "x86_64-w64-mingw32",
+      "requiredFormat": "PE32+ x86-64",
+      "linkerFlags": [
+        "-static-libgcc",
+        "-static-libstdc++",
+        "-Wl,--no-insert-timestamp"
+      ],
+      "sourcePatch": "Rename the core and GPU targets to goo-harfbuzz.dll and goo-harfbuzz-gpu.dll, remove Meson version suffixes, and keep hb-gpu's core import as goo-harfbuzz.dll.",
+      "gpuImport": "goo-harfbuzz.dll",
+      "requiredNeeded": {
+        "harfbuzz": [
+          "KERNEL32.dll",
+          "msvcrt.dll"
+        ],
+        "gpu": [
+          "KERNEL32.dll",
+          "goo-harfbuzz.dll",
+          "msvcrt.dll"
+        ]
+      },
+      "forbiddenImports": [
+        "libstdc++",
+        "libgcc",
+        "winpthread",
+        "libstdc++-6.dll",
+        "libgcc_s_seh-1.dll",
+        "libwinpthread-1.dll",
+        "winpthread-1.dll",
+        "freetype",
+        "glib",
+        "icu",
+        "graphite",
+        "zlib",
+        "png"
+      ]
+    },
     "harfbuzzOptions": [
       "-Dglib=disabled",
       "-Dgobject=disabled",
@@ -77,7 +133,7 @@
       "-Dwasm=disabled",
       "-Draster=disabled",
       "-Dvector=disabled",
-      "-Dgpu=disabled",
+      "-Dgpu=enabled",
       "-Dsubset=disabled",
       "-Dtests=disabled",
       "-Dintrospection=disabled",
@@ -92,46 +148,65 @@
   "outputs": {
     "linux-x64": {
       "harfbuzz": "libgoo-harfbuzz.so",
-      "freetype": "libgoo-freetype.so",
-      "bridge": "libgoo-text-native.so"
+      "gpu": "libgoo-harfbuzz-gpu.so"
     },
     "win-x64": {
       "harfbuzz": "goo-harfbuzz.dll",
-      "freetype": "goo-freetype.dll",
-      "bridge": "goo-text-native.dll"
+      "gpu": "goo-harfbuzz-gpu.dll"
     }
   },
   "requiredExports": {
     "harfbuzz": [
       "hb_blob_create",
       "hb_blob_destroy",
-      "hb_buffer_add_utf8",
+      "hb_blob_get_data",
+      "hb_blob_get_length",
+      "hb_buffer_add_utf16",
       "hb_buffer_create",
       "hb_buffer_destroy",
       "hb_buffer_get_glyph_infos",
       "hb_buffer_get_glyph_positions",
       "hb_buffer_get_length",
       "hb_buffer_guess_segment_properties",
+      "hb_buffer_set_cluster_level",
       "hb_buffer_set_direction",
+      "hb_buffer_set_flags",
+      "hb_buffer_set_language",
+      "hb_buffer_set_script",
+      "hb_face_count",
       "hb_face_create",
       "hb_face_destroy",
+      "hb_face_get_glyph_count",
       "hb_face_get_upem",
       "hb_font_create",
       "hb_font_destroy",
+      "hb_font_get_extents_for_direction",
       "hb_font_set_scale",
+      "hb_font_set_variations",
+      "hb_language_from_string",
+      "hb_ot_color_has_layers",
+      "hb_ot_color_has_paint",
+      "hb_ot_color_glyph_has_paint",
       "hb_ot_font_set_funcs",
       "hb_shape_full"
     ],
-    "freetype": [
-      "FT_Done_Face",
-      "FT_Done_FreeType",
-      "FT_Init_FreeType",
-      "FT_New_Memory_Face",
-      "FT_Set_Pixel_Sizes"
-    ],
-    "bridge": [
-      "goo_ft_face_metrics",
-      "goo_ft_new_memory_face"
+    "gpu": [
+      "hb_gpu_draw_create_or_fail",
+      "hb_gpu_draw_destroy",
+      "hb_gpu_draw_encode",
+      "hb_gpu_draw_glyph_or_fail",
+      "hb_gpu_draw_recycle_blob",
+      "hb_gpu_draw_set_scale",
+      "hb_gpu_draw_shader_source",
+      "hb_gpu_paint_create_or_fail",
+      "hb_gpu_paint_destroy",
+      "hb_gpu_paint_encode",
+      "hb_gpu_paint_glyph_or_fail",
+      "hb_gpu_paint_recycle_blob",
+      "hb_gpu_paint_set_custom_palette_color",
+      "hb_gpu_paint_set_palette",
+      "hb_gpu_paint_shader_source",
+      "hb_gpu_shader_source"
     ]
   }
 }

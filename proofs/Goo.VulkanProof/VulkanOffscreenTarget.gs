@@ -17,6 +17,7 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
     private let mode VulkanOffscreenMode
     private let targetFormat VkFormat
     private let imageResources VulkanImageResources?
+    private let textAtlas VulkanTextAtlas?
     private let resourceGeneration uint64
     private var image VkImage
     private var imageView VkImageView
@@ -65,7 +66,7 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
         }
     }
 
-    internal init(
+    internal convenience init(
         nativeDevice VkDevice,
         nativeDispatch VkDeviceDispatch,
         nativeAllocator VulkanMemoryAllocator,
@@ -74,6 +75,20 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
         colorFormat VkFormat,
         nativeImageResources VulkanImageResources?,
         expectedGeneration uint64) {
+        init(nativeDevice, nativeDispatch, nativeAllocator, targetExtent, targetMode,
+            colorFormat, nativeImageResources, expectedGeneration, nil)
+    }
+
+    internal init(
+        nativeDevice VkDevice,
+        nativeDispatch VkDeviceDispatch,
+        nativeAllocator VulkanMemoryAllocator,
+        targetExtent VkExtent2D,
+        targetMode VulkanOffscreenMode,
+        colorFormat VkFormat,
+        nativeImageResources VulkanImageResources?,
+        expectedGeneration uint64,
+        nativeTextAtlas VulkanTextAtlas?) {
         if nativeDevice == nint(0) {
             throw ArgumentException("Vulkan device is null", "nativeDevice")
         }
@@ -95,6 +110,7 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
         this.mode = targetMode
         this.targetFormat = colorFormat
         this.imageResources = nativeImageResources
+        this.textAtlas = nativeTextAtlas
         this.resourceGeneration = expectedGeneration
         if targetMode == VulkanOffscreenMode.SolidQuad && colorFormat != VkConstants.VK_FORMAT_R8G8B8A8_UNORM {
             throw ArgumentException("SolidQuad offscreen mode requires R8G8B8A8_UNORM", "colorFormat")
@@ -183,6 +199,9 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
         BeginRecord(commandBuffer)
         var renderingActive = false
         try {
+            if textAtlas != nil && textAtlas!!.UploadPending {
+                textAtlas!!.RecordUpload(commandBuffer)
+            }
             BeginRendering(commandBuffer, clearColor)
             renderingActive = true
             let before = GC.GetAllocatedBytesForCurrentThread()
@@ -498,10 +517,10 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             if mode == VulkanOffscreenMode.SolidQuad {
                 solidQuad = VulkanSolidQuad(device, dispatch, targetFormat)
             } else {
-                primitiveRenderer = if imageResources != nil {
-                    VulkanPrimitiveRenderer(device, dispatch, targetFormat, 64, imageResources, resourceGeneration)
+                primitiveRenderer = if imageResources != nil || textAtlas != nil {
+                    VulkanPrimitiveRenderer(device, dispatch, targetFormat, 64, imageResources, resourceGeneration, textAtlas)
                 } else {
-                    VulkanPrimitiveRenderer(device, dispatch, targetFormat, 64, nil, 0uL)
+                    VulkanPrimitiveRenderer(device, dispatch, targetFormat, 64, nil, 0uL, nil)
                 }
             }
         } catch (error Exception) {

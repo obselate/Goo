@@ -11,6 +11,18 @@ internal static class Program
     private const string GeneratedDirectory = "proofs/Goo.VulkanProof/Generated/Shaders";
     private const string InputManifestName = "shader-manifest.json";
     private const string CompilerVersionMarker = "1:";
+    private const string HarfBuzzTag = "14.3.1";
+    private const string HarfBuzzCommit = "ab5ecbb83985034a76214ac0b2b833dcd590d774";
+    private const string HarfBuzzAssemblyKind = "harfbuzz-hb-gpu-glsl";
+    private const string HarfBuzzProvenancePath = "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/provenance.json";
+    private const string HarfBuzzVertexPath = "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/src/hb-gpu-vertex.glsl";
+    private const string HarfBuzzFragmentPath = "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/src/hb-gpu-fragment.glsl";
+    private const string HarfBuzzDrawFragmentPath = "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/src/hb-gpu-draw-fragment.glsl";
+    private const string HarfBuzzPaintFragmentPath = "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/src/hb-gpu-paint-fragment.glsl";
+    private const string HarfBuzzVertexSha256 = "a2d278b8fd6588f47e788f37f6add64e21f38a132a04f5c62e7092f4fe83a7a7";
+    private const string HarfBuzzFragmentSha256 = "104eb5b9512467f8dc08c897e03168c001b5b25cccd026fc41da84f1f682c6e3";
+    private const string HarfBuzzDrawFragmentSha256 = "cb70fd3b4db78d02652d0e3a419fe859b7ec5d1f30ee97cba7eaa2cf8ed404eb";
+    private const string HarfBuzzPaintFragmentSha256 = "95e5868c3c1197962eb1976838b683fa2f7a7829375d170b3a59706e39538337";
 
     private sealed class Manifest
     {
@@ -25,6 +37,9 @@ internal static class Program
 
         [JsonPropertyName("compileFlags")]
         public List<string> CompileFlags { get; set; } = new();
+
+        [JsonPropertyName("assemblies")]
+        public List<ShaderAssembly> Assemblies { get; set; } = new();
 
         [JsonPropertyName("shaders")]
         public List<Shader> Shaders { get; set; } = new();
@@ -143,6 +158,10 @@ internal static class Program
         [JsonPropertyName("entryPoint")]
         public string EntryPoint { get; set; } = string.Empty;
 
+        [JsonPropertyName("assembly")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Assembly { get; set; }
+
         [JsonPropertyName("sourceSha256")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? SourceSha256 { get; set; }
@@ -157,6 +176,45 @@ internal static class Program
 
         [JsonPropertyName("capabilities")]
         public List<uint> Capabilities { get; set; } = new();
+    }
+
+    private sealed class ShaderAssembly
+    {
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonPropertyName("kind")]
+        public string Kind { get; set; } = string.Empty;
+
+        [JsonPropertyName("tag")]
+        public string Tag { get; set; } = string.Empty;
+
+        [JsonPropertyName("commit")]
+        public string Commit { get; set; } = string.Empty;
+
+        [JsonPropertyName("provenance")]
+        public string Provenance { get; set; } = string.Empty;
+
+        [JsonPropertyName("provenanceSha256")]
+        public string ProvenanceSha256 { get; set; } = string.Empty;
+
+        [JsonPropertyName("atlasSet")]
+        public int AtlasSet { get; set; }
+
+        [JsonPropertyName("atlasBinding")]
+        public int AtlasBinding { get; set; }
+
+        [JsonPropertyName("parts")]
+        public List<AssemblyPart> Parts { get; set; } = new();
+    }
+
+    private sealed class AssemblyPart
+    {
+        [JsonPropertyName("path")]
+        public string Path { get; set; } = string.Empty;
+
+        [JsonPropertyName("sha256")]
+        public string Sha256 { get; set; } = string.Empty;
     }
 
     private sealed class HostPacking
@@ -358,6 +416,8 @@ internal static class Program
         WriteIndented = true
     };
 
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
+
     private static int Main(string[] args)
     {
         try
@@ -388,6 +448,7 @@ internal static class Program
         EnsureLf(inputManifestPath, inputManifestBytes);
         Manifest manifest = DeserializeManifest(inputManifestPath, inputManifestBytes);
         ValidateManifest(manifest);
+        ValidateAssemblyFiles(manifest, repositoryRoot);
         string canonicalInput = SerializeManifest(manifest);
         if (!inputManifestBytes.AsSpan().SequenceEqual(Encoding.UTF8.GetBytes(canonicalInput)))
         {
@@ -402,7 +463,7 @@ internal static class Program
         Directory.CreateDirectory(temporaryRoot);
         try
         {
-            List<BuiltShader> builtShaders = BuildShaders(manifest, shaderRoot, temporaryRoot, compilerPath, validatorPath);
+            List<BuiltShader> builtShaders = BuildShaders(manifest, repositoryRoot, shaderRoot, temporaryRoot, compilerPath, validatorPath);
             List<HostPackingArtifact> hostPackings = BuildHostPackings(manifest, builtShaders);
             string generatedManifest = BuildGeneratedManifest(manifest, builtShaders, hostPackings);
             byte[] generatedManifestBytes = Encoding.UTF8.GetBytes(generatedManifest);
@@ -453,21 +514,24 @@ internal static class Program
         return SerializeManifest(manifest);
     }
 
-    private static List<BuiltShader> BuildShaders(Manifest manifest, string shaderRoot, string temporaryRoot, string compilerPath, string validatorPath)
+    private static List<BuiltShader> BuildShaders(Manifest manifest, string repositoryRoot, string shaderRoot, string temporaryRoot, string compilerPath, string validatorPath)
     {
         List<BuiltShader> builtShaders = new();
         foreach (Shader shader in manifest.Shaders)
         {
-            string sourcePath = ResolveChildPath(shaderRoot, shader.Source, "source");
-            byte[] sourceBytes = File.ReadAllBytes(sourcePath);
-            EnsureLf(sourcePath, sourceBytes);
+            byte[] sourceBytes = shader.Assembly is null
+                ? ReadSourceFile(ResolveChildPath(shaderRoot, shader.Source, "source"))
+                : AssembleShaderSource(manifest, shader, repositoryRoot);
+            string temporarySource = Path.Combine(temporaryRoot, "sources", shader.Id + ".glsl");
+            Directory.CreateDirectory(Path.GetDirectoryName(temporarySource)!);
+            File.WriteAllBytes(temporarySource, sourceBytes);
             string temporaryOutput = Path.Combine(temporaryRoot, shader.Output);
             List<string> compilerArguments = new(manifest.CompileFlags)
             {
                 $"-fshader-stage={shader.Stage}",
                 "-o",
                 temporaryOutput,
-                sourcePath
+                temporarySource
             };
             ToolResult compilerResult = RunTool(compilerPath, compilerArguments);
             RequireSuccess(compilerPath, compilerResult);
@@ -483,6 +547,77 @@ internal static class Program
             builtShaders.Add(new BuiltShader(shader, temporaryOutput, sourceBytes, outputBytes, reflection));
         }
         return builtShaders;
+    }
+
+    private static byte[] ReadSourceFile(string path)
+    {
+        byte[] bytes = File.ReadAllBytes(path);
+        EnsureLf(path, bytes);
+        return bytes;
+    }
+
+    private static void ValidateAssemblyFiles(Manifest manifest, string repositoryRoot)
+    {
+        foreach (ShaderAssembly assembly in manifest.Assemblies)
+        {
+            string provenancePath = ResolveRepositoryPath(repositoryRoot, assembly.Provenance, "assembly provenance");
+            byte[] provenance = ReadSourceFile(provenancePath);
+            Require(HashBytes(provenance) == assembly.ProvenanceSha256, $"assembly[{assembly.Id}].provenanceSha256", assembly.ProvenanceSha256);
+            foreach (AssemblyPart part in assembly.Parts)
+            {
+                string path = ResolveRepositoryPath(repositoryRoot, part.Path, "assembly part");
+                byte[] bytes = ReadSourceFile(path);
+                Require(HashBytes(bytes) == part.Sha256, $"assembly[{assembly.Id}].part[{part.Path}].sha256", part.Sha256);
+            }
+        }
+    }
+
+    private static byte[] AssembleShaderSource(Manifest manifest, Shader shader, string repositoryRoot)
+    {
+        ShaderAssembly assembly = manifest.Assemblies.Single(value => value.Id == shader.Assembly);
+        List<byte> output = new();
+        AppendUtf8(output, "#version 450 core\n");
+        foreach (AssemblyPart part in assembly.Parts)
+        {
+            string path = ResolveRepositoryPath(repositoryRoot, part.Path, "assembly part");
+            byte[] partBytes = ReadSourceFile(path);
+            string partText = StrictUtf8.GetString(partBytes);
+            if (part.Path == HarfBuzzFragmentPath)
+            {
+                const string declaration = "uniform isamplerBuffer hb_gpu_atlas;";
+                string qualified = $"layout(set={assembly.AtlasSet},binding={assembly.AtlasBinding}) uniform isamplerBuffer hb_gpu_atlas;";
+                if (CountOccurrences(partText, declaration) != 1)
+                {
+                    throw new InvalidOperationException($"HarfBuzz atlas declaration is not unique: {part.Path}");
+                }
+                partText = partText.Replace(declaration, qualified, StringComparison.Ordinal);
+                partBytes = StrictUtf8.GetBytes(partText);
+            }
+            output.AddRange(partBytes);
+            if (partBytes.Length == 0 || partBytes[^1] != (byte)'\n')
+            {
+                output.Add((byte)'\n');
+            }
+            output.Add((byte)'\n');
+        }
+        return output.ToArray();
+    }
+
+    private static int CountOccurrences(string text, string value)
+    {
+        int count = 0;
+        int offset = 0;
+        while ((offset = text.IndexOf(value, offset, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            offset += value.Length;
+        }
+        return count;
+    }
+
+    private static void AppendUtf8(List<byte> output, string value)
+    {
+        output.AddRange(StrictUtf8.GetBytes(value));
     }
 
     private static List<HostPackingArtifact> BuildHostPackings(Manifest manifest, IReadOnlyList<BuiltShader> builtShaders)
@@ -520,6 +655,7 @@ internal static class Program
             "vec2" => ("float32", new[] { "_x", "_y" }),
             "vec3" => ("float32", new[] { "_x", "_y", "_z" }),
             "vec4" => ("float32", new[] { "_x", "_y", "_z", "_w" }),
+            "mat4" => ("float32", new[] { "_m00", "_m01", "_m02", "_m03", "_m10", "_m11", "_m12", "_m13", "_m20", "_m21", "_m22", "_m23", "_m30", "_m31", "_m32", "_m33" }),
             "int" => ("int32", new[] { string.Empty }),
             "ivec2" => ("int32", new[] { "_x", "_y" }),
             "ivec3" => ("int32", new[] { "_x", "_y", "_z" }),
@@ -675,7 +811,7 @@ internal static class Program
 
     private static void ValidateManifest(Manifest manifest)
     {
-        Require(manifest.Schema == 2, "schema", "2");
+        Require(manifest.Schema == 3, "schema", "3");
         Require(manifest.Toolchain.Sdk == "1.4.357.0", "toolchain.sdk", "1.4.357.0");
         RequireTool(manifest.Toolchain.Compiler, "google/shaderc", "2026.3", "ef2c68b4871a3c399a0808321b51379847a54673", "glslc", "toolchain.compiler");
         RequireTool(manifest.Toolchain.Validator, "KhronosGroup/SPIRV-Tools", "2026.3", "b707790a898e44038547df54580022fc1cf89c3d", "spirv-val", "toolchain.validator");
@@ -692,9 +828,31 @@ internal static class Program
         Require(manifest.Toolchain.Registry.Version == "1.4.357.0", "toolchain.registry.version", "1.4.357.0");
         Require(manifest.Toolchain.Registry.Commit == "e3b1eec08173d6b825cd3ac88c885a63b621504a1", "toolchain.registry.commit", "e3b1eec08173d6b825cd3ac88c885a63b621504a1");
         Require(manifest.Toolchain.Registry.VkXmlSha256 == "264d0d7350e37d70c82407fb430d085040fc01a9a961d43dec8c2d6ed1dfd183", "toolchain.registry.vkXmlSha256", "264d0d7350e37d70c82407fb430d085040fc01a9a961d43dec8c2d6ed1dfd183");
-        if (manifest.Shaders.Count != 9)
+        if (manifest.Assemblies.Count != 3)
         {
-            throw new InvalidOperationException("shaders must contain exactly nine entries");
+            throw new InvalidOperationException("assemblies must contain exactly three entries");
+        }
+        RequireAssembly(manifest.Assemblies[0], "hb_gpu_vertex", new[]
+        {
+            new AssemblyPart { Path = HarfBuzzVertexPath, Sha256 = HarfBuzzVertexSha256 },
+            new AssemblyPart { Path = "proofs/Goo.VulkanProof/Shaders/hb_gpu.vert.wrapper.glsl", Sha256 = "063e7f572e647586070a8560eac1192749dd07cc29a7dc1a286fb214f3599c92" }
+        });
+        RequireAssembly(manifest.Assemblies[1], "hb_gpu_draw_fragment", new[]
+        {
+            new AssemblyPart { Path = HarfBuzzFragmentPath, Sha256 = HarfBuzzFragmentSha256 },
+            new AssemblyPart { Path = HarfBuzzDrawFragmentPath, Sha256 = HarfBuzzDrawFragmentSha256 },
+            new AssemblyPart { Path = "proofs/Goo.VulkanProof/Shaders/hb_gpu_draw.frag.wrapper.glsl", Sha256 = "8cf9e65daa7b4a149e84cc7d4777008f13e7633ba5d8ef326b0dd1cd7dcfdce7" }
+        });
+        RequireAssembly(manifest.Assemblies[2], "hb_gpu_paint_fragment", new[]
+        {
+            new AssemblyPart { Path = HarfBuzzFragmentPath, Sha256 = HarfBuzzFragmentSha256 },
+            new AssemblyPart { Path = HarfBuzzDrawFragmentPath, Sha256 = HarfBuzzDrawFragmentSha256 },
+            new AssemblyPart { Path = HarfBuzzPaintFragmentPath, Sha256 = HarfBuzzPaintFragmentSha256 },
+            new AssemblyPart { Path = "proofs/Goo.VulkanProof/Shaders/hb_gpu_paint.frag.wrapper.glsl", Sha256 = "df5572da972796670fd282f81a27429860ec3bb93a999cf1d17649e77d1cf3c2" }
+        });
+        if (manifest.Shaders.Count != 10)
+        {
+            throw new InvalidOperationException("shaders must contain exactly ten entries");
         }
         RequireShader(manifest.Shaders[0], "solid_quad_vertex", "vertex", "solid_quad.vert.glsl", "solid_quad.vert.spv");
         RequireShader(manifest.Shaders[1], "solid_quad_fragment", "fragment", "solid_quad.frag.glsl", "solid_quad.frag.spv");
@@ -703,8 +861,9 @@ internal static class Program
         RequireShader(manifest.Shaders[4], "analytic_linear3_fragment", "fragment", "analytic_linear3.frag.glsl", "analytic_linear3.frag.spv");
         RequireShader(manifest.Shaders[5], "analytic_radial3_fragment", "fragment", "analytic_radial3.frag.glsl", "analytic_radial3.frag.spv");
         RequireShader(manifest.Shaders[6], "analytic_sampled_image_fragment", "fragment", "analytic_sampled_image.frag.glsl", "analytic_sampled_image.frag.spv");
-        RequireShader(manifest.Shaders[7], "glyph_vertex", "vertex", "glyph.vert.glsl", "glyph.vert.spv");
-        RequireShader(manifest.Shaders[8], "glyph_alpha_fragment", "fragment", "glyph_alpha.frag.glsl", "glyph_alpha.frag.spv");
+        RequireShader(manifest.Shaders[7], "hb_gpu_vertex", "vertex", "hb_gpu.vert.wrapper.glsl", "hb_gpu.vert.spv", "hb_gpu_vertex");
+        RequireShader(manifest.Shaders[8], "hb_gpu_draw_fragment", "fragment", "hb_gpu_draw.frag.wrapper.glsl", "hb_gpu_draw.frag.spv", "hb_gpu_draw_fragment");
+        RequireShader(manifest.Shaders[9], "hb_gpu_paint_fragment", "fragment", "hb_gpu_paint.frag.wrapper.glsl", "hb_gpu_paint.frag.spv", "hb_gpu_paint_fragment");
         foreach (Shader shader in manifest.Shaders)
         {
             if (shader.SourceSha256 is not null || shader.OutputSha256 is not null || shader.OutputBytes is not null)
@@ -712,9 +871,9 @@ internal static class Program
                 throw new InvalidOperationException($"Source manifest contains generated hashes: {shader.Id}");
             }
         }
-        if (manifest.Pipelines.Count != 6)
+        if (manifest.Pipelines.Count != 7)
         {
-            throw new InvalidOperationException("pipelines must contain exactly six entries");
+            throw new InvalidOperationException("pipelines must contain exactly seven entries");
         }
         RequirePipeline(manifest.Pipelines[0], "solid_quad", "SolidQuadPushConstants.Generated.gs", "SolidQuadPushConstants", 32, new[]
         {
@@ -764,20 +923,87 @@ internal static class Program
         {
             new Descriptor { Set = 0, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } }
         });
-        RequirePipeline(manifest.Pipelines[5], "glyph_alpha", "GlyphPushConstants.Generated.gs", "GlyphPushConstants", 64, new[]
+        RequireHbGpuPipeline(manifest.Pipelines[5], "hb_gpu_draw", "HbGpuTextPushConstants.Generated.gs", "HbGpuTextPushConstants", "hb_gpu_vertex", "hb_gpu_draw_fragment");
+        RequireHbGpuPipeline(manifest.Pipelines[6], "hb_gpu_paint", "HbGpuTextPushConstants.Generated.gs", "HbGpuTextPushConstants", "hb_gpu_vertex", "hb_gpu_paint_fragment");
+    }
+
+    private static void RequireAssembly(ShaderAssembly assembly, string id, IReadOnlyList<AssemblyPart> parts)
+    {
+        Require(assembly.Id == id, $"assembly[{id}].id", id);
+        Require(assembly.Kind == HarfBuzzAssemblyKind, $"assembly[{id}].kind", HarfBuzzAssemblyKind);
+        Require(assembly.Tag == HarfBuzzTag, $"assembly[{id}].tag", HarfBuzzTag);
+        Require(assembly.Commit == HarfBuzzCommit, $"assembly[{id}].commit", HarfBuzzCommit);
+        Require(assembly.Provenance == HarfBuzzProvenancePath, $"assembly[{id}].provenance", HarfBuzzProvenancePath);
+        Require(assembly.ProvenanceSha256 == "8e6d1033c5358754101cc5000a11b39e7a7cd17926186a1140503bbe365ecb63", $"assembly[{id}].provenanceSha256", "8e6d1033c5358754101cc5000a11b39e7a7cd17926186a1140503bbe365ecb63");
+        Require(assembly.AtlasSet == 0, $"assembly[{id}].atlasSet", "0");
+        Require(assembly.AtlasBinding == 0, $"assembly[{id}].atlasBinding", "0");
+        if (assembly.Parts.Count != parts.Count)
         {
-            new PushConstantMember { Name = "transform0", Offset = 0, Type = "vec4" },
-            new PushConstantMember { Name = "transform1", Offset = 16, Type = "vec4" },
-            new PushConstantMember { Name = "color", Offset = 32, Type = "vec4" },
-            new PushConstantMember { Name = "instanceBase", Offset = 48, Type = "uint" },
-            new PushConstantMember { Name = "reserved0", Offset = 52, Type = "uint" },
-            new PushConstantMember { Name = "reserved1", Offset = 56, Type = "uint" },
-            new PushConstantMember { Name = "reserved2", Offset = 60, Type = "uint" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "r8-unorm-alpha-atlas-premultiplied-linear", "glyph_vertex", "glyph_alpha_fragment", "vec2", "uv", new[]
+            throw new InvalidOperationException($"assembly[{id}].parts must contain exactly {parts.Count} entries");
+        }
+        for (int index = 0; index < parts.Count; index++)
         {
-            new Descriptor { Set = 0, Binding = 0, Type = "storage-buffer", Count = 1, Stages = new List<string> { "vertex" } },
-            new Descriptor { Set = 0, Binding = 1, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } }
+            Require(assembly.Parts[index].Path == parts[index].Path, $"assembly[{id}].parts[{index}].path", parts[index].Path);
+            Require(assembly.Parts[index].Sha256 == parts[index].Sha256, $"assembly[{id}].parts[{index}].sha256", parts[index].Sha256);
+        }
+    }
+
+    private static void RequireHbGpuPipeline(Pipeline pipeline, string id, string hostPackingPath, string hostPackingTypeName, string vertexShader, string fragmentShader)
+    {
+        Require(pipeline.Id == id, $"pipeline[{id}].id", id);
+        Require(pipeline.Topology == "triangle-list", $"pipeline[{id}].topology", "triangle-list");
+        Require(pipeline.VertexInput == "none", $"pipeline[{id}].vertexInput", "none");
+        Require(pipeline.DescriptorCount == 1, $"pipeline[{id}].descriptorCount", "1");
+        RequireDescriptors(pipeline.Descriptors, new[]
+        {
+            new Descriptor { Set = 0, Binding = 0, Type = "uniform-texel-buffer", Count = 1, Stages = new List<string> { "fragment" } }
+        }, $"pipeline[{id}].descriptors");
+        Require(pipeline.ColorFormat == "swapchain-sRGB", $"pipeline[{id}].colorFormat", "swapchain-sRGB");
+        Require(pipeline.SampleCount == 1, $"pipeline[{id}].sampleCount", "1");
+        Require(pipeline.Blend == "source-over-premultiplied-linear", $"pipeline[{id}].blend", "source-over-premultiplied-linear");
+        Require(pipeline.ColorPacking == "hb-gpu-premultiplied-linear-foreground", $"pipeline[{id}].colorPacking", "hb-gpu-premultiplied-linear-foreground");
+        Require(pipeline.DepthStencil == "disabled", $"pipeline[{id}].depthStencil", "disabled");
+        Require(pipeline.CullMode == "none", $"pipeline[{id}].cullMode", "none");
+        Require(pipeline.FrontFace == "counter-clockwise", $"pipeline[{id}].frontFace", "counter-clockwise");
+        Require(pipeline.HostPacking.Path == hostPackingPath, $"pipeline[{id}].hostPacking.path", hostPackingPath);
+        Require(pipeline.HostPacking.TypeName == hostPackingTypeName, $"pipeline[{id}].hostPacking.typeName", hostPackingTypeName);
+        Require(pipeline.PushConstants.Offset == 0, $"pipeline[{id}].pushConstants.offset", "0");
+        Require(pipeline.PushConstants.Size == 128, $"pipeline[{id}].pushConstants.size", "128");
+        RequireSequence(pipeline.PushConstants.Stages, new[] { "vertex", "fragment" }, $"pipeline[{id}].pushConstants.stages");
+        RequireMembers(pipeline.PushConstants, new[]
+        {
+            new PushConstantMember { Name = "transform", Offset = 0, Type = "mat4" },
+            new PushConstantMember { Name = "viewport", Offset = 64, Type = "vec4" },
+            new PushConstantMember { Name = "glyphBounds", Offset = 80, Type = "vec4" },
+            new PushConstantMember { Name = "glyphInput", Offset = 96, Type = "uvec4" },
+            new PushConstantMember { Name = "foreground", Offset = 112, Type = "vec4" }
+        }, $"pipeline[{id}].pushConstants.members");
+        if (pipeline.Stages.Count != 2)
+        {
+            throw new InvalidOperationException($"pipeline[{id}].stages must contain exactly two entries");
+        }
+        RequirePipelineStage(pipeline.Stages[0], vertexShader, "vertex", Array.Empty<InterfaceLocation>(), new[]
+        {
+            new InterfaceLocation { Location = 0, Type = "vec2", Name = "v_texcoord" },
+            new InterfaceLocation { Location = 1, Type = "uint", Name = "v_glyphLoc" }
         });
+        RequirePipelineStage(pipeline.Stages[1], fragmentShader, "fragment", new[]
+        {
+            new InterfaceLocation { Location = 0, Type = "vec2", Name = "v_texcoord" },
+            new InterfaceLocation { Location = 1, Type = "uint", Name = "v_glyphLoc" }
+        }, new[] { new InterfaceLocation { Location = 0, Type = "vec4", Name = "outColor" } });
+    }
+
+    private static void RequireMembers(PushConstants actual, IReadOnlyList<PushConstantMember> expected, string path)
+    {
+        if (actual.Members.Count != expected.Count)
+        {
+            throw new InvalidOperationException($"{path} must contain exactly {expected.Count} entries");
+        }
+        for (int index = 0; index < expected.Count; index++)
+        {
+            RequireMember(actual.Members[index], expected[index].Name, expected[index].Offset, expected[index].Type);
+        }
     }
 
     private static void RequirePipeline(Pipeline pipeline, string id, string hostPackingPath, string hostPackingTypeName, int pushConstantSize, IReadOnlyList<PushConstantMember> members, IReadOnlyList<string> pushStages, string blend, string? colorPacking, string vertexShader, string fragmentShader, string interfaceType, string interfaceName, IReadOnlyList<Descriptor> descriptors)
@@ -882,14 +1108,15 @@ internal static class Program
         Require(archive.Sha256 == sha256, $"archive[{rid}].sha256", sha256);
     }
 
-    private static void RequireShader(Shader shader, string id, string stage, string source, string output)
+    private static void RequireShader(Shader shader, string id, string stage, string source, string output, string? assembly = null)
     {
         Require(shader.Id == id, $"shader[{id}].id", id);
         Require(shader.Stage == stage, $"shader[{id}].stage", stage);
         Require(shader.Source == source, $"shader[{id}].source", source);
         Require(shader.Output == output, $"shader[{id}].output", output);
         Require(shader.EntryPoint == "main", $"shader[{id}].entryPoint", "main");
-        RequireCapabilities(shader.Capabilities, new uint[] { 1 }, $"shader[{id}].capabilities");
+        Require(shader.Assembly == assembly, $"shader[{id}].assembly", assembly ?? "null");
+        RequireCapabilities(shader.Capabilities, assembly is null || assembly == "hb_gpu_vertex" ? new uint[] { 1 } : new uint[] { 1, 46 }, $"shader[{id}].capabilities");
         if (shader.Source.Contains('\\') || shader.Output.Contains('\\') || shader.Source.Contains('/') || shader.Output.Contains('/'))
         {
             throw new InvalidOperationException($"Shader paths must be file names: {id}");
@@ -1153,6 +1380,11 @@ internal static class Program
             throw new InvalidOperationException($"{kind} path escapes its directory: {child}");
         }
         return fullPath;
+    }
+
+    private static string ResolveRepositoryPath(string repositoryRoot, string child, string kind)
+    {
+        return ResolveChildPath(repositoryRoot, child, kind);
     }
 
     private static void EnsureLf(string path, ReadOnlySpan<byte> bytes)
