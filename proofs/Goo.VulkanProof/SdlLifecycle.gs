@@ -5,6 +5,12 @@ import System.Runtime.InteropServices
 @DllImport("SDL3", EntryPoint: "SDL_GetWindowID", CallingConvention: CallingConvention.Cdecl)
 func SDL_GetWindowID(window nint) uint32;
 
+@DllImport("SDL3", EntryPoint: "SDL_SetWindowPosition", CallingConvention: CallingConvention.Cdecl)
+func SDL_SetWindowPosition(window nint, x int32, y int32) uint8;
+
+@DllImport("SDL3", EntryPoint: "SDL_SetWindowSize", CallingConvention: CallingConvention.Cdecl)
+func SDL_SetWindowSize(window nint, width int32, height int32) uint8;
+
 @DllImport("SDL3", EntryPoint: "SDL_GetWindowSize", CallingConvention: CallingConvention.Cdecl)
 func SDL_GetWindowSize(window nint, ref width int32, ref height int32) uint8;
 
@@ -16,6 +22,18 @@ func SDL_GetWindowPixelDensity(window nint) float32;
 
 @DllImport("SDL3", EntryPoint: "SDL_GetWindowDisplayScale", CallingConvention: CallingConvention.Cdecl)
 func SDL_GetWindowDisplayScale(window nint) float32;
+
+@DllImport("SDL3", EntryPoint: "SDL_ShowWindow", CallingConvention: CallingConvention.Cdecl)
+func SDL_ShowWindow(window nint) uint8;
+
+@DllImport("SDL3", EntryPoint: "SDL_MinimizeWindow", CallingConvention: CallingConvention.Cdecl)
+func SDL_MinimizeWindow(window nint) uint8;
+
+@DllImport("SDL3", EntryPoint: "SDL_RestoreWindow", CallingConvention: CallingConvention.Cdecl)
+func SDL_RestoreWindow(window nint) uint8;
+
+@DllImport("SDL3", EntryPoint: "SDL_SyncWindow", CallingConvention: CallingConvention.Cdecl)
+func SDL_SyncWindow(window nint) uint8;
 
 @DllImport("SDL3", EntryPoint: "SDL_PumpEvents", CallingConvention: CallingConvention.Cdecl)
 func SDL_PumpEvents() void;
@@ -144,6 +162,42 @@ internal unsafe class SdlLifecycle {
         minimized = false
         restored = false
         return id
+    }
+
+    internal func SetWindowPosition(window nint, x int32, y int32) {
+        if SDL_SetWindowPosition(window, x, y) == 0u {
+            throw InvalidOperationException("SDL_SetWindowPosition failed")
+        }
+    }
+
+    internal func SetWindowSize(window nint, width int32, height int32) {
+        if SDL_SetWindowSize(window, width, height) == 0u {
+            throw InvalidOperationException("SDL_SetWindowSize failed")
+        }
+    }
+
+    internal func ShowWindow(window nint) {
+        if SDL_ShowWindow(window) == 0u {
+            throw InvalidOperationException("SDL_ShowWindow failed")
+        }
+    }
+
+    internal func MinimizeWindow(window nint) {
+        if SDL_MinimizeWindow(window) == 0u {
+            throw InvalidOperationException("SDL_MinimizeWindow failed")
+        }
+    }
+
+    internal func RestoreWindow(window nint) {
+        if SDL_RestoreWindow(window) == 0u {
+            throw InvalidOperationException("SDL_RestoreWindow failed")
+        }
+    }
+
+    internal func SyncWindow(window nint) {
+        if SDL_SyncWindow(window) == 0u {
+            throw InvalidOperationException("SDL_SyncWindow failed")
+        }
     }
 
     internal func RefreshMetrics(window nint) bool {
@@ -319,7 +373,7 @@ internal unsafe class SdlLifecycle {
             minType, maxType)
         if pending < 0 {
             lastDrainResult = pending
-            return pending
+            throw InvalidOperationException("SDL_PeepEvents failed")
         }
         var processed int32 = 0
         let events *SdlEvent = stackalloc [EventBatchCapacity]SdlEvent
@@ -329,7 +383,7 @@ internal unsafe class SdlLifecycle {
                 minType, maxType)
             if received < 0 {
                 lastDrainResult = received
-                return received
+                throw InvalidOperationException("SDL_PeepEvents failed")
             }
             if received == 0 {
                 break
