@@ -656,8 +656,10 @@ unsafe func Main() int32 {
             let getFormatProperties = instanceDispatch.vkGetPhysicalDeviceFormatProperties
             var readbackFormatProperties = VkFormatProperties{}
             getFormatProperties(selectedPhysicalDevice, VkConstants.VK_FORMAT_R8G8B8A8_UNORM, &readbackFormatProperties)
-            if (readbackFormatProperties.optimalTilingFeatures & uint32(VkConstants.VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) == 0u {
-                throw InvalidOperationException("Vulkan R8G8B8A8_UNORM optimal color attachment support is unavailable")
+            let requiredReadbackFeatures = uint32(VkConstants.VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
+                | uint32(VkConstants.VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)
+            if (readbackFormatProperties.optimalTilingFeatures & requiredReadbackFeatures) != requiredReadbackFeatures {
+                throw InvalidOperationException("Vulkan R8G8B8A8_UNORM optimal color attachment and transfer source support is unavailable")
             }
             let getMemoryProperties = instanceDispatch.vkGetPhysicalDeviceMemoryProperties
             getMemoryProperties(selectedPhysicalDevice, &readbackMemoryProperties)

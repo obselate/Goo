@@ -28,7 +28,9 @@ internal static class Program
 
 		public List<string> RequiredTypes { get; }
 
-		public Manifest(string registrySha256, List<string> extensions, List<string> globalCommands, List<string> instanceCommands, List<string> deviceCommands, List<string> requiredTypes)
+		public List<string> RequiredConstants { get; }
+
+		public Manifest(string registrySha256, List<string> extensions, List<string> globalCommands, List<string> instanceCommands, List<string> deviceCommands, List<string> requiredTypes, List<string> requiredConstants)
 		{
 			RegistrySha256 = registrySha256;
 			Extensions = extensions;
@@ -36,6 +38,7 @@ internal static class Program
 			InstanceCommands = instanceCommands;
 			DeviceCommands = deviceCommands;
 			RequiredTypes = requiredTypes;
+			RequiredConstants = requiredConstants;
 		}
 	}
 
@@ -343,6 +346,8 @@ internal static class Program
 
 	private static readonly string[] ExpectedRequiredTypes = new string[7] { "VkClearValue", "VkPhysicalDeviceFeatures2", "VkPhysicalDeviceVulkan12Features", "VkPhysicalDeviceVulkan13Features", "VkMemoryDedicatedRequirements", "VkMemoryDedicatedAllocateInfo", "VkPipelineRenderingCreateInfo" };
 
+	private static readonly string[] ExpectedRequiredConstants = new string[1] { "VK_FORMAT_FEATURE_TRANSFER_SRC_BIT" };
+
 	private static readonly string[] GsharpKeywords = new string[55]
 	{
 		"as", "async", "await", "break", "case", "chan", "class", "const", "continue", "default",
@@ -448,11 +453,13 @@ internal static class Program
 		List<string> list2 = ReadStringArray(rootElement, "instanceCommands");
 		List<string> list3 = ReadStringArray(rootElement, "deviceCommands");
 		List<string> list4 = ReadStringArray(rootElement, "requiredTypes");
+		List<string> list5 = ReadStringArray(rootElement, "requiredConstants");
 		RequireExactCommands(list, ExpectedGlobalCommands, "globalCommands");
 		RequireExactCommands(list2, ExpectedInstanceCommands, "instanceCommands");
 		RequireExactCommands(list3, ExpectedDeviceCommands, "deviceCommands");
 		RequireExactCommands(list4, ExpectedRequiredTypes, "requiredTypes");
-		return new Manifest(text, extensions, list, list2, list3, list4);
+		RequireExactCommands(list5, ExpectedRequiredConstants, "requiredConstants");
+		return new Manifest(text, extensions, list, list2, list3, list4, list5);
 	}
 
 	private static List<string> ReadStringArray(JsonElement root, string property)
@@ -631,6 +638,15 @@ internal static class Program
 				string extends = item4.Attribute("extends")?.Value;
 				AddConstant(dictionary, ConstantDefinition.FromEnum(item4, extends, extension.Attribute("name")?.Value ?? string.Empty, null, extension.Attribute("number")?.Value));
 			}
+		}
+		foreach (string requiredConstant in manifest.RequiredConstants)
+		{
+			(XElement, string?, string, string?, string?)? value = registry.FindEnum(requiredConstant);
+			if (!value.HasValue)
+			{
+				throw new InvalidDataException("required Vulkan constant definition missing: " + requiredConstant);
+			}
+			AddConstant(dictionary, ConstantDefinition.FromEnum(value.Value.Item1, value.Value.Item2, value.Value.Item3, value.Value.Item4, value.Value.Item5));
 		}
 		AddDefineConstant(dictionary, "VK_API_VERSION_1_0", "uint32", "4194304");
 		AddDefineConstant(dictionary, "VK_API_VERSION_1_1", "uint32", "4198400");

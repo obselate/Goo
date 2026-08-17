@@ -103,5 +103,8 @@
     "VkMemoryDedicatedRequirements",
     "VkMemoryDedicatedAllocateInfo",
     "VkPipelineRenderingCreateInfo"
+  ],
+  "requiredConstants": [
+    "VK_FORMAT_FEATURE_TRANSFER_SRC_BIT"
   ]
 }

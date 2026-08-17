@@ -413,6 +413,7 @@ class VkConstants {
         const VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT VkFormatFeatureFlagBits = 2
         const VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT VkFormatFeatureFlagBits = 32
         const VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT VkFormatFeatureFlagBits = 16
+        const VK_FORMAT_FEATURE_TRANSFER_SRC_BIT VkFormatFeatureFlagBits = 16384
         const VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT VkFormatFeatureFlagBits = 8
         const VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT VkFormatFeatureFlagBits = 64
         const VK_FORMAT_R16G16B16A16_SFLOAT VkFormat = 97
