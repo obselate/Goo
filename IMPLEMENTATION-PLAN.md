@@ -1,6 +1,6 @@
 # Goo Core Vulkan Implementation Plan
 
-Status: active, S00 through S04 complete, Linux S05 through the automatable S08 slice complete, S09 next, compositor-driven lifecycle actions and Windows runtime qualification deferred
+Status: active, S00 through S09 complete, S10 active, compositor-driven lifecycle actions and Windows runtime qualification deferred
 
 Date: 2026-08-16
 
@@ -752,6 +752,23 @@ Reopen when:
 
 ### S09. Implement the typed frame plan and basic pipeline slice
 
+Implementation status on 2026-08-17:
+
+- Commits `745fa5c`, `0749c8f`, `ccbc41e`, and `6444e21` implement the typed plan, analytic shader
+  variants, shader color-precision contract, and basic scene recorder/readback.
+- The scene-plan gate records stable digest `14043598012074296026`.
+- The 64x64 Vulkan scene readback records digest `3293081366429027451` and the recorder allocates
+  `0` managed bytes after warmup.
+- Analytic variants use one `112`-byte push-constant ABI. Packed premultiplied-linear colors use
+  `R11/G11/B10` RGB fields and `A10` alpha lanes.
+- Stage events `300` through `306` cover tree, plan, upload, record, submit, GPU, and present.
+- Khronos validation and synchronization validation report `0` errors.
+- Linux x64 stripped NativeAOT output is `1,567,656` bytes with SHA-256
+  `d3d3e8c6655fd1e8f3816f3bf8d54c7f214d09ba202d16b9659687b7a55b741d`.
+- This closes only the representative basic slice. Actual image, glyph, and path resources, rounded
+  and arbitrary clips, shadows, and layers remain later stages. Windows runtime qualification remains
+  deferred to the Windows 11 VM.
+
 Frame-plan records:
 
 - `SceneFrame`.
@@ -830,6 +847,8 @@ Reopen when:
   optimization. Return that evidence to O06 Q&A.
 
 ### S10. Implement resources, shaders, uploads, and lifetime
+
+Status: active on 2026-08-17. S10 is not complete.
 
 Work:
 
