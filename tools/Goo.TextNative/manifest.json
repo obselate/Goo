@@ -1,0 +1,137 @@
+{
+  "schema": 1,
+  "name": "Goo.TextNative",
+  "source": {
+    "harfbuzz": {
+      "version": "14.3.1",
+      "tag": "14.3.1",
+      "signedTagCommit": "ab5ecbb83985034a76214ac0b2b833dcd590d774",
+      "archiveUrl": "https://github.com/harfbuzz/harfbuzz/releases/download/14.3.1/harfbuzz-14.3.1.tar.xz",
+      "archiveSha256": "9dae9538aae2ffdf70cec31f2c27bf68e2aaeeae3112688467697d5faf6194f7",
+      "license": "HarfBuzz Old MIT",
+      "licenseUrl": "https://github.com/harfbuzz/harfbuzz/blob/14.3.1/COPYING"
+    },
+    "freetype": {
+      "version": "2.14.3",
+      "tag": "VER-2-14-3",
+      "signedTagCommit": "0a0221a1347e2f1e07c395263540026e9a0aa7c7",
+      "archiveUrl": "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz",
+      "archiveSha256": "36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f",
+      "license": "FreeType License or GPL-2.0-or-later",
+      "licenseUrl": "https://gitlab.freedesktop.org/freetype/freetype/-/blob/VER-2-14-3/LICENSE.TXT"
+    }
+  },
+  "build": {
+    "system": "Meson and Ninja",
+    "mesonVersion": "1.12.0",
+    "ninjaVersion": "1.13.2",
+    "commonOptions": [
+      "--prefix=/usr",
+      "--libdir=lib",
+      "--buildtype=release",
+      "--default-library=shared",
+      "--wrap-mode=nodownload"
+    ],
+    "environment": {
+      "CFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
+      "CXXFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
+      "LDFLAGS": "-Wl,--build-id=none"
+    },
+    "bridge": {
+      "source": "proofs/Goo.VulkanProof/Native/goo_text_native.c",
+      "link": "shared Goo-owned bridge against libgoo-freetype.so",
+      "visibility": "hidden except goo_ft_* exports"
+    },
+    "soname": {
+      "harfbuzz": "libgoo-harfbuzz.so",
+      "freetype": "libgoo-freetype.so",
+      "bridge": "libgoo-text-native.so"
+    },
+    "freetypeOptions": [
+      "-Dharfbuzz=disabled",
+      "-Dbrotli=disabled",
+      "-Dbzip2=disabled",
+      "-Dpng=disabled",
+      "-Dtests=disabled",
+      "-Derror_strings=false",
+      "-Dmmap=enabled",
+      "-Dzlib=disabled"
+    ],
+    "harfbuzzOptions": [
+      "-Dglib=disabled",
+      "-Dgobject=disabled",
+      "-Dcairo=disabled",
+      "-Dchafa=disabled",
+      "-Dpng=disabled",
+      "-Dzlib=disabled",
+      "-Dicu=disabled",
+      "-Dgraphite=disabled",
+      "-Dgraphite2=disabled",
+      "-Dfreetype=disabled",
+      "-Dfontations=disabled",
+      "-Dgdi=disabled",
+      "-Ddirectwrite=disabled",
+      "-Dcoretext=disabled",
+      "-Dharfrust=disabled",
+      "-Dkbts=disabled",
+      "-Dwasm=disabled",
+      "-Draster=disabled",
+      "-Dvector=disabled",
+      "-Dgpu=disabled",
+      "-Dsubset=disabled",
+      "-Dtests=disabled",
+      "-Dintrospection=disabled",
+      "-Ddocs=disabled",
+      "-Ddoc_tests=false",
+      "-Dutilities=disabled",
+      "-Dbenchmark=disabled",
+      "-Dgpu_demo=disabled",
+      "-Dwith_libstdcxx=false"
+    ]
+  },
+  "outputs": {
+    "linux-x64": {
+      "harfbuzz": "libgoo-harfbuzz.so",
+      "freetype": "libgoo-freetype.so",
+      "bridge": "libgoo-text-native.so"
+    },
+    "win-x64": {
+      "harfbuzz": "goo-harfbuzz.dll",
+      "freetype": "goo-freetype.dll",
+      "bridge": "goo-text-native.dll"
+    }
+  },
+  "requiredExports": {
+    "harfbuzz": [
+      "hb_blob_create",
+      "hb_blob_destroy",
+      "hb_buffer_add_utf8",
+      "hb_buffer_create",
+      "hb_buffer_destroy",
+      "hb_buffer_get_glyph_infos",
+      "hb_buffer_get_glyph_positions",
+      "hb_buffer_get_length",
+      "hb_buffer_guess_segment_properties",
+      "hb_buffer_set_direction",
+      "hb_face_create",
+      "hb_face_destroy",
+      "hb_face_get_upem",
+      "hb_font_create",
+      "hb_font_destroy",
+      "hb_font_set_scale",
+      "hb_ot_font_set_funcs",
+      "hb_shape_full"
+    ],
+    "freetype": [
+      "FT_Done_Face",
+      "FT_Done_FreeType",
+      "FT_Init_FreeType",
+      "FT_New_Memory_Face",
+      "FT_Set_Pixel_Sizes"
+    ],
+    "bridge": [
+      "goo_ft_face_metrics",
+      "goo_ft_new_memory_face"
+    ]
+  }
+}

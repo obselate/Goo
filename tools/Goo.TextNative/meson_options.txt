@@ -1,0 +1,6 @@
+option('freetype_source', type: 'string')
+option('freetype_build', type: 'string')
+option('freetype_library', type: 'string')
+option('harfbuzz_source', type: 'string')
+option('harfbuzz_build', type: 'string')
+option('bridge_source', type: 'string')

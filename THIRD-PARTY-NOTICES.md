@@ -12,6 +12,28 @@ Gsharp.NET.Sdk 0.3.633.
 - License: MIT.
 - [G# license](https://github.com/DavidObando/gsharp/blob/f5642aff1598630710f29737baf3416273b0dcf4/LICENSE)
 
+## Frozen Goo native text proof
+
+The non-shipping Vulkan proof builds and carries direct Linux native libraries
+from the upstream releases below. These files are frozen evidence for the
+reopened O02/Q2 decision. They are not an accepted Goo runtime dependency or a
+runtime fallback. The Goo-owned files use stable names `libgoo-harfbuzz.so`,
+`libgoo-freetype.so`, and `libgoo-text-native.so`.
+
+- HarfBuzz 14.3.1: HarfBuzz Old MIT license.
+- Signed tag commit: `ab5ecbb83985034a76214ac0b2b833dcd590d774`.
+- Source archive SHA-256:
+  `9dae9538aae2ffdf70cec31f2c27bf68e2aaeeae3112688467697d5faf6194f7`.
+- [HarfBuzz 14.3.1 license](https://github.com/harfbuzz/harfbuzz/blob/14.3.1/COPYING)
+- FreeType 2.14.3: FreeType License or GPL-2.0-or-later.
+- Signed tag commit: `0a0221a1347e2f1e07c395263540026e9a0aa7c7`.
+- Source archive SHA-256:
+  `36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f`.
+- [FreeType 2.14.3 license](https://gitlab.freedesktop.org/freetype/freetype/-/blob/VER-2-14-3/LICENSE.TXT)
+- Builds disable the HarfBuzz FreeType backend and the FreeType HarfBuzz
+  auto-hinter integration. The two shared libraries therefore have no
+  dependency cycle.
+
 ## Yoga.Net 3.2.3, based on Meta Yoga v3.2.1
 
 Goo ships one vendored C# Yoga implementation. `3.2.3` is the Yoga.Net port

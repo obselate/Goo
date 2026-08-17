@@ -21,6 +21,7 @@
 !/.github/scripts/
 /.github/scripts/*
 !/.github/scripts/build-sdl-linux-x64.sh
+!/.github/scripts/build-text-native-linux-x64.sh
 !/.github/scripts/stage-linux-x64.sh
 !/.github/scripts/validate-release.py
 !/.github/scripts/validate-readme-examples.py
@@ -63,6 +64,8 @@
 !/tools/Goo.VulkanGen/**
 !/tools/Goo.ShaderGen/
 !/tools/Goo.ShaderGen/**
+!/tools/Goo.TextNative/
+!/tools/Goo.TextNative/**
 
 !/proofs/
 /proofs/*
