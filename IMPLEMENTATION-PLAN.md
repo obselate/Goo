@@ -1,6 +1,6 @@
 # Goo Core Vulkan Implementation Plan
 
-Status: active, S00 through S10 complete, S11 reopened for O02/Q2 text-stack candidate evaluation; the existing HarfBuzz/FreeType proof is frozen as non-shipping evidence, compositor-driven lifecycle actions and Windows runtime qualification remain deferred
+Status: active, S00 through S10 complete, S11 reopened for O02/Q2 text-stack candidate evaluation, and S12 has a Linux proof qualification on local commit `622ee82` but remains open for Windows 11 and S18 public-contract migration; the existing HarfBuzz/FreeType proof is frozen as non-shipping evidence, compositor-driven lifecycle actions and Windows runtime qualification remain deferred
 
 Date: 2026-08-17
 
@@ -168,7 +168,7 @@ constraints unless the lead records evidence that a dependency is not real.
 | S09 | Typed plan drives the representative basic slice | Stable digest, correct pixels, zero warm allocation |
 | S10 | Resource, shader, upload, and lifetime systems plateau | No warm resource creation or unbounded cache growth |
 | S11 | O02/Q2 selects and implements one text stack after candidate evaluation | Minimal text corpus, resource, ABI, and parity gates pass on Windows and Linux |
-| S12 | Backend-neutral images replace Skia decoding ownership | Async provider and cache behavior pass |
+| S12 | Backend-neutral images replace Skia decoding ownership | Linux proof qualification passes; Windows 11 and S18 public-contract migration remain open |
 | S13 | Accepted O03 path solution and compiled SVG assets work | Required path, clip, hit-test, and SVG corpus passes |
 | S14 | Effects and async readback work and one AA policy is accepted | O16 is closed with measured evidence |
 | S15 | Sparse updates use retained ranges and image history | Required sparse P95 improvement passes |
@@ -1032,6 +1032,13 @@ Reopen when:
   gates. Return to O02/Q2 rather than adding a hidden fallback.
 
 ### S12. Replace image ownership with decoded pixels and providers
+
+Status and qualification evidence:
+
+- Local commit `622ee82` adds the proof-only G# image provider/source ownership path with dual nearest/linear Vulkan samplers. Async decoder completions must publish through the provider's constructing thread.
+- Linux JIT image E2E recorded nearest digest `2726448270383127845` and linear digest `10848324327350558369`. Warm recording and rehydration reported `allocated=0`; the resident plateau, fence-safe retirement, and logical-source rehydration gates passed.
+- Linux x64 NativeAOT produced `1,728,520` bytes with SHA-256 `ec24ac566e4af3aed568059a482e7b017784baf13185b9811a8268e7235edce6`.
+- Product Goo remains untouched. No codec was added. S12 remains open for Windows 11 VM qualification and S18 public-contract migration. The current `ImageSourceProvider` has no explicit content-version field, which remains an S18 contract decision.
 
 Required specification:
 
