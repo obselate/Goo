@@ -1,0 +1,21 @@
+{
+  "asset": "VendSans-VariableFont_wght.ttf",
+  "sha256": "71ffd45fe736c7d26eeae2d7cb9e62e09b80901ad3df9a564b3662876c717666",
+  "copiedFrom": "docs/design-system/fonts/VendSans-VariableFont_wght.ttf",
+  "fontMetadata": {
+    "family": "Vend Sans Light",
+    "version": "Version 1.611",
+    "unitsPerEm": 1000,
+    "glyphCount": 447,
+    "copyright": "Copyright 2025 The Vend Sans Project Authors (https://github.com/ktkm/Vend-Sans)",
+    "designer": "Baptiste Guesnon, Bold Scandinavia",
+    "foundry": "Bloom Type"
+  },
+  "upstream": {
+    "repository": "https://github.com/ktkm/Vend-Sans",
+    "revision": "2663f1c7da5f71a0dd073b6dd6e42645b678d661",
+    "fontReference": "https://github.com/ktkm/Vend-Sans/tree/2663f1c7da5f71a0dd073b6dd6e42645b678d661/fonts/variable",
+    "licenseReference": "https://raw.githubusercontent.com/ktkm/Vend-Sans/2663f1c7da5f71a0dd073b6dd6e42645b678d661/OFL.txt",
+    "licenseSha256": "b9511bc8cb3b35d82086718739f368efa50c520e084cc28192bd275b39fe5cc8"
+  }
+}
