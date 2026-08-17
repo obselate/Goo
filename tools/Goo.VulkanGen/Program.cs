@@ -337,11 +337,11 @@ internal static class Program
 
 	private static readonly string[] ExpectedGlobalCommands = new string[4] { "vkGetInstanceProcAddr", "vkEnumerateInstanceVersion", "vkEnumerateInstanceExtensionProperties", "vkCreateInstance" };
 
-	private static readonly string[] ExpectedInstanceCommands = new string[15] { "vkDestroyInstance", "vkEnumeratePhysicalDevices", "vkGetPhysicalDeviceQueueFamilyProperties", "vkGetPhysicalDeviceProperties", "vkDestroySurfaceKHR", "vkGetPhysicalDeviceSurfaceSupportKHR", "vkGetDeviceProcAddr", "vkGetPhysicalDeviceFeatures2", "vkEnumerateDeviceExtensionProperties", "vkGetPhysicalDeviceSurfaceCapabilitiesKHR", "vkGetPhysicalDeviceSurfaceFormatsKHR", "vkGetPhysicalDeviceSurfacePresentModesKHR", "vkCreateDevice", "vkCreateDebugUtilsMessengerEXT", "vkDestroyDebugUtilsMessengerEXT" };
+	private static readonly string[] ExpectedInstanceCommands = new string[17] { "vkDestroyInstance", "vkEnumeratePhysicalDevices", "vkGetPhysicalDeviceQueueFamilyProperties", "vkGetPhysicalDeviceProperties", "vkDestroySurfaceKHR", "vkGetPhysicalDeviceSurfaceSupportKHR", "vkGetDeviceProcAddr", "vkGetPhysicalDeviceFeatures2", "vkEnumerateDeviceExtensionProperties", "vkGetPhysicalDeviceSurfaceCapabilitiesKHR", "vkGetPhysicalDeviceSurfaceFormatsKHR", "vkGetPhysicalDeviceSurfacePresentModesKHR", "vkGetPhysicalDeviceMemoryProperties", "vkGetPhysicalDeviceFormatProperties", "vkCreateDevice", "vkCreateDebugUtilsMessengerEXT", "vkDestroyDebugUtilsMessengerEXT" };
 
-	private static readonly string[] ExpectedDeviceCommands = new string[26] { "vkDestroyDevice", "vkGetDeviceQueue", "vkCreateSwapchainKHR", "vkDestroySwapchainKHR", "vkGetSwapchainImagesKHR", "vkCreateCommandPool", "vkDestroyCommandPool", "vkAllocateCommandBuffers", "vkCreateSemaphore", "vkDestroySemaphore", "vkCreateFence", "vkDestroyFence", "vkWaitForFences", "vkAcquireNextImageKHR", "vkBeginCommandBuffer", "vkEndCommandBuffer", "vkCmdPipelineBarrier2", "vkCmdClearColorImage", "vkQueueSubmit2", "vkQueuePresentKHR", "vkQueueWaitIdle", "vkCreateQueryPool", "vkDestroyQueryPool", "vkGetQueryPoolResults", "vkCmdResetQueryPool", "vkCmdWriteTimestamp2" };
+	private static readonly string[] ExpectedDeviceCommands = new string[58] { "vkDestroyDevice", "vkGetDeviceQueue", "vkCreateSwapchainKHR", "vkDestroySwapchainKHR", "vkGetSwapchainImagesKHR", "vkCreateCommandPool", "vkDestroyCommandPool", "vkAllocateCommandBuffers", "vkResetCommandBuffer", "vkCreateSemaphore", "vkDestroySemaphore", "vkCreateFence", "vkDestroyFence", "vkWaitForFences", "vkGetFenceStatus", "vkResetFences", "vkAcquireNextImageKHR", "vkBeginCommandBuffer", "vkEndCommandBuffer", "vkCmdPipelineBarrier2", "vkCmdClearColorImage", "vkQueueSubmit2", "vkQueuePresentKHR", "vkQueueWaitIdle", "vkCreateQueryPool", "vkDestroyQueryPool", "vkGetQueryPoolResults", "vkCmdResetQueryPool", "vkCmdWriteTimestamp2", "vkCreateImageView", "vkDestroyImageView", "vkCreateShaderModule", "vkDestroyShaderModule", "vkCreatePipelineLayout", "vkDestroyPipelineLayout", "vkCreateGraphicsPipelines", "vkDestroyPipeline", "vkCmdBeginRendering", "vkCmdEndRendering", "vkCmdBindPipeline", "vkCmdPushConstants", "vkCmdDraw", "vkCmdSetViewport", "vkCmdSetScissor", "vkCreateImage", "vkDestroyImage", "vkGetImageMemoryRequirements2", "vkAllocateMemory", "vkFreeMemory", "vkBindImageMemory2", "vkCreateBuffer", "vkDestroyBuffer", "vkGetBufferMemoryRequirements2", "vkBindBufferMemory2", "vkMapMemory", "vkUnmapMemory", "vkInvalidateMappedMemoryRanges", "vkCmdCopyImageToBuffer" };
 
-	private static readonly string[] ExpectedRequiredTypes = new string[4] { "VkClearValue", "VkPhysicalDeviceFeatures2", "VkPhysicalDeviceVulkan12Features", "VkPhysicalDeviceVulkan13Features" };
+	private static readonly string[] ExpectedRequiredTypes = new string[7] { "VkClearValue", "VkPhysicalDeviceFeatures2", "VkPhysicalDeviceVulkan12Features", "VkPhysicalDeviceVulkan13Features", "VkMemoryDedicatedRequirements", "VkMemoryDedicatedAllocateInfo", "VkPipelineRenderingCreateInfo" };
 
 	private static readonly string[] GsharpKeywords = new string[55]
 	{
@@ -798,15 +798,27 @@ internal static class Program
 						PointerDepth = 0,
 						ArrayExpression = null
 					}, registry, selectedTypes, pointerAsNativeInt: false, callbackAlias: false);
-					if (!IsFixedBufferElement(text2))
+					if (IsFixedBufferElement(text2))
+					{
+						text.Append("    fixed ").Append(value).Append(" [")
+							.Append(num.ToString(CultureInfo.InvariantCulture))
+							.Append(']')
+							.Append(text2)
+							.AppendLine();
+					}
+					else if (fieldDefinition.Type.PointerDepth == 0 && registry.GetDefinition(fieldDefinition.Type.Name)?.Category == "struct")
+					{
+						for (long index = 0; index < num; index++)
+						{
+							text.Append("    var ").Append(value).Append('_')
+								.Append(index.ToString(CultureInfo.InvariantCulture))
+								.Append(' ').Append(text2).AppendLine();
+						}
+					}
+					else
 					{
 						throw new InvalidDataException($"unsupported fixed-buffer element type {text2} in {item}.{fieldDefinition.Name}");
 					}
-					text.Append("    fixed ").Append(value).Append(" [")
-						.Append(num.ToString(CultureInfo.InvariantCulture))
-						.Append(']')
-						.Append(text2)
-						.AppendLine();
 				}
 				else
 				{
@@ -943,6 +955,10 @@ internal static class Program
 		if (type.PointerDepth == 0)
 		{
 			return text;
+		}
+		if (!callbackAlias && type.PointerDepth == 2 && string.Equals(type.Name, "void", StringComparison.Ordinal))
+		{
+			return "*void";
 		}
 		if (pointerAsNativeInt || callbackAlias)
 		{

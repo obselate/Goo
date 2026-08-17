@@ -5,19 +5,35 @@ import System.Runtime.InteropServices
 type VkAccessFlagBits2 = uint64
 type VkFlags64 = uint64
 type VkAccessFlags2 = VkFlags64
+type VkAttachmentLoadOp = int32
+type VkAttachmentStoreOp = int32
+type VkBlendFactor = int32
+type VkBlendOp = int32
 type VkBool32 = uint32
 type VkBuffer = uint64
+type VkBufferCreateFlagBits = int32
+type VkFlags = uint32
+type VkBufferCreateFlags = VkFlags
+type VkBufferUsageFlagBits = int32
+type VkBufferUsageFlags = VkFlags
+type VkColorComponentFlagBits = int32
+type VkColorComponentFlags = VkFlags
 type VkColorSpaceKHR = int32
 type VkCommandBuffer = nint
 type VkCommandBufferLevel = int32
+type VkCommandBufferResetFlagBits = int32
+type VkCommandBufferResetFlags = VkFlags
 type VkCommandBufferUsageFlagBits = int32
-type VkFlags = uint32
 type VkCommandBufferUsageFlags = VkFlags
 type VkCommandPool = uint64
 type VkCommandPoolCreateFlagBits = int32
 type VkCommandPoolCreateFlags = VkFlags
+type VkCompareOp = int32
+type VkComponentSwizzle = int32
 type VkCompositeAlphaFlagBitsKHR = int32
 type VkCompositeAlphaFlagsKHR = VkFlags
+type VkCullModeFlagBits = int32
+type VkCullModeFlags = VkFlags
 type VkDebugUtilsMessageSeverityFlagBitsEXT = int32
 type VkDebugUtilsMessageSeverityFlagsEXT = VkFlags
 type VkDebugUtilsMessageTypeFlagBitsEXT = int32
@@ -27,32 +43,76 @@ type VkDebugUtilsMessengerCreateFlagsEXT = VkFlags
 type VkDebugUtilsMessengerEXT = uint64
 type VkDependencyFlagBits = int32
 type VkDependencyFlags = VkFlags
+type VkDescriptorSetLayout = uint64
 type VkDevice = nint
 type VkDeviceCreateFlags = VkFlags
+type VkDeviceMemory = uint64
 type VkDeviceQueueCreateFlagBits = int32
 type VkDeviceQueueCreateFlags = VkFlags
 type VkDeviceSize = uint64
+type VkDynamicState = int32
 type VkFence = uint64
 type VkFenceCreateFlagBits = int32
 type VkFenceCreateFlags = VkFlags
 type VkFormat = int32
+type VkFormatFeatureFlagBits = int32
+type VkFormatFeatureFlags = VkFlags
 type VkFramebuffer = uint64
+type VkFrontFace = int32
 type VkImage = uint64
 type VkImageAspectFlagBits = int32
 type VkImageAspectFlags = VkFlags
+type VkImageCreateFlagBits = int32
+type VkImageCreateFlags = VkFlags
 type VkImageLayout = int32
+type VkImageTiling = int32
+type VkImageType = int32
 type VkImageUsageFlagBits = int32
 type VkImageUsageFlags = VkFlags
+type VkImageView = uint64
+type VkImageViewCreateFlagBits = int32
+type VkImageViewCreateFlags = VkFlags
+type VkImageViewType = int32
 type VkInstance = nint
 type VkInstanceCreateFlagBits = int32
 type VkInstanceCreateFlags = VkFlags
 type VkInternalAllocationType = int32
+type VkLogicOp = int32
+type VkMemoryHeapFlagBits = int32
+type VkMemoryHeapFlags = VkFlags
+type VkMemoryMapFlagBits = int32
+type VkMemoryMapFlags = VkFlags
+type VkMemoryPropertyFlagBits = int32
+type VkMemoryPropertyFlags = VkFlags
 type VkObjectType = int32
 type VkPhysicalDevice = nint
 type VkPhysicalDeviceType = int32
+type VkPipeline = uint64
+type VkPipelineBindPoint = int32
+type VkPipelineCache = uint64
+type VkPipelineColorBlendStateCreateFlagBits = int32
+type VkPipelineColorBlendStateCreateFlags = VkFlags
+type VkPipelineCreateFlagBits = int32
+type VkPipelineCreateFlags = VkFlags
+type VkPipelineDepthStencilStateCreateFlagBits = int32
+type VkPipelineDepthStencilStateCreateFlags = VkFlags
+type VkPipelineDynamicStateCreateFlags = VkFlags
+type VkPipelineInputAssemblyStateCreateFlags = VkFlags
+type VkPipelineLayout = uint64
+type VkPipelineLayoutCreateFlagBits = int32
+type VkPipelineLayoutCreateFlags = VkFlags
+type VkPipelineMultisampleStateCreateFlags = VkFlags
+type VkPipelineRasterizationStateCreateFlags = VkFlags
+type VkPipelineShaderStageCreateFlagBits = int32
+type VkPipelineShaderStageCreateFlags = VkFlags
 type VkPipelineStageFlagBits2 = uint64
 type VkPipelineStageFlags2 = VkFlags64
+type VkPipelineTessellationStateCreateFlags = VkFlags
+type VkPipelineVertexInputStateCreateFlags = VkFlags
+type VkPipelineViewportStateCreateFlags = VkFlags
+type VkPolygonMode = int32
 type VkPresentModeKHR = int32
+type VkPrimitiveTopology = int32
 type VkQueryControlFlagBits = int32
 type VkQueryControlFlags = VkFlags
 type VkQueryPipelineStatisticFlagBits = int32
@@ -67,12 +127,21 @@ type VkQueue = nint
 type VkQueueFlagBits = int32
 type VkQueueFlags = VkFlags
 type VkRenderPass = uint64
+type VkRenderingFlagBits = int32
+type VkRenderingFlags = VkFlags
+type VkResolveModeFlagBits = int32
 type VkResult = int32
 type VkSampleCountFlagBits = int32
 type VkSampleCountFlags = VkFlags
+type VkSampleMask = uint32
 type VkSemaphore = uint64
 type VkSemaphoreCreateFlags = VkFlags
+type VkShaderModule = uint64
+type VkShaderModuleCreateFlags = VkFlags
+type VkShaderStageFlagBits = int32
+type VkShaderStageFlags = VkFlags
 type VkSharingMode = int32
+type VkStencilOp = int32
 type VkStructureType = int32
 type VkSubmitFlagBits = int32
 type VkSubmitFlags = VkFlags
@@ -83,6 +152,7 @@ type VkSwapchainCreateFlagBitsKHR = int32
 type VkSwapchainCreateFlagsKHR = VkFlags
 type VkSwapchainKHR = uint64
 type VkSystemAllocationScope = int32
+type VkVertexInputRate = int32
 class VkConstants {
     shared {
         const VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT VkAccessFlagBits2 = 128L
@@ -110,16 +180,77 @@ class VkConstants {
         const VK_API_VERSION_1_1 uint32 = 4198400u
         const VK_API_VERSION_1_2 uint32 = 4202496u
         const VK_API_VERSION_1_3 uint32 = 4206592u
+        const VK_ATTACHMENT_LOAD_OP_CLEAR VkAttachmentLoadOp = 1
+        const VK_ATTACHMENT_LOAD_OP_DONT_CARE VkAttachmentLoadOp = 2
+        const VK_ATTACHMENT_LOAD_OP_LOAD VkAttachmentLoadOp = 0
+        const VK_ATTACHMENT_STORE_OP_DONT_CARE VkAttachmentStoreOp = 1
+        const VK_ATTACHMENT_STORE_OP_STORE VkAttachmentStoreOp = 0
         const VK_ATTACHMENT_UNUSED uint32 = 4294967295u
+        const VK_BLEND_FACTOR_CONSTANT_ALPHA VkBlendFactor = 12
+        const VK_BLEND_FACTOR_CONSTANT_COLOR VkBlendFactor = 10
+        const VK_BLEND_FACTOR_DST_ALPHA VkBlendFactor = 8
+        const VK_BLEND_FACTOR_DST_COLOR VkBlendFactor = 4
+        const VK_BLEND_FACTOR_ONE VkBlendFactor = 1
+        const VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA VkBlendFactor = 13
+        const VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR VkBlendFactor = 11
+        const VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA VkBlendFactor = 9
+        const VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR VkBlendFactor = 5
+        const VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA VkBlendFactor = 18
+        const VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR VkBlendFactor = 16
+        const VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA VkBlendFactor = 7
+        const VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR VkBlendFactor = 3
+        const VK_BLEND_FACTOR_SRC1_ALPHA VkBlendFactor = 17
+        const VK_BLEND_FACTOR_SRC1_COLOR VkBlendFactor = 15
+        const VK_BLEND_FACTOR_SRC_ALPHA VkBlendFactor = 6
+        const VK_BLEND_FACTOR_SRC_ALPHA_SATURATE VkBlendFactor = 14
+        const VK_BLEND_FACTOR_SRC_COLOR VkBlendFactor = 2
+        const VK_BLEND_FACTOR_ZERO VkBlendFactor = 0
+        const VK_BLEND_OP_ADD VkBlendOp = 0
+        const VK_BLEND_OP_MAX VkBlendOp = 4
+        const VK_BLEND_OP_MIN VkBlendOp = 3
+        const VK_BLEND_OP_REVERSE_SUBTRACT VkBlendOp = 2
+        const VK_BLEND_OP_SUBTRACT VkBlendOp = 1
+        const VK_BUFFER_CREATE_SPARSE_ALIASED_BIT VkBufferCreateFlagBits = 4
+        const VK_BUFFER_CREATE_SPARSE_BINDING_BIT VkBufferCreateFlagBits = 1
+        const VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT VkBufferCreateFlagBits = 2
+        const VK_BUFFER_USAGE_INDEX_BUFFER_BIT VkBufferUsageFlagBits = 64
+        const VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT VkBufferUsageFlagBits = 256
+        const VK_BUFFER_USAGE_STORAGE_BUFFER_BIT VkBufferUsageFlagBits = 32
+        const VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT VkBufferUsageFlagBits = 8
+        const VK_BUFFER_USAGE_TRANSFER_DST_BIT VkBufferUsageFlagBits = 2
+        const VK_BUFFER_USAGE_TRANSFER_SRC_BIT VkBufferUsageFlagBits = 1
+        const VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT VkBufferUsageFlagBits = 16
+        const VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT VkBufferUsageFlagBits = 4
+        const VK_BUFFER_USAGE_VERTEX_BUFFER_BIT VkBufferUsageFlagBits = 128
         const VK_COLORSPACE_SRGB_NONLINEAR_KHR VkColorSpaceKHR = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
+        const VK_COLOR_COMPONENT_A_BIT VkColorComponentFlagBits = 8
+        const VK_COLOR_COMPONENT_B_BIT VkColorComponentFlagBits = 4
+        const VK_COLOR_COMPONENT_G_BIT VkColorComponentFlagBits = 2
+        const VK_COLOR_COMPONENT_R_BIT VkColorComponentFlagBits = 1
         const VK_COLOR_SPACE_SRGB_NONLINEAR_KHR VkColorSpaceKHR = 0
         const VK_COMMAND_BUFFER_LEVEL_PRIMARY VkCommandBufferLevel = 0
         const VK_COMMAND_BUFFER_LEVEL_SECONDARY VkCommandBufferLevel = 1
+        const VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT VkCommandBufferResetFlagBits = 1
         const VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT VkCommandBufferUsageFlagBits = 1
         const VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT VkCommandBufferUsageFlagBits = 2
         const VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT VkCommandBufferUsageFlagBits = 4
         const VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT VkCommandPoolCreateFlagBits = 2
         const VK_COMMAND_POOL_CREATE_TRANSIENT_BIT VkCommandPoolCreateFlagBits = 1
+        const VK_COMPARE_OP_ALWAYS VkCompareOp = 7
+        const VK_COMPARE_OP_EQUAL VkCompareOp = 2
+        const VK_COMPARE_OP_GREATER VkCompareOp = 4
+        const VK_COMPARE_OP_GREATER_OR_EQUAL VkCompareOp = 6
+        const VK_COMPARE_OP_LESS VkCompareOp = 1
+        const VK_COMPARE_OP_LESS_OR_EQUAL VkCompareOp = 3
+        const VK_COMPARE_OP_NEVER VkCompareOp = 0
+        const VK_COMPARE_OP_NOT_EQUAL VkCompareOp = 5
+        const VK_COMPONENT_SWIZZLE_A VkComponentSwizzle = 6
+        const VK_COMPONENT_SWIZZLE_B VkComponentSwizzle = 5
+        const VK_COMPONENT_SWIZZLE_G VkComponentSwizzle = 4
+        const VK_COMPONENT_SWIZZLE_IDENTITY VkComponentSwizzle = 0
+        const VK_COMPONENT_SWIZZLE_ONE VkComponentSwizzle = 2
+        const VK_COMPONENT_SWIZZLE_R VkComponentSwizzle = 3
+        const VK_COMPONENT_SWIZZLE_ZERO VkComponentSwizzle = 1
         const VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR VkCompositeAlphaFlagBitsKHR = 8
         const VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR VkCompositeAlphaFlagBitsKHR = 1
         const VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR VkCompositeAlphaFlagBitsKHR = 4
@@ -129,6 +260,10 @@ class VkConstants {
         const VK_COMPUTE_OCCUPANCY_PRIORITY_HIGH_NV float32 = 0.75F
         const VK_COMPUTE_OCCUPANCY_PRIORITY_LOW_NV float32 = 0.25F
         const VK_COMPUTE_OCCUPANCY_PRIORITY_NORMAL_NV float32 = 0.50F
+        const VK_CULL_MODE_BACK_BIT VkCullModeFlagBits = 2
+        const VK_CULL_MODE_FRONT_AND_BACK VkCullModeFlagBits = 3
+        const VK_CULL_MODE_FRONT_BIT VkCullModeFlagBits = 1
+        const VK_CULL_MODE_NONE VkCullModeFlagBits = 0
         const VK_DATA_GRAPH_MODEL_TOOLCHAIN_VERSION_LENGTH_QCOM uint32 = 3u
         const VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT VkDebugUtilsMessageSeverityFlagBitsEXT = 4096
         const VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT VkDebugUtilsMessageSeverityFlagBitsEXT = 16
@@ -138,6 +273,15 @@ class VkConstants {
         const VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT VkDebugUtilsMessageTypeFlagBitsEXT = 4
         const VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT VkDebugUtilsMessageTypeFlagBitsEXT = 2
         const VK_DEPENDENCY_BY_REGION_BIT VkDependencyFlagBits = 1
+        const VK_DYNAMIC_STATE_BLEND_CONSTANTS VkDynamicState = 4
+        const VK_DYNAMIC_STATE_DEPTH_BIAS VkDynamicState = 3
+        const VK_DYNAMIC_STATE_DEPTH_BOUNDS VkDynamicState = 5
+        const VK_DYNAMIC_STATE_LINE_WIDTH VkDynamicState = 2
+        const VK_DYNAMIC_STATE_SCISSOR VkDynamicState = 1
+        const VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK VkDynamicState = 6
+        const VK_DYNAMIC_STATE_STENCIL_REFERENCE VkDynamicState = 8
+        const VK_DYNAMIC_STATE_STENCIL_WRITE_MASK VkDynamicState = 7
+        const VK_DYNAMIC_STATE_VIEWPORT VkDynamicState = 0
         const VK_ERROR_DEVICE_LOST VkResult = -4
         const VK_ERROR_EXTENSION_NOT_PRESENT VkResult = -7
         const VK_ERROR_FEATURE_NOT_PRESENT VkResult = -8
@@ -258,6 +402,19 @@ class VkConstants {
         const VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK VkFormat = 151
         const VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK VkFormat = 148
         const VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK VkFormat = 147
+        const VK_FORMAT_FEATURE_BLIT_DST_BIT VkFormatFeatureFlagBits = 2048
+        const VK_FORMAT_FEATURE_BLIT_SRC_BIT VkFormatFeatureFlagBits = 1024
+        const VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT VkFormatFeatureFlagBits = 128
+        const VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT VkFormatFeatureFlagBits = 256
+        const VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT VkFormatFeatureFlagBits = 512
+        const VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT VkFormatFeatureFlagBits = 1
+        const VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT VkFormatFeatureFlagBits = 4096
+        const VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT VkFormatFeatureFlagBits = 4
+        const VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT VkFormatFeatureFlagBits = 2
+        const VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT VkFormatFeatureFlagBits = 32
+        const VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT VkFormatFeatureFlagBits = 16
+        const VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT VkFormatFeatureFlagBits = 8
+        const VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT VkFormatFeatureFlagBits = 64
         const VK_FORMAT_R16G16B16A16_SFLOAT VkFormat = 97
         const VK_FORMAT_R16G16B16A16_SINT VkFormat = 96
         const VK_FORMAT_R16G16B16A16_SNORM VkFormat = 92
@@ -345,11 +502,18 @@ class VkConstants {
         const VK_FORMAT_S8_UINT VkFormat = 127
         const VK_FORMAT_UNDEFINED VkFormat = 0
         const VK_FORMAT_X8_D24_UNORM_PACK32 VkFormat = 125
+        const VK_FRONT_FACE_CLOCKWISE VkFrontFace = 1
+        const VK_FRONT_FACE_COUNTER_CLOCKWISE VkFrontFace = 0
         const VK_HEADER_VERSION uint32 = 357u
         const VK_IMAGE_ASPECT_COLOR_BIT VkImageAspectFlagBits = 1
         const VK_IMAGE_ASPECT_DEPTH_BIT VkImageAspectFlagBits = 2
         const VK_IMAGE_ASPECT_METADATA_BIT VkImageAspectFlagBits = 8
         const VK_IMAGE_ASPECT_STENCIL_BIT VkImageAspectFlagBits = 4
+        const VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT VkImageCreateFlagBits = 16
+        const VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT VkImageCreateFlagBits = 8
+        const VK_IMAGE_CREATE_SPARSE_ALIASED_BIT VkImageCreateFlagBits = 4
+        const VK_IMAGE_CREATE_SPARSE_BINDING_BIT VkImageCreateFlagBits = 1
+        const VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT VkImageCreateFlagBits = 2
         const VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL VkImageLayout = 2
         const VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL VkImageLayout = 3
         const VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL VkImageLayout = 4
@@ -360,6 +524,11 @@ class VkConstants {
         const VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL VkImageLayout = 7
         const VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL VkImageLayout = 6
         const VK_IMAGE_LAYOUT_UNDEFINED VkImageLayout = 0
+        const VK_IMAGE_TILING_LINEAR VkImageTiling = 1
+        const VK_IMAGE_TILING_OPTIMAL VkImageTiling = 0
+        const VK_IMAGE_TYPE_1D VkImageType = 0
+        const VK_IMAGE_TYPE_2D VkImageType = 1
+        const VK_IMAGE_TYPE_3D VkImageType = 2
         const VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT VkImageUsageFlagBits = 16
         const VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT VkImageUsageFlagBits = 32
         const VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT VkImageUsageFlagBits = 128
@@ -368,6 +537,13 @@ class VkConstants {
         const VK_IMAGE_USAGE_TRANSFER_DST_BIT VkImageUsageFlagBits = 2
         const VK_IMAGE_USAGE_TRANSFER_SRC_BIT VkImageUsageFlagBits = 1
         const VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT VkImageUsageFlagBits = 64
+        const VK_IMAGE_VIEW_TYPE_1D VkImageViewType = 0
+        const VK_IMAGE_VIEW_TYPE_1D_ARRAY VkImageViewType = 4
+        const VK_IMAGE_VIEW_TYPE_2D VkImageViewType = 1
+        const VK_IMAGE_VIEW_TYPE_2D_ARRAY VkImageViewType = 5
+        const VK_IMAGE_VIEW_TYPE_3D VkImageViewType = 2
+        const VK_IMAGE_VIEW_TYPE_CUBE VkImageViewType = 3
+        const VK_IMAGE_VIEW_TYPE_CUBE_ARRAY VkImageViewType = 6
         const VK_INCOMPLETE VkResult = 5
         const VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE VkInternalAllocationType = 0
         const VK_KHR_SURFACE_EXTENSION_NAME string = "VK_KHR_surface"
@@ -379,6 +555,22 @@ class VkConstants {
         const VK_KHR_WIN32_SURFACE_EXTENSION_NAME string = "VK_KHR_win32_surface"
         const VK_KHR_WIN32_SURFACE_SPEC_VERSION int32 = 6
         const VK_LOD_CLAMP_NONE float32 = 1000.0F
+        const VK_LOGIC_OP_AND VkLogicOp = 1
+        const VK_LOGIC_OP_AND_INVERTED VkLogicOp = 4
+        const VK_LOGIC_OP_AND_REVERSE VkLogicOp = 2
+        const VK_LOGIC_OP_CLEAR VkLogicOp = 0
+        const VK_LOGIC_OP_COPY VkLogicOp = 3
+        const VK_LOGIC_OP_COPY_INVERTED VkLogicOp = 12
+        const VK_LOGIC_OP_EQUIVALENT VkLogicOp = 9
+        const VK_LOGIC_OP_INVERT VkLogicOp = 10
+        const VK_LOGIC_OP_NAND VkLogicOp = 14
+        const VK_LOGIC_OP_NOR VkLogicOp = 8
+        const VK_LOGIC_OP_NO_OP VkLogicOp = 5
+        const VK_LOGIC_OP_OR VkLogicOp = 7
+        const VK_LOGIC_OP_OR_INVERTED VkLogicOp = 13
+        const VK_LOGIC_OP_OR_REVERSE VkLogicOp = 11
+        const VK_LOGIC_OP_SET VkLogicOp = 15
+        const VK_LOGIC_OP_XOR VkLogicOp = 6
         const VK_LUID_SIZE uint32 = 8u
         const VK_MAX_DATA_GRAPH_TOSA_NAME_SIZE_ARM uint32 = 128u
         const VK_MAX_DESCRIPTION_SIZE uint32 = 256u
@@ -396,6 +588,12 @@ class VkConstants {
         const VK_MAX_TENSOR_CREATE_INFO_ROLLING_BACKING_WRAP_COUNT_ARM uint32 = 4u
         const VK_MAX_VIDEO_AV1_REFERENCES_PER_FRAME_KHR uint32 = 7u
         const VK_MAX_VIDEO_VP9_REFERENCES_PER_FRAME_KHR uint32 = 3u
+        const VK_MEMORY_HEAP_DEVICE_LOCAL_BIT VkMemoryHeapFlagBits = 1
+        const VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT VkMemoryPropertyFlagBits = 1
+        const VK_MEMORY_PROPERTY_HOST_CACHED_BIT VkMemoryPropertyFlagBits = 8
+        const VK_MEMORY_PROPERTY_HOST_COHERENT_BIT VkMemoryPropertyFlagBits = 4
+        const VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT VkMemoryPropertyFlagBits = 2
+        const VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT VkMemoryPropertyFlagBits = 16
         const VK_NOT_READY VkResult = 1
         const VK_OBJECT_TYPE_BUFFER VkObjectType = 9
         const VK_OBJECT_TYPE_BUFFER_VIEW VkObjectType = 13
@@ -432,6 +630,11 @@ class VkConstants {
         const VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU VkPhysicalDeviceType = 1
         const VK_PHYSICAL_DEVICE_TYPE_OTHER VkPhysicalDeviceType = 0
         const VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU VkPhysicalDeviceType = 3
+        const VK_PIPELINE_BIND_POINT_COMPUTE VkPipelineBindPoint = 1
+        const VK_PIPELINE_BIND_POINT_GRAPHICS VkPipelineBindPoint = 0
+        const VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT VkPipelineCreateFlagBits = 2
+        const VK_PIPELINE_CREATE_DERIVATIVE_BIT VkPipelineCreateFlagBits = 4
+        const VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT VkPipelineCreateFlagBits = 1
         const VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT VkPipelineStageFlagBits2 = 65536L
         const VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT VkPipelineStageFlagBits2 = 32768L
         const VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT VkPipelineStageFlagBits2 = 4096L
@@ -458,10 +661,24 @@ class VkConstants {
         const VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT VkPipelineStageFlagBits2 = 137438953472L
         const VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT VkPipelineStageFlagBits2 = 4L
         const VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT VkPipelineStageFlagBits2 = 8L
+        const VK_POLYGON_MODE_FILL VkPolygonMode = 0
+        const VK_POLYGON_MODE_LINE VkPolygonMode = 1
+        const VK_POLYGON_MODE_POINT VkPolygonMode = 2
         const VK_PRESENT_MODE_FIFO_KHR VkPresentModeKHR = 2
         const VK_PRESENT_MODE_FIFO_RELAXED_KHR VkPresentModeKHR = 3
         const VK_PRESENT_MODE_IMMEDIATE_KHR VkPresentModeKHR = 0
         const VK_PRESENT_MODE_MAILBOX_KHR VkPresentModeKHR = 1
+        const VK_PRIMITIVE_TOPOLOGY_LINE_LIST VkPrimitiveTopology = 1
+        const VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY VkPrimitiveTopology = 6
+        const VK_PRIMITIVE_TOPOLOGY_LINE_STRIP VkPrimitiveTopology = 2
+        const VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY VkPrimitiveTopology = 7
+        const VK_PRIMITIVE_TOPOLOGY_PATCH_LIST VkPrimitiveTopology = 10
+        const VK_PRIMITIVE_TOPOLOGY_POINT_LIST VkPrimitiveTopology = 0
+        const VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN VkPrimitiveTopology = 5
+        const VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST VkPrimitiveTopology = 3
+        const VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY VkPrimitiveTopology = 8
+        const VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP VkPrimitiveTopology = 4
+        const VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY VkPrimitiveTopology = 9
         const VK_QUERY_CONTROL_PRECISE_BIT VkQueryControlFlagBits = 1
         const VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT VkQueryPipelineStatisticFlagBits = 32
         const VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT VkQueryPipelineStatisticFlagBits = 64
@@ -491,6 +708,14 @@ class VkConstants {
         const VK_REMAINING_3D_SLICES_EXT uint32 = 4294967295u
         const VK_REMAINING_ARRAY_LAYERS uint32 = 4294967295u
         const VK_REMAINING_MIP_LEVELS uint32 = 4294967295u
+        const VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT VkRenderingFlagBits = 1
+        const VK_RENDERING_RESUMING_BIT VkRenderingFlagBits = 4
+        const VK_RENDERING_SUSPENDING_BIT VkRenderingFlagBits = 2
+        const VK_RESOLVE_MODE_AVERAGE_BIT VkResolveModeFlagBits = 2
+        const VK_RESOLVE_MODE_MAX_BIT VkResolveModeFlagBits = 8
+        const VK_RESOLVE_MODE_MIN_BIT VkResolveModeFlagBits = 4
+        const VK_RESOLVE_MODE_NONE VkResolveModeFlagBits = 0
+        const VK_RESOLVE_MODE_SAMPLE_ZERO_BIT VkResolveModeFlagBits = 1
         const VK_SAMPLE_COUNT_16_BIT VkSampleCountFlagBits = 16
         const VK_SAMPLE_COUNT_1_BIT VkSampleCountFlagBits = 1
         const VK_SAMPLE_COUNT_2_BIT VkSampleCountFlagBits = 2
@@ -499,16 +724,35 @@ class VkConstants {
         const VK_SAMPLE_COUNT_64_BIT VkSampleCountFlagBits = 64
         const VK_SAMPLE_COUNT_8_BIT VkSampleCountFlagBits = 8
         const VK_SHADER_INDEX_UNUSED_AMDX uint32 = 4294967295u
+        const VK_SHADER_STAGE_ALL VkShaderStageFlagBits = 2147483647
+        const VK_SHADER_STAGE_ALL_GRAPHICS VkShaderStageFlagBits = 31
+        const VK_SHADER_STAGE_COMPUTE_BIT VkShaderStageFlagBits = 32
+        const VK_SHADER_STAGE_FRAGMENT_BIT VkShaderStageFlagBits = 16
+        const VK_SHADER_STAGE_GEOMETRY_BIT VkShaderStageFlagBits = 8
+        const VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT VkShaderStageFlagBits = 2
+        const VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT VkShaderStageFlagBits = 4
+        const VK_SHADER_STAGE_VERTEX_BIT VkShaderStageFlagBits = 1
         const VK_SHADER_UNUSED_KHR uint32 = 4294967295u
         const VK_SHARING_MODE_CONCURRENT VkSharingMode = 1
         const VK_SHARING_MODE_EXCLUSIVE VkSharingMode = 0
+        const VK_STENCIL_OP_DECREMENT_AND_CLAMP VkStencilOp = 4
+        const VK_STENCIL_OP_DECREMENT_AND_WRAP VkStencilOp = 7
+        const VK_STENCIL_OP_INCREMENT_AND_CLAMP VkStencilOp = 3
+        const VK_STENCIL_OP_INCREMENT_AND_WRAP VkStencilOp = 6
+        const VK_STENCIL_OP_INVERT VkStencilOp = 5
+        const VK_STENCIL_OP_KEEP VkStencilOp = 0
+        const VK_STENCIL_OP_REPLACE VkStencilOp = 2
+        const VK_STENCIL_OP_ZERO VkStencilOp = 1
         const VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR VkStructureType = 1000060010
         const VK_STRUCTURE_TYPE_APPLICATION_INFO VkStructureType = 0
+        const VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO VkStructureType = 1000157000
+        const VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO VkStructureType = 1000157001
         const VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR VkStructureType = 1000060009
         const VK_STRUCTURE_TYPE_BIND_SPARSE_INFO VkStructureType = 7
         const VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO VkStructureType = 12
         const VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER VkStructureType = 44
         const VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 VkStructureType = 1000314001
+        const VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2 VkStructureType = 1000146000
         const VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO VkStructureType = 13
         const VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO VkStructureType = 40
         const VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO VkStructureType = 42
@@ -538,6 +782,7 @@ class VkConstants {
         const VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO VkStructureType = 14
         const VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER VkStructureType = 45
         const VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 VkStructureType = 1000314002
+        const VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2 VkStructureType = 1000146001
         const VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHR VkStructureType = 1000060008
         const VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO VkStructureType = 15
         const VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO VkStructureType = 1
@@ -547,6 +792,9 @@ class VkConstants {
         const VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO VkStructureType = 5
         const VK_STRUCTURE_TYPE_MEMORY_BARRIER VkStructureType = 46
         const VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 VkStructureType = 1000314000
+        const VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO VkStructureType = 1000127001
+        const VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS VkStructureType = 1000127000
+        const VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 VkStructureType = 1000146003
         const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 VkStructureType = 1000059000
         const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES VkStructureType = 51
         const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES VkStructureType = 53
@@ -558,12 +806,15 @@ class VkConstants {
         const VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO VkStructureType = 30
         const VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO VkStructureType = 24
         const VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO VkStructureType = 23
+        const VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO VkStructureType = 1000044002
         const VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO VkStructureType = 18
         const VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO VkStructureType = 21
         const VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO VkStructureType = 19
         const VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO VkStructureType = 22
         const VK_STRUCTURE_TYPE_PRESENT_INFO_KHR VkStructureType = 1000001001
         const VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO VkStructureType = 11
+        const VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO VkStructureType = 1000044001
+        const VK_STRUCTURE_TYPE_RENDERING_INFO VkStructureType = 1000044000
         const VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO VkStructureType = 43
         const VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO VkStructureType = 38
         const VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO VkStructureType = 31
@@ -599,6 +850,8 @@ class VkConstants {
         const VK_TIMEOUT VkResult = 2
         const VK_TRUE uint32 = 1u
         const VK_UUID_SIZE uint32 = 16u
+        const VK_VERTEX_INPUT_RATE_INSTANCE VkVertexInputRate = 1
+        const VK_VERTEX_INPUT_RATE_VERTEX VkVertexInputRate = 0
         const VK_WHOLE_SIZE uint64 = uint64.MaxValue
     }
 }
@@ -625,6 +878,46 @@ unsafe struct VkApplicationInfo {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkBindBufferMemoryInfo {
+    var sType VkStructureType
+    var pNext *void
+    var buffer VkBuffer
+    var memory VkDeviceMemory
+    var memoryOffset VkDeviceSize
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkBindImageMemoryInfo {
+    var sType VkStructureType
+    var pNext *void
+    var image VkImage
+    var memory VkDeviceMemory
+    var memoryOffset VkDeviceSize
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkBufferCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkBufferCreateFlags
+    var size VkDeviceSize
+    var usage VkBufferUsageFlags
+    var sharingMode VkSharingMode
+    var queueFamilyIndexCount uint32
+    var pQueueFamilyIndices *uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkBufferImageCopy {
+    var bufferOffset VkDeviceSize
+    var bufferRowLength uint32
+    var bufferImageHeight uint32
+    var imageSubresource VkImageSubresourceLayers
+    var imageOffset VkOffset3D
+    var imageExtent VkExtent3D
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkBufferMemoryBarrier2 {
     var sType VkStructureType
     var pNext *void
@@ -637,6 +930,13 @@ unsafe struct VkBufferMemoryBarrier2 {
     var buffer VkBuffer
     var offset VkDeviceSize
     var size VkDeviceSize
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkBufferMemoryRequirementsInfo2 {
+    var sType VkStructureType
+    var pNext *void
+    var buffer VkBuffer
 }
 
 @StructLayout(LayoutKind.Sequential)
@@ -716,6 +1016,14 @@ unsafe struct VkCommandPoolCreateInfo {
     var pNext *void
     var flags VkCommandPoolCreateFlags
     var queueFamilyIndex uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkComponentMapping {
+    var r VkComponentSwizzle
+    var g VkComponentSwizzle
+    var b VkComponentSwizzle
+    var a VkComponentSwizzle
 }
 
 @StructLayout(LayoutKind.Sequential)
@@ -826,6 +1134,55 @@ unsafe struct VkFenceCreateInfo {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkFormatProperties {
+    var linearTilingFeatures VkFormatFeatureFlags
+    var optimalTilingFeatures VkFormatFeatureFlags
+    var bufferFeatures VkFormatFeatureFlags
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkGraphicsPipelineCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkPipelineCreateFlags
+    var stageCount uint32
+    var pStages *VkPipelineShaderStageCreateInfo
+    var pVertexInputState *VkPipelineVertexInputStateCreateInfo
+    var pInputAssemblyState *VkPipelineInputAssemblyStateCreateInfo
+    var pTessellationState *VkPipelineTessellationStateCreateInfo
+    var pViewportState *VkPipelineViewportStateCreateInfo
+    var pRasterizationState *VkPipelineRasterizationStateCreateInfo
+    var pMultisampleState *VkPipelineMultisampleStateCreateInfo
+    var pDepthStencilState *VkPipelineDepthStencilStateCreateInfo
+    var pColorBlendState *VkPipelineColorBlendStateCreateInfo
+    var pDynamicState *VkPipelineDynamicStateCreateInfo
+    var layout VkPipelineLayout
+    var renderPass VkRenderPass
+    var subpass uint32
+    var basePipelineHandle VkPipeline
+    var basePipelineIndex int32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkImageCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkImageCreateFlags
+    var imageType VkImageType
+    var format VkFormat
+    var extent VkExtent3D
+    var mipLevels uint32
+    var arrayLayers uint32
+    var samples VkSampleCountFlagBits
+    var tiling VkImageTiling
+    var usage VkImageUsageFlags
+    var sharingMode VkSharingMode
+    var queueFamilyIndexCount uint32
+    var pQueueFamilyIndices *uint32
+    var initialLayout VkImageLayout
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkImageMemoryBarrier2 {
     var sType VkStructureType
     var pNext *void
@@ -842,12 +1199,39 @@ unsafe struct VkImageMemoryBarrier2 {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkImageMemoryRequirementsInfo2 {
+    var sType VkStructureType
+    var pNext *void
+    var image VkImage
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkImageSubresourceLayers {
+    var aspectMask VkImageAspectFlags
+    var mipLevel uint32
+    var baseArrayLayer uint32
+    var layerCount uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkImageSubresourceRange {
     var aspectMask VkImageAspectFlags
     var baseMipLevel uint32
     var levelCount uint32
     var baseArrayLayer uint32
     var layerCount uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkImageViewCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkImageViewCreateFlags
+    var image VkImage
+    var viewType VkImageViewType
+    var format VkFormat
+    var components VkComponentMapping
+    var subresourceRange VkImageSubresourceRange
 }
 
 @StructLayout(LayoutKind.Sequential)
@@ -863,6 +1247,23 @@ unsafe struct VkInstanceCreateInfo {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkMappedMemoryRange {
+    var sType VkStructureType
+    var pNext *void
+    var memory VkDeviceMemory
+    var offset VkDeviceSize
+    var size VkDeviceSize
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkMemoryAllocateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var allocationSize VkDeviceSize
+    var memoryTypeIndex uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkMemoryBarrier2 {
     var sType VkStructureType
     var pNext *void
@@ -870,6 +1271,61 @@ unsafe struct VkMemoryBarrier2 {
     var srcAccessMask VkAccessFlags2
     var dstStageMask VkPipelineStageFlags2
     var dstAccessMask VkAccessFlags2
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkMemoryDedicatedAllocateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var image VkImage
+    var buffer VkBuffer
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkMemoryDedicatedRequirements {
+    var sType VkStructureType
+    var pNext *void
+    var prefersDedicatedAllocation VkBool32
+    var requiresDedicatedAllocation VkBool32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkMemoryHeap {
+    var size VkDeviceSize
+    var flags VkMemoryHeapFlags
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkMemoryRequirements {
+    var size VkDeviceSize
+    var alignment VkDeviceSize
+    var memoryTypeBits uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkMemoryRequirements2 {
+    var sType VkStructureType
+    var pNext *void
+    var memoryRequirements VkMemoryRequirements
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkMemoryType {
+    var propertyFlags VkMemoryPropertyFlags
+    var heapIndex uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkOffset2D {
+    var x int32
+    var y int32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkOffset3D {
+    var x int32
+    var y int32
+    var z int32
 }
 
 @StructLayout(LayoutKind.Sequential)
@@ -1049,6 +1505,60 @@ unsafe struct VkPhysicalDeviceLimits {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkPhysicalDeviceMemoryProperties {
+    var memoryTypeCount uint32
+    var memoryTypes_0 VkMemoryType
+    var memoryTypes_1 VkMemoryType
+    var memoryTypes_2 VkMemoryType
+    var memoryTypes_3 VkMemoryType
+    var memoryTypes_4 VkMemoryType
+    var memoryTypes_5 VkMemoryType
+    var memoryTypes_6 VkMemoryType
+    var memoryTypes_7 VkMemoryType
+    var memoryTypes_8 VkMemoryType
+    var memoryTypes_9 VkMemoryType
+    var memoryTypes_10 VkMemoryType
+    var memoryTypes_11 VkMemoryType
+    var memoryTypes_12 VkMemoryType
+    var memoryTypes_13 VkMemoryType
+    var memoryTypes_14 VkMemoryType
+    var memoryTypes_15 VkMemoryType
+    var memoryTypes_16 VkMemoryType
+    var memoryTypes_17 VkMemoryType
+    var memoryTypes_18 VkMemoryType
+    var memoryTypes_19 VkMemoryType
+    var memoryTypes_20 VkMemoryType
+    var memoryTypes_21 VkMemoryType
+    var memoryTypes_22 VkMemoryType
+    var memoryTypes_23 VkMemoryType
+    var memoryTypes_24 VkMemoryType
+    var memoryTypes_25 VkMemoryType
+    var memoryTypes_26 VkMemoryType
+    var memoryTypes_27 VkMemoryType
+    var memoryTypes_28 VkMemoryType
+    var memoryTypes_29 VkMemoryType
+    var memoryTypes_30 VkMemoryType
+    var memoryTypes_31 VkMemoryType
+    var memoryHeapCount uint32
+    var memoryHeaps_0 VkMemoryHeap
+    var memoryHeaps_1 VkMemoryHeap
+    var memoryHeaps_2 VkMemoryHeap
+    var memoryHeaps_3 VkMemoryHeap
+    var memoryHeaps_4 VkMemoryHeap
+    var memoryHeaps_5 VkMemoryHeap
+    var memoryHeaps_6 VkMemoryHeap
+    var memoryHeaps_7 VkMemoryHeap
+    var memoryHeaps_8 VkMemoryHeap
+    var memoryHeaps_9 VkMemoryHeap
+    var memoryHeaps_10 VkMemoryHeap
+    var memoryHeaps_11 VkMemoryHeap
+    var memoryHeaps_12 VkMemoryHeap
+    var memoryHeaps_13 VkMemoryHeap
+    var memoryHeaps_14 VkMemoryHeap
+    var memoryHeaps_15 VkMemoryHeap
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkPhysicalDeviceProperties {
     var apiVersion uint32
     var driverVersion uint32
@@ -1145,6 +1655,157 @@ unsafe struct VkPhysicalDeviceVulkan13Features {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineColorBlendAttachmentState {
+    var blendEnable VkBool32
+    var srcColorBlendFactor VkBlendFactor
+    var dstColorBlendFactor VkBlendFactor
+    var colorBlendOp VkBlendOp
+    var srcAlphaBlendFactor VkBlendFactor
+    var dstAlphaBlendFactor VkBlendFactor
+    var alphaBlendOp VkBlendOp
+    var colorWriteMask VkColorComponentFlags
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineColorBlendStateCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkPipelineColorBlendStateCreateFlags
+    var logicOpEnable VkBool32
+    var logicOp VkLogicOp
+    var attachmentCount uint32
+    var pAttachments *VkPipelineColorBlendAttachmentState
+    fixed blendConstants [4]float32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineDepthStencilStateCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkPipelineDepthStencilStateCreateFlags
+    var depthTestEnable VkBool32
+    var depthWriteEnable VkBool32
+    var depthCompareOp VkCompareOp
+    var depthBoundsTestEnable VkBool32
+    var stencilTestEnable VkBool32
+    var front VkStencilOpState
+    var back VkStencilOpState
+    var minDepthBounds float32
+    var maxDepthBounds float32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineDynamicStateCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkPipelineDynamicStateCreateFlags
+    var dynamicStateCount uint32
+    var pDynamicStates *VkDynamicState
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineInputAssemblyStateCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkPipelineInputAssemblyStateCreateFlags
+    var topology VkPrimitiveTopology
+    var primitiveRestartEnable VkBool32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineLayoutCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkPipelineLayoutCreateFlags
+    var setLayoutCount uint32
+    var pSetLayouts *VkDescriptorSetLayout
+    var pushConstantRangeCount uint32
+    var pPushConstantRanges *VkPushConstantRange
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineMultisampleStateCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkPipelineMultisampleStateCreateFlags
+    var rasterizationSamples VkSampleCountFlagBits
+    var sampleShadingEnable VkBool32
+    var minSampleShading float32
+    var pSampleMask *VkSampleMask
+    var alphaToCoverageEnable VkBool32
+    var alphaToOneEnable VkBool32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineRasterizationStateCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkPipelineRasterizationStateCreateFlags
+    var depthClampEnable VkBool32
+    var rasterizerDiscardEnable VkBool32
+    var polygonMode VkPolygonMode
+    var cullMode VkCullModeFlags
+    var frontFace VkFrontFace
+    var depthBiasEnable VkBool32
+    var depthBiasConstantFactor float32
+    var depthBiasClamp float32
+    var depthBiasSlopeFactor float32
+    var lineWidth float32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineRenderingCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var viewMask uint32
+    var colorAttachmentCount uint32
+    var pColorAttachmentFormats *VkFormat
+    var depthAttachmentFormat VkFormat
+    var stencilAttachmentFormat VkFormat
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineShaderStageCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkPipelineShaderStageCreateFlags
+    var stage VkShaderStageFlagBits
+    var module VkShaderModule
+    var pName *int8
+    var pSpecializationInfo *VkSpecializationInfo
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineTessellationStateCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkPipelineTessellationStateCreateFlags
+    var patchControlPoints uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineVertexInputStateCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkPipelineVertexInputStateCreateFlags
+    var vertexBindingDescriptionCount uint32
+    var pVertexBindingDescriptions *VkVertexInputBindingDescription
+    var vertexAttributeDescriptionCount uint32
+    var pVertexAttributeDescriptions *VkVertexInputAttributeDescription
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineViewportStateCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkPipelineViewportStateCreateFlags
+    var viewportCount uint32
+    var pViewports *VkViewport
+    var scissorCount uint32
+    var pScissors *VkRect2D
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkPresentInfoKHR {
     var sType VkStructureType
     var pNext *void
@@ -1154,6 +1815,13 @@ unsafe struct VkPresentInfoKHR {
     var pSwapchains *VkSwapchainKHR
     var pImageIndices *uint32
     var pResults *VkResult
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPushConstantRange {
+    var stageFlags VkShaderStageFlags
+    var offset uint32
+    var size uint32
 }
 
 @StructLayout(LayoutKind.Sequential)
@@ -1175,6 +1843,40 @@ unsafe struct VkQueueFamilyProperties {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkRect2D {
+    var offset VkOffset2D
+    var extent VkExtent2D
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkRenderingAttachmentInfo {
+    var sType VkStructureType
+    var pNext *void
+    var imageView VkImageView
+    var imageLayout VkImageLayout
+    var resolveMode VkResolveModeFlagBits
+    var resolveImageView VkImageView
+    var resolveImageLayout VkImageLayout
+    var loadOp VkAttachmentLoadOp
+    var storeOp VkAttachmentStoreOp
+    var clearValue VkClearValue
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkRenderingInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkRenderingFlags
+    var renderArea VkRect2D
+    var layerCount uint32
+    var viewMask uint32
+    var colorAttachmentCount uint32
+    var pColorAttachments *VkRenderingAttachmentInfo
+    var pDepthAttachment *VkRenderingAttachmentInfo
+    var pStencilAttachment *VkRenderingAttachmentInfo
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkSemaphoreCreateInfo {
     var sType VkStructureType
     var pNext *void
@@ -1189,6 +1891,41 @@ unsafe struct VkSemaphoreSubmitInfo {
     var value uint64
     var stageMask VkPipelineStageFlags2
     var deviceIndex uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkShaderModuleCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkShaderModuleCreateFlags
+    var codeSize nuint
+    var pCode *uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkSpecializationInfo {
+    var mapEntryCount uint32
+    var pMapEntries *VkSpecializationMapEntry
+    var dataSize nuint
+    var pData *void
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkSpecializationMapEntry {
+    var constantID uint32
+    var offset uint32
+    var size nuint
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkStencilOpState {
+    var failOp VkStencilOp
+    var passOp VkStencilOp
+    var depthFailOp VkStencilOp
+    var compareOp VkCompareOp
+    var compareMask uint32
+    var writeMask uint32
+    var reference uint32
 }
 
 @StructLayout(LayoutKind.Sequential)
@@ -1247,6 +1984,31 @@ unsafe struct VkSwapchainCreateInfoKHR {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkVertexInputAttributeDescription {
+    var location uint32
+    var binding uint32
+    var format VkFormat
+    var offset uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkVertexInputBindingDescription {
+    var binding uint32
+    var stride uint32
+    var inputRate VkVertexInputRate
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkViewport {
+    var x float32
+    var y float32
+    var width float32
+    var height float32
+    var minDepth float32
+    var maxDepth float32
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkGlobalDispatch {
     var vkGetInstanceProcAddr unmanaged[Cdecl] (VkInstance, *int8) -> unmanaged[Cdecl] () -> void
     var vkEnumerateInstanceVersion unmanaged[Cdecl] (*uint32) -> VkResult
@@ -1267,6 +2029,8 @@ unsafe struct VkInstanceDispatch {
     var vkGetPhysicalDeviceSurfaceCapabilitiesKHR unmanaged[Cdecl] (VkPhysicalDevice, VkSurfaceKHR, *VkSurfaceCapabilitiesKHR) -> VkResult
     var vkGetPhysicalDeviceSurfaceFormatsKHR unmanaged[Cdecl] (VkPhysicalDevice, VkSurfaceKHR, *uint32, *VkSurfaceFormatKHR) -> VkResult
     var vkGetPhysicalDeviceSurfacePresentModesKHR unmanaged[Cdecl] (VkPhysicalDevice, VkSurfaceKHR, *uint32, *VkPresentModeKHR) -> VkResult
+    var vkGetPhysicalDeviceMemoryProperties unmanaged[Cdecl] (VkPhysicalDevice, *VkPhysicalDeviceMemoryProperties) -> void
+    var vkGetPhysicalDeviceFormatProperties unmanaged[Cdecl] (VkPhysicalDevice, VkFormat, *VkFormatProperties) -> void
     var vkCreateDevice unmanaged[Cdecl] (VkPhysicalDevice, *VkDeviceCreateInfo, *VkAllocationCallbacks, *VkDevice) -> VkResult
     var vkCreateDebugUtilsMessengerEXT unmanaged[Cdecl] (VkInstance, *VkDebugUtilsMessengerCreateInfoEXT, *VkAllocationCallbacks, *VkDebugUtilsMessengerEXT) -> VkResult
     var vkDestroyDebugUtilsMessengerEXT unmanaged[Cdecl] (VkInstance, VkDebugUtilsMessengerEXT, *VkAllocationCallbacks) -> void
@@ -1281,11 +2045,14 @@ unsafe struct VkDeviceDispatch {
     var vkCreateCommandPool unmanaged[Cdecl] (VkDevice, *VkCommandPoolCreateInfo, *VkAllocationCallbacks, *VkCommandPool) -> VkResult
     var vkDestroyCommandPool unmanaged[Cdecl] (VkDevice, VkCommandPool, *VkAllocationCallbacks) -> void
     var vkAllocateCommandBuffers unmanaged[Cdecl] (VkDevice, *VkCommandBufferAllocateInfo, *VkCommandBuffer) -> VkResult
+    var vkResetCommandBuffer unmanaged[Cdecl] (VkCommandBuffer, VkCommandBufferResetFlags) -> VkResult
     var vkCreateSemaphore unmanaged[Cdecl] (VkDevice, *VkSemaphoreCreateInfo, *VkAllocationCallbacks, *VkSemaphore) -> VkResult
     var vkDestroySemaphore unmanaged[Cdecl] (VkDevice, VkSemaphore, *VkAllocationCallbacks) -> void
     var vkCreateFence unmanaged[Cdecl] (VkDevice, *VkFenceCreateInfo, *VkAllocationCallbacks, *VkFence) -> VkResult
     var vkDestroyFence unmanaged[Cdecl] (VkDevice, VkFence, *VkAllocationCallbacks) -> void
     var vkWaitForFences unmanaged[Cdecl] (VkDevice, uint32, *VkFence, VkBool32, uint64) -> VkResult
+    var vkGetFenceStatus unmanaged[Cdecl] (VkDevice, VkFence) -> VkResult
+    var vkResetFences unmanaged[Cdecl] (VkDevice, uint32, *VkFence) -> VkResult
     var vkAcquireNextImageKHR unmanaged[Cdecl] (VkDevice, VkSwapchainKHR, uint64, VkSemaphore, VkFence, *uint32) -> VkResult
     var vkBeginCommandBuffer unmanaged[Cdecl] (VkCommandBuffer, *VkCommandBufferBeginInfo) -> VkResult
     var vkEndCommandBuffer unmanaged[Cdecl] (VkCommandBuffer) -> VkResult
@@ -1299,4 +2066,33 @@ unsafe struct VkDeviceDispatch {
     var vkGetQueryPoolResults unmanaged[Cdecl] (VkDevice, VkQueryPool, uint32, uint32, nuint, *void, VkDeviceSize, VkQueryResultFlags) -> VkResult
     var vkCmdResetQueryPool unmanaged[Cdecl] (VkCommandBuffer, VkQueryPool, uint32, uint32) -> void
     var vkCmdWriteTimestamp2 unmanaged[Cdecl] (VkCommandBuffer, VkPipelineStageFlags2, VkQueryPool, uint32) -> void
+    var vkCreateImageView unmanaged[Cdecl] (VkDevice, *VkImageViewCreateInfo, *VkAllocationCallbacks, *VkImageView) -> VkResult
+    var vkDestroyImageView unmanaged[Cdecl] (VkDevice, VkImageView, *VkAllocationCallbacks) -> void
+    var vkCreateShaderModule unmanaged[Cdecl] (VkDevice, *VkShaderModuleCreateInfo, *VkAllocationCallbacks, *VkShaderModule) -> VkResult
+    var vkDestroyShaderModule unmanaged[Cdecl] (VkDevice, VkShaderModule, *VkAllocationCallbacks) -> void
+    var vkCreatePipelineLayout unmanaged[Cdecl] (VkDevice, *VkPipelineLayoutCreateInfo, *VkAllocationCallbacks, *VkPipelineLayout) -> VkResult
+    var vkDestroyPipelineLayout unmanaged[Cdecl] (VkDevice, VkPipelineLayout, *VkAllocationCallbacks) -> void
+    var vkCreateGraphicsPipelines unmanaged[Cdecl] (VkDevice, VkPipelineCache, uint32, *VkGraphicsPipelineCreateInfo, *VkAllocationCallbacks, *VkPipeline) -> VkResult
+    var vkDestroyPipeline unmanaged[Cdecl] (VkDevice, VkPipeline, *VkAllocationCallbacks) -> void
+    var vkCmdBeginRendering unmanaged[Cdecl] (VkCommandBuffer, *VkRenderingInfo) -> void
+    var vkCmdEndRendering unmanaged[Cdecl] (VkCommandBuffer) -> void
+    var vkCmdBindPipeline unmanaged[Cdecl] (VkCommandBuffer, VkPipelineBindPoint, VkPipeline) -> void
+    var vkCmdPushConstants unmanaged[Cdecl] (VkCommandBuffer, VkPipelineLayout, VkShaderStageFlags, uint32, uint32, *void) -> void
+    var vkCmdDraw unmanaged[Cdecl] (VkCommandBuffer, uint32, uint32, uint32, uint32) -> void
+    var vkCmdSetViewport unmanaged[Cdecl] (VkCommandBuffer, uint32, uint32, *VkViewport) -> void
+    var vkCmdSetScissor unmanaged[Cdecl] (VkCommandBuffer, uint32, uint32, *VkRect2D) -> void
+    var vkCreateImage unmanaged[Cdecl] (VkDevice, *VkImageCreateInfo, *VkAllocationCallbacks, *VkImage) -> VkResult
+    var vkDestroyImage unmanaged[Cdecl] (VkDevice, VkImage, *VkAllocationCallbacks) -> void
+    var vkGetImageMemoryRequirements2 unmanaged[Cdecl] (VkDevice, *VkImageMemoryRequirementsInfo2, *VkMemoryRequirements2) -> void
+    var vkAllocateMemory unmanaged[Cdecl] (VkDevice, *VkMemoryAllocateInfo, *VkAllocationCallbacks, *VkDeviceMemory) -> VkResult
+    var vkFreeMemory unmanaged[Cdecl] (VkDevice, VkDeviceMemory, *VkAllocationCallbacks) -> void
+    var vkBindImageMemory2 unmanaged[Cdecl] (VkDevice, uint32, *VkBindImageMemoryInfo) -> VkResult
+    var vkCreateBuffer unmanaged[Cdecl] (VkDevice, *VkBufferCreateInfo, *VkAllocationCallbacks, *VkBuffer) -> VkResult
+    var vkDestroyBuffer unmanaged[Cdecl] (VkDevice, VkBuffer, *VkAllocationCallbacks) -> void
+    var vkGetBufferMemoryRequirements2 unmanaged[Cdecl] (VkDevice, *VkBufferMemoryRequirementsInfo2, *VkMemoryRequirements2) -> void
+    var vkBindBufferMemory2 unmanaged[Cdecl] (VkDevice, uint32, *VkBindBufferMemoryInfo) -> VkResult
+    var vkMapMemory unmanaged[Cdecl] (VkDevice, VkDeviceMemory, VkDeviceSize, VkDeviceSize, VkMemoryMapFlags, *void) -> VkResult
+    var vkUnmapMemory unmanaged[Cdecl] (VkDevice, VkDeviceMemory) -> void
+    var vkInvalidateMappedMemoryRanges unmanaged[Cdecl] (VkDevice, uint32, *VkMappedMemoryRange) -> VkResult
+    var vkCmdCopyImageToBuffer unmanaged[Cdecl] (VkCommandBuffer, VkImage, VkImageLayout, VkBuffer, uint32, *VkBufferImageCopy) -> void
 }
