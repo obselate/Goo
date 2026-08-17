@@ -283,6 +283,29 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
         return invalidateMappedMemoryRanges(device, 1u, &mappedRange)
     }
 
+    internal func FlushBeforeSubmit(allocation VulkanMemoryAllocation) VkResult {
+        EnsureUsable(allocation)
+        if allocation.hostCoherent {
+            return VkConstants.VK_SUCCESS
+        }
+        if !allocation.hostVisible {
+            throw InvalidOperationException("Vulkan memory is not host visible")
+        }
+        if allocation.mapped == nil {
+            throw InvalidOperationException("Vulkan memory must be mapped before flushing")
+        }
+        let block = allocation.block!!
+        var mappedRange = VkMappedMemoryRange{
+            sType: VkConstants.VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+            pNext: nil,
+            memory: block.memory,
+            offset: 0uL,
+            size: VkConstants.VK_WHOLE_SIZE,
+        }
+        let flushMappedMemoryRanges = deviceDispatch.vkFlushMappedMemoryRanges
+        return flushMappedMemoryRanges(device, 1u, &mappedRange)
+    }
+
     internal func Retire(allocation VulkanMemoryAllocation) {
         if allocation.state != VulkanMemoryAllocationState.Live {
             return

@@ -1038,23 +1038,35 @@ internal unsafe class VulkanUploadRing {
         }
     }
 
-    internal func MarkSubmitted(reservation VulkanUploadReservation, fence uint64) bool {
+    internal func CanMarkSubmitted(reservation VulkanUploadReservation, fence uint64) bool {
         EnsureOpen()
-        if !reservation.Succeeded || reservation.Slot < 0 || reservation.Slot >= segments.Length {
+        if fence == 0uL || !MatchesReservation(reservation) {
             return false
         }
         let segment = segments[reservation.Slot]
-        if segment.State != VulkanUploadRangeState.Reserved
-            || reservation.Generation != generation
-            || segment.Generation != generation
-            || segment.Resource.Kind != reservation.Resource.Kind
-            || segment.Resource.LogicalId != reservation.Resource.LogicalId
-            || segment.Resource.Version != reservation.Resource.Version
-            || segment.Version != reservation.Version
-            || segment.DataOffset != reservation.Offset
-            || segment.Size != reservation.Size
-            || segment.SpanSize != reservation.SpanSize
-            || segment.Sequence != reservation.Sequence {
+        return segment.State == VulkanUploadRangeState.Reserved
+            || (segment.State == VulkanUploadRangeState.Submitted && segment.Fence == fence)
+    }
+
+    internal func IsSubmitted(reservation VulkanUploadReservation, fence uint64) bool {
+        EnsureOpen()
+        if fence == 0uL || !MatchesReservation(reservation) {
+            return false
+        }
+        let segment = segments[reservation.Slot]
+        return segment.State == VulkanUploadRangeState.Submitted && segment.Fence == fence
+    }
+
+    internal func MarkSubmitted(reservation VulkanUploadReservation, fence uint64) bool {
+        EnsureOpen()
+        if fence == 0uL || !MatchesReservation(reservation) {
+            return false
+        }
+        let segment = segments[reservation.Slot]
+        if segment.State == VulkanUploadRangeState.Submitted && segment.Fence == fence {
+            return true
+        }
+        if segment.State != VulkanUploadRangeState.Reserved {
             return false
         }
         segments[reservation.Slot] = VulkanUploadSegment{
@@ -1208,6 +1220,23 @@ internal unsafe class VulkanUploadRing {
 
     deinit {
         Dispose()
+    }
+
+    private func MatchesReservation(reservation VulkanUploadReservation) bool {
+        if !reservation.Succeeded || reservation.Slot < 0 || reservation.Slot >= segments.Length {
+            return false
+        }
+        let segment = segments[reservation.Slot]
+        return reservation.Generation == generation
+            && segment.Generation == generation
+            && segment.Resource.Kind == reservation.Resource.Kind
+            && segment.Resource.LogicalId == reservation.Resource.LogicalId
+            && segment.Resource.Version == reservation.Resource.Version
+            && segment.Version == reservation.Version
+            && segment.DataOffset == reservation.Offset
+            && segment.Size == reservation.Size
+            && segment.SpanSize == reservation.SpanSize
+            && segment.Sequence == reservation.Sequence
     }
 
     private func FindOffset(size VkDeviceSize, alignment VkDeviceSize,
