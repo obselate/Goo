@@ -1,1 +1,3 @@
 *.gs linguist-language=C#
+*.glsl text eol=lf
+*.spv binary

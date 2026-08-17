@@ -46,6 +46,7 @@
 !/docs/audits/2026-08-16-gsharp-0.4.1-findings.md
 !/docs/audits/2026-08-16-vulkan-capability-census.md
 !/docs/audits/2026-08-16-goo-core-requirements.md
+!/docs/audits/2026-08-17-vulkan-shader-toolchain.md
 !/docs/perf/
 /docs/perf/*
 !/docs/perf/2026-08-16-gsharp-0.4.1-skia-baseline-status.md
@@ -60,6 +61,8 @@
 !/tools/Goo.ApiDocs/**
 !/tools/Goo.VulkanGen/
 !/tools/Goo.VulkanGen/**
+!/tools/Goo.ShaderGen/
+!/tools/Goo.ShaderGen/**
 
 !/proofs/
 /proofs/*

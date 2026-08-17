@@ -1,6 +1,6 @@
 # Goo Core Vulkan Implementation Plan
 
-Status: active, S00 through S04 complete, S05 and S06 next
+Status: active, S00 through S04 complete, Linux S05 through S07 slices complete, S08 next, Windows runtime qualification deferred until a Windows 11 VM is available
 
 Date: 2026-08-16
 
@@ -493,7 +493,9 @@ Work:
 5. Define the exact generated-binding surface and extension policy.
 6. Define the shader manifest schema, resource binding model, push constants, formats, and pipeline
   variants.
-7. Record required, optional, and forbidden features.
+7. Define final optimized SPIR-V reflection, generated G# host packing, descriptor schemas, source
+  include closure, compiler binary provenance, and atomic artifact publication.
+8. Record required, optional, and forbidden features.
 
 Required capability policy:
 
@@ -505,6 +507,11 @@ Required capability policy:
   capabilities with correctness-preserving fallbacks inside the Vulkan design.
 - Optional vendor blend, descriptor, or presentation features cannot be correctness dependencies.
 - Runtime shader compilation is forbidden.
+- GLSL 450 through the pinned `glslc` toolchain is the built-in Goo source policy. Optional Slang or
+  DXC adapters remain build-time inputs to the same language-neutral artifact contract.
+- Final SPIR-V, not source declarations, defines the runtime interface. Build validation reflects
+  entry points, stages, descriptors, push constants, specialization constants, capabilities, and
+  required feature bits.
 
 Required generated artifacts:
 
@@ -513,6 +520,7 @@ Required generated artifacts:
 - Shader manifest and compiler provenance.
 - Checked-in G# binding output.
 - Checked-in or reproducibly generated SPIR-V with hashes.
+- Generated G# parameter packing and descriptor-layout metadata derived from final SPIR-V.
 
 Permanent verification:
 
@@ -819,6 +827,24 @@ Work:
 5. Store or reference a logical reconstruction source for every GPU resource.
 6. Warm required pipelines outside measured steady frames.
 
+Shader artifact system:
+
+- Goo owns a language-neutral shader artifact model consumed by built-in primitive pipelines,
+  compositing and effects, and later trusted custom effect packages.
+- Each artifact records a stable shader and variant ID, stage and entry point, final SPIR-V hash,
+  reflected interface, parameter block layout, descriptor layout, color and alpha contract,
+  capability requirements, fallback variant, pipeline key, and compiler provenance.
+- Runtime packages contain only validated SPIR-V, compact manifests, and generated G# packing code.
+  They contain no compiler, reflection library, or source parser.
+- Development hot reload compiles externally into a temporary content-addressed artifact, validates
+  and reflects it, prewarms a compatible pipeline, publishes atomically at a frame boundary, and
+  fence-retires the replaced module and pipeline.
+- Pipeline caches are device and driver keyed runtime data. They are never treated as portable
+  shader artifacts.
+- Flutter Impeller is a strong reference for offline shader compilation, predictable pipeline
+  construction, explicit render resources, and tooling. It is a reference, not Goo's API or
+  architecture guide.
+
 Required specification:
 
 - Resource IDs remain stable across GPU generation changes.
@@ -1037,6 +1063,23 @@ Compositing specification:
 - Shadows and blur use bounded offscreen passes.
 - Offscreen layers are pooled, versioned, byte-bounded, and reconstructable.
 - Effects expand conservative bounds before culling and damage selection.
+
+Declarative shader and effect surface:
+
+- Goo first exposes a typed closed `EffectGraph`, not raw runtime shader source.
+- Initial nodes are source, backdrop, transform, opacity, blur, color matrix, saturation, contrast,
+  hue, mask, blend, composite, drop shadow, and trusted custom effect package.
+- Compilation removes identity nodes, folds opacity and transforms, fuses compatible color work,
+  pools transient targets, and treats blur, mask, backdrop reads, isolation, and custom packages as
+  pass barriers.
+- Every node declares conservative source and output bounds so damage and layer reuse remain exact.
+- The first custom shader tier is fragment-only, uses bounded sampled inputs and a fixed generated
+  parameter block, and ships as a precompiled `GooShaderPack` artifact.
+- Public custom effects do not expose raw descriptor sets, storage images or buffers, atomics,
+  buffer device address, subgroups, compute, mesh or task shaders, ray tracing, or arbitrary
+  topology.
+- SPIR-V validation is correctness validation, not a hostile-code sandbox. Arbitrary third-party
+  shader packages are explicitly trusted or unsafe.
 
 Readback specification:
 

@@ -29,16 +29,8 @@ internal class FrameProfileTotal {
 }
 
 internal class FrameProfiler {
-  shared {
-    // Report labels for Events..Present in enum order.
-    private let stageNames []string = []string{
-      "events", "input", "tree", "motion", "reconcile", "build", "diff", "style_resolve",
-      "transitions", "layout", "input_tree", "render", "target_begin", "paint", "canvas_flush",
-      "target_flush", "present" }
-  }
-
   private let enabled bool
-  private let totals List[FrameProfileTotal]
+  private var totals List[FrameProfileTotal]?
   private var warmupFrames int32
   private var frames int32
   private var rendered int32
@@ -49,10 +41,7 @@ internal class FrameProfiler {
   internal init() {
     enabled = Environment.GetEnvironmentVariable("GOO_FRAME_PROFILE") == "1"
     warmupFrames = 60
-    totals = List[FrameProfileTotal]()
-    for i in 0 ... int32(FrameProfileStage.Count) {
-      totals.Add(FrameProfileTotal())
-    }
+    totals = nil
   }
 
   internal func Start() FrameProfilePoint {
@@ -63,6 +52,7 @@ internal class FrameProfiler {
   }
 
   internal func Record(stage FrameProfileStage, start FrameProfilePoint) {
+    if !enabled { return }
     let elapsed = Elapsed(start)
     Add(stage, elapsed.Ticks, elapsed.Bytes, 1)
   }
@@ -75,6 +65,7 @@ internal class FrameProfiler {
   }
 
   internal func RecordStyleResolveNodes(nodes int64) {
+    if !enabled { return }
     styleResolveNodes = styleResolveNodes + nodes
   }
 
@@ -87,6 +78,7 @@ internal class FrameProfiler {
     resolveBytes int64,
     resolveCalls int64,
   ) {
+    if !enabled { return }
     let elapsed = Elapsed(start)
     Add(FrameProfileStage.Reconcile, elapsed.Ticks, elapsed.Bytes, 1)
     Add(FrameProfileStage.Build, buildTicks, buildBytes, buildCalls)
@@ -103,13 +95,15 @@ internal class FrameProfiler {
   }
 
   private func Add(stage FrameProfileStage, ticks int64, bytes int64, calls int64) {
-    let total = totals[int32(stage)]
+    let values = totalsOrCreate()
+    let total = values[int32(stage)]
     total.Ticks = total.Ticks + ticks
     total.Bytes = total.Bytes + bytes
     total.Calls = total.Calls + calls
   }
 
   internal func EndFrame(start FrameProfilePoint, didRender bool) {
+    if !enabled { return }
     Record(FrameProfileStage.Frame, start)
     if warmupFrames > 0 {
       warmupFrames--
@@ -140,39 +134,71 @@ internal class FrameProfiler {
 
     let sb = StringBuilder()
     sb.Append("[goo.profile.time_ms/frame] total=").Append(time(FrameProfileStage.Frame))
-    for i in 0 ... stageNames.Length {
-      let stage = FrameProfileStage(int32(FrameProfileStage.Events) + i)
-      sb.Append(" ").Append(stageNames[i]).Append("=").Append(time(stage))
+    for i in int32(FrameProfileStage.Events) ... int32(FrameProfileStage.Count) {
+      let stage = FrameProfileStage(i)
+      sb.Append(" ").Append(stageName(stage)).Append("=").Append(time(stage))
     }
     Console.WriteLine(sb.ToString())
 
     sb.Clear()
     sb.Append("[goo.profile.alloc_B/frame] total=").Append(bytes(FrameProfileStage.Frame))
-    for i in 0 ... stageNames.Length {
-      let stage = FrameProfileStage(int32(FrameProfileStage.Events) + i)
-      sb.Append(" ").Append(stageNames[i]).Append("=").Append(bytes(stage))
+    for i in int32(FrameProfileStage.Events) ... int32(FrameProfileStage.Count) {
+      let stage = FrameProfileStage(i)
+      sb.Append(" ").Append(stageName(stage)).Append("=").Append(bytes(stage))
     }
     Console.WriteLine(sb.ToString())
+  }
+
+  private func stageName(stage FrameProfileStage) string {
+    return switch stage {
+      case FrameProfileStage.Events: "events"
+      case FrameProfileStage.Input: "input"
+      case FrameProfileStage.Tree: "tree"
+      case FrameProfileStage.Motion: "motion"
+      case FrameProfileStage.Reconcile: "reconcile"
+      case FrameProfileStage.Build: "build"
+      case FrameProfileStage.Diff: "diff"
+      case FrameProfileStage.StyleResolve: "style_resolve"
+      case FrameProfileStage.Transitions: "transitions"
+      case FrameProfileStage.Layout: "layout"
+      case FrameProfileStage.InputTree: "input_tree"
+      case FrameProfileStage.Render: "render"
+      case FrameProfileStage.TargetBegin: "target_begin"
+      case FrameProfileStage.Paint: "paint"
+      case FrameProfileStage.CanvasFlush: "canvas_flush"
+      case FrameProfileStage.TargetFlush: "target_flush"
+      case FrameProfileStage.Present: "present"
+      default: ""
+    }
   }
 
   private func time(stage FrameProfileStage) string {
     if frames == 0 {
       return "0.000"
     }
-    let ticks = totals[int32(stage)].Ticks
-    let value = float64(ticks) * 1000.0 / float64(Stopwatch.Frequency) / float64(frames)
-    return value.ToString("F3")
+    if let values = totals {
+      let ticks = values[int32(stage)].Ticks
+      let value = float64(ticks) * 1000.0 / float64(Stopwatch.Frequency) / float64(frames)
+      return value.ToString("F3")
+    }
+    return "0.000"
   }
 
   private func bytes(stage FrameProfileStage) int64 {
     if frames == 0 {
       return 0
     }
-    return totals[int32(stage)].Bytes / int64(frames)
+    if let values = totals {
+      return values[int32(stage)].Bytes / int64(frames)
+    }
+    return 0
   }
 
   private func callCount(stage FrameProfileStage) int64 {
-    return totals[int32(stage)].Calls
+    if let values = totals {
+      return values[int32(stage)].Calls
+    }
+    return 0
   }
 
   private func countPerFrame(value int64) string {
@@ -186,8 +212,20 @@ internal class FrameProfiler {
     frames = 0
     rendered = 0
     styleResolveNodes = 0
-    for total in totals {
-      total.Reset()
+    if let values = totals {
+      for total in values {
+        total.Reset()
+      }
     }
+  }
+
+  private func totalsOrCreate() List[FrameProfileTotal] {
+    if let values = totals { return values }
+    let values = List[FrameProfileTotal]()
+    for i in 0 ... int32(FrameProfileStage.Count) {
+      values.Add(FrameProfileTotal())
+    }
+    totals = values
+    return values
   }
 }

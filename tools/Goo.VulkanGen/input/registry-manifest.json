@@ -7,7 +7,8 @@
     "VK_KHR_surface",
     "VK_KHR_swapchain",
     "VK_KHR_win32_surface",
-    "VK_KHR_wayland_surface"
+    "VK_KHR_wayland_surface",
+    "VK_EXT_debug_utils"
   ],
   "globalCommands": [
     "vkGetInstanceProcAddr",
@@ -28,7 +29,9 @@
     "vkGetPhysicalDeviceSurfaceCapabilitiesKHR",
     "vkGetPhysicalDeviceSurfaceFormatsKHR",
     "vkGetPhysicalDeviceSurfacePresentModesKHR",
-    "vkCreateDevice"
+    "vkCreateDevice",
+    "vkCreateDebugUtilsMessengerEXT",
+    "vkDestroyDebugUtilsMessengerEXT"
   ],
   "deviceCommands": [
     "vkDestroyDevice",
@@ -51,7 +54,12 @@
     "vkCmdClearColorImage",
     "vkQueueSubmit2",
     "vkQueuePresentKHR",
-    "vkQueueWaitIdle"
+    "vkQueueWaitIdle",
+    "vkCreateQueryPool",
+    "vkDestroyQueryPool",
+    "vkGetQueryPoolResults",
+    "vkCmdResetQueryPool",
+    "vkCmdWriteTimestamp2"
   ],
   "requiredTypes": [
     "VkClearValue",

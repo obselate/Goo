@@ -37,6 +37,10 @@ unsafe func SDL_Vulkan_DestroySurface(instance VkInstance, surface VkSurfaceKHR,
 @DllImport("SDL3", EntryPoint: "SDL_Vulkan_GetPresentationSupport", CallingConvention: CallingConvention.Cdecl)
 unsafe func SDL_Vulkan_GetPresentationSupport(instance VkInstance, physicalDevice VkPhysicalDevice, queueFamilyIndex uint32) uint8;
 
+unsafe data struct VulkanExtensionNamePointer {
+    var value *int8
+}
+
 unsafe func LoadGlobalProc(getProc nint, instance VkInstance, name string) nint {
     let nameStorage = Marshal.StringToCoTaskMemUTF8(name)
     let namePointer = *int8(nameStorage)
@@ -82,7 +86,23 @@ unsafe func ExtensionNameEquals(property *VkExtensionProperties, expected string
     }
 }
 
+func TrackResult(diagnostics VulkanDiagnostics?, eventId uint64, result VkResult) VkResult {
+    if let diagnostics = diagnostics {
+        diagnostics.RecordResult(eventId, int32(result))
+        if result < VkConstants.VK_SUCCESS {
+            diagnostics.CaptureFatal(int32(result), eventId)
+        }
+    }
+    return result
+}
+
 unsafe func Main() int32 {
+    var diagnostics VulkanDiagnostics? = nil
+    var validation VulkanValidation? = nil
+    if Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1" {
+        diagnostics = VulkanDiagnostics()
+        validation = VulkanValidation(diagnostics!!)
+    }
     var sdlInitialized = false
     var vulkanLoaded = false
     var window nint = nint(0)
@@ -115,6 +135,13 @@ unsafe func Main() int32 {
     var destroyCommandPoolAddress nint = nint(0)
     var destroySwapchainAddress nint = nint(0)
     var destroyDeviceAddress nint = nint(0)
+    var validationMessenger VkDebugUtilsMessengerEXT = uint64(0)
+    var validationMessengerCreated = false
+    var destroyValidationMessengerAddress nint = nint(0)
+    var queryPool VkQueryPool = uint64(0)
+    var queryPoolCreated = false
+    var destroyQueryPoolAddress nint = nint(0)
+    var debugExtensionNameStorage nint = nint(0)
 
     try {
         if SDL_Init(0x00004020u) == 0u {
@@ -158,25 +185,62 @@ unsafe func Main() int32 {
         let createInstance = createInstanceNullable!!
 
         var apiVersion uint32 = 0u
-        if enumerateVersion(&apiVersion) != VkConstants.VK_SUCCESS || apiVersion < VkConstants.VK_API_VERSION_1_3 {
+        if TrackResult(diagnostics, 10uL, enumerateVersion(&apiVersion)) != VkConstants.VK_SUCCESS || apiVersion < VkConstants.VK_API_VERSION_1_3 {
             throw InvalidOperationException("Vulkan 1.3 is required")
         }
 
         var availableExtensionCount uint32 = 0u
-        if enumerateExtensions(nil, &availableExtensionCount, nil) != VkConstants.VK_SUCCESS {
+        if TrackResult(diagnostics, 11uL, enumerateExtensions(nil, &availableExtensionCount, nil)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("vkEnumerateInstanceExtensionProperties failed")
         }
+        var debugUtilsAvailable = false
         if availableExtensionCount > 0u {
             let availableExtensions *VkExtensionProperties = stackalloc [int32(availableExtensionCount)]VkExtensionProperties
-            if enumerateExtensions(nil, &availableExtensionCount, availableExtensions) != VkConstants.VK_SUCCESS {
+            if TrackResult(diagnostics, 12uL, enumerateExtensions(nil, &availableExtensionCount, availableExtensions)) != VkConstants.VK_SUCCESS {
                 throw InvalidOperationException("vkEnumerateInstanceExtensionProperties data query failed")
             }
+            var availableExtensionIndex uint32 = 0u
+            while availableExtensionIndex < availableExtensionCount && !debugUtilsAvailable {
+                debugUtilsAvailable = ExtensionNameEquals(&availableExtensions[availableExtensionIndex], VkConstants.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+                availableExtensionIndex++
+            }
+        }
+        if diagnostics != nil && !debugUtilsAvailable {
+            throw InvalidOperationException("VK_EXT_debug_utils is unavailable")
         }
 
         var requiredExtensionCount uint32 = 0u
         let requiredExtensions = SDL_Vulkan_GetInstanceExtensions(ref requiredExtensionCount)
         if requiredExtensions == nil || requiredExtensionCount == 0u {
             throw InvalidOperationException("SDL Vulkan instance extensions are unavailable")
+        }
+        var instanceExtensionCount = requiredExtensionCount
+        var instanceExtensionNames **int8 = requiredExtensions
+        var debugMessengerCreateInfo = VkDebugUtilsMessengerCreateInfoEXT{}
+        if let validation = validation {
+            debugExtensionNameStorage = Marshal.StringToCoTaskMemUTF8(VkConstants.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+            let extensionNames *VulkanExtensionNamePointer = stackalloc [int32(requiredExtensionCount + 1u)]VulkanExtensionNamePointer
+            var extensionIndex uint32 = 0u
+            while extensionIndex < requiredExtensionCount {
+                extensionNames[extensionIndex].value = requiredExtensions[extensionIndex]
+                extensionIndex++
+            }
+            extensionNames[requiredExtensionCount].value = *int8(debugExtensionNameStorage)
+            instanceExtensionNames = &extensionNames[0].value
+            instanceExtensionCount++
+            let callbackAddress = Marshal.GetFunctionPointerForDelegate(validation.Callback)
+            let callbackNullable = callbackAddress as (unmanaged[Cdecl] (VkDebugUtilsMessageSeverityFlagBitsEXT, VkDebugUtilsMessageTypeFlagsEXT, nint, nint) -> VkBool32)?
+            if callbackNullable == nil {
+                throw InvalidOperationException("Vulkan validation callback address is unavailable")
+            }
+            debugMessengerCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT
+            debugMessengerCreateInfo.messageSeverity = uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+                | uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+            debugMessengerCreateInfo.messageType = uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
+                | uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+                | uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
+            debugMessengerCreateInfo.pfnUserCallback = callbackNullable!!
+            debugMessengerCreateInfo.pUserData = nil
         }
 
         appNameStorage = Marshal.StringToCoTaskMemUTF8("Goo Vulkan Proof")
@@ -192,10 +256,13 @@ unsafe func Main() int32 {
         var createInfo = VkInstanceCreateInfo{}
         createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
         createInfo.pApplicationInfo = &applicationInfo
-        createInfo.enabledExtensionCount = requiredExtensionCount
-        createInfo.ppEnabledExtensionNames = requiredExtensions
+        createInfo.enabledExtensionCount = instanceExtensionCount
+        createInfo.ppEnabledExtensionNames = instanceExtensionNames
+        if validation != nil {
+            createInfo.pNext = *void(&debugMessengerCreateInfo)
+        }
 
-        if createInstance(&createInfo, nil, &instance) != VkConstants.VK_SUCCESS || instance == nint(0) {
+        if TrackResult(diagnostics, 13uL, createInstance(&createInfo, nil, &instance)) != VkConstants.VK_SUCCESS || instance == nint(0) {
             throw InvalidOperationException("vkCreateInstance failed")
         }
 
@@ -206,6 +273,29 @@ unsafe func Main() int32 {
         }
         instanceDispatch.vkDestroyInstance = destroyInstanceNullable!!
         let destroyInstance = instanceDispatch.vkDestroyInstance
+
+        if let validation = validation {
+            let createMessengerAddress = LoadGlobalProc(getProcAddress, instance, "vkCreateDebugUtilsMessengerEXT")
+            let createMessengerNullable = createMessengerAddress as (unmanaged[Cdecl] (VkInstance, *VkDebugUtilsMessengerCreateInfoEXT, *VkAllocationCallbacks, *VkDebugUtilsMessengerEXT) -> VkResult)?
+            if createMessengerNullable == nil {
+                throw InvalidOperationException("vkCreateDebugUtilsMessengerEXT is unavailable")
+            }
+            instanceDispatch.vkCreateDebugUtilsMessengerEXT = createMessengerNullable!!
+            let destroyMessengerAddress = LoadGlobalProc(getProcAddress, instance, "vkDestroyDebugUtilsMessengerEXT")
+            let destroyMessengerNullable = destroyMessengerAddress as (unmanaged[Cdecl] (VkInstance, VkDebugUtilsMessengerEXT, *VkAllocationCallbacks) -> void)?
+            if destroyMessengerNullable == nil {
+                throw InvalidOperationException("vkDestroyDebugUtilsMessengerEXT is unavailable")
+            }
+            instanceDispatch.vkDestroyDebugUtilsMessengerEXT = destroyMessengerNullable!!
+            destroyValidationMessengerAddress = destroyMessengerAddress
+            let createMessenger = instanceDispatch.vkCreateDebugUtilsMessengerEXT
+            let createMessengerResult = createMessenger(instance, &debugMessengerCreateInfo, nil, &validationMessenger)
+            if TrackResult(diagnostics, 1uL, createMessengerResult) != VkConstants.VK_SUCCESS {
+                throw InvalidOperationException("vkCreateDebugUtilsMessengerEXT failed")
+            }
+            validationMessengerCreated = true
+            validation.KeepAlive()
+        }
 
         let enumeratePhysicalDevicesAddress = LoadGlobalProc(getProcAddress, instance, "vkEnumeratePhysicalDevices")
         let enumeratePhysicalDevicesNullable = enumeratePhysicalDevicesAddress as (unmanaged[Cdecl] (VkInstance, *uint32, *VkPhysicalDevice) -> VkResult)?
@@ -294,11 +384,11 @@ unsafe func Main() int32 {
         surfaceCreated = true
 
         var physicalDeviceCount uint32 = 0u
-        if enumeratePhysicalDevices(instance, &physicalDeviceCount, nil) != VkConstants.VK_SUCCESS || physicalDeviceCount == 0u {
+        if TrackResult(diagnostics, 20uL, enumeratePhysicalDevices(instance, &physicalDeviceCount, nil)) != VkConstants.VK_SUCCESS || physicalDeviceCount == 0u {
             throw InvalidOperationException("No Vulkan physical device is available")
         }
         let physicalDevices *VkPhysicalDevice = stackalloc [int32(physicalDeviceCount)]VkPhysicalDevice
-        if enumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices) != VkConstants.VK_SUCCESS {
+        if TrackResult(diagnostics, 21uL, enumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("vkEnumeratePhysicalDevices data query failed")
         }
 
@@ -310,6 +400,7 @@ unsafe func Main() int32 {
         let getPresentModes = instanceDispatch.vkGetPhysicalDeviceSurfacePresentModesKHR
         var selectedPhysicalDevice VkPhysicalDevice = nint(0)
         var selectedQueueFamilyIndex uint32 = 0u
+        var selectedTimestampValidBits uint32 = 0u
         var selectedSurfaceCapabilities = VkSurfaceCapabilitiesKHR{}
         var selectedSurfaceFormat = VkSurfaceFormatKHR{}
         var selectedPresentMode VkPresentModeKHR = VkConstants.VK_PRESENT_MODE_FIFO_KHR
@@ -320,6 +411,7 @@ unsafe func Main() int32 {
             getPhysicalDeviceProperties(physicalDevice, &candidateProperties)
             var candidateQualified = candidateProperties.apiVersion >= VkConstants.VK_API_VERSION_1_3
             var candidateQueueFamilyIndex uint32 = 0u
+            var candidateTimestampValidBits uint32 = 0u
             var hasPresentationQueue = false
             var queueFamilyCount uint32 = 0u
             if candidateQualified {
@@ -332,12 +424,13 @@ unsafe func Main() int32 {
                         let queueFamily = queueFamilies[queueFamilyIndex]
                         if queueFamily.queueCount > 0u && (queueFamily.queueFlags & uint32(VkConstants.VK_QUEUE_GRAPHICS_BIT)) != 0u {
                             var supported VkBool32 = VkConstants.VK_FALSE
-                            if surfaceSupport(physicalDevice, queueFamilyIndex, surface, &supported) != VkConstants.VK_SUCCESS {
+                            if TrackResult(diagnostics, 22uL, surfaceSupport(physicalDevice, queueFamilyIndex, surface, &supported)) != VkConstants.VK_SUCCESS {
                                 throw InvalidOperationException("vkGetPhysicalDeviceSurfaceSupportKHR failed")
                             }
                             let sdlSupported = SDL_Vulkan_GetPresentationSupport(instance, physicalDevice, queueFamilyIndex)
                             if supported != VkConstants.VK_FALSE && sdlSupported != 0u {
                                 candidateQueueFamilyIndex = queueFamilyIndex
+                                candidateTimestampValidBits = queueFamily.timestampValidBits
                                 hasPresentationQueue = true
                             }
                         }
@@ -365,11 +458,11 @@ unsafe func Main() int32 {
 
             if candidateQualified {
                 var deviceExtensionCount uint32 = 0u
-                if enumerateDeviceExtensions(physicalDevice, nil, &deviceExtensionCount, nil) != VkConstants.VK_SUCCESS || deviceExtensionCount == 0u {
+                if TrackResult(diagnostics, 23uL, enumerateDeviceExtensions(physicalDevice, nil, &deviceExtensionCount, nil)) != VkConstants.VK_SUCCESS || deviceExtensionCount == 0u {
                     candidateQualified = false
                 } else {
                     let deviceExtensions *VkExtensionProperties = stackalloc [int32(deviceExtensionCount)]VkExtensionProperties
-                    if enumerateDeviceExtensions(physicalDevice, nil, &deviceExtensionCount, deviceExtensions) != VkConstants.VK_SUCCESS {
+                    if TrackResult(diagnostics, 24uL, enumerateDeviceExtensions(physicalDevice, nil, &deviceExtensionCount, deviceExtensions)) != VkConstants.VK_SUCCESS {
                         candidateQualified = false
                     } else {
                         var hasSwapchainExtension = false
@@ -386,18 +479,18 @@ unsafe func Main() int32 {
             }
 
             if candidateQualified {
-                if getSurfaceCapabilities(physicalDevice, surface, &candidateSurfaceCapabilities) != VkConstants.VK_SUCCESS || (candidateSurfaceCapabilities.supportedUsageFlags & uint32(VkConstants.VK_IMAGE_USAGE_TRANSFER_DST_BIT)) == 0u {
+                if TrackResult(diagnostics, 25uL, getSurfaceCapabilities(physicalDevice, surface, &candidateSurfaceCapabilities)) != VkConstants.VK_SUCCESS || (candidateSurfaceCapabilities.supportedUsageFlags & uint32(VkConstants.VK_IMAGE_USAGE_TRANSFER_DST_BIT)) == 0u {
                     candidateQualified = false
                 }
             }
 
             if candidateQualified {
                 var surfaceFormatCount uint32 = 0u
-                if getSurfaceFormats(physicalDevice, surface, &surfaceFormatCount, nil) != VkConstants.VK_SUCCESS || surfaceFormatCount == 0u {
+                if TrackResult(diagnostics, 26uL, getSurfaceFormats(physicalDevice, surface, &surfaceFormatCount, nil)) != VkConstants.VK_SUCCESS || surfaceFormatCount == 0u {
                     candidateQualified = false
                 } else {
                     let surfaceFormats *VkSurfaceFormatKHR = stackalloc [int32(surfaceFormatCount)]VkSurfaceFormatKHR
-                    if getSurfaceFormats(physicalDevice, surface, &surfaceFormatCount, surfaceFormats) != VkConstants.VK_SUCCESS {
+                    if TrackResult(diagnostics, 27uL, getSurfaceFormats(physicalDevice, surface, &surfaceFormatCount, surfaceFormats)) != VkConstants.VK_SUCCESS {
                         candidateQualified = false
                     } else if surfaceFormatCount == 1u && surfaceFormats[0].format == VkConstants.VK_FORMAT_UNDEFINED {
                         candidateSurfaceFormat.format = VkConstants.VK_FORMAT_B8G8R8A8_SRGB
@@ -431,11 +524,11 @@ unsafe func Main() int32 {
 
             if candidateQualified {
                 var presentModeCount uint32 = 0u
-                if getPresentModes(physicalDevice, surface, &presentModeCount, nil) != VkConstants.VK_SUCCESS || presentModeCount == 0u {
+                if TrackResult(diagnostics, 28uL, getPresentModes(physicalDevice, surface, &presentModeCount, nil)) != VkConstants.VK_SUCCESS || presentModeCount == 0u {
                     candidateQualified = false
                 } else {
                     let presentModes *VkPresentModeKHR = stackalloc [int32(presentModeCount)]VkPresentModeKHR
-                    if getPresentModes(physicalDevice, surface, &presentModeCount, presentModes) != VkConstants.VK_SUCCESS {
+                    if TrackResult(diagnostics, 29uL, getPresentModes(physicalDevice, surface, &presentModeCount, presentModes)) != VkConstants.VK_SUCCESS {
                         candidateQualified = false
                     } else {
                         var hasFifoPresentMode = false
@@ -454,6 +547,7 @@ unsafe func Main() int32 {
             if candidateQualified {
                 selectedPhysicalDevice = physicalDevice
                 selectedQueueFamilyIndex = candidateQueueFamilyIndex
+                selectedTimestampValidBits = candidateTimestampValidBits
                 selectedSurfaceCapabilities = candidateSurfaceCapabilities
                 selectedSurfaceFormat = candidateSurfaceFormat
                 selectedPresentMode = candidatePresentMode
@@ -529,7 +623,7 @@ unsafe func Main() int32 {
         deviceCreateInfo.enabledExtensionCount = 1u
         deviceCreateInfo.ppEnabledExtensionNames = deviceExtensionNames
         let createDevice = instanceDispatch.vkCreateDevice
-        if createDevice(selectedPhysicalDevice, &deviceCreateInfo, nil, &device) != VkConstants.VK_SUCCESS || device == nint(0) {
+        if TrackResult(diagnostics, 30uL, createDevice(selectedPhysicalDevice, &deviceCreateInfo, nil, &device)) != VkConstants.VK_SUCCESS || device == nint(0) {
             throw InvalidOperationException("vkCreateDevice failed")
         }
         deviceCreated = true
@@ -627,6 +721,40 @@ unsafe func Main() int32 {
         if queueWaitIdleNullable == nil { throw InvalidOperationException("vkQueueWaitIdle is unavailable") }
         deviceDispatch.vkQueueWaitIdle = queueWaitIdleNullable!!
 
+        if diagnostics != nil && selectedTimestampValidBits != 0u {
+            let createQueryPoolAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCreateQueryPool")
+            let createQueryPoolNullable = createQueryPoolAddress as (unmanaged[Cdecl] (VkDevice, *VkQueryPoolCreateInfo, *VkAllocationCallbacks, *VkQueryPool) -> VkResult)?
+            if createQueryPoolNullable == nil { throw InvalidOperationException("vkCreateQueryPool is unavailable") }
+            deviceDispatch.vkCreateQueryPool = createQueryPoolNullable!!
+            let destroyQueryPoolAddressLoaded = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkDestroyQueryPool")
+            destroyQueryPoolAddress = destroyQueryPoolAddressLoaded
+            let destroyQueryPoolNullable = destroyQueryPoolAddressLoaded as (unmanaged[Cdecl] (VkDevice, VkQueryPool, *VkAllocationCallbacks) -> void)?
+            if destroyQueryPoolNullable == nil { throw InvalidOperationException("vkDestroyQueryPool is unavailable") }
+            deviceDispatch.vkDestroyQueryPool = destroyQueryPoolNullable!!
+            let getQueryPoolResultsAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkGetQueryPoolResults")
+            let getQueryPoolResultsNullable = getQueryPoolResultsAddress as (unmanaged[Cdecl] (VkDevice, VkQueryPool, uint32, uint32, nuint, *void, VkDeviceSize, VkQueryResultFlags) -> VkResult)?
+            if getQueryPoolResultsNullable == nil { throw InvalidOperationException("vkGetQueryPoolResults is unavailable") }
+            deviceDispatch.vkGetQueryPoolResults = getQueryPoolResultsNullable!!
+            let resetQueryPoolAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCmdResetQueryPool")
+            let resetQueryPoolNullable = resetQueryPoolAddress as (unmanaged[Cdecl] (VkCommandBuffer, VkQueryPool, uint32, uint32) -> void)?
+            if resetQueryPoolNullable == nil { throw InvalidOperationException("vkCmdResetQueryPool is unavailable") }
+            deviceDispatch.vkCmdResetQueryPool = resetQueryPoolNullable!!
+            let writeTimestampAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkCmdWriteTimestamp2")
+            let writeTimestampNullable = writeTimestampAddress as (unmanaged[Cdecl] (VkCommandBuffer, VkPipelineStageFlags2, VkQueryPool, uint32) -> void)?
+            if writeTimestampNullable == nil { throw InvalidOperationException("vkCmdWriteTimestamp2 is unavailable") }
+            deviceDispatch.vkCmdWriteTimestamp2 = writeTimestampNullable!!
+            var queryPoolCreateInfo = VkQueryPoolCreateInfo{}
+            queryPoolCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO
+            queryPoolCreateInfo.queryType = VkConstants.VK_QUERY_TYPE_TIMESTAMP
+            queryPoolCreateInfo.queryCount = 2u
+            let createQueryPool = deviceDispatch.vkCreateQueryPool
+            let queryPoolResult = createQueryPool(device, &queryPoolCreateInfo, nil, &queryPool)
+            if TrackResult(diagnostics, 2uL, queryPoolResult) != VkConstants.VK_SUCCESS {
+                throw InvalidOperationException("vkCreateQueryPool failed")
+            }
+            queryPoolCreated = true
+        }
+
         let getDeviceQueue = deviceDispatch.vkGetDeviceQueue
         getDeviceQueue(device, selectedQueueFamilyIndex, 0u, &queue)
         if queue == nint(0) { throw InvalidOperationException("Vulkan queue acquisition failed") }
@@ -650,18 +778,18 @@ unsafe func Main() int32 {
         swapchainCreateInfo.presentMode = selectedPresentMode
         swapchainCreateInfo.clipped = VkConstants.VK_TRUE
         let createSwapchain = deviceDispatch.vkCreateSwapchainKHR
-        if createSwapchain(device, &swapchainCreateInfo, nil, &swapchain) != VkConstants.VK_SUCCESS {
+        if TrackResult(diagnostics, 31uL, createSwapchain(device, &swapchainCreateInfo, nil, &swapchain)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("vkCreateSwapchainKHR failed")
         }
         swapchainCreated = true
 
         var swapchainImageCount uint32 = 0u
         let getSwapchainImages = deviceDispatch.vkGetSwapchainImagesKHR
-        if getSwapchainImages(device, swapchain, &swapchainImageCount, nil) != VkConstants.VK_SUCCESS || swapchainImageCount == 0u {
+        if TrackResult(diagnostics, 32uL, getSwapchainImages(device, swapchain, &swapchainImageCount, nil)) != VkConstants.VK_SUCCESS || swapchainImageCount == 0u {
             throw InvalidOperationException("Swapchain images are unavailable")
         }
         let swapchainImages *VkImage = stackalloc [int32(swapchainImageCount)]VkImage
-        if getSwapchainImages(device, swapchain, &swapchainImageCount, swapchainImages) != VkConstants.VK_SUCCESS {
+        if TrackResult(diagnostics, 33uL, getSwapchainImages(device, swapchain, &swapchainImageCount, swapchainImages)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("Swapchain image enumeration failed")
         }
 
@@ -670,7 +798,7 @@ unsafe func Main() int32 {
         commandPoolCreateInfo.flags = uint32(VkConstants.VK_COMMAND_POOL_CREATE_TRANSIENT_BIT)
         commandPoolCreateInfo.queueFamilyIndex = selectedQueueFamilyIndex
         let createCommandPool = deviceDispatch.vkCreateCommandPool
-        if createCommandPool(device, &commandPoolCreateInfo, nil, &commandPool) != VkConstants.VK_SUCCESS {
+        if TrackResult(diagnostics, 34uL, createCommandPool(device, &commandPoolCreateInfo, nil, &commandPool)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("vkCreateCommandPool failed")
         }
         commandPoolCreated = true
@@ -681,18 +809,18 @@ unsafe func Main() int32 {
         commandBufferAllocateInfo.level = VkConstants.VK_COMMAND_BUFFER_LEVEL_PRIMARY
         commandBufferAllocateInfo.commandBufferCount = 1u
         let allocateCommandBuffers = deviceDispatch.vkAllocateCommandBuffers
-        if allocateCommandBuffers(device, &commandBufferAllocateInfo, &commandBuffer) != VkConstants.VK_SUCCESS {
+        if TrackResult(diagnostics, 35uL, allocateCommandBuffers(device, &commandBufferAllocateInfo, &commandBuffer)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("vkAllocateCommandBuffers failed")
         }
 
         var semaphoreCreateInfo = VkSemaphoreCreateInfo{}
         semaphoreCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
         let createSemaphore = deviceDispatch.vkCreateSemaphore
-        if createSemaphore(device, &semaphoreCreateInfo, nil, &acquireSemaphore) != VkConstants.VK_SUCCESS {
+        if TrackResult(diagnostics, 36uL, createSemaphore(device, &semaphoreCreateInfo, nil, &acquireSemaphore)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("acquire semaphore creation failed")
         }
         acquireSemaphoreCreated = true
-        if createSemaphore(device, &semaphoreCreateInfo, nil, &renderSemaphore) != VkConstants.VK_SUCCESS {
+        if TrackResult(diagnostics, 37uL, createSemaphore(device, &semaphoreCreateInfo, nil, &renderSemaphore)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("render semaphore creation failed")
         }
         renderSemaphoreCreated = true
@@ -700,14 +828,14 @@ unsafe func Main() int32 {
         var fenceCreateInfo = VkFenceCreateInfo{}
         fenceCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
         let createFence = deviceDispatch.vkCreateFence
-        if createFence(device, &fenceCreateInfo, nil, &fence) != VkConstants.VK_SUCCESS {
+        if TrackResult(diagnostics, 38uL, createFence(device, &fenceCreateInfo, nil, &fence)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("fence creation failed")
         }
         fenceCreated = true
 
         var imageIndex uint32 = 0u
         let acquireNextImage = deviceDispatch.vkAcquireNextImageKHR
-        let acquireResult = acquireNextImage(device, swapchain, VkConstants.VK_WHOLE_SIZE, acquireSemaphore, uint64(0), &imageIndex)
+        let acquireResult = TrackResult(diagnostics, 39uL, acquireNextImage(device, swapchain, VkConstants.VK_WHOLE_SIZE, acquireSemaphore, uint64(0), &imageIndex))
         if acquireResult != VkConstants.VK_SUCCESS && acquireResult != VkConstants.VK_SUBOPTIMAL_KHR {
             throw InvalidOperationException("vkAcquireNextImageKHR failed")
         }
@@ -717,8 +845,14 @@ unsafe func Main() int32 {
         commandBufferBeginInfo.sType = VkConstants.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
         commandBufferBeginInfo.flags = uint32(VkConstants.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
         let beginCommandBuffer = deviceDispatch.vkBeginCommandBuffer
-        if beginCommandBuffer(commandBuffer, &commandBufferBeginInfo) != VkConstants.VK_SUCCESS {
+        if TrackResult(diagnostics, 40uL, beginCommandBuffer(commandBuffer, &commandBufferBeginInfo)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("vkBeginCommandBuffer failed")
+        }
+        if queryPoolCreated {
+            let resetQueryPool = deviceDispatch.vkCmdResetQueryPool
+            resetQueryPool(commandBuffer, queryPool, 0u, 2u)
+            let writeTimestamp = deviceDispatch.vkCmdWriteTimestamp2
+            writeTimestamp(commandBuffer, VkConstants.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, queryPool, 0u)
         }
 
         var subresourceRange = VkImageSubresourceRange{}
@@ -771,14 +905,18 @@ unsafe func Main() int32 {
         pipelineBarrier(commandBuffer, &secondDependency)
 
         let endCommandBuffer = deviceDispatch.vkEndCommandBuffer
-        if endCommandBuffer(commandBuffer) != VkConstants.VK_SUCCESS {
+        if queryPoolCreated {
+            let writeTimestamp = deviceDispatch.vkCmdWriteTimestamp2
+            writeTimestamp(commandBuffer, VkConstants.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, queryPool, 1u)
+        }
+        if TrackResult(diagnostics, 41uL, endCommandBuffer(commandBuffer)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("vkEndCommandBuffer failed")
         }
 
         var waitSemaphoreInfo = VkSemaphoreSubmitInfo{}
         waitSemaphoreInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO
         waitSemaphoreInfo.semaphore = acquireSemaphore
-        waitSemaphoreInfo.stageMask = VkConstants.VK_PIPELINE_STAGE_2_TRANSFER_BIT
+        waitSemaphoreInfo.stageMask = VkConstants.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
         var signalSemaphoreInfo = VkSemaphoreSubmitInfo{}
         signalSemaphoreInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO
         signalSemaphoreInfo.semaphore = renderSemaphore
@@ -795,7 +933,7 @@ unsafe func Main() int32 {
         submitInfo.signalSemaphoreInfoCount = 1u
         submitInfo.pSignalSemaphoreInfos = &signalSemaphoreInfo
         let queueSubmit = deviceDispatch.vkQueueSubmit2
-        if queueSubmit(queue, 1u, &submitInfo, fence) != VkConstants.VK_SUCCESS {
+        if TrackResult(diagnostics, 42uL, queueSubmit(queue, 1u, &submitInfo, fence)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("vkQueueSubmit2 failed")
         }
 
@@ -807,17 +945,43 @@ unsafe func Main() int32 {
         presentInfo.pSwapchains = &swapchain
         presentInfo.pImageIndices = &imageIndex
         let queuePresent = deviceDispatch.vkQueuePresentKHR
-        let presentResult = queuePresent(queue, &presentInfo)
+        let presentResult = TrackResult(diagnostics, 43uL, queuePresent(queue, &presentInfo))
         if presentResult != VkConstants.VK_SUCCESS && presentResult != VkConstants.VK_SUBOPTIMAL_KHR {
             throw InvalidOperationException("vkQueuePresentKHR failed")
         }
         let waitForFences = deviceDispatch.vkWaitForFences
-        if waitForFences(device, 1u, &fence, VkConstants.VK_TRUE, VkConstants.VK_WHOLE_SIZE) != VkConstants.VK_SUCCESS {
+        if TrackResult(diagnostics, 44uL, waitForFences(device, 1u, &fence, VkConstants.VK_TRUE, VkConstants.VK_WHOLE_SIZE)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("vkWaitForFences failed")
         }
+        if queryPoolCreated {
+            let timestampValues *uint64 = stackalloc [2]uint64
+            let timestampData = *void(timestampValues)
+            let getQueryPoolResults = deviceDispatch.vkGetQueryPoolResults
+            let timestampResult = getQueryPoolResults(
+                device,
+                queryPool,
+                0u,
+                2u,
+                nuint(16),
+                timestampData,
+                VkDeviceSize(8),
+                uint32(VkConstants.VK_QUERY_RESULT_64_BIT))
+            let trackedTimestampResult = TrackResult(diagnostics, 3uL, timestampResult)
+            if trackedTimestampResult == VkConstants.VK_SUCCESS {
+                diagnostics!!.Record(0uL, 0uL, 0uL, 0uL, 0uL, 0uL, uint64(selectedQueueFamilyIndex), 0uL, uint64(fence), 0uL, 4uL, 1uL, 0uL, int32(trackedTimestampResult), timestampValues[0], timestampValues[1])
+            } else if trackedTimestampResult != VkConstants.VK_NOT_READY {
+                throw InvalidOperationException("vkGetQueryPoolResults failed")
+            }
+        }
         let queueWaitIdle = deviceDispatch.vkQueueWaitIdle
-        if queueWaitIdle(queue) != VkConstants.VK_SUCCESS {
+        if TrackResult(diagnostics, 45uL, queueWaitIdle(queue)) != VkConstants.VK_SUCCESS {
             throw InvalidOperationException("vkQueueWaitIdle failed")
+        }
+        if let diagnostics = diagnostics {
+            if diagnostics.ValidationErrorCount != 0 {
+                diagnostics.CaptureFatal(-2, uint64(diagnostics.ValidationErrorCount))
+                throw InvalidOperationException("Vulkan validation errors were captured")
+            }
         }
         Console.WriteLine("Vulkan version: ${apiVersion}")
         Console.WriteLine("Physical devices: ${physicalDeviceCount}")
@@ -825,12 +989,26 @@ unsafe func Main() int32 {
         Console.WriteLine("Swapchain images: ${swapchainImageCount}")
         Console.WriteLine("One-frame clear/present: true")
         return 0
+    } catch (error Exception) {
+        if let diagnostics = diagnostics {
+            diagnostics.CaptureFatal(-1, 0uL)
+        }
+        Console.Error.WriteLine(error.ToString())
+        throw error
     } finally {
         if deviceCreated && queue != nint(0) && queueWaitIdleAddress != nint(0) {
             let queueWaitIdleNullable = queueWaitIdleAddress as (unmanaged[Cdecl] (VkQueue) -> VkResult)?
             if queueWaitIdleNullable != nil {
                 let queueWaitIdle = queueWaitIdleNullable!!
                 queueWaitIdle(queue)
+            }
+        }
+        if queryPoolCreated && destroyQueryPoolAddress != nint(0) {
+            let destroyQueryPoolNullable = destroyQueryPoolAddress as (unmanaged[Cdecl] (VkDevice, VkQueryPool, *VkAllocationCallbacks) -> void)?
+            if destroyQueryPoolNullable != nil {
+                let destroyQueryPool = destroyQueryPoolNullable!!
+                destroyQueryPool(device, queryPool, nil)
+                queryPoolCreated = false
             }
         }
         if fenceCreated && destroyFenceAddress != nint(0) {
@@ -878,11 +1056,25 @@ unsafe func Main() int32 {
         if swapchainExtensionStorage != nint(0) {
             Marshal.FreeCoTaskMem(swapchainExtensionStorage)
         }
+        if debugExtensionNameStorage != nint(0) {
+            Marshal.FreeCoTaskMem(debugExtensionNameStorage)
+        }
         if surfaceCreated {
             SDL_Vulkan_DestroySurface(instance, surface, nil)
         }
         if window != nint(0) {
             SDL_DestroyWindow(window)
+        }
+        if validationMessengerCreated && destroyValidationMessengerAddress != nint(0) {
+            let destroyValidationMessengerNullable = destroyValidationMessengerAddress as (unmanaged[Cdecl] (VkInstance, VkDebugUtilsMessengerEXT, *VkAllocationCallbacks) -> void)?
+            if destroyValidationMessengerNullable != nil {
+                let destroyValidationMessenger = destroyValidationMessengerNullable!!
+                destroyValidationMessenger(instance, validationMessenger, nil)
+                validationMessengerCreated = false
+                if let validation = validation {
+                    validation.KeepAlive()
+                }
+            }
         }
         if instance != nint(0) && destroyInstanceAddress != nint(0) {
             let destroyInstanceNullable = destroyInstanceAddress as (unmanaged[Cdecl] (VkInstance, *VkAllocationCallbacks) -> void)?
@@ -902,6 +1094,9 @@ unsafe func Main() int32 {
         }
         if sdlInitialized {
             SDL_Quit()
+        }
+        if let diagnostics = diagnostics {
+            diagnostics.FlushNdjson(Console.Error)
         }
     }
 }

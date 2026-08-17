@@ -18,6 +18,13 @@ type VkCommandPoolCreateFlagBits = int32
 type VkCommandPoolCreateFlags = VkFlags
 type VkCompositeAlphaFlagBitsKHR = int32
 type VkCompositeAlphaFlagsKHR = VkFlags
+type VkDebugUtilsMessageSeverityFlagBitsEXT = int32
+type VkDebugUtilsMessageSeverityFlagsEXT = VkFlags
+type VkDebugUtilsMessageTypeFlagBitsEXT = int32
+type VkDebugUtilsMessageTypeFlagsEXT = VkFlags
+type VkDebugUtilsMessengerCallbackDataFlagsEXT = VkFlags
+type VkDebugUtilsMessengerCreateFlagsEXT = VkFlags
+type VkDebugUtilsMessengerEXT = uint64
 type VkDependencyFlagBits = int32
 type VkDependencyFlags = VkFlags
 type VkDevice = nint
@@ -40,6 +47,7 @@ type VkInstance = nint
 type VkInstanceCreateFlagBits = int32
 type VkInstanceCreateFlags = VkFlags
 type VkInternalAllocationType = int32
+type VkObjectType = int32
 type VkPhysicalDevice = nint
 type VkPhysicalDeviceType = int32
 type VkPipelineStageFlagBits2 = uint64
@@ -49,6 +57,12 @@ type VkQueryControlFlagBits = int32
 type VkQueryControlFlags = VkFlags
 type VkQueryPipelineStatisticFlagBits = int32
 type VkQueryPipelineStatisticFlags = VkFlags
+type VkQueryPool = uint64
+type VkQueryPoolCreateFlagBits = int32
+type VkQueryPoolCreateFlags = VkFlags
+type VkQueryResultFlagBits = int32
+type VkQueryResultFlags = VkFlags
+type VkQueryType = int32
 type VkQueue = nint
 type VkQueueFlagBits = int32
 type VkQueueFlags = VkFlags
@@ -116,6 +130,13 @@ class VkConstants {
         const VK_COMPUTE_OCCUPANCY_PRIORITY_LOW_NV float32 = 0.25F
         const VK_COMPUTE_OCCUPANCY_PRIORITY_NORMAL_NV float32 = 0.50F
         const VK_DATA_GRAPH_MODEL_TOOLCHAIN_VERSION_LENGTH_QCOM uint32 = 3u
+        const VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT VkDebugUtilsMessageSeverityFlagBitsEXT = 4096
+        const VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT VkDebugUtilsMessageSeverityFlagBitsEXT = 16
+        const VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT VkDebugUtilsMessageSeverityFlagBitsEXT = 1
+        const VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT VkDebugUtilsMessageSeverityFlagBitsEXT = 256
+        const VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT VkDebugUtilsMessageTypeFlagBitsEXT = 1
+        const VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT VkDebugUtilsMessageTypeFlagBitsEXT = 4
+        const VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT VkDebugUtilsMessageTypeFlagBitsEXT = 2
         const VK_DEPENDENCY_BY_REGION_BIT VkDependencyFlagBits = 1
         const VK_ERROR_DEVICE_LOST VkResult = -4
         const VK_ERROR_EXTENSION_NOT_PRESENT VkResult = -7
@@ -135,6 +156,8 @@ class VkConstants {
         const VK_ERROR_UNKNOWN VkResult = -13
         const VK_EVENT_RESET VkResult = 4
         const VK_EVENT_SET VkResult = 3
+        const VK_EXT_DEBUG_UTILS_EXTENSION_NAME string = "VK_EXT_debug_utils"
+        const VK_EXT_DEBUG_UTILS_SPEC_VERSION int32 = 2
         const VK_FALSE uint32 = 0u
         const VK_FENCE_CREATE_SIGNALED_BIT VkFenceCreateFlagBits = 1
         const VK_FORMAT_A1R5G5B5_UNORM_PACK16 VkFormat = 8
@@ -374,8 +397,35 @@ class VkConstants {
         const VK_MAX_VIDEO_AV1_REFERENCES_PER_FRAME_KHR uint32 = 7u
         const VK_MAX_VIDEO_VP9_REFERENCES_PER_FRAME_KHR uint32 = 3u
         const VK_NOT_READY VkResult = 1
-        const VK_OBJECT_TYPE_SURFACE_KHR int32 = 1000000000
-        const VK_OBJECT_TYPE_SWAPCHAIN_KHR int32 = 1000001000
+        const VK_OBJECT_TYPE_BUFFER VkObjectType = 9
+        const VK_OBJECT_TYPE_BUFFER_VIEW VkObjectType = 13
+        const VK_OBJECT_TYPE_COMMAND_BUFFER VkObjectType = 6
+        const VK_OBJECT_TYPE_COMMAND_POOL VkObjectType = 25
+        const VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT VkObjectType = 1000128000
+        const VK_OBJECT_TYPE_DESCRIPTOR_POOL VkObjectType = 22
+        const VK_OBJECT_TYPE_DESCRIPTOR_SET VkObjectType = 23
+        const VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT VkObjectType = 20
+        const VK_OBJECT_TYPE_DEVICE VkObjectType = 3
+        const VK_OBJECT_TYPE_DEVICE_MEMORY VkObjectType = 8
+        const VK_OBJECT_TYPE_EVENT VkObjectType = 11
+        const VK_OBJECT_TYPE_FENCE VkObjectType = 7
+        const VK_OBJECT_TYPE_FRAMEBUFFER VkObjectType = 24
+        const VK_OBJECT_TYPE_IMAGE VkObjectType = 10
+        const VK_OBJECT_TYPE_IMAGE_VIEW VkObjectType = 14
+        const VK_OBJECT_TYPE_INSTANCE VkObjectType = 1
+        const VK_OBJECT_TYPE_PHYSICAL_DEVICE VkObjectType = 2
+        const VK_OBJECT_TYPE_PIPELINE VkObjectType = 19
+        const VK_OBJECT_TYPE_PIPELINE_CACHE VkObjectType = 16
+        const VK_OBJECT_TYPE_PIPELINE_LAYOUT VkObjectType = 17
+        const VK_OBJECT_TYPE_QUERY_POOL VkObjectType = 12
+        const VK_OBJECT_TYPE_QUEUE VkObjectType = 4
+        const VK_OBJECT_TYPE_RENDER_PASS VkObjectType = 18
+        const VK_OBJECT_TYPE_SAMPLER VkObjectType = 21
+        const VK_OBJECT_TYPE_SEMAPHORE VkObjectType = 5
+        const VK_OBJECT_TYPE_SHADER_MODULE VkObjectType = 15
+        const VK_OBJECT_TYPE_SURFACE_KHR VkObjectType = 1000000000
+        const VK_OBJECT_TYPE_SWAPCHAIN_KHR VkObjectType = 1000001000
+        const VK_OBJECT_TYPE_UNKNOWN VkObjectType = 0
         const VK_PARTITIONED_ACCELERATION_STRUCTURE_PARTITION_INDEX_GLOBAL_NV uint32 = 4294967295u
         const VK_PHYSICAL_DEVICE_TYPE_CPU VkPhysicalDeviceType = 4
         const VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU VkPhysicalDeviceType = 2
@@ -424,6 +474,13 @@ class VkConstants {
         const VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT VkQueryPipelineStatisticFlagBits = 256
         const VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT VkQueryPipelineStatisticFlagBits = 512
         const VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT VkQueryPipelineStatisticFlagBits = 4
+        const VK_QUERY_RESULT_64_BIT VkQueryResultFlagBits = 1
+        const VK_QUERY_RESULT_PARTIAL_BIT VkQueryResultFlagBits = 8
+        const VK_QUERY_RESULT_WAIT_BIT VkQueryResultFlagBits = 2
+        const VK_QUERY_RESULT_WITH_AVAILABILITY_BIT VkQueryResultFlagBits = 4
+        const VK_QUERY_TYPE_OCCLUSION VkQueryType = 0
+        const VK_QUERY_TYPE_PIPELINE_STATISTICS VkQueryType = 1
+        const VK_QUERY_TYPE_TIMESTAMP VkQueryType = 2
         const VK_QUEUE_COMPUTE_BIT VkQueueFlagBits = 2
         const VK_QUEUE_FAMILY_EXTERNAL uint32 = 4294967294u
         const VK_QUEUE_FAMILY_FOREIGN_EXT uint32 = 4294967293u
@@ -460,6 +517,11 @@ class VkConstants {
         const VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO VkStructureType = 39
         const VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO VkStructureType = 29
         const VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET VkStructureType = 36
+        const VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT VkStructureType = 1000128002
+        const VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT VkStructureType = 1000128003
+        const VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT VkStructureType = 1000128004
+        const VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT VkStructureType = 1000128000
+        const VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT VkStructureType = 1000128001
         const VK_STRUCTURE_TYPE_DEPENDENCY_INFO VkStructureType = 1000314003
         const VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO VkStructureType = 33
         const VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO VkStructureType = 34
@@ -654,6 +716,50 @@ unsafe struct VkCommandPoolCreateInfo {
     var pNext *void
     var flags VkCommandPoolCreateFlags
     var queueFamilyIndex uint32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkDebugUtilsLabelEXT {
+    var sType VkStructureType
+    var pNext *void
+    var pLabelName *int8
+    fixed color [4]float32
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkDebugUtilsMessengerCallbackDataEXT {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkDebugUtilsMessengerCallbackDataFlagsEXT
+    var pMessageIdName *int8
+    var messageIdNumber int32
+    var pMessage *int8
+    var queueLabelCount uint32
+    var pQueueLabels *VkDebugUtilsLabelEXT
+    var cmdBufLabelCount uint32
+    var pCmdBufLabels *VkDebugUtilsLabelEXT
+    var objectCount uint32
+    var pObjects *VkDebugUtilsObjectNameInfoEXT
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkDebugUtilsMessengerCreateInfoEXT {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkDebugUtilsMessengerCreateFlagsEXT
+    var messageSeverity VkDebugUtilsMessageSeverityFlagsEXT
+    var messageType VkDebugUtilsMessageTypeFlagsEXT
+    var pfnUserCallback unmanaged[Cdecl] (VkDebugUtilsMessageSeverityFlagBitsEXT, VkDebugUtilsMessageTypeFlagsEXT, nint, nint) -> VkBool32
+    var pUserData *void
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkDebugUtilsObjectNameInfoEXT {
+    var sType VkStructureType
+    var pNext *void
+    var objectType VkObjectType
+    var objectHandle uint64
+    var pObjectName *int8
 }
 
 @StructLayout(LayoutKind.Sequential)
@@ -1051,6 +1157,16 @@ unsafe struct VkPresentInfoKHR {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkQueryPoolCreateInfo {
+    var sType VkStructureType
+    var pNext *void
+    var flags VkQueryPoolCreateFlags
+    var queryType VkQueryType
+    var queryCount uint32
+    var pipelineStatistics VkQueryPipelineStatisticFlags
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkQueueFamilyProperties {
     var queueFlags VkQueueFlags
     var queueCount uint32
@@ -1152,6 +1268,8 @@ unsafe struct VkInstanceDispatch {
     var vkGetPhysicalDeviceSurfaceFormatsKHR unmanaged[Cdecl] (VkPhysicalDevice, VkSurfaceKHR, *uint32, *VkSurfaceFormatKHR) -> VkResult
     var vkGetPhysicalDeviceSurfacePresentModesKHR unmanaged[Cdecl] (VkPhysicalDevice, VkSurfaceKHR, *uint32, *VkPresentModeKHR) -> VkResult
     var vkCreateDevice unmanaged[Cdecl] (VkPhysicalDevice, *VkDeviceCreateInfo, *VkAllocationCallbacks, *VkDevice) -> VkResult
+    var vkCreateDebugUtilsMessengerEXT unmanaged[Cdecl] (VkInstance, *VkDebugUtilsMessengerCreateInfoEXT, *VkAllocationCallbacks, *VkDebugUtilsMessengerEXT) -> VkResult
+    var vkDestroyDebugUtilsMessengerEXT unmanaged[Cdecl] (VkInstance, VkDebugUtilsMessengerEXT, *VkAllocationCallbacks) -> void
 }
 @StructLayout(LayoutKind.Sequential)
 unsafe struct VkDeviceDispatch {
@@ -1176,4 +1294,9 @@ unsafe struct VkDeviceDispatch {
     var vkQueueSubmit2 unmanaged[Cdecl] (VkQueue, uint32, *VkSubmitInfo2, VkFence) -> VkResult
     var vkQueuePresentKHR unmanaged[Cdecl] (VkQueue, *VkPresentInfoKHR) -> VkResult
     var vkQueueWaitIdle unmanaged[Cdecl] (VkQueue) -> VkResult
+    var vkCreateQueryPool unmanaged[Cdecl] (VkDevice, *VkQueryPoolCreateInfo, *VkAllocationCallbacks, *VkQueryPool) -> VkResult
+    var vkDestroyQueryPool unmanaged[Cdecl] (VkDevice, VkQueryPool, *VkAllocationCallbacks) -> void
+    var vkGetQueryPoolResults unmanaged[Cdecl] (VkDevice, VkQueryPool, uint32, uint32, nuint, *void, VkDeviceSize, VkQueryResultFlags) -> VkResult
+    var vkCmdResetQueryPool unmanaged[Cdecl] (VkCommandBuffer, VkQueryPool, uint32, uint32) -> void
+    var vkCmdWriteTimestamp2 unmanaged[Cdecl] (VkCommandBuffer, VkPipelineStageFlags2, VkQueryPool, uint32) -> void
 }
