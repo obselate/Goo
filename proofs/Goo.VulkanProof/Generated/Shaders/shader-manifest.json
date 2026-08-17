@@ -151,6 +151,32 @@
       "capabilities": [
         1
       ]
+    },
+    {
+      "id": "glyph_vertex",
+      "stage": "vertex",
+      "source": "glyph.vert.glsl",
+      "output": "glyph.vert.spv",
+      "entryPoint": "main",
+      "sourceSha256": "4240e12150457a8e803a63cd9d2a2d3a4b667612c1857e738883564fedc18bbf",
+      "outputSha256": "99b60d93b213d02827f583f0eaab622af9599fd8e555d4737d17c9fec78a65ff",
+      "outputBytes": 2200,
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "glyph_alpha_fragment",
+      "stage": "fragment",
+      "source": "glyph_alpha.frag.glsl",
+      "output": "glyph_alpha.frag.spv",
+      "entryPoint": "main",
+      "sourceSha256": "5ab461141bf78a4e68558127f063693f1c416c2b2dc2ff005fe3336b1be358d2",
+      "outputSha256": "8814999557f80f1f053c6669b5096a06b2eeb7a0446894a15d45e73eae5e110f",
+      "outputBytes": 1072,
+      "capabilities": [
+        1
+      ]
     }
   ],
   "pipelines": [
@@ -630,6 +656,124 @@
         "typeName": "SampledImagePushConstants",
         "sha256": "9cb2f4d14db1e76b556b8e5ad906b394d8ae8dc90b928e7b5f8a18078f998501",
         "bytes": 1403
+      }
+    },
+    {
+      "id": "glyph_alpha",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 64,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "transform0",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "color",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "instanceBase",
+            "offset": 48,
+            "type": "uint"
+          },
+          {
+            "name": "reserved0",
+            "offset": 52,
+            "type": "uint"
+          },
+          {
+            "name": "reserved1",
+            "offset": 56,
+            "type": "uint"
+          },
+          {
+            "name": "reserved2",
+            "offset": 60,
+            "type": "uint"
+          }
+        ]
+      },
+      "descriptorCount": 2,
+      "descriptors": [
+        {
+          "set": 0,
+          "binding": 0,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "vertex"
+          ]
+        },
+        {
+          "set": 0,
+          "binding": 1,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        }
+      ],
+      "stages": [
+        {
+          "shader": "glyph_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "glyph_alpha_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "r8-unorm-alpha-atlas-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "GlyphPushConstants.Generated.gs",
+        "typeName": "GlyphPushConstants",
+        "sha256": "5e362f6d0f0b01cda21a4a9224c540ecdc2959db42dc0e7e9d9799c232322dc8",
+        "bytes": 851
       }
     }
   ]

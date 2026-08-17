@@ -692,9 +692,9 @@ internal static class Program
         Require(manifest.Toolchain.Registry.Version == "1.4.357.0", "toolchain.registry.version", "1.4.357.0");
         Require(manifest.Toolchain.Registry.Commit == "e3b1eec08173d6b825cd3ac88c885a63b621504a1", "toolchain.registry.commit", "e3b1eec08173d6b825cd3ac88c885a63b621504a1");
         Require(manifest.Toolchain.Registry.VkXmlSha256 == "264d0d7350e37d70c82407fb430d085040fc01a9a961d43dec8c2d6ed1dfd183", "toolchain.registry.vkXmlSha256", "264d0d7350e37d70c82407fb430d085040fc01a9a961d43dec8c2d6ed1dfd183");
-        if (manifest.Shaders.Count != 7)
+        if (manifest.Shaders.Count != 9)
         {
-            throw new InvalidOperationException("shaders must contain exactly seven entries");
+            throw new InvalidOperationException("shaders must contain exactly nine entries");
         }
         RequireShader(manifest.Shaders[0], "solid_quad_vertex", "vertex", "solid_quad.vert.glsl", "solid_quad.vert.spv");
         RequireShader(manifest.Shaders[1], "solid_quad_fragment", "fragment", "solid_quad.frag.glsl", "solid_quad.frag.spv");
@@ -703,6 +703,8 @@ internal static class Program
         RequireShader(manifest.Shaders[4], "analytic_linear3_fragment", "fragment", "analytic_linear3.frag.glsl", "analytic_linear3.frag.spv");
         RequireShader(manifest.Shaders[5], "analytic_radial3_fragment", "fragment", "analytic_radial3.frag.glsl", "analytic_radial3.frag.spv");
         RequireShader(manifest.Shaders[6], "analytic_sampled_image_fragment", "fragment", "analytic_sampled_image.frag.glsl", "analytic_sampled_image.frag.spv");
+        RequireShader(manifest.Shaders[7], "glyph_vertex", "vertex", "glyph.vert.glsl", "glyph.vert.spv");
+        RequireShader(manifest.Shaders[8], "glyph_alpha_fragment", "fragment", "glyph_alpha.frag.glsl", "glyph_alpha.frag.spv");
         foreach (Shader shader in manifest.Shaders)
         {
             if (shader.SourceSha256 is not null || shader.OutputSha256 is not null || shader.OutputBytes is not null)
@@ -710,9 +712,9 @@ internal static class Program
                 throw new InvalidOperationException($"Source manifest contains generated hashes: {shader.Id}");
             }
         }
-        if (manifest.Pipelines.Count != 5)
+        if (manifest.Pipelines.Count != 6)
         {
-            throw new InvalidOperationException("pipelines must contain exactly five entries");
+            throw new InvalidOperationException("pipelines must contain exactly six entries");
         }
         RequirePipeline(manifest.Pipelines[0], "solid_quad", "SolidQuadPushConstants.Generated.gs", "SolidQuadPushConstants", 32, new[]
         {
@@ -761,6 +763,20 @@ internal static class Program
         }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "straight-srgb-rgba8-sampled-to-premultiplied-linear", "analytic_vertex", "analytic_sampled_image_fragment", "vec2", "uv", new[]
         {
             new Descriptor { Set = 0, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } }
+        });
+        RequirePipeline(manifest.Pipelines[5], "glyph_alpha", "GlyphPushConstants.Generated.gs", "GlyphPushConstants", 64, new[]
+        {
+            new PushConstantMember { Name = "transform0", Offset = 0, Type = "vec4" },
+            new PushConstantMember { Name = "transform1", Offset = 16, Type = "vec4" },
+            new PushConstantMember { Name = "color", Offset = 32, Type = "vec4" },
+            new PushConstantMember { Name = "instanceBase", Offset = 48, Type = "uint" },
+            new PushConstantMember { Name = "reserved0", Offset = 52, Type = "uint" },
+            new PushConstantMember { Name = "reserved1", Offset = 56, Type = "uint" },
+            new PushConstantMember { Name = "reserved2", Offset = 60, Type = "uint" }
+        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "r8-unorm-alpha-atlas-premultiplied-linear", "glyph_vertex", "glyph_alpha_fragment", "vec2", "uv", new[]
+        {
+            new Descriptor { Set = 0, Binding = 0, Type = "storage-buffer", Count = 1, Stages = new List<string> { "vertex" } },
+            new Descriptor { Set = 0, Binding = 1, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } }
         });
     }
 
