@@ -17,6 +17,14 @@ public open class Cell[TInput any] : Cell {
     return !EqualityComparer[TInput].Default.Equals(previous, next)
   }
 
+  protected open func Build(input TInput) Blob {
+    return Build()
+  }
+
+  internal override func BuildOutput() Blob {
+    return Build(input)
+  }
+
   internal func SetInput(value TInput) bool {
     let previous = input
     let hadInput = hasInput

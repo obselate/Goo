@@ -76,6 +76,8 @@ static string BuildPage(string directory, ApiType[] types, ApiMember[] members, 
         AppendTextInputGuide(text);
     if (directory == "Input")
         AppendPointerLifecycleGuide(text);
+    if (directory == "Cell")
+        AppendCellInputGuide(text);
     if (directory == "Tree")
         AppendOwnedImageSourceGuide(text);
     if (directory == "Tree")
@@ -154,6 +156,14 @@ static string BuildPage(string directory, ApiType[] types, ApiMember[] members, 
     }
 
     return text.ToString();
+}
+
+static void AppendCellInputGuide(StringBuilder text)
+{
+    text.AppendLine();
+    text.AppendLine("## Build input cells");
+    text.AppendLine();
+    text.AppendLine("A packaged G# component derived from `Cell<TInput>` should override `protected Build(input TInput) Blob`. Goo passes the stored immutable snapshot through this typed dispatch path. Existing same-assembly components that override parameterless `Build()` remain valid. If a component overrides both overloads, the typed overload takes precedence. Override `ShouldRebuild(previous, next)` only when default structural equality does not match the component's rebuild policy.");
 }
 
 static void AppendOwnedImageSourceGuide(StringBuilder text)

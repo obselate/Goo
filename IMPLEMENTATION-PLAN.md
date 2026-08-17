@@ -1,6 +1,6 @@
 # Goo Core Vulkan Implementation Plan
 
-Status: active, S00 through S02 complete, S03 through S05 started
+Status: active, S00 through S03 complete, S04 and S05 started
 
 Date: 2026-08-16
 
@@ -421,6 +421,8 @@ Required specification:
   package.
 - T01 exercises `Cell.Mount` and an imported generic `ShouldRebuild` override across the assembly
   boundary.
+- T01 mounts the imported generic cell and executes its typed `Build(input)` path during native
+  open, pump, and close.
 - Release pack, public API, XML documentation, README example validation, and warnings-as-errors all
   pass before this stage exits.
 
@@ -1450,7 +1452,7 @@ Only these durable verification targets may be added or expanded for this render
 
 | ID | Durable target | Required behavior |
 |---|---|---|
-| T01 | Clean G# package consumer | Freshly packed Goo, `Cell.Mount`, cross-assembly generic `ShouldRebuild`, restore, compile, NativeAOT, open, pump, close |
+| T01 | Clean G# package consumer | Freshly packed Goo, mounted cross-assembly generic cell, typed `Build(input)`, `ShouldRebuild`, restore, compile, NativeAOT, open, pump, close |
 | T02 | One visual and async readback corpus | Boxes, borders, gradients, text, fallback, CJK, RTL, emoji, images, paths, clips, transforms, opacity, blend, effects, DPI, SVG |
 | T03 | One reference hot-path harness | Idle, animation, sparse table, topology, text editing, images/effects, resize, three windows, stage and resource metrics |
 | T04 | One lifecycle and recovery program per platform | Pre-cutover three-window action baseline, then final 1,000 operations, 10 surface losses, 3 device losses, input, protected text, accessibility traversal, plateau, validation |

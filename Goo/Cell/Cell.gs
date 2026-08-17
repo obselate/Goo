@@ -146,10 +146,14 @@ public open class Cell {
   internal func Render() Blob {
     building = true
     try {
-      return Build()
+      return BuildOutput()
     } finally {
       building = false
     }
+  }
+
+  internal open func BuildOutput() Blob {
+    return Build()
   }
 
   internal func HasDirty() bool {
