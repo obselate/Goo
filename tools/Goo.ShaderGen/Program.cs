@@ -193,6 +193,9 @@ internal static class Program
         [JsonPropertyName("descriptorCount")]
         public int DescriptorCount { get; set; }
 
+        [JsonPropertyName("descriptors")]
+        public List<Descriptor> Descriptors { get; set; } = new();
+
         [JsonPropertyName("stages")]
         public List<PipelineStage> Stages { get; set; } = new();
 
@@ -220,6 +223,24 @@ internal static class Program
 
         [JsonPropertyName("hostPacking")]
         public HostPacking HostPacking { get; set; } = new();
+    }
+
+    private sealed class Descriptor
+    {
+        [JsonPropertyName("set")]
+        public int Set { get; set; }
+
+        [JsonPropertyName("binding")]
+        public int Binding { get; set; }
+
+        [JsonPropertyName("type")]
+        public string Type { get; set; } = string.Empty;
+
+        [JsonPropertyName("count")]
+        public int Count { get; set; }
+
+        [JsonPropertyName("stages")]
+        public List<string> Stages { get; set; } = new();
     }
 
     private sealed class PushConstants
@@ -654,7 +675,7 @@ internal static class Program
 
     private static void ValidateManifest(Manifest manifest)
     {
-        Require(manifest.Schema == 1, "schema", "1");
+        Require(manifest.Schema == 2, "schema", "2");
         Require(manifest.Toolchain.Sdk == "1.4.357.0", "toolchain.sdk", "1.4.357.0");
         RequireTool(manifest.Toolchain.Compiler, "google/shaderc", "2026.3", "ef2c68b4871a3c399a0808321b51379847a54673", "glslc", "toolchain.compiler");
         RequireTool(manifest.Toolchain.Validator, "KhronosGroup/SPIRV-Tools", "2026.3", "b707790a898e44038547df54580022fc1cf89c3d", "spirv-val", "toolchain.validator");
@@ -671,9 +692,9 @@ internal static class Program
         Require(manifest.Toolchain.Registry.Version == "1.4.357.0", "toolchain.registry.version", "1.4.357.0");
         Require(manifest.Toolchain.Registry.Commit == "e3b1eec08173d6b825cd3ac88c885a63b621504a1", "toolchain.registry.commit", "e3b1eec08173d6b825cd3ac88c885a63b621504a1");
         Require(manifest.Toolchain.Registry.VkXmlSha256 == "264d0d7350e37d70c82407fb430d085040fc01a9a961d43dec8c2d6ed1dfd183", "toolchain.registry.vkXmlSha256", "264d0d7350e37d70c82407fb430d085040fc01a9a961d43dec8c2d6ed1dfd183");
-        if (manifest.Shaders.Count != 6)
+        if (manifest.Shaders.Count != 7)
         {
-            throw new InvalidOperationException("shaders must contain exactly six entries");
+            throw new InvalidOperationException("shaders must contain exactly seven entries");
         }
         RequireShader(manifest.Shaders[0], "solid_quad_vertex", "vertex", "solid_quad.vert.glsl", "solid_quad.vert.spv");
         RequireShader(manifest.Shaders[1], "solid_quad_fragment", "fragment", "solid_quad.frag.glsl", "solid_quad.frag.spv");
@@ -681,6 +702,7 @@ internal static class Program
         RequireShader(manifest.Shaders[3], "analytic_solid_fragment", "fragment", "analytic_solid.frag.glsl", "analytic_solid.frag.spv");
         RequireShader(manifest.Shaders[4], "analytic_linear3_fragment", "fragment", "analytic_linear3.frag.glsl", "analytic_linear3.frag.spv");
         RequireShader(manifest.Shaders[5], "analytic_radial3_fragment", "fragment", "analytic_radial3.frag.glsl", "analytic_radial3.frag.spv");
+        RequireShader(manifest.Shaders[6], "analytic_sampled_image_fragment", "fragment", "analytic_sampled_image.frag.glsl", "analytic_sampled_image.frag.spv");
         foreach (Shader shader in manifest.Shaders)
         {
             if (shader.SourceSha256 is not null || shader.OutputSha256 is not null || shader.OutputBytes is not null)
@@ -688,15 +710,15 @@ internal static class Program
                 throw new InvalidOperationException($"Source manifest contains generated hashes: {shader.Id}");
             }
         }
-        if (manifest.Pipelines.Count != 4)
+        if (manifest.Pipelines.Count != 5)
         {
-            throw new InvalidOperationException("pipelines must contain exactly four entries");
+            throw new InvalidOperationException("pipelines must contain exactly five entries");
         }
         RequirePipeline(manifest.Pipelines[0], "solid_quad", "SolidQuadPushConstants.Generated.gs", "SolidQuadPushConstants", 32, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "color", Offset = 16, Type = "vec4" }
-        }, new[] { "vertex" }, "disabled", null, "solid_quad_vertex", "solid_quad_fragment", "vec4", "color");
+        }, new[] { "vertex" }, "disabled", null, "solid_quad_vertex", "solid_quad_fragment", "vec4", "color", Array.Empty<Descriptor>());
         RequirePipeline(manifest.Pipelines[1], "analytic_solid", "AnalyticSolidPushConstants.Generated.gs", "AnalyticSolidPushConstants", 112, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
@@ -706,7 +728,7 @@ internal static class Program
             new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
             new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_solid_fragment", "vec2", "uv");
+        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_solid_fragment", "vec2", "uv", Array.Empty<Descriptor>());
         RequirePipeline(manifest.Pipelines[2], "analytic_linear3", "AnalyticLinear3PushConstants.Generated.gs", "AnalyticLinear3PushConstants", 112, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
@@ -716,7 +738,7 @@ internal static class Program
             new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
             new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_linear3_fragment", "vec2", "uv");
+        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_linear3_fragment", "vec2", "uv", Array.Empty<Descriptor>());
         RequirePipeline(manifest.Pipelines[3], "analytic_radial3", "AnalyticRadial3PushConstants.Generated.gs", "AnalyticRadial3PushConstants", 112, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
@@ -726,15 +748,29 @@ internal static class Program
             new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
             new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_radial3_fragment", "vec2", "uv");
+        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_radial3_fragment", "vec2", "uv", Array.Empty<Descriptor>());
+        RequirePipeline(manifest.Pipelines[4], "analytic_sampled_image", "SampledImagePushConstants.Generated.gs", "SampledImagePushConstants", 112, new[]
+        {
+            new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
+            new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
+            new PushConstantMember { Name = "transform1", Offset = 32, Type = "vec4" },
+            new PushConstantMember { Name = "radii", Offset = 48, Type = "vec4" },
+            new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
+            new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
+            new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" }
+        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "straight-srgb-rgba8-sampled-to-premultiplied-linear", "analytic_vertex", "analytic_sampled_image_fragment", "vec2", "uv", new[]
+        {
+            new Descriptor { Set = 0, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } }
+        });
     }
 
-    private static void RequirePipeline(Pipeline pipeline, string id, string hostPackingPath, string hostPackingTypeName, int pushConstantSize, IReadOnlyList<PushConstantMember> members, IReadOnlyList<string> pushStages, string blend, string? colorPacking, string vertexShader, string fragmentShader, string interfaceType, string interfaceName)
+    private static void RequirePipeline(Pipeline pipeline, string id, string hostPackingPath, string hostPackingTypeName, int pushConstantSize, IReadOnlyList<PushConstantMember> members, IReadOnlyList<string> pushStages, string blend, string? colorPacking, string vertexShader, string fragmentShader, string interfaceType, string interfaceName, IReadOnlyList<Descriptor> descriptors)
     {
         Require(pipeline.Id == id, $"pipeline[{id}].id", id);
         Require(pipeline.Topology == "triangle-list", $"pipeline[{id}].topology", "triangle-list");
         Require(pipeline.VertexInput == "none", $"pipeline[{id}].vertexInput", "none");
-        Require(pipeline.DescriptorCount == 0, $"pipeline[{id}].descriptorCount", "0");
+        Require(pipeline.DescriptorCount == descriptors.Count, $"pipeline[{id}].descriptorCount", descriptors.Count.ToString());
+        RequireDescriptors(pipeline.Descriptors, descriptors, $"pipeline[{id}].descriptors");
         Require(pipeline.ColorFormat == "swapchain-sRGB", $"pipeline[{id}].colorFormat", "swapchain-sRGB");
         Require(pipeline.SampleCount == 1, $"pipeline[{id}].sampleCount", "1");
         Require(pipeline.Blend == blend, $"pipeline[{id}].blend", blend);
@@ -779,6 +815,24 @@ internal static class Program
         }
         RequirePipelineStage(pipeline.Stages[0], vertexShader, "vertex", Array.Empty<InterfaceLocation>(), new[] { new InterfaceLocation { Location = 0, Type = interfaceType, Name = interfaceName } });
         RequirePipelineStage(pipeline.Stages[1], fragmentShader, "fragment", new[] { new InterfaceLocation { Location = 0, Type = interfaceType, Name = interfaceName } }, new[] { new InterfaceLocation { Location = 0, Type = "vec4", Name = "outColor" } });
+    }
+
+    private static void RequireDescriptors(IReadOnlyList<Descriptor> actual, IReadOnlyList<Descriptor> expected, string path)
+    {
+        if (actual.Count != expected.Count)
+        {
+            throw new InvalidOperationException($"{path} count must be {expected.Count}");
+        }
+        for (int index = 0; index < expected.Count; index++)
+        {
+            Descriptor actualDescriptor = actual[index];
+            Descriptor expectedDescriptor = expected[index];
+            Require(actualDescriptor.Set == expectedDescriptor.Set, $"{path}[{index}].set", expectedDescriptor.Set.ToString());
+            Require(actualDescriptor.Binding == expectedDescriptor.Binding, $"{path}[{index}].binding", expectedDescriptor.Binding.ToString());
+            Require(actualDescriptor.Type == expectedDescriptor.Type, $"{path}[{index}].type", expectedDescriptor.Type);
+            Require(actualDescriptor.Count == expectedDescriptor.Count, $"{path}[{index}].count", expectedDescriptor.Count.ToString());
+            RequireSequence(actualDescriptor.Stages, expectedDescriptor.Stages, $"{path}[{index}].stages");
+        }
     }
 
     private static void RequireTool(Tool tool, string project, string version, string commit, string executable, string path)
@@ -871,7 +925,11 @@ internal static class Program
             PipelineStage stage = pipeline.Stages.Single(value => value.Shader == shader.Id);
             RequireReflectedLocations(reflection.Inputs, stage.Inputs, $"shader[{shader.Id}].reflection.inputs");
             RequireReflectedLocations(reflection.Outputs, stage.Outputs, $"shader[{shader.Id}].reflection.outputs");
-            Require(reflection.DescriptorCount == pipeline.DescriptorCount, $"shader[{shader.Id}].reflection.descriptorCount", pipeline.DescriptorCount.ToString());
+            List<Descriptor> expectedDescriptors = pipeline.Descriptors
+                .Where(value => value.Stages.Contains(shader.Stage, StringComparer.Ordinal))
+                .ToList();
+            Require(reflection.DescriptorCount == expectedDescriptors.Count, $"shader[{shader.Id}].reflection.descriptorCount", expectedDescriptors.Count.ToString());
+            RequireReflectedDescriptors(reflection.Descriptors, expectedDescriptors, $"shader[{shader.Id}].reflection.descriptors");
             bool hasPushConstants = pipeline.PushConstants.Stages.Contains(shader.Stage, StringComparer.Ordinal);
             if (!hasPushConstants)
             {
@@ -913,6 +971,23 @@ internal static class Program
         {
             Require(actual[index].Location == expected[index].Location, $"{path}[{index}].location", expected[index].Location.ToString());
             Require(actual[index].Type == expected[index].Type, $"{path}[{index}].type", expected[index].Type);
+        }
+    }
+
+    private static void RequireReflectedDescriptors(IReadOnlyList<SpirvDescriptor> actual, IReadOnlyList<Descriptor> expected, string path)
+    {
+        if (actual.Count != expected.Count)
+        {
+            throw new InvalidOperationException($"{path} count must be {expected.Count}");
+        }
+        for (int index = 0; index < expected.Count; index++)
+        {
+            SpirvDescriptor actualDescriptor = actual[index];
+            Descriptor expectedDescriptor = expected[index];
+            Require(actualDescriptor.Set == expectedDescriptor.Set, $"{path}[{index}].set", expectedDescriptor.Set.ToString());
+            Require(actualDescriptor.Binding == expectedDescriptor.Binding, $"{path}[{index}].binding", expectedDescriptor.Binding.ToString());
+            Require(actualDescriptor.Type == expectedDescriptor.Type, $"{path}[{index}].type", expectedDescriptor.Type);
+            Require(actualDescriptor.Count == expectedDescriptor.Count, $"{path}[{index}].count", expectedDescriptor.Count.ToString());
         }
     }
 

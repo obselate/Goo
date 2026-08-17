@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "toolchain": {
     "sdk": "1.4.357.0",
     "compiler": {
@@ -120,6 +120,16 @@
       "capabilities": [
         1
       ]
+    },
+    {
+      "id": "analytic_sampled_image_fragment",
+      "stage": "fragment",
+      "source": "analytic_sampled_image.frag.glsl",
+      "output": "analytic_sampled_image.frag.spv",
+      "entryPoint": "main",
+      "capabilities": [
+        1
+      ]
     }
   ],
   "pipelines": [
@@ -147,6 +157,7 @@
         ]
       },
       "descriptorCount": 0,
+      "descriptors": [],
       "stages": [
         {
           "shader": "solid_quad_vertex",
@@ -242,6 +253,7 @@
         ]
       },
       "descriptorCount": 0,
+      "descriptors": [],
       "stages": [
         {
           "shader": "analytic_vertex",
@@ -338,6 +350,7 @@
         ]
       },
       "descriptorCount": 0,
+      "descriptors": [],
       "stages": [
         {
           "shader": "analytic_vertex",
@@ -434,6 +447,7 @@
         ]
       },
       "descriptorCount": 0,
+      "descriptors": [],
       "stages": [
         {
           "shader": "analytic_vertex",
@@ -478,6 +492,113 @@
       "hostPacking": {
         "path": "AnalyticRadial3PushConstants.Generated.gs",
         "typeName": "AnalyticRadial3PushConstants"
+      }
+    },
+    {
+      "id": "analytic_sampled_image",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 112,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 1,
+      "descriptors": [
+        {
+          "set": 0,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        }
+      ],
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_sampled_image_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "straight-srgb-rgba8-sampled-to-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "SampledImagePushConstants.Generated.gs",
+        "typeName": "SampledImagePushConstants"
       }
     }
   ]

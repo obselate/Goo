@@ -37,6 +37,22 @@ internal sealed class SpirvPushConstant
     }
 }
 
+internal sealed class SpirvDescriptor
+{
+    public int Set { get; }
+    public int Binding { get; }
+    public string Type { get; }
+    public int Count { get; }
+
+    public SpirvDescriptor(int set, int binding, string type, int count)
+    {
+        Set = set;
+        Binding = binding;
+        Type = type;
+        Count = count;
+    }
+}
+
 internal sealed class SpirvModuleReflection
 {
     public string Stage { get; }
@@ -45,6 +61,7 @@ internal sealed class SpirvModuleReflection
     public IReadOnlyList<SpirvInterface> Outputs { get; }
     public SpirvPushConstant? PushConstant { get; }
     public int DescriptorCount { get; }
+    public IReadOnlyList<SpirvDescriptor> Descriptors { get; }
     public IReadOnlyList<uint> Capabilities { get; }
 
     public SpirvModuleReflection(
@@ -54,6 +71,7 @@ internal sealed class SpirvModuleReflection
         IReadOnlyList<SpirvInterface> outputs,
         SpirvPushConstant? pushConstant,
         int descriptorCount,
+        IReadOnlyList<SpirvDescriptor> descriptors,
         IReadOnlyList<uint> capabilities)
     {
         Stage = stage;
@@ -62,6 +80,7 @@ internal sealed class SpirvModuleReflection
         Outputs = outputs;
         PushConstant = pushConstant;
         DescriptorCount = descriptorCount;
+        Descriptors = descriptors;
         Capabilities = capabilities;
     }
 }
@@ -100,10 +119,13 @@ internal static class SpirvReflection
     private const uint OpTypeFloat = 22;
     private const uint OpTypeVector = 23;
     private const uint OpTypeMatrix = 24;
+    private const uint OpTypeImage = 25;
+    private const uint OpTypeSampler = 26;
     private const uint OpTypeArray = 28;
     private const uint OpTypeRuntimeArray = 29;
     private const uint OpTypeStruct = 30;
     private const uint OpTypePointer = 32;
+    private const uint OpTypeSampledImage = 27;
     private const uint OpConstant = 43;
     private const uint OpVariable = 59;
     private const uint DecorationLocation = 30;
@@ -177,7 +199,7 @@ internal static class SpirvReflection
         List<SpirvInterface> inputs = new();
         List<SpirvInterface> outputs = new();
         SpirvPushConstant? pushConstant = null;
-        int descriptorCount = 0;
+        List<SpirvDescriptor> descriptors = new();
 
         foreach ((uint id, Variable variable) in variables.OrderBy(pair => pair.Key))
         {
@@ -188,7 +210,8 @@ internal static class SpirvReflection
                 {
                     throw new InvalidOperationException($"Descriptor variable %{id} lacks set or binding");
                 }
-                descriptorCount++;
+                (string descriptorType, int descriptorCount) = ReflectDescriptor(variable.TypeId, variable.StorageClass, types, constants);
+                descriptors.Add(new SpirvDescriptor(value.DescriptorSet.Value, value.Binding.Value, descriptorType, descriptorCount));
                 continue;
             }
             if (variable.StorageClass == StoragePushConstant)
@@ -221,13 +244,15 @@ internal static class SpirvReflection
             }
         }
 
+        SpirvDescriptor[] orderedDescriptors = descriptors.OrderBy(value => value.Set).ThenBy(value => value.Binding).ToArray();
         return new SpirvModuleReflection(
             stage,
             entryPoint.Name,
             inputs.OrderBy(value => value.Location).ToArray(),
             outputs.OrderBy(value => value.Location).ToArray(),
             pushConstant,
-            descriptorCount,
+            orderedDescriptors.Length,
+            orderedDescriptors,
             capabilities.Distinct().OrderBy(value => value).ToArray());
     }
 
@@ -281,7 +306,7 @@ internal static class SpirvReflection
             memberOffsets[(words[cursor + 1], words[cursor + 2])] = checked((int)words[cursor + 4]);
             return;
         }
-        if (opcode is OpTypeInt or OpTypeFloat or OpTypeVector or OpTypeMatrix or OpTypeArray or OpTypeRuntimeArray or OpTypeStruct or OpTypePointer)
+        if (opcode is OpTypeInt or OpTypeFloat or OpTypeVector or OpTypeMatrix or OpTypeImage or OpTypeSampler or OpTypeArray or OpTypeRuntimeArray or OpTypeStruct or OpTypePointer or OpTypeSampledImage)
         {
             uint resultId = words[cursor + 1];
             types[resultId] = new TypeInfo(opcode, words[(cursor + 2)..(cursor + wordCount)]);
@@ -302,6 +327,69 @@ internal static class SpirvReflection
         {
             variables[words[cursor + 2]] = new Variable(words[cursor + 1], words[cursor + 3]);
         }
+    }
+
+    private static (string Type, int Count) ReflectDescriptor(
+        uint pointerTypeId,
+        uint storageClass,
+        IReadOnlyDictionary<uint, TypeInfo> types,
+        IReadOnlyDictionary<uint, ulong> constants)
+    {
+        TypeInfo pointer = RequireType(types, pointerTypeId);
+        if (pointer.Opcode != OpTypePointer || pointer.Operands.Length != 2 || pointer.Operands[0] != storageClass)
+        {
+            throw new InvalidOperationException("Descriptor variable has an invalid pointer type");
+        }
+        return ReflectDescriptorPointee(pointer.Operands[1], storageClass, types, constants);
+    }
+
+    private static (string Type, int Count) ReflectDescriptorPointee(
+        uint typeId,
+        uint storageClass,
+        IReadOnlyDictionary<uint, TypeInfo> types,
+        IReadOnlyDictionary<uint, ulong> constants)
+    {
+        TypeInfo type = RequireType(types, typeId);
+        if (type.Opcode == OpTypeArray)
+        {
+            if (!constants.TryGetValue(type.Operands[1], out ulong length) || length > int.MaxValue)
+            {
+                throw new InvalidOperationException($"Descriptor array %{typeId} has an invalid length");
+            }
+            (string elementType, int elementCount) = ReflectDescriptorPointee(type.Operands[0], storageClass, types, constants);
+            return (elementType, checked((int)length * elementCount));
+        }
+        if (type.Opcode == OpTypeSampledImage)
+        {
+            return ("combined-image-sampler", 1);
+        }
+        if (type.Opcode == OpTypeImage)
+        {
+            if (type.Operands.Length <= 5)
+            {
+                throw new InvalidOperationException($"Image descriptor %{typeId} lacks its sampled operand");
+            }
+            return type.Operands[5] switch
+            {
+                1 => ("sampled-image", 1),
+                2 => ("storage-image", 1),
+                _ => throw new InvalidOperationException($"Image descriptor %{typeId} has unsupported sampled operand {type.Operands[5]}")
+            };
+        }
+        if (type.Opcode == OpTypeSampler)
+        {
+            return ("sampler", 1);
+        }
+        if (type.Opcode == OpTypeStruct)
+        {
+            return storageClass switch
+            {
+                StorageUniform => ("uniform-buffer", 1),
+                StorageStorageBuffer => ("storage-buffer", 1),
+                _ => throw new InvalidOperationException($"Struct descriptor %{typeId} has unsupported storage class {storageClass}")
+            };
+        }
+        throw new InvalidOperationException($"Unsupported descriptor SPIR-V type opcode {type.Opcode}");
     }
 
     private static SpirvPushConstant ReflectPushConstant(

@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "toolchain": {
     "sdk": "1.4.357.0",
     "compiler": {
@@ -138,6 +138,19 @@
       "capabilities": [
         1
       ]
+    },
+    {
+      "id": "analytic_sampled_image_fragment",
+      "stage": "fragment",
+      "source": "analytic_sampled_image.frag.glsl",
+      "output": "analytic_sampled_image.frag.spv",
+      "entryPoint": "main",
+      "sourceSha256": "6dc5e7a6f19c4f692e1470a6deb4271e44941b8ec389a0cfc426dfe5ebeb9007",
+      "outputSha256": "fc24a303af0c0ee861395cf337b9f26386565fc3e34e7ebcd549fadb5975a2b3",
+      "outputBytes": 1264,
+      "capabilities": [
+        1
+      ]
     }
   ],
   "pipelines": [
@@ -165,6 +178,7 @@
         ]
       },
       "descriptorCount": 0,
+      "descriptors": [],
       "stages": [
         {
           "shader": "solid_quad_vertex",
@@ -262,6 +276,7 @@
         ]
       },
       "descriptorCount": 0,
+      "descriptors": [],
       "stages": [
         {
           "shader": "analytic_vertex",
@@ -360,6 +375,7 @@
         ]
       },
       "descriptorCount": 0,
+      "descriptors": [],
       "stages": [
         {
           "shader": "analytic_vertex",
@@ -458,6 +474,7 @@
         ]
       },
       "descriptorCount": 0,
+      "descriptors": [],
       "stages": [
         {
           "shader": "analytic_vertex",
@@ -504,6 +521,115 @@
         "typeName": "AnalyticRadial3PushConstants",
         "sha256": "a3fef01a91640db424ec07dd6aa5a9a68d8dce9288d866cd8e71d003cc4c5b58",
         "bytes": 1406
+      }
+    },
+    {
+      "id": "analytic_sampled_image",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 112,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 1,
+      "descriptors": [
+        {
+          "set": 0,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        }
+      ],
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_sampled_image_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "straight-srgb-rgba8-sampled-to-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "SampledImagePushConstants.Generated.gs",
+        "typeName": "SampledImagePushConstants",
+        "sha256": "9cb2f4d14db1e76b556b8e5ad906b394d8ae8dc90b928e7b5f8a18078f998501",
+        "bytes": 1403
       }
     }
   ]
