@@ -35,6 +35,10 @@
 /benchmarks/*
 !/benchmarks/Goo.Benchmarks/
 !/benchmarks/Goo.Benchmarks/**
+!/benchmarks/Goo.Benchmarking/
+!/benchmarks/Goo.Benchmarking/**
+!/benchmarks/Goo.Q10TextBenchmark/
+!/benchmarks/Goo.Q10TextBenchmark/**
 !/benchmarks/Goo.TextEditorBenchmark/
 !/benchmarks/Goo.TextEditorBenchmark/**
 

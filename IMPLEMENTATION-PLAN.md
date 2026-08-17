@@ -466,8 +466,9 @@ Work:
 8. Preserve the 2026-08-07 G# 0.3.633 Skia result as historical evidence, but capture the final
   current-Skia Q10 floor with the exact selected G# 0.4.1 SDK wherever compiler, runtime, workload, or
   metric behavior can differ.
-9. Update the benchmark protocol schema, producer, parser, and Workbench ingestion for five isolated
-  runs and all Q10 provenance before accepting any new baseline.
+9. Update the tracked benchmark protocol schema, producer, parser, and validator for five isolated
+   runs and all Q10 provenance before accepting any new baseline. External consumer ingestion is out
+   of scope for Goo core.
 10. Retain accepted manifests and raw evidence in tracked evidence storage or immutable retained CI
   artifacts. Scratch files, local Workbench history, and unretained CI output do not qualify.
 

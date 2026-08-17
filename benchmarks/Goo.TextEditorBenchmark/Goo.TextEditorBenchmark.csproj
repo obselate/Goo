@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Goo.TextEditorBenchmark</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Goo/Goo.gsproj"
+                      AdditionalProperties="Configuration=Test$(Configuration);IncludeTestFixtures=true" />
+  </ItemGroup>
+</Project>

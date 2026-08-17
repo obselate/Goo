@@ -62,12 +62,24 @@
     },
     {
       "id": "q10.text-editing",
-      "revision": 1,
+      "revision": 2,
       "sourceCommit": "d250ef38ffc3e1850e19ae519dc61e1410eb03c6",
       "seed": 3266489917,
       "windows": [{ "width": 1280, "height": 720, "dpiScale": 1.0 }],
-      "data": { "utf8Bytes": 1048576, "lineLength": 96, "visibleLines": 32 },
-      "actionTrace": ["alternate-visible-caret-insert-and-backspace", "update-retained-tree", "present"],
+      "data": {
+        "utf8Bytes": 1048576,
+        "fullLineBytesIncludingLf": 96,
+        "fullLineTextBytes": 95,
+        "finalLineTextBytes": 64,
+        "visibleLines": 32,
+        "alphabet": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ",
+        "generator": "lcg32-state-times-1664525-plus-1013904223-mod-2^32-then-state-mod-alphabet-length",
+        "lineEnding": "LF",
+        "finalLineHasTerminator": false,
+        "initialCaretUtf16Offset": 0,
+        "editText": "x"
+      },
+      "actionTrace": ["even-operation-insert-x-at-visible-caret", "odd-operation-backspace-inserted-x", "update-retained-tree", "paint", "present"],
       "expectedBehavior": "Caret, selection, shaping, and scroll follow remain correct. Unchanged text outside the affected range is reused."
     },
     {
