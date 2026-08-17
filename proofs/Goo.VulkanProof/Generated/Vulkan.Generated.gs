@@ -302,6 +302,8 @@ class VkConstants {
         const VK_EVENT_SET VkResult = 3
         const VK_EXT_DEBUG_UTILS_EXTENSION_NAME string = "VK_EXT_debug_utils"
         const VK_EXT_DEBUG_UTILS_SPEC_VERSION int32 = 2
+        const VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME string = "VK_EXT_surface_maintenance1"
+        const VK_EXT_SURFACE_MAINTENANCE_1_SPEC_VERSION int32 = 1
         const VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME string = "VK_EXT_swapchain_maintenance1"
         const VK_EXT_SWAPCHAIN_MAINTENANCE_1_SPEC_VERSION int32 = 1
         const VK_FALSE uint32 = 0u
@@ -549,6 +551,8 @@ class VkConstants {
         const VK_IMAGE_VIEW_TYPE_CUBE_ARRAY VkImageViewType = 6
         const VK_INCOMPLETE VkResult = 5
         const VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE VkInternalAllocationType = 0
+        const VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME string = "VK_KHR_get_surface_capabilities2"
+        const VK_KHR_GET_SURFACE_CAPABILITIES_2_SPEC_VERSION int32 = 1
         const VK_KHR_SURFACE_EXTENSION_NAME string = "VK_KHR_surface"
         const VK_KHR_SURFACE_SPEC_VERSION int32 = 25
         const VK_KHR_SWAPCHAIN_EXTENSION_NAME string = "VK_KHR_swapchain"
@@ -2082,7 +2086,6 @@ unsafe struct VkDeviceDispatch {
     var vkCmdClearColorImage unmanaged[Cdecl] (VkCommandBuffer, VkImage, VkImageLayout, *VkClearColorValue, uint32, *VkImageSubresourceRange) -> void
     var vkQueueSubmit2 unmanaged[Cdecl] (VkQueue, uint32, *VkSubmitInfo2, VkFence) -> VkResult
     var vkQueuePresentKHR unmanaged[Cdecl] (VkQueue, *VkPresentInfoKHR) -> VkResult
-    var vkQueueWaitIdle unmanaged[Cdecl] (VkQueue) -> VkResult
     var vkCreateQueryPool unmanaged[Cdecl] (VkDevice, *VkQueryPoolCreateInfo, *VkAllocationCallbacks, *VkQueryPool) -> VkResult
     var vkDestroyQueryPool unmanaged[Cdecl] (VkDevice, VkQueryPool, *VkAllocationCallbacks) -> void
     var vkGetQueryPoolResults unmanaged[Cdecl] (VkDevice, VkQueryPool, uint32, uint32, nuint, *void, VkDeviceSize, VkQueryResultFlags) -> VkResult
