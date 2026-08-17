@@ -304,6 +304,10 @@ unsafe func QuerySwapchainSelection(
 }
 
 unsafe func Main() int32 {
+    if Environment.GetEnvironmentVariable("GOO_VK_SCENE_PLAN") == "1" {
+        RunScenePlanProof()
+        return 0
+    }
     var diagnostics VulkanDiagnostics? = nil
     var validation VulkanValidation? = nil
     if Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1" {
