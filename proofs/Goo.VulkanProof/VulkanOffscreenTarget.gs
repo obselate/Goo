@@ -3,12 +3,19 @@ package Goo.VulkanProof
 import System
 import Goo.Vulkan.Generated
 
+internal enum VulkanOffscreenMode {
+    SolidQuad;
+    Scene;
+}
+
 internal unsafe class VulkanOffscreenTarget : IDisposable {
     private let device VkDevice
     private let dispatch VkDeviceDispatch
     private let allocator VulkanMemoryAllocator
     private let extent VkExtent2D
     private let byteSize VkDeviceSize
+    private let mode VulkanOffscreenMode
+    private let targetFormat VkFormat
     private var image VkImage
     private var imageView VkImageView
     private var imageAllocation VulkanMemoryAllocation? = nil
@@ -16,11 +23,13 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
     private var stagingAllocation VulkanMemoryAllocation? = nil
     private var completionFence VkFence
     private var solidQuad VulkanSolidQuad? = nil
+    private var primitiveRenderer VulkanPrimitiveRenderer? = nil
     private var imageLayout VkImageLayout
     private var requestPrepared bool
     private var commandRecorded bool
     private var submissionPending bool
     private var readbackComplete bool
+    private var lastRecordAllocatedBytes int64
     private var disposed bool
 
     internal prop Image VkImage { get { return image } }
@@ -29,7 +38,22 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
     internal prop CompletionFence VkFence { get { return completionFence } }
     internal prop Extent VkExtent2D { get { return extent } }
     internal prop ByteSize VkDeviceSize { get { return byteSize } }
+    internal prop Mode VulkanOffscreenMode { get { return mode } }
+    internal prop TargetFormat VkFormat { get { return targetFormat } }
+    internal prop LastRecordAllocatedBytes int64 { get { return lastRecordAllocatedBytes } }
     internal prop ReadbackReady bool { get { return readbackComplete } }
+    internal prop LiveObjectCount uint32 {
+        get {
+            var count uint32 = 0u
+            if image != 0uL { count = count + 1u }
+            if imageView != 0uL { count = count + 1u }
+            if stagingBuffer != 0uL { count = count + 1u }
+            if completionFence != 0uL { count = count + 1u }
+            if solidQuad != nil { count = count + 2u }
+            if primitiveRenderer != nil { count = count + 4u }
+            return count
+        }
+    }
     internal prop ReadbackPointer *void {
         get {
             if !readbackComplete {
@@ -39,11 +63,27 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
         }
     }
 
-    internal init(
+    internal convenience init(
         nativeDevice VkDevice,
         nativeDispatch VkDeviceDispatch,
         nativeAllocator VulkanMemoryAllocator,
         targetExtent VkExtent2D) {
+        init(
+            nativeDevice,
+            nativeDispatch,
+            nativeAllocator,
+            targetExtent,
+            VulkanOffscreenMode.SolidQuad,
+            VkConstants.VK_FORMAT_R8G8B8A8_UNORM)
+    }
+
+    internal init(
+        nativeDevice VkDevice,
+        nativeDispatch VkDeviceDispatch,
+        nativeAllocator VulkanMemoryAllocator,
+        targetExtent VkExtent2D,
+        targetMode VulkanOffscreenMode,
+        colorFormat VkFormat) {
         if nativeDevice == nint(0) {
             throw ArgumentException("Vulkan device is null", "nativeDevice")
         }
@@ -62,7 +102,21 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
         this.allocator = nativeAllocator
         this.extent = targetExtent
         this.byteSize = VkDeviceSize(rowBytes * uint64(targetExtent.height))
+        this.mode = targetMode
+        this.targetFormat = colorFormat
+        if targetMode == VulkanOffscreenMode.SolidQuad && colorFormat != VkConstants.VK_FORMAT_R8G8B8A8_UNORM {
+            throw ArgumentException("SolidQuad offscreen mode requires R8G8B8A8_UNORM", "colorFormat")
+        }
+        if targetMode == VulkanOffscreenMode.Scene
+            && colorFormat != VkConstants.VK_FORMAT_R8G8B8A8_SRGB
+            && colorFormat != VkConstants.VK_FORMAT_B8G8R8A8_SRGB {
+            throw ArgumentException("Scene offscreen mode requires an sRGB RGBA format", "colorFormat")
+        }
+        if targetMode != VulkanOffscreenMode.SolidQuad && targetMode != VulkanOffscreenMode.Scene {
+            throw ArgumentOutOfRangeException("targetMode")
+        }
         this.imageLayout = VkConstants.VK_IMAGE_LAYOUT_UNDEFINED
+        this.lastRecordAllocatedBytes = 0L
         Create()
     }
 
@@ -82,6 +136,7 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             requestPrepared = true
             commandRecorded = false
             readbackComplete = false
+            lastRecordAllocatedBytes = 0L
         }
         return result
     }
@@ -96,6 +151,64 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
         if commandBuffer == nint(0) {
             throw ArgumentException("Command buffer is null", "commandBuffer")
         }
+        if !requestPrepared {
+            throw InvalidOperationException("PrepareSubmit must precede Record")
+        }
+        if commandRecorded {
+            throw InvalidOperationException("Vulkan offscreen command buffer is already recorded")
+        }
+        if mode != VulkanOffscreenMode.SolidQuad {
+            throw InvalidOperationException("Vulkan offscreen target is not configured for a solid quad")
+        }
+        BeginRecord(commandBuffer)
+
+        solidQuad!!.Record(commandBuffer, imageView, extent, clearColor, pushConstants)
+        FinishRecord(commandBuffer)
+    }
+
+    internal func RecordScene(
+        commandBuffer VkCommandBuffer,
+        frame SceneFrame,
+        clearColor VkClearColorValue) {
+        if disposed {
+            throw ObjectDisposedException("VulkanOffscreenTarget")
+        }
+        if commandBuffer == nint(0) {
+            throw ArgumentException("Command buffer is null", "commandBuffer")
+        }
+        if frame == nil {
+            throw ArgumentNullException("frame")
+        }
+        if mode != VulkanOffscreenMode.Scene {
+            throw InvalidOperationException("Vulkan offscreen target is not configured for a scene")
+        }
+        if !requestPrepared {
+            throw InvalidOperationException("PrepareSubmit must precede RecordScene")
+        }
+        if commandRecorded {
+            throw InvalidOperationException("Vulkan offscreen command buffer is already recorded")
+        }
+        BeginRecord(commandBuffer)
+        var renderingActive = false
+        try {
+            BeginRendering(commandBuffer, clearColor)
+            renderingActive = true
+            let before = GC.GetAllocatedBytesForCurrentThread()
+            primitiveRenderer!!.RecordInsideRendering(commandBuffer, frame, extent)
+            let after = GC.GetAllocatedBytesForCurrentThread()
+            lastRecordAllocatedBytes = after - before
+            EndRendering(commandBuffer)
+            renderingActive = false
+            FinishRecord(commandBuffer)
+        } catch (error Exception) {
+            if renderingActive {
+                EndRendering(commandBuffer)
+            }
+            throw error
+        }
+    }
+
+    private func BeginRecord(commandBuffer VkCommandBuffer) {
         if !requestPrepared {
             throw InvalidOperationException("PrepareSubmit must precede Record")
         }
@@ -135,8 +248,15 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
         firstDependency.pImageMemoryBarriers = &toColorAttachment
         let pipelineBarrier = dispatch.vkCmdPipelineBarrier2
         pipelineBarrier(commandBuffer, &firstDependency)
+    }
 
-        solidQuad!!.Record(commandBuffer, imageView, extent, clearColor, pushConstants)
+    private func FinishRecord(commandBuffer VkCommandBuffer) {
+        var subresourceRange = VkImageSubresourceRange{}
+        subresourceRange.aspectMask = uint32(VkConstants.VK_IMAGE_ASPECT_COLOR_BIT)
+        subresourceRange.baseMipLevel = 0u
+        subresourceRange.levelCount = 1u
+        subresourceRange.baseArrayLayer = 0u
+        subresourceRange.layerCount = 1u
 
         var toTransferSource = VkImageMemoryBarrier2{}
         toTransferSource.sType = VkConstants.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2
@@ -155,6 +275,7 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
         secondDependency.sType = VkConstants.VK_STRUCTURE_TYPE_DEPENDENCY_INFO
         secondDependency.imageMemoryBarrierCount = 1u
         secondDependency.pImageMemoryBarriers = &toTransferSource
+        let pipelineBarrier = dispatch.vkCmdPipelineBarrier2
         pipelineBarrier(commandBuffer, &secondDependency)
 
         var copyRegion = VkBufferImageCopy{}
@@ -176,6 +297,39 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             stagingBuffer, 1u, &copyRegion)
 
         commandRecorded = true
+    }
+
+    private func BeginRendering(commandBuffer VkCommandBuffer, clearColor VkClearColorValue) {
+        var clearValue = VkClearValue{}
+        clearValue.color = clearColor
+        var colorAttachment = VkRenderingAttachmentInfo{}
+        colorAttachment.sType = VkConstants.VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO
+        colorAttachment.imageView = imageView
+        colorAttachment.imageLayout = VkConstants.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        colorAttachment.resolveMode = VkConstants.VK_RESOLVE_MODE_NONE
+        colorAttachment.resolveImageView = 0uL
+        colorAttachment.resolveImageLayout = VkConstants.VK_IMAGE_LAYOUT_UNDEFINED
+        colorAttachment.loadOp = VkConstants.VK_ATTACHMENT_LOAD_OP_CLEAR
+        colorAttachment.storeOp = VkConstants.VK_ATTACHMENT_STORE_OP_STORE
+        colorAttachment.clearValue = clearValue
+        var rendering = VkRenderingInfo{}
+        rendering.sType = VkConstants.VK_STRUCTURE_TYPE_RENDERING_INFO
+        rendering.renderArea = VkRect2D{}
+        rendering.renderArea.offset = VkOffset2D{}
+        rendering.renderArea.extent = extent
+        rendering.layerCount = 1u
+        rendering.viewMask = 0u
+        rendering.colorAttachmentCount = 1u
+        rendering.pColorAttachments = &colorAttachment
+        rendering.pDepthAttachment = nil
+        rendering.pStencilAttachment = nil
+        let beginRendering = dispatch.vkCmdBeginRendering
+        beginRendering(commandBuffer, &rendering)
+    }
+
+    private func EndRendering(commandBuffer VkCommandBuffer) {
+        let endRendering = dispatch.vkCmdEndRendering
+        endRendering(commandBuffer)
     }
 
     internal func MarkSubmitted(result VkResult) VkResult {
@@ -247,6 +401,10 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             solidQuad!!.Dispose()
             solidQuad = nil
         }
+        if primitiveRenderer != nil {
+            primitiveRenderer!!.Dispose()
+            primitiveRenderer = nil
+        }
         if imageView != 0uL {
             let destroyImageView = dispatch.vkDestroyImageView
             destroyImageView(device, imageView, nil)
@@ -282,7 +440,7 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             var imageCreateInfo = VkImageCreateInfo{}
             imageCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
             imageCreateInfo.imageType = VkConstants.VK_IMAGE_TYPE_2D
-            imageCreateInfo.format = VkConstants.VK_FORMAT_R8G8B8A8_UNORM
+            imageCreateInfo.format = targetFormat
             imageCreateInfo.extent = VkExtent3D{}
             imageCreateInfo.extent.width = extent.width
             imageCreateInfo.extent.height = extent.height
@@ -305,7 +463,7 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             imageViewCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
             imageViewCreateInfo.image = image
             imageViewCreateInfo.viewType = VkConstants.VK_IMAGE_VIEW_TYPE_2D
-            imageViewCreateInfo.format = VkConstants.VK_FORMAT_R8G8B8A8_UNORM
+            imageViewCreateInfo.format = targetFormat
             imageViewCreateInfo.components = VkComponentMapping{}
             imageViewCreateInfo.components.r = VkConstants.VK_COMPONENT_SWIZZLE_IDENTITY
             imageViewCreateInfo.components.g = VkConstants.VK_COMPONENT_SWIZZLE_IDENTITY
@@ -345,7 +503,11 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             if createFence(device, &fenceCreateInfo, nil, &completionFence) != VkConstants.VK_SUCCESS || completionFence == 0uL {
                 throw InvalidOperationException("vkCreateFence failed")
             }
-            solidQuad = VulkanSolidQuad(device, dispatch, VkConstants.VK_FORMAT_R8G8B8A8_UNORM)
+            if mode == VulkanOffscreenMode.SolidQuad {
+                solidQuad = VulkanSolidQuad(device, dispatch, targetFormat)
+            } else {
+                primitiveRenderer = VulkanPrimitiveRenderer(device, dispatch, targetFormat)
+            }
         } catch (error Exception) {
             Dispose()
             throw error

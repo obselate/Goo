@@ -1,6 +1,7 @@
 package Goo.VulkanProof
 
 import System
+import System.Diagnostics
 import System.Threading
 import System.Runtime.InteropServices
 import Goo.Vulkan.Generated
@@ -98,6 +99,39 @@ func TrackResult(diagnostics VulkanDiagnostics?, eventId uint64, result VkResult
         }
     }
     return result
+}
+
+internal class VulkanSceneStageEvents {
+    const Tree uint64 = 300uL
+    const Plan uint64 = 301uL
+    const Upload uint64 = 302uL
+    const Record uint64 = 303uL
+    const Submit uint64 = 304uL
+    const Gpu uint64 = 305uL
+    const Present uint64 = 306uL
+}
+
+func RecordSceneStage(
+    diagnostics VulkanDiagnostics?,
+    eventId uint64,
+    result VkResult,
+    value0 uint64,
+    value1 uint64) {
+    if let diagnostics = diagnostics {
+        diagnostics.Record(0uL, 0uL, 0uL, 0uL, 0uL, 0uL, 0uL, 0uL, 0uL, 0uL,
+            eventId, 3uL, 0uL, int32(result), value0, value1)
+    }
+}
+
+func RecordSceneCpuStage(
+    diagnostics VulkanDiagnostics?,
+    eventId uint64,
+    result VkResult,
+    elapsedTicks int64) {
+    if elapsedTicks < 0L {
+        throw InvalidOperationException("Stopwatch elapsed ticks are negative")
+    }
+    RecordSceneStage(diagnostics, eventId, result, uint64(elapsedTicks), uint64(Stopwatch.Frequency))
 }
 
 func ByteNear(actual uint8, expected int32) bool {
@@ -351,10 +385,14 @@ unsafe func Main() int32 {
     var frameSlot0 VulkanFrameSlot? = nil
     var frameSlot1 VulkanFrameSlot? = nil
     var presentationRetirement VulkanPresentationRetirement? = nil
-    var readbackRequested = Environment.GetEnvironmentVariable("GOO_VK_READBACK") == "1"
+    let sceneReadbackRequested = Environment.GetEnvironmentVariable("GOO_VK_SCENE_READBACK") == "1"
+    var readbackRequested = sceneReadbackRequested
+        || Environment.GetEnvironmentVariable("GOO_VK_READBACK") == "1"
     var readbackMemoryProperties = VkPhysicalDeviceMemoryProperties{}
     var readbackAllocator VulkanMemoryAllocator? = nil
     var offscreenTarget VulkanOffscreenTarget? = nil
+    var sceneFrame SceneFrame? = nil
+    var sceneDigest uint64 = 0uL
     var offscreenCommandBuffer VkCommandBuffer = nint(0)
     var allocatedCommandBufferCount uint32 = 0u
     var resetCommandBufferAddress nint = nint(0)
@@ -894,12 +932,17 @@ unsafe func Main() int32 {
             }
             instanceDispatch.vkGetPhysicalDeviceFormatProperties = getFormatPropertiesNullable!!
             let getFormatProperties = instanceDispatch.vkGetPhysicalDeviceFormatProperties
+            let readbackFormat = if sceneReadbackRequested {
+                VkConstants.VK_FORMAT_R8G8B8A8_SRGB
+            } else {
+                VkConstants.VK_FORMAT_R8G8B8A8_UNORM
+            }
             var readbackFormatProperties = VkFormatProperties{}
-            getFormatProperties(selectedPhysicalDevice, VkConstants.VK_FORMAT_R8G8B8A8_UNORM, &readbackFormatProperties)
+            getFormatProperties(selectedPhysicalDevice, readbackFormat, &readbackFormatProperties)
             let requiredReadbackFeatures = uint32(VkConstants.VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
                 | uint32(VkConstants.VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)
             if (readbackFormatProperties.optimalTilingFeatures & requiredReadbackFeatures) != requiredReadbackFeatures {
-                throw InvalidOperationException("Vulkan R8G8B8A8_UNORM optimal color attachment and transfer source support is unavailable")
+                throw InvalidOperationException("Vulkan offscreen target format lacks optimal color attachment and transfer source support")
             }
             let getMemoryProperties = instanceDispatch.vkGetPhysicalDeviceMemoryProperties
             getMemoryProperties(selectedPhysicalDevice, &readbackMemoryProperties)
@@ -1949,7 +1992,23 @@ unsafe func Main() int32 {
             presentInfo.pSwapchains = &swapchain
             presentInfo.pImageIndices = &imageIndex
             presentAttemptCount = presentAttemptCount + 1uL
-            let presentResult = TrackResult(diagnostics, 42uL + frameNumber * 20uL, queuePresent(queue, &presentInfo))
+            let measureScenePresent = sceneReadbackRequested && diagnostics != nil && frameNumber == 0uL
+            let presentStartTicks int64 = if measureScenePresent {
+                Stopwatch.GetTimestamp()
+            } else {
+                0L
+            }
+            let rawPresentResult = queuePresent(queue, &presentInfo)
+            let presentEndTicks int64 = if measureScenePresent {
+                Stopwatch.GetTimestamp()
+            } else {
+                0L
+            }
+            let presentResult = TrackResult(diagnostics, 42uL + frameNumber * 20uL, rawPresentResult)
+            if measureScenePresent {
+                RecordSceneCpuStage(diagnostics, VulkanSceneStageEvents.Present, rawPresentResult,
+                    presentEndTicks - presentStartTicks)
+            }
             presentResultCount = presentResultCount + 1uL
             var presentId uint64 = 0uL
             if presentResult == VkConstants.VK_SUCCESS || presentResult == VkConstants.VK_SUBOPTIMAL_KHR {
@@ -2084,12 +2143,48 @@ unsafe func Main() int32 {
             var offscreenExtent = VkExtent2D{}
             offscreenExtent.width = 64u
             offscreenExtent.height = 64u
+            if sceneReadbackRequested {
+                RecordSceneStage(diagnostics, VulkanSceneStageEvents.Tree, VkConstants.VK_SUCCESS, 0uL, 0uL)
+                let planStartTicks int64 = if diagnostics != nil {
+                    Stopwatch.GetTimestamp()
+                } else {
+                    0L
+                }
+                sceneFrame = SceneFrame(16)
+                BuildPixelScene(sceneFrame!!, 1uL)
+                sceneDigest = PixelSceneSemanticDigest(sceneFrame!!)
+                if sceneDigest != PixelSceneContract.ExpectedDigest {
+                    throw InvalidOperationException("Vulkan scene semantic digest does not match the fixed contract")
+                }
+                let planEndTicks int64 = if diagnostics != nil {
+                    Stopwatch.GetTimestamp()
+                } else {
+                    0L
+                }
+                RecordSceneCpuStage(diagnostics, VulkanSceneStageEvents.Plan, VkConstants.VK_SUCCESS,
+                    planEndTicks - planStartTicks)
+            }
+            let offscreenMode = if sceneReadbackRequested {
+                VulkanOffscreenMode.Scene
+            } else {
+                VulkanOffscreenMode.SolidQuad
+            }
+            let offscreenFormat = if sceneReadbackRequested {
+                VkConstants.VK_FORMAT_R8G8B8A8_SRGB
+            } else {
+                VkConstants.VK_FORMAT_R8G8B8A8_UNORM
+            }
             let offscreenTargetValue = VulkanOffscreenTarget(
                 device,
                 deviceDispatch,
                 readbackAllocatorValue,
-                offscreenExtent)
+                offscreenExtent,
+                offscreenMode,
+                offscreenFormat)
             offscreenTarget = offscreenTargetValue
+            if sceneReadbackRequested {
+                RecordSceneStage(diagnostics, VulkanSceneStageEvents.Upload, VkConstants.VK_SUCCESS, 0uL, 0uL)
+            }
 
             let resetCommandBuffer = deviceDispatch.vkResetCommandBuffer
             let resetResult = TrackResult(diagnostics, 45uL, resetCommandBuffer(offscreenCommandBuffer, VkCommandBufferResetFlags(0u)))
@@ -2100,6 +2195,11 @@ unsafe func Main() int32 {
             if prepareResult != VkConstants.VK_SUCCESS {
                 throw InvalidOperationException("Vulkan offscreen fence preparation failed")
             }
+            let recordStartTicks int64 = if sceneReadbackRequested && diagnostics != nil {
+                Stopwatch.GetTimestamp()
+            } else {
+                0L
+            }
             try {
                 var offscreenCommandBufferBeginInfo = VkCommandBufferBeginInfo{}
                 offscreenCommandBufferBeginInfo.sType = VkConstants.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
@@ -2107,9 +2207,37 @@ unsafe func Main() int32 {
                 if TrackResult(diagnostics, 46uL, beginCommandBuffer(offscreenCommandBuffer, &offscreenCommandBufferBeginInfo)) != VkConstants.VK_SUCCESS {
                     throw InvalidOperationException("vkBeginCommandBuffer failed for offscreen readback")
                 }
-                offscreenTargetValue.Record(offscreenCommandBuffer, clearColor, pushConstants)
+                if sceneReadbackRequested && queryPoolCreated {
+                    let resetQueryPool = deviceDispatch.vkCmdResetQueryPool
+                    resetQueryPool(offscreenCommandBuffer, queryPool, 0u, 2u)
+                    let writeTimestamp = deviceDispatch.vkCmdWriteTimestamp2
+                    writeTimestamp(offscreenCommandBuffer, VkConstants.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, queryPool, 0u)
+                }
+                if sceneReadbackRequested {
+                    var sceneClearColor = VkClearColorValue{}
+                    sceneClearColor.float32.values[0] = 0.0F
+                    sceneClearColor.float32.values[1] = 0.0F
+                    sceneClearColor.float32.values[2] = 1.0F
+                    sceneClearColor.float32.values[3] = 1.0F
+                    offscreenTargetValue.RecordScene(offscreenCommandBuffer, sceneFrame!!, sceneClearColor)
+                } else {
+                    offscreenTargetValue.Record(offscreenCommandBuffer, clearColor, pushConstants)
+                }
+                if sceneReadbackRequested && queryPoolCreated {
+                    let writeTimestamp = deviceDispatch.vkCmdWriteTimestamp2
+                    writeTimestamp(offscreenCommandBuffer, VkConstants.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, queryPool, 1u)
+                }
                 if TrackResult(diagnostics, 47uL, endCommandBuffer(offscreenCommandBuffer)) != VkConstants.VK_SUCCESS {
                     throw InvalidOperationException("vkEndCommandBuffer failed for offscreen readback")
+                }
+                if sceneReadbackRequested {
+                    let recordEndTicks int64 = if diagnostics != nil {
+                        Stopwatch.GetTimestamp()
+                    } else {
+                        0L
+                    }
+                    RecordSceneCpuStage(diagnostics, VulkanSceneStageEvents.Record, VkConstants.VK_SUCCESS,
+                        recordEndTicks - recordStartTicks)
                 }
             } catch (error Exception) {
                 offscreenTargetValue.AbortPrepared()
@@ -2123,7 +2251,22 @@ unsafe func Main() int32 {
             offscreenSubmitInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SUBMIT_INFO_2
             offscreenSubmitInfo.commandBufferInfoCount = 1u
             offscreenSubmitInfo.pCommandBufferInfos = &offscreenCommandBufferSubmitInfo
-            let trackedOffscreenSubmitResult = TrackResult(diagnostics, 48uL, queueSubmit(queue, 1u, &offscreenSubmitInfo, offscreenTargetValue.CompletionFence))
+            let submitStartTicks int64 = if sceneReadbackRequested && diagnostics != nil {
+                Stopwatch.GetTimestamp()
+            } else {
+                0L
+            }
+            let rawOffscreenSubmitResult = queueSubmit(queue, 1u, &offscreenSubmitInfo, offscreenTargetValue.CompletionFence)
+            let submitEndTicks int64 = if sceneReadbackRequested && diagnostics != nil {
+                Stopwatch.GetTimestamp()
+            } else {
+                0L
+            }
+            let trackedOffscreenSubmitResult = TrackResult(diagnostics, 48uL, rawOffscreenSubmitResult)
+            if sceneReadbackRequested {
+                RecordSceneCpuStage(diagnostics, VulkanSceneStageEvents.Submit, rawOffscreenSubmitResult,
+                    submitEndTicks - submitStartTicks)
+            }
             offscreenTargetValue.MarkSubmitted(trackedOffscreenSubmitResult)
             if trackedOffscreenSubmitResult != VkConstants.VK_SUCCESS {
                 throw InvalidOperationException("vkQueueSubmit2 failed for offscreen readback")
@@ -2136,31 +2279,80 @@ unsafe func Main() int32 {
                 offscreenCompletionResult = offscreenTargetValue.PollCompletion()
             }
             if offscreenCompletionResult != VkConstants.VK_SUCCESS {
-                Console.WriteLine("Offscreen clear/quad readback: false")
+                if !sceneReadbackRequested {
+                    Console.WriteLine("Offscreen clear/quad readback: false")
+                }
                 throw InvalidOperationException("Vulkan offscreen readback did not complete")
             }
-            let readbackBytes = *uint8(offscreenTargetValue.ReadbackPointer)
-            let clearPixelOffset int32 = 0
-            let quadPixelOffset = int32((32u * offscreenExtent.width + 32u) * 4u)
-            let clearPixelOk = ByteNear(readbackBytes[clearPixelOffset], 8)
-                && ByteNear(readbackBytes[clearPixelOffset + 1], 10)
-                && ByteNear(readbackBytes[clearPixelOffset + 2], 20)
-                && ByteNear(readbackBytes[clearPixelOffset + 3], 255)
-            let quadPixelOk = ByteNear(readbackBytes[quadPixelOffset], 224)
-                && ByteNear(readbackBytes[quadPixelOffset + 1], 46)
-                && ByteNear(readbackBytes[quadPixelOffset + 2], 166)
-                && ByteNear(readbackBytes[quadPixelOffset + 3], 255)
-            if !clearPixelOk || !quadPixelOk {
-                Console.WriteLine("Offscreen clear/quad readback: false")
-                throw InvalidOperationException("Vulkan offscreen clear/quad pixels are invalid")
+            if sceneReadbackRequested {
+                var sceneGpuResult VkResult = VkConstants.VK_NOT_READY
+                var sceneGpuDelta uint64 = 0uL
+                var sceneGpuNanoseconds uint64 = 0uL
+                if queryPoolCreated {
+                    let sceneTimestampValues *uint64 = stackalloc [2]uint64
+                    let getQueryPoolResults = deviceDispatch.vkGetQueryPoolResults
+                    sceneGpuResult = getQueryPoolResults(
+                        device,
+                        queryPool,
+                        0u,
+                        2u,
+                        nuint(16),
+                        *void(sceneTimestampValues),
+                        VkDeviceSize(8),
+                        uint32(VkConstants.VK_QUERY_RESULT_64_BIT))
+                    if sceneGpuResult == VkConstants.VK_SUCCESS {
+                        if sceneTimestampValues[1] < sceneTimestampValues[0]
+                            || selectedPhysicalDeviceProperties.limits.timestampPeriod <= 0.0F {
+                            throw InvalidOperationException("Vulkan scene timestamp range is invalid")
+                        }
+                        sceneGpuDelta = sceneTimestampValues[1] - sceneTimestampValues[0]
+                        let sceneGpuDeltaFloat64 = float64(sceneGpuDelta)
+                        let sceneTimestampPeriodFloat64 = float64(selectedPhysicalDeviceProperties.limits.timestampPeriod)
+                        let sceneGpuNanosecondsFloat64 = sceneGpuDeltaFloat64 * sceneTimestampPeriodFloat64
+                        sceneGpuNanoseconds = uint64(sceneGpuNanosecondsFloat64)
+                    } else if sceneGpuResult != VkConstants.VK_NOT_READY {
+                        throw InvalidOperationException("vkGetQueryPoolResults failed for S09 scene")
+                    }
+                }
+                RecordSceneStage(diagnostics, VulkanSceneStageEvents.Gpu, sceneGpuResult,
+                    sceneGpuDelta, sceneGpuNanoseconds)
             }
-            Console.WriteLine("Offscreen clear/quad readback: true")
+            let readbackBytes = *uint8(offscreenTargetValue.ReadbackPointer)
+            if sceneReadbackRequested {
+                if offscreenTargetValue.LastRecordAllocatedBytes != 0L {
+                    throw InvalidOperationException("Vulkan scene primitive recording allocated managed bytes")
+                }
+                if !VerifyPixelSceneReadback(readbackBytes, offscreenExtent.width, offscreenExtent.height) {
+                    throw InvalidOperationException("Vulkan scene readback pixels are invalid")
+                }
+                Console.WriteLine("Scene readback: digest=${sceneDigest} allocated=${offscreenTargetValue.LastRecordAllocatedBytes}")
+            } else {
+                let clearPixelOffset int32 = 0
+                let quadPixelOffset = int32((32u * offscreenExtent.width + 32u) * 4u)
+                let clearPixelOk = ByteNear(readbackBytes[clearPixelOffset], 8)
+                    && ByteNear(readbackBytes[clearPixelOffset + 1], 10)
+                    && ByteNear(readbackBytes[clearPixelOffset + 2], 20)
+                    && ByteNear(readbackBytes[clearPixelOffset + 3], 255)
+                let quadPixelOk = ByteNear(readbackBytes[quadPixelOffset], 224)
+                    && ByteNear(readbackBytes[quadPixelOffset + 1], 46)
+                    && ByteNear(readbackBytes[quadPixelOffset + 2], 166)
+                    && ByteNear(readbackBytes[quadPixelOffset + 3], 255)
+                if !clearPixelOk || !quadPixelOk {
+                    Console.WriteLine("Offscreen clear/quad readback: false")
+                    throw InvalidOperationException("Vulkan offscreen clear/quad pixels are invalid")
+                }
+                Console.WriteLine("Offscreen clear/quad readback: true")
+            }
         }
         if let diagnostics = diagnostics {
             diagnostics.CaptureWsiFacts(uint64(window), surface, swapchain, frameIndex, generation)
             let liveFrameSlotCount uint32 = (frameSlot0 != nil ? 1u : 0u) + (frameSlot1 != nil ? 1u : 0u)
             let solidQuadHandleCount uint32 = solidQuad != nil ? 2u : 0u
-            let offscreenTargetHandleCount uint32 = offscreenTarget != nil ? 4u : 0u
+            let offscreenTargetHandleCount uint32 = if let offscreenTargetValue = offscreenTarget {
+                offscreenTargetValue.LiveObjectCount
+            } else {
+                0u
+            }
             var liveObjects = CountLiveObjects(
                 window,
                 instance,
@@ -2217,7 +2409,11 @@ unsafe func Main() int32 {
             diagnostics.CaptureWsiFacts(uint64(window), surface, swapchain, frameIndex, generation)
             let liveFrameSlotCount uint32 = (frameSlot0 != nil ? 1u : 0u) + (frameSlot1 != nil ? 1u : 0u)
             let solidQuadHandleCount uint32 = solidQuad != nil ? 2u : 0u
-            let offscreenTargetHandleCount uint32 = offscreenTarget != nil ? 4u : 0u
+            let offscreenTargetHandleCount uint32 = if let offscreenTargetValue = offscreenTarget {
+                offscreenTargetValue.LiveObjectCount
+            } else {
+                0u
+            }
             var liveObjects = CountLiveObjects(
                 window,
                 instance,
