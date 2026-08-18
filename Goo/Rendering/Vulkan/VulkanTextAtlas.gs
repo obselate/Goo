@@ -14,6 +14,7 @@ internal data struct VulkanTextAtlasStats {
     var UploadSubmitted bool
     var Uploaded bool
     var UploadFence uint64
+    var UploadCommandBuffer VkCommandBuffer
 }
 
 internal unsafe class VulkanTextAtlas : IDisposable {
@@ -63,6 +64,7 @@ internal unsafe class VulkanTextAtlas : IDisposable {
                 UploadSubmitted: uploadSubmitted,
                 Uploaded: uploaded,
                 UploadFence: uploadFence,
+                UploadCommandBuffer: uploadCommandBuffer,
             }
         }
     }
@@ -243,7 +245,8 @@ internal unsafe class VulkanTextAtlas : IDisposable {
         if commandBuffer == nint(0) || pipelineLayout == 0uL {
             throw ArgumentException("Text atlas descriptor binding arguments are invalid")
         }
-        if !uploaded && (!uploadPending || !uploadRecorded || uploadCommandBuffer != commandBuffer) {
+        if !uploaded && (!uploadPending || !uploadRecorded
+            || (!uploadSubmitted && uploadCommandBuffer != commandBuffer)) {
             throw InvalidOperationException("Vulkan text atlas upload is not ready for this command buffer")
         }
         if descriptorSet == 0uL {

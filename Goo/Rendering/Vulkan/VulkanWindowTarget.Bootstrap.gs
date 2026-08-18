@@ -210,6 +210,9 @@ internal unsafe partial class VulkanWindowTarget {
         let getPhysicalDeviceSurfacePresentModes = ResolveGlobalProc(instance, "vkGetPhysicalDeviceSurfacePresentModesKHR") as (unmanaged[Cdecl] (VkPhysicalDevice, VkSurfaceKHR, *uint32, *VkPresentModeKHR) -> VkResult)?
         if getPhysicalDeviceSurfacePresentModes == nil { throw InvalidOperationException("vkGetPhysicalDeviceSurfacePresentModesKHR is unavailable") }
         instanceDispatch.vkGetPhysicalDeviceSurfacePresentModesKHR = getPhysicalDeviceSurfacePresentModes!!
+        let getPhysicalDeviceMemoryProperties = ResolveGlobalProc(instance, "vkGetPhysicalDeviceMemoryProperties") as (unmanaged[Cdecl] (VkPhysicalDevice, *VkPhysicalDeviceMemoryProperties) -> void)?
+        if getPhysicalDeviceMemoryProperties == nil { throw InvalidOperationException("vkGetPhysicalDeviceMemoryProperties is unavailable") }
+        instanceDispatch.vkGetPhysicalDeviceMemoryProperties = getPhysicalDeviceMemoryProperties!!
         let getPhysicalDeviceFormatProperties = ResolveGlobalProc(instance, "vkGetPhysicalDeviceFormatProperties") as (unmanaged[Cdecl] (VkPhysicalDevice, VkFormat, *VkFormatProperties) -> void)?
         if getPhysicalDeviceFormatProperties == nil { throw InvalidOperationException("vkGetPhysicalDeviceFormatProperties is unavailable") }
         instanceDispatch.vkGetPhysicalDeviceFormatProperties = getPhysicalDeviceFormatProperties!!
@@ -328,7 +331,14 @@ internal unsafe partial class VulkanWindowTarget {
         getFeatures(candidate, &features2)
         let maintenanceSupported = swapchainMaintenanceVariant == VulkanSwapchainMaintenanceVariant.None
             || maintenance.swapchainMaintenance1 == VkConstants.VK_TRUE
-        return features12.timelineSemaphore == VkConstants.VK_TRUE
+        var textFormatProperties = VkFormatProperties{}
+        let getFormatProperties = instanceDispatch.vkGetPhysicalDeviceFormatProperties
+        getFormatProperties(candidate, VkConstants.VK_FORMAT_R16G16B16A16_SINT,
+            &textFormatProperties)
+        let textBufferSupported = (textFormatProperties.bufferFeatures
+            & uint32(VkConstants.VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)) != 0u
+        return textBufferSupported
+            && features12.timelineSemaphore == VkConstants.VK_TRUE
             && features13.synchronization2 == VkConstants.VK_TRUE
             && features13.dynamicRendering == VkConstants.VK_TRUE
             && maintenanceSupported
@@ -437,6 +447,21 @@ internal unsafe partial class VulkanWindowTarget {
             queueFamilyIndex)
         frameSlot0 = VulkanFrameSlot(device, dispatch, buffers[0])
         frameSlot1 = VulkanFrameSlot(device, dispatch, buffers[1])
+        var memoryProperties = VkPhysicalDeviceMemoryProperties{}
+        let getMemoryProperties = instanceDispatch.vkGetPhysicalDeviceMemoryProperties
+        getMemoryProperties(physicalDevice, &memoryProperties)
+        memoryAllocator = VulkanMemoryAllocator(device, dispatch, memoryProperties, 256u)
+        var physicalProperties = VkPhysicalDeviceProperties{}
+        let getPhysicalDeviceProperties = instanceDispatch.vkGetPhysicalDeviceProperties
+        getPhysicalDeviceProperties(physicalDevice, &physicalProperties)
+        let maxAtlasBytes = uint64(physicalProperties.limits.maxTexelBufferElements) * 8uL
+        let atlasByteSize = maxAtlasBytes < 262144uL ? maxAtlasBytes : 262144uL
+        if atlasByteSize < 8192uL {
+            throw InvalidOperationException("Vulkan text atlas capacity is too small")
+        }
+        textAtlas = VulkanTextAtlas(device, dispatch, memoryAllocator!!, atlasByteSize,
+            physicalProperties.limits.maxTexelBufferElements)
+        textScene = VulkanTextScene(textAtlas!!)
     }
 
     private func MaintenanceDeviceExtensionName() string {

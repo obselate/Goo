@@ -1,10 +1,7 @@
 package Goo
 
 internal unsafe partial class VulkanWindowTarget {
-    private func BeginRendering(
-        current VulkanSwapchainGeneration,
-        slot VulkanFrameSlot,
-        imageIndex uint32) {
+    private func BeginCommandBuffer(slot VulkanFrameSlot) bool {
         var beginInfo = VkCommandBufferBeginInfo{}
         beginInfo.sType = VkConstants.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
         beginInfo.flags = uint32(VkConstants.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
@@ -13,8 +10,15 @@ internal unsafe partial class VulkanWindowTarget {
         if beginResult != VkConstants.VK_SUCCESS {
             HandleFrameFailure(beginResult)
             ClearActiveFrame()
-            return
+            return false
         }
+        return true
+    }
+
+    private func BeginRendering(
+        current VulkanSwapchainGeneration,
+        slot VulkanFrameSlot,
+        imageIndex uint32) {
         let image = current.Image(imageIndex)
         let oldLayout = current.CurrentLayout(imageIndex)
         var subresourceRange = VkImageSubresourceRange{}
@@ -70,6 +74,7 @@ internal unsafe partial class VulkanWindowTarget {
         rendering.pColorAttachments = &attachment
         let beginRendering = dispatch.vkCmdBeginRendering
         beginRendering(slot.CommandBuffer, &rendering)
+        renderingBegun = true
     }
 
     private func EndRendering(

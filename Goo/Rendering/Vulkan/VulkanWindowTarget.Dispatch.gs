@@ -174,6 +174,66 @@ internal unsafe partial class VulkanWindowTarget {
         let setScissor = ResolveDeviceProc("vkCmdSetScissor") as (unmanaged[Cdecl] (VkCommandBuffer, uint32, uint32, *VkRect2D) -> void)?
         if setScissor == nil { throw InvalidOperationException("vkCmdSetScissor is unavailable") }
         dispatch.vkCmdSetScissor = setScissor!!
+        let createBuffer = ResolveDeviceProc("vkCreateBuffer") as (unmanaged[Cdecl] (VkDevice, *VkBufferCreateInfo, *VkAllocationCallbacks, *VkBuffer) -> VkResult)?
+        if createBuffer == nil { throw InvalidOperationException("vkCreateBuffer is unavailable") }
+        dispatch.vkCreateBuffer = createBuffer!!
+        let destroyBuffer = ResolveDeviceProc("vkDestroyBuffer") as (unmanaged[Cdecl] (VkDevice, VkBuffer, *VkAllocationCallbacks) -> void)?
+        if destroyBuffer == nil { throw InvalidOperationException("vkDestroyBuffer is unavailable") }
+        dispatch.vkDestroyBuffer = destroyBuffer!!
+        let getBufferMemoryRequirements2 = ResolveDeviceProc("vkGetBufferMemoryRequirements2") as (unmanaged[Cdecl] (VkDevice, *VkBufferMemoryRequirementsInfo2, *VkMemoryRequirements2) -> void)?
+        if getBufferMemoryRequirements2 == nil { throw InvalidOperationException("vkGetBufferMemoryRequirements2 is unavailable") }
+        dispatch.vkGetBufferMemoryRequirements2 = getBufferMemoryRequirements2!!
+        let allocateMemory = ResolveDeviceProc("vkAllocateMemory") as (unmanaged[Cdecl] (VkDevice, *VkMemoryAllocateInfo, *VkAllocationCallbacks, *VkDeviceMemory) -> VkResult)?
+        if allocateMemory == nil { throw InvalidOperationException("vkAllocateMemory is unavailable") }
+        dispatch.vkAllocateMemory = allocateMemory!!
+        let freeMemory = ResolveDeviceProc("vkFreeMemory") as (unmanaged[Cdecl] (VkDevice, VkDeviceMemory, *VkAllocationCallbacks) -> void)?
+        if freeMemory == nil { throw InvalidOperationException("vkFreeMemory is unavailable") }
+        dispatch.vkFreeMemory = freeMemory!!
+        let bindBufferMemory2 = ResolveDeviceProc("vkBindBufferMemory2") as (unmanaged[Cdecl] (VkDevice, uint32, *VkBindBufferMemoryInfo) -> VkResult)?
+        if bindBufferMemory2 == nil { throw InvalidOperationException("vkBindBufferMemory2 is unavailable") }
+        dispatch.vkBindBufferMemory2 = bindBufferMemory2!!
+        let mapMemory = ResolveDeviceProc("vkMapMemory") as (unmanaged[Cdecl] (VkDevice, VkDeviceMemory, VkDeviceSize, VkDeviceSize, VkMemoryMapFlags, *void) -> VkResult)?
+        if mapMemory == nil { throw InvalidOperationException("vkMapMemory is unavailable") }
+        dispatch.vkMapMemory = mapMemory!!
+        let unmapMemory = ResolveDeviceProc("vkUnmapMemory") as (unmanaged[Cdecl] (VkDevice, VkDeviceMemory) -> void)?
+        if unmapMemory == nil { throw InvalidOperationException("vkUnmapMemory is unavailable") }
+        dispatch.vkUnmapMemory = unmapMemory!!
+        let invalidateMappedMemoryRanges = ResolveDeviceProc("vkInvalidateMappedMemoryRanges") as (unmanaged[Cdecl] (VkDevice, uint32, *VkMappedMemoryRange) -> VkResult)?
+        if invalidateMappedMemoryRanges == nil { throw InvalidOperationException("vkInvalidateMappedMemoryRanges is unavailable") }
+        dispatch.vkInvalidateMappedMemoryRanges = invalidateMappedMemoryRanges!!
+        let flushMappedMemoryRanges = ResolveDeviceProc("vkFlushMappedMemoryRanges") as (unmanaged[Cdecl] (VkDevice, uint32, *VkMappedMemoryRange) -> VkResult)?
+        if flushMappedMemoryRanges == nil { throw InvalidOperationException("vkFlushMappedMemoryRanges is unavailable") }
+        dispatch.vkFlushMappedMemoryRanges = flushMappedMemoryRanges!!
+        let copyBuffer = ResolveDeviceProc("vkCmdCopyBuffer") as (unmanaged[Cdecl] (VkCommandBuffer, VkBuffer, VkBuffer, uint32, *VkBufferCopy) -> void)?
+        if copyBuffer == nil { throw InvalidOperationException("vkCmdCopyBuffer is unavailable") }
+        dispatch.vkCmdCopyBuffer = copyBuffer!!
+        let createBufferView = ResolveDeviceProc("vkCreateBufferView") as (unmanaged[Cdecl] (VkDevice, *VkBufferViewCreateInfo, *VkAllocationCallbacks, *VkBufferView) -> VkResult)?
+        if createBufferView == nil { throw InvalidOperationException("vkCreateBufferView is unavailable") }
+        dispatch.vkCreateBufferView = createBufferView!!
+        let destroyBufferView = ResolveDeviceProc("vkDestroyBufferView") as (unmanaged[Cdecl] (VkDevice, VkBufferView, *VkAllocationCallbacks) -> void)?
+        if destroyBufferView == nil { throw InvalidOperationException("vkDestroyBufferView is unavailable") }
+        dispatch.vkDestroyBufferView = destroyBufferView!!
+        let createDescriptorSetLayout = ResolveDeviceProc("vkCreateDescriptorSetLayout") as (unmanaged[Cdecl] (VkDevice, *VkDescriptorSetLayoutCreateInfo, *VkAllocationCallbacks, *VkDescriptorSetLayout) -> VkResult)?
+        if createDescriptorSetLayout == nil { throw InvalidOperationException("vkCreateDescriptorSetLayout is unavailable") }
+        dispatch.vkCreateDescriptorSetLayout = createDescriptorSetLayout!!
+        let destroyDescriptorSetLayout = ResolveDeviceProc("vkDestroyDescriptorSetLayout") as (unmanaged[Cdecl] (VkDevice, VkDescriptorSetLayout, *VkAllocationCallbacks) -> void)?
+        if destroyDescriptorSetLayout == nil { throw InvalidOperationException("vkDestroyDescriptorSetLayout is unavailable") }
+        dispatch.vkDestroyDescriptorSetLayout = destroyDescriptorSetLayout!!
+        let createDescriptorPool = ResolveDeviceProc("vkCreateDescriptorPool") as (unmanaged[Cdecl] (VkDevice, *VkDescriptorPoolCreateInfo, *VkAllocationCallbacks, *VkDescriptorPool) -> VkResult)?
+        if createDescriptorPool == nil { throw InvalidOperationException("vkCreateDescriptorPool is unavailable") }
+        dispatch.vkCreateDescriptorPool = createDescriptorPool!!
+        let destroyDescriptorPool = ResolveDeviceProc("vkDestroyDescriptorPool") as (unmanaged[Cdecl] (VkDevice, VkDescriptorPool, *VkAllocationCallbacks) -> void)?
+        if destroyDescriptorPool == nil { throw InvalidOperationException("vkDestroyDescriptorPool is unavailable") }
+        dispatch.vkDestroyDescriptorPool = destroyDescriptorPool!!
+        let allocateDescriptorSets = ResolveDeviceProc("vkAllocateDescriptorSets") as (unmanaged[Cdecl] (VkDevice, *VkDescriptorSetAllocateInfo, *VkDescriptorSet) -> VkResult)?
+        if allocateDescriptorSets == nil { throw InvalidOperationException("vkAllocateDescriptorSets is unavailable") }
+        dispatch.vkAllocateDescriptorSets = allocateDescriptorSets!!
+        let updateDescriptorSets = ResolveDeviceProc("vkUpdateDescriptorSets") as (unmanaged[Cdecl] (VkDevice, uint32, *VkWriteDescriptorSet, uint32, *VkCopyDescriptorSet) -> void)?
+        if updateDescriptorSets == nil { throw InvalidOperationException("vkUpdateDescriptorSets is unavailable") }
+        dispatch.vkUpdateDescriptorSets = updateDescriptorSets!!
+        let bindDescriptorSets = ResolveDeviceProc("vkCmdBindDescriptorSets") as (unmanaged[Cdecl] (VkCommandBuffer, VkPipelineBindPoint, VkPipelineLayout, uint32, uint32, *VkDescriptorSet, uint32, *uint32) -> void)?
+        if bindDescriptorSets == nil { throw InvalidOperationException("vkCmdBindDescriptorSets is unavailable") }
+        dispatch.vkCmdBindDescriptorSets = bindDescriptorSets!!
         deviceWaitIdleAddress = ResolveDeviceProc("vkDeviceWaitIdle")
         if deviceWaitIdleAddress == nint(0) {
             throw InvalidOperationException("vkDeviceWaitIdle is unavailable")

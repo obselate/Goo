@@ -116,6 +116,18 @@ internal partial class VulkanWindowTarget {
         index = 0
         while index < frame.CachedGlyphRunCount {
             let value = frame.CachedGlyphRuns[index]
+            if value.TransformIndex >= 0 {
+                let transform = frame.Transforms[value.TransformIndex]
+                frame.Transforms[value.TransformIndex] = TransformRecord{
+                    A: transform.A * scaleX,
+                    B: transform.B * scaleY,
+                    C: transform.C * scaleX,
+                    D: transform.D * scaleY,
+                    TX: transform.TX,
+                    TY: transform.TY,
+                    ParentIndex: transform.ParentIndex,
+                }
+            }
             frame.CachedGlyphRuns[index] = CachedGlyphRunRefRecord{
                 Bounds: ScaleBounds(value.Bounds, scaleX, scaleY),
                 GlyphRunId: value.GlyphRunId,
@@ -123,10 +135,10 @@ internal partial class VulkanWindowTarget {
                 GlyphId: value.GlyphId,
                 AtlasTexelOffset: value.AtlasTexelOffset,
                 AtlasTexelCount: value.AtlasTexelCount,
-                GlyphMinX: value.GlyphMinX * scaleX,
-                GlyphMinY: value.GlyphMinY * scaleY,
-                GlyphMaxX: value.GlyphMaxX * scaleX,
-                GlyphMaxY: value.GlyphMaxY * scaleY,
+                GlyphMinX: value.GlyphMinX,
+                GlyphMinY: value.GlyphMinY,
+                GlyphMaxX: value.GlyphMaxX,
+                GlyphMaxY: value.GlyphMaxY,
                 Color: value.Color,
                 RenderMode: value.RenderMode,
                 TransformIndex: value.TransformIndex,

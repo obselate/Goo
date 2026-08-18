@@ -9,6 +9,7 @@ internal partial class VulkanSceneCompiler {
 
     private let frame SceneFrame
     private let owners ConditionalWeakTable[Node, VulkanSceneOwnerId]
+    private var textScene VulkanTextScene?
     private var nextOwnerId uint64
     private var frameVersion uint64
     private var visibleNodeCount int32
@@ -42,6 +43,10 @@ internal partial class VulkanSceneCompiler {
 
     internal prop LastResult VulkanSceneCompileResult {
         get { return lastResult }
+    }
+
+    internal func SetTextScene(value VulkanTextScene?) {
+        textScene = value
     }
 
     internal func Compile(
@@ -137,8 +142,6 @@ internal partial class VulkanSceneCompiler {
         let transform = AddNodeTransform(node, parentTransformIndex)
         transformCount = frame.TransformCount
         let axisAligned = parentAxisAligned && transform.AxisAligned
-        PaintNode(node, bounds, opacity, transform.Index)
-
         var clipIndex int32 = -1
         if HasOverflowClip(node) {
             if axisAligned {
@@ -153,6 +156,7 @@ internal partial class VulkanSceneCompiler {
                 MarkUnsupported(VulkanSceneUnsupportedKind.Clip)
             }
         }
+        PaintNode(node, bounds, opacity, transform.Index)
         let childTransform = AddScrollTransform(node, transform.Index)
         transformCount = frame.TransformCount
         frame.EndChunk()
@@ -200,8 +204,10 @@ internal partial class VulkanSceneCompiler {
     private func MarkUnsupportedNode(node Node) {
         switch node.Kind {
             case NodeKind.Text {
-                MarkUnsupported(VulkanSceneUnsupportedKind.Text)
-                unsupportedNodeCount = unsupportedNodeCount + 1
+                if textScene == nil {
+                    MarkUnsupported(VulkanSceneUnsupportedKind.Text)
+                    unsupportedNodeCount = unsupportedNodeCount + 1
+                }
             }
             case NodeKind.Image {
                 MarkUnsupported(VulkanSceneUnsupportedKind.Image)

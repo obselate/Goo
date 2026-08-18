@@ -94,6 +94,14 @@ internal partial class VulkanSceneCompiler {
             PaintSolid(node.BackgroundColor, node, bounds, opacity, transformIndex)
         }
         PaintBorder(node, bounds, opacity, transformIndex)
+        if node.Kind == NodeKind.Text {
+            if let renderer = textScene {
+                if !renderer.Emit(frame, node, opacity, transformIndex) {
+                    MarkUnsupported(VulkanSceneUnsupportedKind.Text)
+                    unsupportedNodeCount = unsupportedNodeCount + 1
+                }
+            }
+        }
     }
 
     private func PaintSolid(

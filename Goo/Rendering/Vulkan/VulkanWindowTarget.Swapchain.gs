@@ -64,7 +64,8 @@ internal unsafe partial class VulkanWindowTarget {
                 selection.Format.format,
                 64,
                 nil,
-                generationId)
+                generationId,
+                textAtlas)
         }
         framebufferWidth = int32(next.Extent.width)
         framebufferHeight = int32(next.Extent.height)

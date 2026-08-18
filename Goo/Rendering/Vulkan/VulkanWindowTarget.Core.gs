@@ -8,6 +8,9 @@ internal unsafe partial class VulkanWindowTarget : IDisposable {
     private let sceneCompiler VulkanSceneCompiler
     private let presentationRetirement VulkanPresentationRetirement
     private var runtime VulkanRuntime? = nil
+    private var memoryAllocator VulkanMemoryAllocator? = nil
+    private var textAtlas VulkanTextAtlas? = nil
+    private var textScene VulkanTextScene? = nil
     private var instance VkInstance = nint(0)
     private var instanceDispatch VkInstanceDispatch = VkInstanceDispatch{}
     private var getProcAddress nint = nint(0)
@@ -39,7 +42,9 @@ internal unsafe partial class VulkanWindowTarget : IDisposable {
     private var activeImageIndex uint32
     private var activeImageLayout VkImageLayout
     private var frameBegun bool
+    private var renderingBegun bool
     private var frameRendered bool
+    private var frameFailed bool
     private var recreatePending bool = true
     private var surfaceLost bool
     private var disposed bool
@@ -53,6 +58,9 @@ internal unsafe partial class VulkanWindowTarget : IDisposable {
         presentationRetirement = VulkanPresentationRetirement(64u, 8u)
         try {
             Bootstrap()
+            if let resources = textScene {
+                sceneCompiler.SetTextScene(resources)
+            }
         } catch (error Exception) {
             Dispose()
             throw error
@@ -60,6 +68,9 @@ internal unsafe partial class VulkanWindowTarget : IDisposable {
     }
 
     internal func BeginFrame() {
+        if frameFailed {
+            throw InvalidOperationException("Vulkan window target cannot continue after a failed frame")
+        }
         if disposed || frameBegun || framebufferWidth <= 0 || framebufferHeight <= 0 {
             return
         }
@@ -79,6 +90,9 @@ internal unsafe partial class VulkanWindowTarget : IDisposable {
         if prepareResult != VkConstants.VK_SUCCESS {
             HandleFrameFailure(prepareResult)
             return
+        }
+        if let atlas = textAtlas {
+            atlas.Collect(selectedSlot.LastCompletedSerial)
         }
         presentationRetirement.CollectCompleted(nextFrameSlot, selectedSlot.LastCompletedSerial)
         var imageIndex uint32 = 0u
@@ -109,11 +123,14 @@ internal unsafe partial class VulkanWindowTarget : IDisposable {
         activeImageIndex = imageIndex
         activeImageLayout = current.CurrentLayout(imageIndex)
         frameBegun = true
+        renderingBegun = false
         frameRendered = false
         if markedAcquire == VkConstants.VK_SUBOPTIMAL_KHR {
             recreatePending = true
         }
-        BeginRendering(current, selectedSlot, imageIndex)
+        if !BeginCommandBuffer(selectedSlot) {
+            return
+        }
     }
 
     internal func Render(root Node?, background Color, dpi Vector2) {
@@ -134,13 +151,30 @@ internal unsafe partial class VulkanWindowTarget : IDisposable {
                 : float32(framebufferHeight) / scaleY
             sceneCompiler.Compile(root, background, logicalWidth, logicalHeight)
             ScaleFrame(sceneCompiler.Frame, scaleX, scaleY)
+            if let resources = textScene {
+                resources.PrepareUpload()
+                if let slot = activeFrameSlot {
+                    let stats = resources.Atlas.Stats
+                    if stats.UploadPending && !stats.UploadRecorded {
+                        resources.Atlas.RecordUpload(slot.CommandBuffer)
+                    }
+                }
+            }
             if let current = generation {
                 if let slot = activeFrameSlot {
+                    BeginRendering(current, slot, activeImageIndex)
                     renderer.RecordInsideRendering(slot.CommandBuffer, sceneCompiler.Frame, current.Extent)
                     frameRendered = true
                 }
             }
         } catch (error Exception) {
+            if !renderingBegun {
+                if let current = generation {
+                    if let slot = activeFrameSlot {
+                        BeginRendering(current, slot, activeImageIndex)
+                    }
+                }
+            }
             try { Present() } catch (cleanup Exception) { }
             throw error
         }
@@ -154,13 +188,24 @@ internal unsafe partial class VulkanWindowTarget : IDisposable {
             ClearActiveFrame()
             return
         }
+        var submissionAccepted = false
         try {
+            if !renderingBegun {
+                BeginRendering(current, slot, activeImageIndex)
+            }
             EndRendering(current, slot)
             let endCommandBuffer = dispatch.vkEndCommandBuffer
             let endResult = endCommandBuffer(slot.CommandBuffer)
             if endResult != VkConstants.VK_SUCCESS {
                 HandleFrameFailure(endResult)
                 return
+            }
+            if let atlas = textAtlas {
+                let flushResult = atlas.FlushBeforeSubmit()
+                if flushResult != VkConstants.VK_SUCCESS {
+                    HandleFrameFailure(flushResult)
+                    return
+                }
             }
             let prepareSubmit = slot.PrepareSubmit(true)
             if prepareSubmit != VkConstants.VK_SUCCESS {
@@ -192,6 +237,14 @@ internal unsafe partial class VulkanWindowTarget : IDisposable {
             if markedSubmit != VkConstants.VK_SUCCESS {
                 HandleFrameFailure(markedSubmit)
                 return
+            }
+            submissionAccepted = true
+            if let atlas = textAtlas {
+                let stats = atlas.Stats
+                if stats.UploadPending && stats.UploadRecorded && !stats.UploadSubmitted
+                    && stats.UploadCommandBuffer == slot.CommandBuffer {
+                    atlas.MarkSubmitted(slot.CommandBuffer, slot.SubmissionSerial)
+                }
             }
             if activeImageLayout == VkConstants.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR {
                 presentationRetirement.BindPriorSameImageToCompletion(
@@ -248,6 +301,10 @@ internal unsafe partial class VulkanWindowTarget : IDisposable {
                 }
             }
         } finally {
+            if !submissionAccepted {
+                AbortUnsubmittedTextUpload()
+                frameFailed = true
+            }
             ClearActiveFrame()
         }
     }
@@ -287,6 +344,16 @@ internal unsafe partial class VulkanWindowTarget : IDisposable {
             try { renderer.Dispose() } catch (cleanup Exception) { }
             primitiveRenderer = nil
         }
+        if let atlas = textAtlas {
+            try { atlas.Collect(uint64.MaxValue) } catch (cleanup Exception) { }
+            let stats = atlas.Stats
+            if stats.UploadPending && !stats.UploadSubmitted {
+                try { atlas.AbortUpload(stats.UploadCommandBuffer) } catch (cleanup Exception) { }
+            }
+            try { atlas.Dispose() } catch (cleanup Exception) { }
+            textAtlas = nil
+        }
+        textScene = nil
         if let current = generation {
             try { current.Dispose() } catch (cleanup Exception) { }
             generation = nil
@@ -308,6 +375,10 @@ internal unsafe partial class VulkanWindowTarget : IDisposable {
             try { host.DestroyVulkanSurface(instance, surface) } catch (cleanup Exception) { }
             surface = 0uL
             surfaceCreated = false
+        }
+        if let allocator = memoryAllocator {
+            try { allocator.Dispose() } catch (cleanup Exception) { }
+            memoryAllocator = nil
         }
         if runtime == nil && device != nint(0) && deviceDestroyAvailable {
             let destroyDevice = dispatch.vkDestroyDevice
@@ -339,9 +410,20 @@ internal unsafe partial class VulkanWindowTarget : IDisposable {
 
     private func ClearActiveFrame() {
         frameBegun = false
+        renderingBegun = false
         frameRendered = false
         activeFrameSlot = nil
         nextFrameSlot = nextFrameSlot == 0u ? 1u : 0u
+    }
+
+    private func AbortUnsubmittedTextUpload() {
+        if let atlas = textAtlas {
+            let stats = atlas.Stats
+            if stats.UploadPending && !stats.UploadSubmitted
+                && atlas.AbortUpload(stats.UploadCommandBuffer) {
+                textScene?.RestoreUpload()
+            }
+        }
     }
 
     private func HandleFrameFailure(result VkResult) {

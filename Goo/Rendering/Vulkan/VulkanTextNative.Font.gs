@@ -218,14 +218,16 @@ internal unsafe sealed class VulkanTextFont : IDisposable {
         try {
             var length uint32 = 0u
             let data = hb_blob_get_data(blob, ref length)
-            if data == nint(0) || length == 0u {
-                throw InvalidOperationException("Encoded glyph blob is empty")
-            }
             if length > uint32(Int32.MaxValue) {
                 throw InvalidOperationException("Encoded glyph blob is too large")
             }
             let bytes = [int32(length)]uint8
-            Marshal.Copy(data, bytes, 0, int32(length))
+            if length != 0u {
+                if data == nint(0) {
+                    throw InvalidOperationException("Encoded glyph blob data is unavailable")
+                }
+                Marshal.Copy(data, bytes, 0, int32(length))
+            }
             return VulkanTextGlyphEncoding{
                 Bytes: bytes,
                 Extents: extents,
