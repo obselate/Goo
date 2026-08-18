@@ -8,6 +8,7 @@ layout(push_constant) uniform PushConstants {
     vec4 params;
     vec4 stopPositions;
     uvec4 packedColors;
+    uvec4 packedColorsExtra;
 } pc;
 
 layout(location = 0) in vec2 uv;

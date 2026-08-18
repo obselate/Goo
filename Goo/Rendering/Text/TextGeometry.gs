@@ -2,7 +2,6 @@ package Goo
 
 import System
 import System.Collections.Generic
-import System.Globalization
 
 internal data struct TextHit(Index int32, Affinity int32) { }
 
@@ -54,7 +53,7 @@ internal class TextGeometry {
     }
 
     let boundaries = List[int32]()
-    let parsed = StringInfo.ParseCombiningCharacters(text)
+    let parsed = UnicodeGraphemes.Starts(text)
     for boundary in parsed { boundaries.Add(boundary) }
     if boundaries.Count == 0 || boundaries[0] != 0 { boundaries.Insert(0, 0) }
     if boundaries[boundaries.Count - 1] != text.Length { boundaries.Add(text.Length) }
@@ -101,18 +100,15 @@ internal class TextGeometry {
 
   internal func HitTest(x float32) TextHit {
     if stops.Length == 0 { return TextHit(0, 1) }
-    var best int32 = 0
-    var distance = MathF.Abs(stops[0].X - x)
-    var i int32 = 1
-    while i < stops.Length {
-      let next = MathF.Abs(stops[i].X - x)
-      if next < distance {
-        best = i
-        distance = next
-      }
-      i++
-    }
-    return stops[best].Hit()
+    if Single.IsNaN(x) || Single.IsInfinity(x) { return stops[0].Hit() }
+    let upper = lowerBoundTextStops(stops, x)
+    if upper == 0 { return stops[0].Hit() }
+    if upper == stops.Length { return stops[lowerBoundTextStops(stops, stops[upper - 1].X)].Hit() }
+    let leftX = stops[upper - 1].X
+    let left = lowerBoundTextStops(stops, leftX)
+    let leftDistance = MathF.Abs(leftX - x)
+    let rightDistance = MathF.Abs(stops[upper].X - x)
+    return if rightDistance < leftDistance { stops[upper].Hit() } else { stops[left].Hit() }
   }
 
   internal func Move(index int32, affinity int32, delta int32) TextHit {
@@ -297,6 +293,20 @@ internal func comparePositions(left TextHitPosition, right TextHitPosition) int3
     if x != 0 { return x }
     let index = left.Index.CompareTo(right.Index)
     return if index != 0 { index } else { left.Affinity.CompareTo(right.Affinity) }
+}
+
+internal func lowerBoundTextStops(values []TextHitPosition, x float32) int32 {
+    var low int32 = 0
+    var high = values.Length
+    while low < high {
+      let middle = low + (high - low) / 2
+      if values[middle].X < x {
+        low = middle + 1
+      } else {
+        high = middle
+      }
+    }
+    return low
   }
 
 internal func AddRun(run ShapedRun, upstream []float32, downstream []float32,
@@ -343,7 +353,7 @@ internal func AddRun(run ShapedRun, upstream []float32, downstream []float32,
       let localEnd = if logical + 1 < logicalClusters.Count
         { logicalClusters[logical + 1] } else { run.Text.Length }
       let localText = run.Text.Substring(cluster.LogicalStart, localEnd - cluster.LogicalStart)
-      let localBoundaries = StringInfo.ParseCombiningCharacters(localText)
+      let localBoundaries = UnicodeGraphemes.Starts(localText)
       let segmentCount = Math.Max(localBoundaries.Length, 1)
       var i int32 = 0
       while i <= segmentCount {

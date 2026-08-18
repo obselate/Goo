@@ -16,45 +16,74 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             if entry.State == VulkanImageResourceState.UploadPending
                 && entry.UploadSubmitted && entry.UploadFence <= effectiveCompletedFence {
                 let pendingRetire = entry.PendingRetire
-                var retiredEntry = entry
-                if pendingRetire {
-                    retiredEntry = RetireDescriptors(entry, entry.RetireFence)
-                }
-                let registryLookup = registry.Lookup(entry.Id, generation)
-                if !registryLookup.Found {
-                    throw InvalidOperationException("Vulkan image registry entry is stale")
-                }
-                registry.MarkUploaded(entry.Id, generation)
-                if pendingRetire {
-                    if !registry.Retire(entry.Id, entry.RetireFence) {
-                        throw InvalidOperationException("Vulkan image registry entry is not resident")
-                    }
-                    entry = retiredEntry
-                }
-                entry.UploadedVersion = entry.Id.Version
-                entry.Upload = VulkanUploadReservation{}
-                entry.UploadRecorded = false
-                entry.UploadSubmitted = false
-                entry.UploadCommandBuffer = 0uL
-                entry.UploadFence = 0uL
-                entry.State = VulkanImageResourceState.Resident
-                entry.LastTouch = TouchValue()
-                if pendingRetire {
+                if pendingRetire && !entry.GpuPublished {
+                    entry.UploadedVersion = entry.Id.Version
+                    entry.Upload = VulkanUploadReservation{}
+                    entry.UploadRecorded = false
+                    entry.UploadSubmitted = false
+                    entry.UploadCommandBuffer = 0uL
+                    entry.UploadFence = 0uL
                     entry.PendingRetire = false
                     entry.State = VulkanImageResourceState.Retiring
+                    entry.LastTouch = TouchValue()
+                    entries[index] = entry
+                } else {
+                    if pendingRetire {
+                        let retiredEntry = RetireDescriptors(entry, entry.RetireFence)
+                        let registryLookup = registry.Lookup(entry.Id, generation)
+                        if !registryLookup.Found {
+                            throw InvalidOperationException("Vulkan image registry entry is stale")
+                        }
+                        registry.MarkUploaded(entry.Id, generation)
+                        if !registry.Retire(entry.Id, entry.RetireFence) {
+                            throw InvalidOperationException("Vulkan image registry entry is not resident")
+                        }
+                        entry = retiredEntry
+                    } else if !entry.GpuPublished {
+                        entry = PublishCompletedImage(index, entry)
+                    } else {
+                        let registryLookup = registry.Lookup(entry.Id, generation)
+                        if !registryLookup.Found {
+                            throw InvalidOperationException("Vulkan image registry entry is stale")
+                        }
+                        registry.MarkUploaded(entry.Id, generation)
+                        entry.UploadedVersion = entry.Id.Version
+                    }
+                    entry.Upload = VulkanUploadReservation{}
+                    entry.UploadRecorded = false
+                    entry.UploadSubmitted = false
+                    entry.UploadCommandBuffer = 0uL
+                    entry.UploadFence = 0uL
+                    entry.LastTouch = TouchValue()
+                    if pendingRetire {
+                        entry.PendingRetire = false
+                        entry.State = VulkanImageResourceState.Retiring
+                    } else {
+                        entry.State = VulkanImageResourceState.Resident
+                    }
+                    entries[index] = entry
                 }
-                entries[index] = entry
                 completedUploads++
             }
             index++
         }
         uploadRing.Collect(effectiveCompletedFence)
+        registry.Collect(effectiveCompletedFence)
         var retired int32 = 0
         index = 0
         while index < entries.Length {
             let entry = entries[index]
             if entry.State == VulkanImageResourceState.Retiring && entry.RetireFence <= effectiveCompletedFence {
+                if entry.DropLogicalOnRetire || (!entry.GpuPublished && !entry.Cacheable) {
+                    if !registry.DropLogical(entry.Id) {
+                        throw InvalidOperationException("Vulkan image logical registry rollback failed")
+                    }
+                }
                 DestroyImage(index, entry)
+                if let currentDiagnostics = diagnostics {
+                    currentDiagnostics.AddImageRetirement(1uL)
+                }
+                currentReferenceCounts[index] = 0
                 entries[index] = VulkanImageResourceEntry{}
                 liveCount--
                 residentBytes -= entry.Bytes
@@ -62,8 +91,26 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             }
             index++
         }
-        registry.Collect(effectiveCompletedFence)
         return completedUploads + retired
+    }
+
+    private func PublishCompletedImage(
+        index int32,
+        entry VulkanImageResourceEntry) VulkanImageResourceEntry {
+        EnsureRegistryPublication(entry.Bytes)
+        let nearestDescriptor = BindDescriptorSet(index, entry.Id, entry.SamplerId,
+            entry.ImageView, VulkanImageSamplerMode.Nearest)
+        let linearDescriptor = BindDescriptorSet(index, entry.Id, entry.SamplerId,
+            entry.ImageView, VulkanImageSamplerMode.Linear)
+        registry.PublishGpu(entry.Id, generation, entry.Image, nearestDescriptor.Slot)
+        registry.MarkUploaded(entry.Id, generation)
+        var updated = entry
+        updated.NearestDescriptor = nearestDescriptor
+        updated.LinearDescriptor = linearDescriptor
+        updated.GpuPublished = true
+        updated.UploadedVersion = entry.Id.Version
+        updated.State = VulkanImageResourceState.Resident
+        return updated
     }
 
     internal func CopyLogicalResources(destination []VulkanLogicalResource) int32 {
@@ -80,6 +127,9 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             let entry = entries[index]
             if entry.State == VulkanImageResourceState.Resident
                 && entry.Cacheable
+                && !entry.PendingRetire
+                && entry.RecordingUseCount == 0
+                && currentReferenceCounts[index] == 0
                 && entry.LastUseFence <= highestCompletedFence
                 && entry.LastTouch < candidateTouch {
                 candidate = index
@@ -95,6 +145,38 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             return false
         }
         Collect(highestCompletedFence)
+        if let currentDiagnostics = diagnostics {
+            currentDiagnostics.AddImageEviction(1uL)
+        }
+        return true
+    }
+
+    internal func AddCurrentReference(id ResourceId, expectedGeneration uint64) bool {
+        if disposed || expectedGeneration == 0uL || expectedGeneration != generation
+            || !id.IsValid || id.Kind != SceneResourceKind.Image {
+            return false
+        }
+        let index = FindExactIndex(id)
+        if index < 0 {
+            return false
+        }
+        if currentReferenceCounts[index] == Int32.MaxValue {
+            throw InvalidOperationException("Vulkan image current reference capacity reached")
+        }
+        currentReferenceCounts[index]++
+        return true
+    }
+
+    internal func ReleaseCurrentReference(id ResourceId, expectedGeneration uint64) bool {
+        if disposed || expectedGeneration == 0uL || expectedGeneration != generation
+            || !id.IsValid || id.Kind != SceneResourceKind.Image {
+            return false
+        }
+        let index = FindExactIndex(id)
+        if index < 0 || currentReferenceCounts[index] == 0 {
+            return false
+        }
+        currentReferenceCounts[index]--
         return true
     }
 
@@ -159,12 +241,7 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             throw InvalidOperationException("Vulkan image is not registered")
         }
         let lookup = Lookup(index, samplerId, samplerMode)
-        let entry = entries[index]
-        let uploadCanBeConsumed = entry.State == VulkanImageResourceState.UploadPending
-            && entry.Upload.Succeeded
-            && entry.UploadRecorded
-            && entry.UploadCommandBuffer == commandBuffer
-        if !lookup.Renderable && !uploadCanBeConsumed {
+        if !lookup.Renderable {
             throw InvalidOperationException("Vulkan image upload is not complete")
         }
         if lookup.DescriptorSet == 0uL {
@@ -189,6 +266,8 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             let entry = entries[index]
             if entry.State == VulkanImageResourceState.UploadPending
                 || entry.State == VulkanImageResourceState.Retiring
+                || entry.RecordingUseCount != 0
+                || entry.PendingRetire
                 || entry.LastUseFence > highestCompletedFence
                 || entry.RetireFence > highestCompletedFence
                 || (entry.UploadSubmitted && entry.UploadFence > highestCompletedFence) {
@@ -201,6 +280,7 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         DestroyStagingBuffer()
         uploadRing.Dispose()
         registry.Dispose()
+        ClearCurrentReferences()
         index = 0
         while index < entries.Length {
             entries[index] = VulkanImageResourceEntry{}
@@ -208,6 +288,14 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         }
         liveCount = 0
         residentBytes = 0uL
+    }
+
+    private func ClearCurrentReferences() {
+        var index int32 = 0
+        while index < currentReferenceCounts.Length {
+            currentReferenceCounts[index] = 0
+            index++
+        }
     }
 
     deinit {

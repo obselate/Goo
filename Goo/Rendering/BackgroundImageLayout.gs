@@ -15,6 +15,10 @@ internal class BackgroundImageLayouts {
       return if let value = state(n) { value.Source } else { nil }
     }
 
+    internal func CurrentToken(n Node) ImageSourceBindingToken? {
+      return state(n)?.CurrentToken()
+    }
+
     internal func Image(n Node) DecodedImage? {
       guard let value = state(n) else { return nil }
       if !value.Settled { Refresh(n) }
@@ -69,11 +73,13 @@ internal class BackgroundImageLayouts {
       releasePath(current)
       current.Image = nil
       current.Settled = false
+      current.SetSourceChanged(func() {
+        BackgroundImageLayouts.refreshSource(n, current)
+      })
       current.RebindSource(source)
       if Refresh(n) { return true }
-      let binding = current.Lease!!
-      current.WatchSource(func() {
-        BackgroundImageLayouts.invalidateSource(n, current, binding)
+      current.WatchSource(func(token ImageSourceBindingToken) {
+        BackgroundImageLayouts.invalidateSource(n, current, token)
       })
       return false
     }
@@ -168,17 +174,44 @@ internal class BackgroundImageLayouts {
       current.Invalidated?.Invoke()
     }
 
-    private func invalidateSource(n Node, value BackgroundImageValue, lease ImageSourceLease) {
+    private func invalidateSource(n Node, value BackgroundImageValue,
+      token ImageSourceBindingToken) {
       if n.Retired {
         return
       }
       guard let current = state(n) else {
         return
       }
-      if current != value || current.Lease != lease {
+      if current != value || !value.IsCurrentToken(token) {
         return
       }
       current.Invalidated?.Invoke()
+    }
+
+    private func refreshSource(n Node, value BackgroundImageValue) {
+      if n.Retired {
+        return
+      }
+      guard let current = state(n) else {
+        return
+      }
+      if current != value {
+        return
+      }
+      value.Settled = false
+      if Refresh(n) {
+        value.Invalidated?.Invoke()
+        return
+      }
+      guard let lease = value.Lease else {
+        return
+      }
+      if lease.IsComplete {
+        return
+      }
+      value.WatchSource(func(token ImageSourceBindingToken) {
+        BackgroundImageLayouts.invalidateSource(n, value, token)
+      })
     }
   }
 }

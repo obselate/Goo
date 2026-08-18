@@ -4,21 +4,30 @@ import System
 import System.IO
 import System.Runtime.InteropServices
 
+internal data struct VulkanPrimitiveRecordResult {
+    var pipelineChangeCount uint64
+    var descriptorChangeCount uint64
+}
+
 internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     private const DefaultClipDepth int32 = 64
-    private const PushConstantSize uint32 = 112u
+    private const MaxGradientStops int32 = 4
+    private const PushConstantSize uint32 = 128u
     private const TextPushConstantSize uint32 = 128u
 
     private let device VkDevice
     private let dispatch VkDeviceDispatch
     private let targetFormat VkFormat
     private let imageResources VulkanImageResources?
-    private let textAtlas VulkanTextAtlas?
+    private let textAtlases VulkanTextAtlasSet?
+    private let primitiveState VulkanSharedPrimitiveState
     private let resourceGeneration uint64
+    private let objectAccounting VulkanObjectAccounting?
     private let clipStack []PrimitiveClip
     private let linearChannels []float32
     private var pipelineLayout VkPipelineLayout
     private var solidPipeline VkPipeline
+    private var borderPipeline VkPipeline
     private var linearPipeline VkPipeline
     private var radialPipeline VkPipeline
     private var sampledPipeline VkPipeline
@@ -26,30 +35,25 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     private var textPipeline VkPipeline
     private var textPaintPipeline VkPipeline
     private var activePipeline VkPipeline
+    private var boundDescriptorLayout VkPipelineLayout
+    private var sampledDescriptorBound bool
+    private var sampledImageId ResourceId
+    private var sampledSamplerId ResourceId
+    private var sampledSamplerMode VulkanImageSamplerMode
+    private var sampledGeneration uint64
+    private var textDescriptorBound bool
+    private var textAtlasId ResourceId
     private var clipDepth int32
     private var activeExtent VkExtent2D
+    private var recordPipelineChangeCount uint64
+    private var recordDescriptorChangeCount uint64
     private var disposed bool
 
     internal prop ClipCapacity int32 { get { return clipStack.Length } }
     internal prop LiveObjectCount uint32 {
         get {
-            var count uint32 = 4u
-            if sampledPipeline != 0uL { count++ }
-            if textPipeline != 0uL { count = count + 2u }
-            if textPaintPipeline != 0uL { count++ }
-            return count
+            return 0u
         }
-    }
-
-    internal convenience init(
-        nativeDevice VkDevice,
-        nativeDispatch VkDeviceDispatch,
-        colorFormat VkFormat,
-        maxClipDepth int32,
-        nativeImageResources VulkanImageResources?,
-        expectedGeneration uint64) {
-        init(nativeDevice, nativeDispatch, colorFormat, maxClipDepth,
-            nativeImageResources, expectedGeneration, nil)
     }
 
     internal init(
@@ -59,7 +63,9 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         maxClipDepth int32,
         nativeImageResources VulkanImageResources?,
         expectedGeneration uint64,
-        nativeTextAtlas VulkanTextAtlas?) {
+        nativePrimitiveState VulkanSharedPrimitiveState?,
+        nativeTextAtlases VulkanTextAtlasSet?,
+        nativeObjectAccounting VulkanObjectAccounting?) {
         if nativeDevice == nint(0) {
             throw ArgumentException("Vulkan device is null", "nativeDevice")
         }
@@ -70,25 +76,93 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         if maxClipDepth <= 0 || maxClipDepth > Int32.MaxValue {
             throw ArgumentOutOfRangeException("maxClipDepth")
         }
+        guard let sharedState = nativePrimitiveState else {
+            throw ArgumentNullException("nativePrimitiveState")
+        }
+        guard let sharedImages = nativeImageResources else {
+            throw ArgumentNullException("nativeImageResources")
+        }
+        if expectedGeneration == 0uL
+            || sharedImages.Generation != expectedGeneration
+            || sharedState.Generation != expectedGeneration {
+            throw ArgumentOutOfRangeException("expectedGeneration")
+        }
+        let pipelines = sharedState.PipelinesFor(colorFormat)
         this.device = nativeDevice
         this.dispatch = nativeDispatch
         this.targetFormat = colorFormat
-        this.imageResources = nativeImageResources
-        this.textAtlas = nativeTextAtlas
+        this.imageResources = sharedImages
+        this.textAtlases = nativeTextAtlases
+        this.primitiveState = sharedState
         this.resourceGeneration = expectedGeneration
-        if nativeImageResources != nil && expectedGeneration == 0uL {
-            throw ArgumentOutOfRangeException("expectedGeneration")
-        }
+        objectAccounting = nativeObjectAccounting
+        pipelineLayout = pipelines.PipelineLayout
+        solidPipeline = pipelines.SolidPipeline
+        borderPipeline = pipelines.BorderPipeline
+        linearPipeline = pipelines.LinearPipeline
+        radialPipeline = pipelines.RadialPipeline
+        sampledPipeline = pipelines.SampledPipeline
+        textPipelineLayout = pipelines.TextPipelineLayout
+        textPipeline = pipelines.TextPipeline
+        textPaintPipeline = pipelines.TextPaintPipeline
         this.clipStack = [maxClipDepth]PrimitiveClip
         this.linearChannels = [256]float32
         BuildLinearChannelTable()
-        Create()
+    }
+
+    internal func ReserveImageReferences(frame SceneFrame) {
+        if disposed {
+            throw ObjectDisposedException("VulkanPrimitiveRenderer")
+        }
+        if frame == nil {
+            throw ArgumentNullException("frame")
+        }
+        guard let resources = imageResources else {
+            return
+        }
+        var index int32 = 0
+        try {
+            while index < frame.CachedImageCount {
+                let image = frame.CachedImages[index]
+                if image.ImageId.IsValid {
+                    resources.ReserveRecording(image.ImageId, resourceGeneration)
+                }
+                index++
+            }
+        } catch (error Exception) {
+            var rollbackIndex int32 = 0
+            while rollbackIndex < index {
+                let image = frame.CachedImages[rollbackIndex]
+                if image.ImageId.IsValid {
+                    try { resources.ReleaseRecording(image.ImageId, resourceGeneration) } catch (cleanup Exception) { }
+                }
+                rollbackIndex++
+            }
+            throw error
+        }
+    }
+
+    internal func ReleaseImageReferences(frame SceneFrame) {
+        if frame == nil {
+            return
+        }
+        guard let resources = imageResources else {
+            return
+        }
+        var index int32 = 0
+        while index < frame.CachedImageCount {
+            let image = frame.CachedImages[index]
+            if image.ImageId.IsValid {
+                try { resources.ReleaseRecording(image.ImageId, resourceGeneration) } catch (cleanup Exception) { }
+            }
+            index++
+        }
     }
 
     internal func RecordInsideRendering(
         commandBuffer VkCommandBuffer,
         frame SceneFrame,
-        extent VkExtent2D) {
+        extent VkExtent2D) VulkanPrimitiveRecordResult {
         if disposed {
             throw ObjectDisposedException("VulkanPrimitiveRenderer")
         }
@@ -111,6 +185,16 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
 
         clipDepth = 0
         activePipeline = 0uL
+        boundDescriptorLayout = 0uL
+        sampledDescriptorBound = false
+        sampledImageId = ResourceId{}
+        sampledSamplerId = ResourceId{}
+        sampledSamplerMode = VulkanImageSamplerMode.Nearest
+        sampledGeneration = 0uL
+        textDescriptorBound = false
+        textAtlasId = ResourceId{}
+        recordPipelineChangeCount = 0uL
+        recordDescriptorChangeCount = 0uL
         var viewport = VkViewport{}
         viewport.x = 0.0F
         viewport.y = 0.0F
@@ -227,6 +311,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         if clipDepth != 0 {
             throw InvalidOperationException("Vulkan primitive clip stack is not balanced")
         }
+        return VulkanPrimitiveRecordResult{
+            pipelineChangeCount: recordPipelineChangeCount,
+            descriptorChangeCount: recordDescriptorChangeCount,
+        }
     }
 
     public func Dispose() {
@@ -234,46 +322,6 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
             return
         }
         disposed = true
-        if textPipeline != 0uL {
-            let destroyPipeline = dispatch.vkDestroyPipeline
-            destroyPipeline(device, textPipeline, nil)
-            textPipeline = 0uL
-        }
-        if textPaintPipeline != 0uL {
-            let destroyPipeline = dispatch.vkDestroyPipeline
-            destroyPipeline(device, textPaintPipeline, nil)
-            textPaintPipeline = 0uL
-        }
-        if textPipelineLayout != 0uL {
-            let destroyPipelineLayout = dispatch.vkDestroyPipelineLayout
-            destroyPipelineLayout(device, textPipelineLayout, nil)
-            textPipelineLayout = 0uL
-        }
-        if radialPipeline != 0uL {
-            let destroyPipeline = dispatch.vkDestroyPipeline
-            destroyPipeline(device, radialPipeline, nil)
-            radialPipeline = 0uL
-        }
-        if sampledPipeline != 0uL {
-            let destroyPipeline = dispatch.vkDestroyPipeline
-            destroyPipeline(device, sampledPipeline, nil)
-            sampledPipeline = 0uL
-        }
-        if linearPipeline != 0uL {
-            let destroyPipeline = dispatch.vkDestroyPipeline
-            destroyPipeline(device, linearPipeline, nil)
-            linearPipeline = 0uL
-        }
-        if solidPipeline != 0uL {
-            let destroyPipeline = dispatch.vkDestroyPipeline
-            destroyPipeline(device, solidPipeline, nil)
-            solidPipeline = 0uL
-        }
-        if pipelineLayout != 0uL {
-            let destroyPipelineLayout = dispatch.vkDestroyPipelineLayout
-            destroyPipelineLayout(device, pipelineLayout, nil)
-            pipelineLayout = 0uL
-        }
     }
 
     deinit {

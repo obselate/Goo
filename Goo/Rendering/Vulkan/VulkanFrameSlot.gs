@@ -6,6 +6,7 @@ internal unsafe class VulkanFrameSlot : IDisposable {
     private let device VkDevice
     private let dispatch VkDeviceDispatch
     private let commandBuffer VkCommandBuffer
+    private let objectAccounting VulkanObjectAccounting?
     private var acquireSemaphore VkSemaphore
     private var submissionFence VkFence
     private var acquirePrepared bool
@@ -15,6 +16,8 @@ internal unsafe class VulkanFrameSlot : IDisposable {
     private var submissionFailed bool
     private var submissionSerial uint64
     private var lastCompletedSerial uint64
+    private var globalSubmissionSerial uint64
+    private var lastCompletedGlobalSubmissionSerial uint64
     private var disposed bool
 
     internal prop CommandBuffer VkCommandBuffer { get { return commandBuffer } }
@@ -24,8 +27,13 @@ internal unsafe class VulkanFrameSlot : IDisposable {
     internal prop SubmissionSerial uint64 { get { return submissionSerial } }
     internal prop NextSubmissionSerial uint64 { get { return submissionSerial + 1uL } }
     internal prop LastCompletedSerial uint64 { get { return lastCompletedSerial } }
+    internal prop GlobalSubmissionSerial uint64 { get { return globalSubmissionSerial } }
+    internal prop LastCompletedGlobalSubmissionSerial uint64 {
+        get { return lastCompletedGlobalSubmissionSerial }
+    }
 
-    internal init(nativeDevice VkDevice, nativeDispatch VkDeviceDispatch, suppliedCommandBuffer VkCommandBuffer) {
+    internal init(nativeDevice VkDevice, nativeDispatch VkDeviceDispatch,
+        suppliedCommandBuffer VkCommandBuffer, nativeObjectAccounting VulkanObjectAccounting?) {
         if nativeDevice == nint(0) {
             throw ArgumentException("Vulkan device is null", "nativeDevice")
         }
@@ -35,6 +43,7 @@ internal unsafe class VulkanFrameSlot : IDisposable {
         this.device = nativeDevice
         this.dispatch = nativeDispatch
         this.commandBuffer = suppliedCommandBuffer
+        objectAccounting = nativeObjectAccounting
         Create()
     }
 
@@ -47,6 +56,16 @@ internal unsafe class VulkanFrameSlot : IDisposable {
             if semaphoreResult != VkConstants.VK_SUCCESS || acquireSemaphore == 0uL {
                 throw InvalidOperationException("vkCreateSemaphore failed for VulkanFrameSlot")
             }
+            try {
+                if let accounting = objectAccounting {
+                    accounting.Allocate()
+                }
+            } catch (error Exception) {
+                let destroySemaphore = dispatch.vkDestroySemaphore
+                destroySemaphore(device, acquireSemaphore, nil)
+                acquireSemaphore = 0uL
+                throw error
+            }
 
             var fenceCreateInfo = VkFenceCreateInfo{}
             fenceCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
@@ -56,15 +75,31 @@ internal unsafe class VulkanFrameSlot : IDisposable {
             if fenceResult != VkConstants.VK_SUCCESS || submissionFence == 0uL {
                 throw InvalidOperationException("vkCreateFence failed for VulkanFrameSlot")
             }
+            try {
+                if let accounting = objectAccounting {
+                    accounting.Allocate()
+                }
+            } catch (error Exception) {
+                let destroyFence = dispatch.vkDestroyFence
+                destroyFence(device, submissionFence, nil)
+                submissionFence = 0uL
+                throw error
+            }
         } catch (error Exception) {
             if submissionFence != 0uL {
                 let destroyFence = dispatch.vkDestroyFence
                 destroyFence(device, submissionFence, nil)
+                if let accounting = objectAccounting {
+                    accounting.Release()
+                }
                 submissionFence = 0uL
             }
             if acquireSemaphore != 0uL {
                 let destroySemaphore = dispatch.vkDestroySemaphore
                 destroySemaphore(device, acquireSemaphore, nil)
+                if let accounting = objectAccounting {
+                    accounting.Release()
+                }
                 acquireSemaphore = 0uL
             }
             throw error
@@ -88,6 +123,7 @@ internal unsafe class VulkanFrameSlot : IDisposable {
                 return waitResult
             }
             lastCompletedSerial = submissionSerial
+            lastCompletedGlobalSubmissionSerial = globalSubmissionSerial
             inFlight = false
         }
         let resetCommandBuffer = dispatch.vkResetCommandBuffer
@@ -136,7 +172,7 @@ internal unsafe class VulkanFrameSlot : IDisposable {
         return resetResult
     }
 
-    internal func MarkSubmitted(submitResult VkResult) VkResult {
+    internal func MarkSubmitted(submitResult VkResult, submittedGlobalSerial uint64) VkResult {
         if disposed {
             throw ObjectDisposedException("VulkanFrameSlot")
         }
@@ -147,9 +183,13 @@ internal unsafe class VulkanFrameSlot : IDisposable {
             throw InvalidOperationException("VulkanFrameSlot has no prepared submission")
         }
         if submitResult == VkConstants.VK_SUCCESS {
+            if submittedGlobalSerial == 0uL {
+                throw ArgumentOutOfRangeException("submittedGlobalSerial")
+            }
             acquired = false
             submitPrepared = false
             submissionSerial++
+            globalSubmissionSerial = submittedGlobalSerial
             inFlight = true
         } else {
             acquired = false
@@ -183,17 +223,24 @@ internal unsafe class VulkanFrameSlot : IDisposable {
                 throw InvalidOperationException("VulkanFrameSlot submission is still in flight")
             }
             lastCompletedSerial = submissionSerial
+            lastCompletedGlobalSubmissionSerial = globalSubmissionSerial
             inFlight = false
         }
         disposed = true
         if acquireSemaphore != 0uL {
             let destroySemaphore = dispatch.vkDestroySemaphore
             destroySemaphore(device, acquireSemaphore, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
             acquireSemaphore = 0uL
         }
         if submissionFence != 0uL {
             let destroyFence = dispatch.vkDestroyFence
             destroyFence(device, submissionFence, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
             submissionFence = 0uL
         }
     }

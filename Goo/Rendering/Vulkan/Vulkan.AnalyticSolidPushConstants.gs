@@ -2,7 +2,7 @@ package Goo
 
 import System.Runtime.InteropServices
 
-@StructLayout(LayoutKind.Explicit, Size: 112)
+@StructLayout(LayoutKind.Explicit, Size: 128)
 internal unsafe struct AnalyticSolidPushConstants {
     @FieldOffset(0) var rect_x float32
     @FieldOffset(4) var rect_y float32
@@ -32,4 +32,8 @@ internal unsafe struct AnalyticSolidPushConstants {
     @FieldOffset(100) var packedColors_y uint32
     @FieldOffset(104) var packedColors_z uint32
     @FieldOffset(108) var packedColors_w uint32
+    @FieldOffset(112) var packedColorsExtra_x uint32
+    @FieldOffset(116) var packedColorsExtra_y uint32
+    @FieldOffset(120) var packedColorsExtra_z uint32
+    @FieldOffset(124) var packedColorsExtra_w uint32
 }

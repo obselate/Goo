@@ -6,16 +6,21 @@ import System.Runtime.CompilerServices
 internal partial class VulkanSceneCompiler {
     private const BackgroundOwnerId uint64 = 1uL
     private const FirstNodeOwnerId uint64 = 2uL
+    private const MaxRectClipDepth int32 = 64
 
     private let frame SceneFrame
     private let owners ConditionalWeakTable[Node, VulkanSceneOwnerId]
+    private let unsupportedDetails []VulkanSceneUnsupportedDetail
     private var textScene VulkanTextScene?
+    private var imageScene VulkanImageScene?
     private var nextOwnerId uint64
     private var frameVersion uint64
     private var visibleNodeCount int32
     private var emittedNodeCount int32
     private var unsupportedNodeCount int32
     private var unsupportedPrimitiveCount int32
+    private var unsupportedDetailCount int32
+    private var unsupportedDetailDropped int32
     private var skippedNodeCount int32
     private var scrollNodeCount int32
     private var unsupportedMask uint32
@@ -34,6 +39,7 @@ internal partial class VulkanSceneCompiler {
         }
         frame = SceneFrame(capacity)
         owners = ConditionalWeakTable[Node, VulkanSceneOwnerId]()
+        unsupportedDetails = [capacity]VulkanSceneUnsupportedDetail
         nextOwnerId = FirstNodeOwnerId
     }
 
@@ -49,18 +55,25 @@ internal partial class VulkanSceneCompiler {
         textScene = value
     }
 
+    internal func SetImageScene(value VulkanImageScene?) {
+        imageScene = value
+    }
+
     internal func Compile(
         root Node?,
         background Color,
         viewportWidth float32,
         viewportHeight float32) VulkanSceneCompileResult {
         ValidateViewport(viewportWidth, viewportHeight)
+        imageScene?.BeginCompile()
         frameVersion = NextVersion(frameVersion)
         frame.ResetForReuse()
         visibleNodeCount = 0
         emittedNodeCount = 0
         unsupportedNodeCount = 0
         unsupportedPrimitiveCount = 0
+        unsupportedDetailCount = 0
+        unsupportedDetailDropped = 0
         skippedNodeCount = 0
         scrollNodeCount = 0
         unsupportedMask = 0u
@@ -89,7 +102,7 @@ internal partial class VulkanSceneCompiler {
         var rootOwnerId uint64 = 0uL
         if let node = root {
             rootOwnerId = OwnerId(node)
-            CompileNode(node, -1, -1, 1.0F, true)
+            CompileNode(node, -1, -1, 1.0F, true, 0)
         }
 
         lastResult = VulkanSceneCompileResult{
@@ -106,6 +119,9 @@ internal partial class VulkanSceneCompiler {
             ClipCount: clipCount,
             TransformCount: transformCount,
             UnsupportedMask: unsupportedMask,
+            UnsupportedDetails: unsupportedDetails,
+            UnsupportedDetailCount: unsupportedDetailCount,
+            UnsupportedDetailDropped: unsupportedDetailDropped,
             BackgroundDrawn: backgroundDrawn,
         }
         return lastResult
@@ -116,7 +132,8 @@ internal partial class VulkanSceneCompiler {
         parentTransformIndex int32,
         parentClipIndex int32,
         parentOpacity float32,
-        parentAxisAligned bool) {
+        parentAxisAligned bool,
+        parentClipDepth int32) {
         let ownerId = OwnerId(node)
         if node.Retired || node.Display == Display.None || node.Visibility == Visibility.Hidden {
             skippedNodeCount = skippedNodeCount + 1
@@ -132,33 +149,71 @@ internal partial class VulkanSceneCompiler {
         if node.ScrollX != 0.0F || node.ScrollY != 0.0F {
             scrollNodeCount = scrollNodeCount + 1
         }
+        let bounds = NodeBounds(node)
         MarkUnsupportedNode(node)
+        RecordUnsupportedFields(node, bounds)
         if node.Children.Count != 0 && (parentOpacity < 1.0F || opacity < 1.0F) {
-            MarkUnsupported(VulkanSceneUnsupportedKind.GroupOpacity)
+            MarkUnsupported(node, VulkanSceneUnsupportedKind.GroupOpacity,
+                VulkanSceneUnsupportedField.Opacity,
+                VulkanSceneUnsupportedPrimitive.GroupOpacity)
         }
 
-        let bounds = NodeBounds(node)
         frame.BeginChunk(ownerId, frameVersion, bounds, true)
         let transform = AddNodeTransform(node, parentTransformIndex)
         transformCount = frame.TransformCount
         let axisAligned = parentAxisAligned && transform.AxisAligned
         var clipIndex int32 = -1
-        if HasOverflowClip(node) {
-            if axisAligned {
-                let clip = RectClipRecord{
-                    Bounds: bounds,
-                    TransformIndex: transform.Index,
-                    ParentIndex: parentClipIndex,
+        var childClipDepth = parentClipDepth
+        let clipsX = node.OverflowX != Overflow.Visible
+        let clipsY = node.OverflowY != Overflow.Visible
+        if clipsX || clipsY {
+            if clipsX && clipsY {
+                let hasRadius = HasRadius(node, bounds)
+                let depthExceeded = parentClipDepth >= MaxRectClipDepth
+                if axisAligned && !hasRadius && !depthExceeded {
+                    let clip = RectClipRecord{
+                        Bounds: bounds,
+                        TransformIndex: transform.Index,
+                        ParentIndex: parentClipIndex,
+                    }
+                    clipIndex = frame.AddRectClipBegin(clip)
+                    clipCount = clipCount + 1
+                    childClipDepth = parentClipDepth + 1
+                } else if !axisAligned {
+                    MarkUnsupported(node, VulkanSceneUnsupportedKind.Clip,
+                        VulkanSceneUnsupportedField.OverflowX,
+                        VulkanSceneUnsupportedPrimitive.RectClipNonAxisAligned)
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.OverflowY,
+                        VulkanSceneUnsupportedPrimitive.RectClipNonAxisAligned)
+                    if hasRadius {
+                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BorderRadius,
+                            VulkanSceneUnsupportedPrimitive.RectClipRounded)
+                    }
+                    if depthExceeded {
+                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ClipDepth,
+                            VulkanSceneUnsupportedPrimitive.RectClipDepth)
+                    }
+                } else if hasRadius {
+                    MarkUnsupported(node, VulkanSceneUnsupportedKind.Clip,
+                        VulkanSceneUnsupportedField.BorderRadius,
+                        VulkanSceneUnsupportedPrimitive.RectClipRounded)
+                    if depthExceeded {
+                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ClipDepth,
+                            VulkanSceneUnsupportedPrimitive.RectClipDepth)
+                    }
+                } else {
+                    MarkUnsupported(node, VulkanSceneUnsupportedKind.Clip,
+                        VulkanSceneUnsupportedField.ClipDepth,
+                        VulkanSceneUnsupportedPrimitive.RectClipDepth)
                 }
-                clipIndex = frame.AddRectClipBegin(clip)
-                clipCount = clipCount + 1
             } else {
-                MarkUnsupported(VulkanSceneUnsupportedKind.Clip)
+                MarkUnsupported(node, VulkanSceneUnsupportedKind.Clip,
+                    clipsX ? VulkanSceneUnsupportedField.OverflowX
+                        : VulkanSceneUnsupportedField.OverflowY,
+                    VulkanSceneUnsupportedPrimitive.RectClipMixedAxis)
             }
         }
         PaintNode(node, bounds, opacity, transform.Index)
-        let childTransform = AddScrollTransform(node, transform.Index)
-        transformCount = frame.TransformCount
         frame.EndChunk()
         emittedNodeCount = emittedNodeCount + 1
 
@@ -166,7 +221,8 @@ internal partial class VulkanSceneCompiler {
         let children = Stacking.Children(node)
         var index int32 = 0
         while index < children.Count {
-            CompileNode(children[index], childTransform, childClipIndex, opacity, axisAligned)
+            CompileNode(children[index], transform.Index, childClipIndex, opacity, axisAligned,
+                childClipDepth)
             index = index + 1
         }
 
@@ -205,24 +261,38 @@ internal partial class VulkanSceneCompiler {
         switch node.Kind {
             case NodeKind.Text {
                 if textScene == nil {
-                    MarkUnsupported(VulkanSceneUnsupportedKind.Text)
+                    MarkUnsupported(node, VulkanSceneUnsupportedKind.Text,
+                        VulkanSceneUnsupportedField.None,
+                        VulkanSceneUnsupportedPrimitive.Text)
                     unsupportedNodeCount = unsupportedNodeCount + 1
                 }
             }
             case NodeKind.Image {
-                MarkUnsupported(VulkanSceneUnsupportedKind.Image)
-                unsupportedNodeCount = unsupportedNodeCount + 1
+                let source = node.ImageSource
+                if (node.ImagePath != "" && source == nil)
+                    || (source != nil && imageScene == nil) {
+                    MarkUnsupported(node, VulkanSceneUnsupportedKind.Image,
+                        VulkanSceneUnsupportedField.None,
+                        VulkanSceneUnsupportedPrimitive.Image)
+                    unsupportedNodeCount = unsupportedNodeCount + 1
+                }
             }
             case NodeKind.Shape {
-                MarkUnsupported(VulkanSceneUnsupportedKind.Shape)
+                MarkUnsupported(node, VulkanSceneUnsupportedKind.Shape,
+                    VulkanSceneUnsupportedField.None,
+                    VulkanSceneUnsupportedPrimitive.Shape)
                 unsupportedNodeCount = unsupportedNodeCount + 1
             }
             case NodeKind.Entry {
-                MarkUnsupported(VulkanSceneUnsupportedKind.Entry)
+                MarkUnsupported(node, VulkanSceneUnsupportedKind.Entry,
+                    VulkanSceneUnsupportedField.None,
+                    VulkanSceneUnsupportedPrimitive.TextEntry)
                 unsupportedNodeCount = unsupportedNodeCount + 1
             }
             case NodeKind.Editor {
-                MarkUnsupported(VulkanSceneUnsupportedKind.Editor)
+                MarkUnsupported(node, VulkanSceneUnsupportedKind.Editor,
+                    VulkanSceneUnsupportedField.None,
+                    VulkanSceneUnsupportedPrimitive.TextEditor)
                 unsupportedNodeCount = unsupportedNodeCount + 1
             }
             case _ { }
@@ -232,5 +302,40 @@ internal partial class VulkanSceneCompiler {
     private func MarkUnsupported(kind VulkanSceneUnsupportedKind) {
         unsupportedMask = unsupportedMask | uint32(kind)
         unsupportedPrimitiveCount = unsupportedPrimitiveCount + 1
+    }
+
+    private func MarkUnsupported(node Node, kind VulkanSceneUnsupportedKind,
+        field VulkanSceneUnsupportedField, primitive VulkanSceneUnsupportedPrimitive) {
+        MarkUnsupported(kind)
+        RecordUnsupportedDetail(node, field, primitive)
+    }
+
+    private func RecordUnsupportedDetail(node Node, field VulkanSceneUnsupportedField,
+        primitive VulkanSceneUnsupportedPrimitive) {
+        if unsupportedDetailCount >= unsupportedDetails.Length {
+            unsupportedDetailDropped = unsupportedDetailDropped + 1
+            return
+        }
+        unsupportedDetails[unsupportedDetailCount] = VulkanSceneUnsupportedDetail{
+            OwnerId: OwnerId(node),
+            NodeKind: node.Kind,
+            Blob: BlobKind(node),
+            Field: field,
+            Primitive: primitive,
+        }
+        unsupportedDetailCount = unsupportedDetailCount + 1
+    }
+
+    private func BlobKind(node Node) VulkanSceneUnsupportedBlobKind {
+        switch node.Kind {
+            case NodeKind.Container { return VulkanSceneUnsupportedBlobKind.Container }
+            case NodeKind.Button { return VulkanSceneUnsupportedBlobKind.Button }
+            case NodeKind.Text { return VulkanSceneUnsupportedBlobKind.Text }
+            case NodeKind.Entry { return VulkanSceneUnsupportedBlobKind.TextEntry }
+            case NodeKind.Editor { return VulkanSceneUnsupportedBlobKind.TextEditor }
+            case NodeKind.Shape { return VulkanSceneUnsupportedBlobKind.Shape }
+            case NodeKind.Image { return VulkanSceneUnsupportedBlobKind.Image }
+            case _ { return VulkanSceneUnsupportedBlobKind.None }
+        }
     }
 }

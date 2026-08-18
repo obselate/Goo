@@ -850,20 +850,21 @@ internal static class Program
             new AssemblyPart { Path = HarfBuzzPaintFragmentPath, Sha256 = HarfBuzzPaintFragmentSha256 },
             new AssemblyPart { Path = "proofs/Goo.VulkanProof/Shaders/hb_gpu_paint.frag.wrapper.glsl", Sha256 = "df5572da972796670fd282f81a27429860ec3bb93a999cf1d17649e77d1cf3c2" }
         });
-        if (manifest.Shaders.Count != 10)
+        if (manifest.Shaders.Count != 11)
         {
-            throw new InvalidOperationException("shaders must contain exactly ten entries");
+            throw new InvalidOperationException("shaders must contain exactly eleven entries");
         }
         RequireShader(manifest.Shaders[0], "solid_quad_vertex", "vertex", "solid_quad.vert.glsl", "solid_quad.vert.spv");
         RequireShader(manifest.Shaders[1], "solid_quad_fragment", "fragment", "solid_quad.frag.glsl", "solid_quad.frag.spv");
         RequireShader(manifest.Shaders[2], "analytic_vertex", "vertex", "analytic.vert.glsl", "analytic.vert.spv");
         RequireShader(manifest.Shaders[3], "analytic_solid_fragment", "fragment", "analytic_solid.frag.glsl", "analytic_solid.frag.spv");
-        RequireShader(manifest.Shaders[4], "analytic_linear3_fragment", "fragment", "analytic_linear3.frag.glsl", "analytic_linear3.frag.spv");
-        RequireShader(manifest.Shaders[5], "analytic_radial3_fragment", "fragment", "analytic_radial3.frag.glsl", "analytic_radial3.frag.spv");
-        RequireShader(manifest.Shaders[6], "analytic_sampled_image_fragment", "fragment", "analytic_sampled_image.frag.glsl", "analytic_sampled_image.frag.spv");
-        RequireShader(manifest.Shaders[7], "hb_gpu_vertex", "vertex", "hb_gpu.vert.wrapper.glsl", "hb_gpu.vert.spv", "hb_gpu_vertex");
-        RequireShader(manifest.Shaders[8], "hb_gpu_draw_fragment", "fragment", "hb_gpu_draw.frag.wrapper.glsl", "hb_gpu_draw.frag.spv", "hb_gpu_draw_fragment");
-        RequireShader(manifest.Shaders[9], "hb_gpu_paint_fragment", "fragment", "hb_gpu_paint.frag.wrapper.glsl", "hb_gpu_paint.frag.spv", "hb_gpu_paint_fragment");
+        RequireShader(manifest.Shaders[4], "analytic_border_fragment", "fragment", "analytic_border.frag.glsl", "analytic_border.frag.spv");
+        RequireShader(manifest.Shaders[5], "analytic_linear4_fragment", "fragment", "analytic_linear4.frag.glsl", "analytic_linear4.frag.spv");
+        RequireShader(manifest.Shaders[6], "analytic_radial4_fragment", "fragment", "analytic_radial4.frag.glsl", "analytic_radial4.frag.spv");
+        RequireShader(manifest.Shaders[7], "analytic_sampled_image_fragment", "fragment", "analytic_sampled_image.frag.glsl", "analytic_sampled_image.frag.spv");
+        RequireShader(manifest.Shaders[8], "hb_gpu_vertex", "vertex", "hb_gpu.vert.wrapper.glsl", "hb_gpu.vert.spv", "hb_gpu_vertex");
+        RequireShader(manifest.Shaders[9], "hb_gpu_draw_fragment", "fragment", "hb_gpu_draw.frag.wrapper.glsl", "hb_gpu_draw.frag.spv", "hb_gpu_draw_fragment");
+        RequireShader(manifest.Shaders[10], "hb_gpu_paint_fragment", "fragment", "hb_gpu_paint.frag.wrapper.glsl", "hb_gpu_paint.frag.spv", "hb_gpu_paint_fragment");
         foreach (Shader shader in manifest.Shaders)
         {
             if (shader.SourceSha256 is not null || shader.OutputSha256 is not null || shader.OutputBytes is not null)
@@ -871,16 +872,16 @@ internal static class Program
                 throw new InvalidOperationException($"Source manifest contains generated hashes: {shader.Id}");
             }
         }
-        if (manifest.Pipelines.Count != 7)
+        if (manifest.Pipelines.Count != 8)
         {
-            throw new InvalidOperationException("pipelines must contain exactly seven entries");
+            throw new InvalidOperationException("pipelines must contain exactly eight entries");
         }
         RequirePipeline(manifest.Pipelines[0], "solid_quad", "SolidQuadPushConstants.Generated.gs", "SolidQuadPushConstants", 32, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "color", Offset = 16, Type = "vec4" }
         }, new[] { "vertex" }, "disabled", null, "solid_quad_vertex", "solid_quad_fragment", "vec4", "color", Array.Empty<Descriptor>());
-        RequirePipeline(manifest.Pipelines[1], "analytic_solid", "AnalyticSolidPushConstants.Generated.gs", "AnalyticSolidPushConstants", 112, new[]
+        RequirePipeline(manifest.Pipelines[1], "analytic_solid", "AnalyticSolidPushConstants.Generated.gs", "AnalyticSolidPushConstants", 128, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
@@ -888,9 +889,21 @@ internal static class Program
             new PushConstantMember { Name = "radii", Offset = 48, Type = "vec4" },
             new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
-            new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" }
+            new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
+            new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
         }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_solid_fragment", "vec2", "uv", Array.Empty<Descriptor>());
-        RequirePipeline(manifest.Pipelines[2], "analytic_linear3", "AnalyticLinear3PushConstants.Generated.gs", "AnalyticLinear3PushConstants", 112, new[]
+        RequirePipeline(manifest.Pipelines[2], "analytic_border", "AnalyticBorderPushConstants.Generated.gs", "AnalyticBorderPushConstants", 128, new[]
+        {
+            new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
+            new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
+            new PushConstantMember { Name = "transform1", Offset = 32, Type = "vec4" },
+            new PushConstantMember { Name = "widths", Offset = 48, Type = "vec4" },
+            new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
+            new PushConstantMember { Name = "radii", Offset = 80, Type = "vec4" },
+            new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
+            new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
+        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_border_fragment", "vec2", "uv", Array.Empty<Descriptor>());
+        RequirePipeline(manifest.Pipelines[3], "analytic_linear4", "AnalyticLinear4PushConstants.Generated.gs", "AnalyticLinear4PushConstants", 128, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
@@ -898,9 +911,10 @@ internal static class Program
             new PushConstantMember { Name = "radii", Offset = 48, Type = "vec4" },
             new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
-            new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_linear3_fragment", "vec2", "uv", Array.Empty<Descriptor>());
-        RequirePipeline(manifest.Pipelines[3], "analytic_radial3", "AnalyticRadial3PushConstants.Generated.gs", "AnalyticRadial3PushConstants", 112, new[]
+            new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
+            new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
+        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_linear4_fragment", "vec2", "uv", Array.Empty<Descriptor>());
+        RequirePipeline(manifest.Pipelines[4], "analytic_radial4", "AnalyticRadial4PushConstants.Generated.gs", "AnalyticRadial4PushConstants", 128, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
@@ -908,9 +922,10 @@ internal static class Program
             new PushConstantMember { Name = "radii", Offset = 48, Type = "vec4" },
             new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
-            new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_radial3_fragment", "vec2", "uv", Array.Empty<Descriptor>());
-        RequirePipeline(manifest.Pipelines[4], "analytic_sampled_image", "SampledImagePushConstants.Generated.gs", "SampledImagePushConstants", 112, new[]
+            new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
+            new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
+        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_radial4_fragment", "vec2", "uv", Array.Empty<Descriptor>());
+        RequirePipeline(manifest.Pipelines[5], "analytic_sampled_image", "SampledImagePushConstants.Generated.gs", "SampledImagePushConstants", 128, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
@@ -918,13 +933,14 @@ internal static class Program
             new PushConstantMember { Name = "radii", Offset = 48, Type = "vec4" },
             new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
-            new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" }
+            new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
+            new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
         }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "straight-srgb-rgba8-sampled-to-premultiplied-linear", "analytic_vertex", "analytic_sampled_image_fragment", "vec2", "uv", new[]
         {
             new Descriptor { Set = 0, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } }
         });
-        RequireHbGpuPipeline(manifest.Pipelines[5], "hb_gpu_draw", "HbGpuTextPushConstants.Generated.gs", "HbGpuTextPushConstants", "hb_gpu_vertex", "hb_gpu_draw_fragment");
-        RequireHbGpuPipeline(manifest.Pipelines[6], "hb_gpu_paint", "HbGpuTextPushConstants.Generated.gs", "HbGpuTextPushConstants", "hb_gpu_vertex", "hb_gpu_paint_fragment");
+        RequireHbGpuPipeline(manifest.Pipelines[6], "hb_gpu_draw", "HbGpuTextPushConstants.Generated.gs", "HbGpuTextPushConstants", "hb_gpu_vertex", "hb_gpu_draw_fragment");
+        RequireHbGpuPipeline(manifest.Pipelines[7], "hb_gpu_paint", "HbGpuTextPushConstants.Generated.gs", "HbGpuTextPushConstants", "hb_gpu_vertex", "hb_gpu_paint_fragment");
     }
 
     private static void RequireAssembly(ShaderAssembly assembly, string id, IReadOnlyList<AssemblyPart> parts)

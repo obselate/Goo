@@ -24,6 +24,7 @@ internal unsafe struct VkInstanceDispatch {
     var vkGetPhysicalDeviceSurfaceFormatsKHR unmanaged[Cdecl] (VkPhysicalDevice, VkSurfaceKHR, *uint32, *VkSurfaceFormatKHR) -> VkResult
     var vkGetPhysicalDeviceSurfacePresentModesKHR unmanaged[Cdecl] (VkPhysicalDevice, VkSurfaceKHR, *uint32, *VkPresentModeKHR) -> VkResult
     var vkGetPhysicalDeviceMemoryProperties unmanaged[Cdecl] (VkPhysicalDevice, *VkPhysicalDeviceMemoryProperties) -> void
+    var vkGetPhysicalDeviceMemoryProperties2 unmanaged[Cdecl] (VkPhysicalDevice, *VkPhysicalDeviceMemoryProperties2) -> void
     var vkGetPhysicalDeviceFormatProperties unmanaged[Cdecl] (VkPhysicalDevice, VkFormat, *VkFormatProperties) -> void
     var vkCreateDevice unmanaged[Cdecl] (VkPhysicalDevice, *VkDeviceCreateInfo, *VkAllocationCallbacks, *VkDevice) -> VkResult
     var vkCreateDebugUtilsMessengerEXT unmanaged[Cdecl] (VkInstance, *VkDebugUtilsMessengerCreateInfoEXT, *VkAllocationCallbacks, *VkDebugUtilsMessengerEXT) -> VkResult

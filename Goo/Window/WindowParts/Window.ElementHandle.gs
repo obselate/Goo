@@ -26,8 +26,10 @@ public partial class Window {
       nativeWidth = native.FramebufferWidth
       nativeHeight = native.FramebufferHeight
     }
-    let scaleX = logicalWidth > 0 ? float64(nativeWidth) / float64(logicalWidth) : 1.0
-    let scaleY = logicalHeight > 0 ? float64(nativeHeight) / float64(logicalHeight) : 1.0
+    let scaleX = logicalWidth > 0 && nativeWidth > 0
+      ? float64(nativeWidth) / float64(logicalWidth) : 0.0
+    let scaleY = logicalHeight > 0 && nativeHeight > 0
+      ? float64(nativeHeight) / float64(logicalHeight) : 0.0
     return WindowMetrics{
       LogicalWidth: logicalWidth,
       LogicalHeight: logicalHeight,

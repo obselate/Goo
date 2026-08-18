@@ -186,6 +186,7 @@
       "hb_language_from_string",
       "hb_ot_color_has_layers",
       "hb_ot_color_has_paint",
+      "hb_ot_color_glyph_get_layers",
       "hb_ot_color_glyph_has_paint",
       "hb_ot_font_set_funcs",
       "hb_shape_full"

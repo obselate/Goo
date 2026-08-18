@@ -330,7 +330,7 @@ internal unsafe partial class SdlHost : IDisposable {
     RefreshFramebuffer()
   }
 
-  private func RefreshMetricsIfChanged() {
+  internal func RefreshMetricsIfChanged() {
     let logicalWidth = LogicalWidth
     let logicalHeight = LogicalHeight
     let framebufferWidth = FramebufferWidth

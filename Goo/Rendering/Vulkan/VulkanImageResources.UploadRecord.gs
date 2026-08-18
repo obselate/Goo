@@ -79,7 +79,8 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             && descriptor.Slot >= 0 && descriptor.Slot < descriptorCapacity {
             descriptorSets[descriptor.Slot]
         } else { 0uL }
-        let renderable = entry.State == VulkanImageResourceState.Resident
+        let renderable = entry.GpuPublished
+            && entry.State == VulkanImageResourceState.Resident
             && entry.Image != 0uL && entry.ImageView != 0uL
             && entry.UploadedVersion == entry.Id.Version && descriptorSet != 0uL
         entry.LastTouch = TouchValue()
@@ -103,10 +104,16 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         if entry.ImageView != 0uL {
             let destroyView = dispatch.vkDestroyImageView
             destroyView(device, entry.ImageView, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
         }
         if entry.Image != 0uL {
             let destroyImage = dispatch.vkDestroyImage
             destroyImage(device, entry.Image, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
         }
         if entry.Allocation != nil {
             allocator.Release(entry.Allocation!!)
@@ -132,21 +139,41 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         if nearestSampler != 0uL {
             let destroySampler = dispatch.vkDestroySampler
             destroySampler(device, nearestSampler, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
             nearestSampler = 0uL
         }
         if linearSampler != 0uL {
             let destroySampler = dispatch.vkDestroySampler
             destroySampler(device, linearSampler, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
             linearSampler = 0uL
         }
         if descriptorPool != 0uL {
             let destroyPool = dispatch.vkDestroyDescriptorPool
             destroyPool(device, descriptorPool, nil)
+            var descriptorIndex int32 = 0
+            while descriptorIndex < trackedDescriptorSetCount {
+                if let accounting = objectAccounting {
+                    accounting.Release()
+                }
+                descriptorIndex = descriptorIndex + 1
+            }
+            trackedDescriptorSetCount = 0
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
             descriptorPool = 0uL
         }
         if descriptorSetLayout != 0uL {
             let destroyLayout = dispatch.vkDestroyDescriptorSetLayout
             destroyLayout(device, descriptorSetLayout, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
             descriptorSetLayout = 0uL
         }
         var index int32 = 0
@@ -161,6 +188,9 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         if stagingBuffer != 0uL {
             let destroyBuffer = dispatch.vkDestroyBuffer
             destroyBuffer(device, stagingBuffer, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
             stagingBuffer = 0uL
         }
         if stagingAllocation != nil {

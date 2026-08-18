@@ -64,18 +64,14 @@ internal unsafe class VulkanDescriptorTable {
             let slot = slots[index]
             if slot.State == VulkanDescriptorSlotState.Bound
                 && SameResource(slot.Resource, resource) {
-                slots[index] = VulkanDescriptorSlot{
-                    State: slot.State,
-                    Resource: resource,
-                    Generation: generation,
-                    DescriptorToken: descriptorToken,
-                    RetireFence: slot.RetireFence,
+                if slot.Generation != generation || slot.DescriptorToken != descriptorToken {
+                    throw InvalidOperationException("Vulkan descriptor binding conflicts with an active slot")
                 }
                 return VulkanDescriptorBinding{
                     Succeeded: true,
                     Slot: index,
-                    Generation: generation,
-                    DescriptorToken: descriptorToken,
+                    Generation: slot.Generation,
+                    DescriptorToken: slot.DescriptorToken,
                 }
             }
             index++

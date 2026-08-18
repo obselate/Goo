@@ -30,6 +30,7 @@ internal unsafe class VulkanMemoryBlock {
 internal unsafe class VulkanMemoryAllocation {
     var memory VkDeviceMemory
     var size VkDeviceSize
+    var placementSpan VkDeviceSize
     var offset VkDeviceSize
     var memoryTypeIndex uint32
     var heapIndex uint32
@@ -48,6 +49,7 @@ internal unsafe class VulkanMemoryAllocation {
 internal data struct VulkanMemoryPlacement {
     var block VulkanMemoryBlock?
     var offset VkDeviceSize
+    var span VkDeviceSize
     var newBlock bool
 }
 
@@ -58,6 +60,7 @@ internal data struct VulkanMemoryTypeSelection {
 }
 
 internal data struct VulkanMemoryCounters {
+    var allocationEvents uint64
     var liveBytes VkDeviceSize
     var liveAllocations uint64
     var retiredBytes VkDeviceSize

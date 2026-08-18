@@ -132,7 +132,7 @@ public partial class Window {
     validateDelta(simDt, "simDt")
     timeS = timeS + wallDt
     prepare()
-    let profiling = profiler.Enabled
+    let profiling = profiler.Active
     let motionProfile = profiling ? profiler.Start() : FrameProfilePoint{}
     motionPump.Sweep(simDt)
     if profiling {
@@ -223,6 +223,7 @@ public partial class Window {
     }
     effects = combineEffects(effects, resolver.FlushEffects())
     var metricsChanged bool
+    var layoutChanged bool
     if let n = node {
       let viewW = float32(Width)
       let viewH = float32(Height)
@@ -231,6 +232,7 @@ public partial class Window {
         || layout.NeedsLayout(n, viewW, viewH)
       if shouldLayout {
         calculateLayout(n, viewW, viewH)
+        layoutChanged = true
         accessibilityLayout = true
         metricsChanged = true
       }
@@ -243,7 +245,8 @@ public partial class Window {
         || hasEffect(effects, ReconcileEffects.Input)
         || hasEffect(effects, ReconcileEffects.Content)
         || hasEffect(effects, ReconcileEffects.Layout)
-        || hasEffect(effects, ReconcileEffects.Rect) {
+        || hasEffect(effects, ReconcileEffects.Rect)
+        || layoutChanged {
         let inputTreeProfile = profiling ? profiler.Start() : FrameProfilePoint{}
         input.AfterTreeUpdated(n, resolver, true)
         if profiling {
@@ -252,6 +255,7 @@ public partial class Window {
         effects = combineEffects(effects, resolver.FlushEffects())
         if layout.NeedsLayout(n, viewW, viewH) {
           calculateLayout(n, viewW, viewH)
+          layoutChanged = true
           accessibilityLayout = true
           metricsChanged = true
         }
@@ -326,7 +330,7 @@ public partial class Window {
   }
 
   private func calculateLayout(n Node, width float32, height float32) {
-    if !profiler.Enabled {
+    if !profiler.Active {
       layout.Calculate(n, width, height)
       return
     }
@@ -442,7 +446,7 @@ public partial class Window {
     }
   }
 
-  internal func HandleResize(w int32, h int32) {
+  internal func HandleResize(w int32, h int32, invalidateRender bool = true) {
     if w <= 0 || h <= 0 {
       return
     }
@@ -450,7 +454,9 @@ public partial class Window {
     width = w
     height = h
     MetricSubscriptions.MarkWindowDirty(this)
-    requestRender()
+    if invalidateRender {
+      requestRender()
+    }
   }
 
   private func stepScroll(scrollers List[Node], k float32) bool {
@@ -500,6 +506,9 @@ public partial class Window {
 
   internal func needsRenderFrame(changed bool) bool {
     if changed {
+      requestRender()
+    }
+    if windowTarget?.NeedsRender == true {
       requestRender()
     }
     return renderDirty

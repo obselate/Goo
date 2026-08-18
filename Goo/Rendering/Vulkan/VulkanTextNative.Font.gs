@@ -5,21 +5,7 @@ import System.IO
 import System.Runtime.InteropServices
 import System.Text
 
-internal sealed class VulkanTextRun {
-    private let glyphs []VulkanTextGlyph
-
-    internal prop Count int32 { get { return glyphs.Length } }
-
-    internal init(values []VulkanTextGlyph) {
-        glyphs = values
-    }
-
-    internal func GlyphAt(index int32) VulkanTextGlyph {
-        return glyphs[index]
-    }
-}
-
-internal unsafe sealed class VulkanTextFont : IDisposable {
+internal unsafe sealed class VulkanTextFont : IDisposable, VulkanTextProvider {
     const MaxTextUnits int32 = 1048576
     const MaxVariations int32 = 16
     const MaxFeatures int32 = 32
@@ -36,18 +22,49 @@ internal unsafe sealed class VulkanTextFont : IDisposable {
     private let faceIndex uint32
     private let faceCount uint32
     private let variations ([]VulkanTextVariation)?
+    private let nativeGate object
     private var metrics VulkanHarfBuzzMetrics
+    private var hasColorPaint bool
+    private var hasColorLayers bool
     private var disposed bool
 
-    internal prop Metrics VulkanHarfBuzzMetrics { get { return metrics } }
+    public prop Metrics VulkanHarfBuzzMetrics { get { return metrics } }
     internal prop FaceIndex uint32 { get { return faceIndex } }
     internal prop FaceCount uint32 { get { return faceCount } }
+    public prop AbiVersion uint32 { get { return VulkanTextProviderAbi.Version } }
+
+    shared {
+        internal func ValidateFace(bytes []uint8, selectedFaceIndex uint32) uint32 {
+            if bytes.Length == 0 {
+                throw ArgumentException("Font bytes are empty", "bytes")
+            }
+            var pin GCHandle
+            var blob nint
+            try {
+                pin = GCHandle.Alloc(bytes, GCHandleType.Pinned)
+                blob = hb_blob_create(pin.AddrOfPinnedObject(), uint32(bytes.Length), 1u,
+                    nint(0), nint(0))
+                if blob == nint(0) {
+                    throw InvalidOperationException("hb_blob_create failed")
+                }
+                let count = hb_face_count(blob)
+                if count == 0u || selectedFaceIndex >= count {
+                    throw ArgumentOutOfRangeException("faceIndex")
+                }
+                return count
+            } finally {
+                if blob != nint(0) { hb_blob_destroy(blob) }
+                if pin.IsAllocated { pin.Free() }
+            }
+        }
+    }
 
     internal init(
         bytes []uint8,
         pixelHeight uint32,
         selectedFaceIndex uint32,
         selectedVariations ([]VulkanTextVariation)?) {
+        nativeGate = Object()
         if bytes.Length == 0 {
             throw ArgumentException("Font bytes are empty", "bytes")
         }
@@ -73,6 +90,8 @@ internal unsafe sealed class VulkanTextFont : IDisposable {
             if harfBuzzFace == nint(0) {
                 throw InvalidOperationException("hb_face_create failed")
             }
+            hasColorPaint = hb_ot_color_has_paint(harfBuzzFace) != 0u
+            hasColorLayers = hb_ot_color_has_layers(harfBuzzFace) != 0u
             let upem = hb_face_get_upem(harfBuzzFace)
             if upem == 0u || upem > uint32(Int32.MaxValue) {
                 throw InvalidOperationException("HarfBuzz face UPEM is invalid")
@@ -100,239 +119,299 @@ internal unsafe sealed class VulkanTextFont : IDisposable {
         }
     }
 
-    internal func Shape(text string, options VulkanTextShapingOptions) VulkanTextRun {
-        if disposed {
-            throw ObjectDisposedException("VulkanTextFont")
-        }
-        if text == nil {
-            throw ArgumentNullException("text")
-        }
-        if text.Length > MaxTextUnits {
-            throw ArgumentOutOfRangeException("text")
-        }
-        ValidateShapingOptions(options)
-        let textPin = GCHandle.Alloc(text, GCHandleType.Pinned)
-        var featurePin GCHandle
-        var hasFeaturePin bool = false
-        try {
-            let textAddress = textPin.AddrOfPinnedObject()
-            let buffer = hb_buffer_create()
-            if buffer == nint(0) {
-                throw InvalidOperationException("hb_buffer_create failed")
+    public func ShapeInto(text string, options VulkanTextShapingOptions,
+        workspace VulkanTextShapingWorkspace) VulkanTextProviderResult {
+        lock (nativeGate) {
+            if disposed {
+                return ProviderResult(VulkanTextProviderAbi.Disposed, 0, 0)
             }
+            if text == nil || workspace == nil {
+                return ProviderResult(VulkanTextProviderAbi.InvalidArgument, 0, 0)
+            }
+            if text.Length > MaxTextUnits {
+                return ProviderResult(VulkanTextProviderAbi.InvalidArgument, 0, 0)
+            }
+            workspace.Reset()
             try {
-                hb_buffer_add_utf16(buffer, textAddress, text.Length, 0u, text.Length)
-                if options.Direction != 0u {
-                    hb_buffer_set_direction(buffer, options.Direction)
+                try {
+                    ValidateShapingOptions(options)
+                } catch (error Exception) {
+                    return ProviderResult(VulkanTextProviderAbi.InvalidArgument, 0, 0)
                 }
-                if options.Script != 0u {
-                    hb_buffer_set_script(buffer, options.Script)
+                let textPin = GCHandle.Alloc(text, GCHandleType.Pinned)
+                var featurePin GCHandle
+                var hasFeaturePin bool = false
+                try {
+                let textAddress = textPin.AddrOfPinnedObject()
+                let buffer = hb_buffer_create()
+                if buffer == nint(0) {
+                    return ProviderResult(VulkanTextProviderAbi.NativeFailure, 0, 0)
                 }
-                if options.Language != nil && options.Language!!.Length != 0 {
-                    let languageBytes = Encoding.UTF8.GetBytes(options.Language!!)
-                    let languagePin = GCHandle.Alloc(languageBytes, GCHandleType.Pinned)
-                    try {
-                        let language = hb_language_from_string(languagePin.AddrOfPinnedObject(), languageBytes.Length)
-                        if language != nint(0) {
-                            hb_buffer_set_language(buffer, language)
-                        }
-                    } finally {
-                        languagePin.Free()
+                try {
+                    hb_buffer_add_utf16(buffer, textAddress, text.Length, 0u, text.Length)
+                    if options.Direction != 0u {
+                        hb_buffer_set_direction(buffer, options.Direction)
                     }
-                }
-                hb_buffer_set_cluster_level(buffer, options.ClusterLevel)
-                hb_buffer_set_flags(buffer, options.Flags)
-                hb_buffer_guess_segment_properties(buffer)
-                var featureAddress nint = nint(0)
-                var featureCount uint32 = 0u
-                if options.Features != nil && options.Features!!.Length != 0 {
-                    featurePin = GCHandle.Alloc(options.Features!!, GCHandleType.Pinned)
-                    hasFeaturePin = true
-                    featureAddress = featurePin.AddrOfPinnedObject()
-                    featureCount = uint32(options.Features!!.Length)
-                }
-                let shapeResult = hb_shape_full(harfBuzzFont, buffer, featureAddress, featureCount, nint(0))
-                if shapeResult == 0u {
-                    throw InvalidOperationException("hb_shape_full failed")
-                }
-                let length = hb_buffer_get_length(buffer)
-                if length > uint32(Int32.MaxValue) {
-                    throw InvalidOperationException("HarfBuzz glyph output is too large")
-                }
-                let values = [int32(length)]VulkanTextGlyph
-                if length != 0u {
+                    if options.Script != 0u {
+                        hb_buffer_set_script(buffer, options.Script)
+                    }
+                    if options.Language != nil && options.Language!!.Length != 0 {
+                        let languageBytes = Encoding.UTF8.GetBytes(options.Language!!)
+                        let languagePin = GCHandle.Alloc(languageBytes, GCHandleType.Pinned)
+                        try {
+                            let language = hb_language_from_string(languagePin.AddrOfPinnedObject(), languageBytes.Length)
+                            if language != nint(0) {
+                                hb_buffer_set_language(buffer, language)
+                            }
+                        } finally {
+                            languagePin.Free()
+                        }
+                    }
+                    hb_buffer_set_cluster_level(buffer, options.ClusterLevel)
+                    hb_buffer_set_flags(buffer, options.Flags)
+                    hb_buffer_guess_segment_properties(buffer)
+                    var featureAddress nint = nint(0)
+                    var featureCount uint32 = 0u
+                    if options.Features != nil && options.Features!!.Length != 0 {
+                        featurePin = GCHandle.Alloc(options.Features!!, GCHandleType.Pinned)
+                        hasFeaturePin = true
+                        featureAddress = featurePin.AddrOfPinnedObject()
+                        featureCount = uint32(options.Features!!.Length)
+                    }
+                    let shapeResult = hb_shape_full(harfBuzzFont, buffer, featureAddress, featureCount, nint(0))
+                    if shapeResult == 0u {
+                        return ProviderResult(VulkanTextProviderAbi.NativeFailure, 0, 0)
+                    }
+                    let length = hb_buffer_get_length(buffer)
+                    if length > uint32(Int32.MaxValue) {
+                        return ProviderResult(VulkanTextProviderAbi.OutputUnavailable, 0, 0)
+                    }
+                    if length > uint32(workspace.GlyphCapacity) {
+                        return ProviderResult(VulkanTextProviderAbi.CapacityExceeded, 0, int32(length))
+                    }
                     var infoLength uint32 = length
                     var positionLength uint32 = length
-                    let infos = hb_buffer_get_glyph_infos(buffer, ref infoLength)
-                    let positions = hb_buffer_get_glyph_positions(buffer, ref positionLength)
-                    if infos == nil || positions == nil || infoLength != length || positionLength != length {
-                        throw InvalidOperationException("HarfBuzz glyph output is incomplete")
-                    }
-                    var index uint32 = 0u
-                    while index < length {
-                        let info = infos[index]
-                        let position = positions[index]
-                        values[int32(index)] = VulkanTextGlyph{
-                            GlyphId: info.codepoint,
-                            Cluster: info.cluster,
-                            XAdvance: position.xAdvance,
-                            YAdvance: position.yAdvance,
-                            XOffset: position.xOffset,
-                            YOffset: position.yOffset,
+                    if length != 0u {
+                        let infos = hb_buffer_get_glyph_infos(buffer, ref infoLength)
+                        let positions = hb_buffer_get_glyph_positions(buffer, ref positionLength)
+                        if infos == nil || positions == nil || infoLength != length || positionLength != length {
+                            return ProviderResult(VulkanTextProviderAbi.OutputUnavailable, 0, 0)
                         }
-                        index++
+                        var index uint32 = 0u
+                        while index < length {
+                            let info = infos[index]
+                            let position = positions[index]
+                            workspace.GlyphBuffer[int32(index)] = VulkanTextGlyph{
+                                GlyphId: info.codepoint,
+                                Cluster: info.cluster,
+                                XAdvance: position.xAdvance,
+                                YAdvance: position.yAdvance,
+                                XOffset: position.xOffset,
+                                YOffset: position.yOffset,
+                            }
+                            index++
+                        }
                     }
+                    workspace.SetGlyphCount(int32(length))
+                    return ProviderResult(VulkanTextProviderAbi.Success, int32(length), int32(length))
+                } finally {
+                    if hasFeaturePin {
+                        featurePin.Free()
+                    }
+                    hb_buffer_destroy(buffer)
                 }
-                return VulkanTextRun(values)
-            } finally {
-                if hasFeaturePin {
-                    featurePin.Free()
+                } finally {
+                    textPin.Free()
                 }
-                hb_buffer_destroy(buffer)
+            } catch (error Exception) {
+                return ProviderResult(VulkanTextProviderAbi.NativeFailure, 0, 0)
             }
-        } finally {
-            textPin.Free()
         }
     }
 
-    internal func EncodeGlyph(glyphId uint32) VulkanTextGlyphEncoding {
-        if disposed {
-            throw ObjectDisposedException("VulkanTextFont")
-        }
-        if harfBuzzDraw == nint(0) {
-            harfBuzzDraw = hb_gpu_draw_create_or_fail()
+    public func EncodeGlyphInto(glyphId uint32,
+        workspace VulkanTextProviderWorkspace) VulkanTextProviderResult {
+        lock (nativeGate) {
+            if disposed {
+                return ProviderResult(VulkanTextProviderAbi.Disposed, 0, 0)
+            }
+            if workspace == nil {
+                return ProviderResult(VulkanTextProviderAbi.InvalidArgument, 0, 0)
+            }
+            workspace.Reset()
+            try {
             if harfBuzzDraw == nint(0) {
-                throw InvalidOperationException("hb_gpu_draw_create_or_fail failed")
-            }
-        }
-        hb_gpu_draw_set_scale(harfBuzzDraw, harfBuzzDesignScale, harfBuzzDesignScale)
-        let drawResult = hb_gpu_draw_glyph_or_fail(harfBuzzDraw, harfBuzzDesignFont, glyphId)
-        if drawResult == 0u {
-            throw InvalidOperationException("hb_gpu_draw_glyph_or_fail failed")
-        }
-        var extents = VulkanTextGlyphExtents{}
-        let blob = hb_gpu_draw_encode(harfBuzzDraw, ref extents)
-        if blob == nint(0) {
-            throw InvalidOperationException("hb_gpu_draw_encode failed")
-        }
-        try {
-            var length uint32 = 0u
-            let data = hb_blob_get_data(blob, ref length)
-            if length > uint32(Int32.MaxValue) {
-                throw InvalidOperationException("Encoded glyph blob is too large")
-            }
-            let bytes = [int32(length)]uint8
-            if length != 0u {
-                if data == nint(0) {
-                    throw InvalidOperationException("Encoded glyph blob data is unavailable")
+                harfBuzzDraw = hb_gpu_draw_create_or_fail()
+                if harfBuzzDraw == nint(0) {
+                    return ProviderResult(VulkanTextProviderAbi.NativeFailure, 0, 0)
                 }
-                Marshal.Copy(data, bytes, 0, int32(length))
             }
-            return VulkanTextGlyphEncoding{
-                Bytes: bytes,
-                Extents: extents,
-                Scale: harfBuzzDesignScale,
+            hb_gpu_draw_set_scale(harfBuzzDraw, harfBuzzDesignScale, harfBuzzDesignScale)
+            let drawResult = hb_gpu_draw_glyph_or_fail(harfBuzzDraw, harfBuzzDesignFont, glyphId)
+            if drawResult == 0u {
+                return ProviderResult(VulkanTextProviderAbi.NativeFailure, 0, 0)
             }
-        } finally {
-            hb_gpu_draw_recycle_blob(harfBuzzDraw, blob)
+            var extents = VulkanTextGlyphExtents{}
+            let blob = hb_gpu_draw_encode(harfBuzzDraw, ref extents)
+            if blob == nint(0) {
+                return ProviderResult(VulkanTextProviderAbi.NativeFailure, 0, 0)
+            }
+            try {
+                var length uint32 = 0u
+                let data = hb_blob_get_data(blob, ref length)
+                if length > uint32(Int32.MaxValue) {
+                    return ProviderResult(VulkanTextProviderAbi.OutputUnavailable, 0, 0)
+                }
+                if length > uint32(workspace.ByteCapacity) {
+                    workspace.SetRequiredByteCount(int32(length))
+                    return ProviderResult(VulkanTextProviderAbi.CapacityExceeded, 0, int32(length))
+                }
+                if length != 0u && data == nint(0) {
+                    return ProviderResult(VulkanTextProviderAbi.OutputUnavailable, 0, 0)
+                }
+                if length != 0u {
+                    Marshal.Copy(data, workspace.ByteBuffer, 0, int32(length))
+                }
+                workspace.SetEncoding(int32(length), extents, harfBuzzDesignScale, 0u)
+                return ProviderResult(VulkanTextProviderAbi.Success, int32(length), int32(length))
+            } finally {
+                hb_gpu_draw_recycle_blob(harfBuzzDraw, blob)
+            }
+            } catch (error Exception) {
+                return ProviderResult(VulkanTextProviderAbi.NativeFailure, 0, 0)
+            }
         }
     }
 
-    internal func HasColorPaint() bool {
-        if disposed {
-            throw ObjectDisposedException("VulkanTextFont")
-        }
-        return hb_ot_color_has_paint(harfBuzzFace) != 0u
-    }
-
-    internal func HasColorLayers() bool {
-        if disposed {
-            throw ObjectDisposedException("VulkanTextFont")
-        }
-        return hb_ot_color_has_layers(harfBuzzFace) != 0u
-    }
-
-    internal func GlyphHasColorPaint(glyphId uint32) bool {
-        if disposed {
-            throw ObjectDisposedException("VulkanTextFont")
-        }
-        return hb_ot_color_glyph_has_paint(harfBuzzFace, glyphId) != 0u
-    }
-
-    internal func EncodePaintGlyph(glyphId uint32, paletteIndex uint32) VulkanTextPaintEncoding {
-        if disposed {
-            throw ObjectDisposedException("VulkanTextFont")
-        }
-        if harfBuzzPaint == nint(0) {
-            harfBuzzPaint = hb_gpu_paint_create_or_fail()
+    public func EncodePaintGlyphInto(glyphId uint32, paletteIndex uint32,
+        workspace VulkanTextProviderWorkspace) VulkanTextProviderResult {
+        lock (nativeGate) {
+            if disposed {
+                return ProviderResult(VulkanTextProviderAbi.Disposed, 0, 0)
+            }
+            if workspace == nil {
+                return ProviderResult(VulkanTextProviderAbi.InvalidArgument, 0, 0)
+            }
+            workspace.Reset()
+            try {
             if harfBuzzPaint == nint(0) {
-                throw InvalidOperationException("hb_gpu_paint_create_or_fail failed")
+                harfBuzzPaint = hb_gpu_paint_create_or_fail()
+                if harfBuzzPaint == nint(0) {
+                    return ProviderResult(VulkanTextProviderAbi.NativeFailure, 0, 0)
+                }
+            }
+            hb_gpu_paint_set_scale(harfBuzzPaint, harfBuzzDesignScale, harfBuzzDesignScale)
+            hb_gpu_paint_set_palette(harfBuzzPaint, paletteIndex)
+            let paintResult = hb_gpu_paint_glyph_or_fail(harfBuzzPaint, harfBuzzDesignFont, glyphId)
+            if paintResult == 0u {
+                return ProviderResult(VulkanTextProviderAbi.NativeFailure, 0, 0)
+            }
+            var extents = VulkanTextGlyphExtents{}
+            let blob = hb_gpu_paint_encode(harfBuzzPaint, ref extents)
+            if blob == nint(0) {
+                return ProviderResult(VulkanTextProviderAbi.NativeFailure, 0, 0)
+            }
+            try {
+                var length uint32 = 0u
+                let data = hb_blob_get_data(blob, ref length)
+                if length == 0u || data == nint(0) {
+                    return ProviderResult(VulkanTextProviderAbi.OutputUnavailable, 0, 0)
+                }
+                if length > uint32(Int32.MaxValue) {
+                    return ProviderResult(VulkanTextProviderAbi.OutputUnavailable, 0, 0)
+                }
+                if length > uint32(workspace.ByteCapacity) {
+                    workspace.SetRequiredByteCount(int32(length))
+                    return ProviderResult(VulkanTextProviderAbi.CapacityExceeded, 0, int32(length))
+                }
+                Marshal.Copy(data, workspace.ByteBuffer, 0, int32(length))
+                workspace.SetEncoding(int32(length), extents, harfBuzzDesignScale, paletteIndex)
+                return ProviderResult(VulkanTextProviderAbi.Success, int32(length), int32(length))
+            } finally {
+                hb_gpu_paint_recycle_blob(harfBuzzPaint, blob)
+            }
+            } catch (error Exception) {
+                return ProviderResult(VulkanTextProviderAbi.NativeFailure, 0, 0)
             }
         }
-        hb_gpu_paint_set_scale(harfBuzzPaint, harfBuzzDesignScale, harfBuzzDesignScale)
-        hb_gpu_paint_set_palette(harfBuzzPaint, paletteIndex)
-        let paintResult = hb_gpu_paint_glyph_or_fail(harfBuzzPaint, harfBuzzDesignFont, glyphId)
-        if paintResult == 0u {
-            throw InvalidOperationException("hb_gpu_paint_glyph_or_fail failed")
+    }
+
+    public func HasColorPaint() bool {
+        lock (nativeGate) {
+            if disposed {
+                throw ObjectDisposedException("VulkanTextFont")
+            }
+            return hasColorPaint
         }
-        var extents = VulkanTextGlyphExtents{}
-        let blob = hb_gpu_paint_encode(harfBuzzPaint, ref extents)
-        if blob == nint(0) {
-            throw InvalidOperationException("hb_gpu_paint_encode failed")
+    }
+
+    public func HasColorLayers() bool {
+        lock (nativeGate) {
+            if disposed {
+                throw ObjectDisposedException("VulkanTextFont")
+            }
+            return hasColorLayers
         }
-        try {
-            var length uint32 = 0u
-            let data = hb_blob_get_data(blob, ref length)
-            if data == nint(0) || length == 0u {
-                throw InvalidOperationException("Encoded paint blob is empty")
+    }
+
+    public func GlyphHasColorPaint(glyphId uint32) bool {
+        lock (nativeGate) {
+            if disposed {
+                throw ObjectDisposedException("VulkanTextFont")
             }
-            if length > uint32(Int32.MaxValue) {
-                throw InvalidOperationException("Encoded paint blob is too large")
+            return hb_ot_color_glyph_has_paint(harfBuzzFace, glyphId) != 0u
+        }
+    }
+
+    public func GlyphHasColorLayers(glyphId uint32) bool {
+        lock (nativeGate) {
+            if disposed {
+                throw ObjectDisposedException("VulkanTextFont")
             }
-            let bytes = [int32(length)]uint8
-            Marshal.Copy(data, bytes, 0, int32(length))
-            return VulkanTextPaintEncoding{
-                Bytes: bytes,
-                Extents: extents,
-                Scale: harfBuzzDesignScale,
-                Palette: paletteIndex,
-            }
-        } finally {
-            hb_gpu_paint_recycle_blob(harfBuzzPaint, blob)
+            var layerCount uint32 = 0u
+            let layerResult = hb_ot_color_glyph_get_layers(
+                harfBuzzFace,
+                glyphId,
+                0u,
+                ref layerCount,
+                nint(0))
+            return layerResult != 0u || layerCount != 0u
         }
     }
 
     public func Dispose() {
-        if disposed {
-            return
-        }
-        disposed = true
-        if harfBuzzDraw != nint(0) {
-            hb_gpu_draw_destroy(harfBuzzDraw)
-            harfBuzzDraw = nint(0)
-        }
-        if harfBuzzPaint != nint(0) {
-            hb_gpu_paint_destroy(harfBuzzPaint)
-            harfBuzzPaint = nint(0)
-        }
-        if harfBuzzFont != nint(0) {
-            hb_font_destroy(harfBuzzFont)
-            harfBuzzFont = nint(0)
-        }
-        if harfBuzzDesignFont != nint(0) {
-            hb_font_destroy(harfBuzzDesignFont)
-            harfBuzzDesignFont = nint(0)
-        }
-        if harfBuzzFace != nint(0) {
-            hb_face_destroy(harfBuzzFace)
-            harfBuzzFace = nint(0)
-        }
-        if harfBuzzBlob != nint(0) {
-            hb_blob_destroy(harfBuzzBlob)
-            harfBuzzBlob = nint(0)
-        }
-        if fontPin.IsAllocated {
-            fontPin.Free()
+        lock (nativeGate) {
+            if disposed {
+                return
+            }
+            disposed = true
+            if harfBuzzDraw != nint(0) {
+                hb_gpu_draw_destroy(harfBuzzDraw)
+                harfBuzzDraw = nint(0)
+            }
+            if harfBuzzPaint != nint(0) {
+                hb_gpu_paint_destroy(harfBuzzPaint)
+                harfBuzzPaint = nint(0)
+            }
+            if harfBuzzFont != nint(0) {
+                hb_font_destroy(harfBuzzFont)
+                harfBuzzFont = nint(0)
+            }
+            if harfBuzzDesignFont != nint(0) {
+                hb_font_destroy(harfBuzzDesignFont)
+                harfBuzzDesignFont = nint(0)
+            }
+            if harfBuzzFace != nint(0) {
+                hb_face_destroy(harfBuzzFace)
+                harfBuzzFace = nint(0)
+            }
+            if harfBuzzBlob != nint(0) {
+                hb_blob_destroy(harfBuzzBlob)
+                harfBuzzBlob = nint(0)
+            }
+            if fontPin.IsAllocated {
+                fontPin.Free()
+            }
         }
     }
 
@@ -407,6 +486,16 @@ internal unsafe sealed class VulkanTextFont : IDisposable {
             Ascender: extents.ascender,
             Descender: extents.descender,
             LineGap: extents.lineGap,
+        }
+    }
+
+    private func ProviderResult(status uint32, count int32, required int32)
+        VulkanTextProviderResult {
+        return VulkanTextProviderResult{
+            AbiVersion: VulkanTextProviderAbi.Version,
+            Status: status,
+            Count: count,
+            Required: required,
         }
     }
 }

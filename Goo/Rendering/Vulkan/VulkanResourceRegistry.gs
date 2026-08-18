@@ -253,11 +253,11 @@ internal unsafe class VulkanResourceRegistry {
             throw InvalidOperationException("Vulkan resource is retiring")
         }
         if entry.State == VulkanResourceState.Resident {
-            if entry.GpuGeneration != generation {
-                throw InvalidOperationException("Vulkan resource generation is stale")
+            if entry.GpuGeneration != generation
+                || entry.GpuHandle != gpuHandle
+                || entry.DescriptorSlot != descriptorSlot {
+                throw InvalidOperationException("Vulkan resource GPU publication conflicts with resident binding")
             }
-            entry.GpuHandle = gpuHandle
-            entry.DescriptorSlot = descriptorSlot
             entry.LastTouch = TouchValue()
             entries[index] = entry
             return

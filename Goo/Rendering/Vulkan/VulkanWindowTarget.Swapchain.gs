@@ -1,5 +1,18 @@
 package Goo
 
+internal class VulkanRetiredWindowSwapchain {
+    internal let Generation VulkanSwapchainGeneration
+    internal let Surface VkSurfaceKHR
+    internal let DestroySurface bool
+
+    internal init(nativeGeneration VulkanSwapchainGeneration, nativeSurface VkSurfaceKHR,
+        shouldDestroySurface bool) {
+        Generation = nativeGeneration
+        Surface = nativeSurface
+        DestroySurface = shouldDestroySurface
+    }
+}
+
 internal unsafe partial class VulkanWindowTarget {
     private var nextGenerationId uint64 = 1uL
 
@@ -11,7 +24,10 @@ internal unsafe partial class VulkanWindowTarget {
         if !WaitForGpu() {
             return false
         }
+        var surfaceRecovery = false
         if surfaceLost {
+            surfaceRecovery = true
+            RetireCurrentSwapchain(true)
             if !RecreateSurface() {
                 return false
             }
@@ -19,6 +35,11 @@ internal unsafe partial class VulkanWindowTarget {
         }
         var selection VulkanWindowTargetSelection = VulkanWindowTargetSelection{}
         if !TryQuerySelection(out selection) {
+            if !surfaceLost {
+                return false
+            }
+            surfaceRecovery = true
+            RetireCurrentSwapchain(true)
             if !RecreateSurface() {
                 return false
             }
@@ -33,9 +54,9 @@ internal unsafe partial class VulkanWindowTarget {
             throw OverflowException("Vulkan swapchain generation overflow")
         }
         nextGenerationId = nextGenerationId + 1uL
-        if let old = generation {
-            old.Dispose()
-            generation = nil
+        let oldSwapchain = if let old = generation { old.Handle } else { 0uL }
+        if generation != nil {
+            RetireCurrentSwapchain(false)
         }
         if primitiveRenderer != nil && oldFormat != selection.Format.format {
             primitiveRenderer!!.Dispose()
@@ -53,37 +74,159 @@ internal unsafe partial class VulkanWindowTarget {
             selection.PresentMode,
             desiredExtent,
             selection.CompositeAlpha,
-            0uL,
+            oldSwapchain,
             generationId,
-            swapchainMaintenanceVariant != VulkanSwapchainMaintenanceVariant.None)
+            swapchainMaintenanceVariant != VulkanSwapchainMaintenanceVariant.None,
+            windowObjectAccounting)
         generation = next
         if primitiveRenderer == nil {
+            guard let activeRuntime = runtime else {
+                throw InvalidOperationException("Vulkan shared runtime is unavailable")
+            }
             primitiveRenderer = VulkanPrimitiveRenderer(
                 device,
                 dispatch,
                 selection.Format.format,
                 64,
-                nil,
-                generationId,
-                textAtlas)
+                imageResources,
+                activeRuntime.Generation,
+                activeRuntime.PrimitiveState,
+                textAtlas,
+                windowObjectAccounting)
         }
         framebufferWidth = int32(next.Extent.width)
         framebufferHeight = int32(next.Extent.height)
         requestedWidth = width
         requestedHeight = height
         recreatePending = false
+        if surfaceRecovery {
+            diagnostics?.AddSurfaceRecovery(1uL)
+        }
         return true
     }
 
-    private func RecreateSurface() bool {
+    private func RetireCurrentSwapchain(destroySurface bool) {
+        if let old = generation {
+            if destroySurface {
+                let presentCompletionResult = old.WaitForPresentCompletion(presentationRetirement)
+                RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, presentCompletionResult)
+                if presentCompletionResult != VkConstants.VK_SUCCESS {
+                    throw InvalidOperationException("Vulkan surface recovery present completion failed")
+                }
+                old.Dispose()
+                generation = nil
+                DestroyCurrentSurface()
+                return
+            }
+            guard let storage = retiredSwapchains else {
+                throw InvalidOperationException("Vulkan retired swapchain storage is unavailable")
+            }
+            if retiredSwapchainCount >= storage.Length {
+                throw OverflowException("Vulkan retired swapchain capacity exceeded")
+            }
+            let oldSurface = if destroySurface { surface } else { 0uL }
+            presentationRetirement.QueueRetiredGeneration(old.Generation)
+            storage[retiredSwapchainCount] = VulkanRetiredWindowSwapchain(
+                old,
+                oldSurface,
+                false)
+            retiredSwapchainCount = retiredSwapchainCount + 1
+            generation = nil
+            return
+        }
+        if destroySurface {
+            DestroyCurrentSurface()
+        }
+    }
+
+    private func DestroyCurrentSurface() {
         if surfaceCreated && instance != nint(0) {
             host.DestroyVulkanSurface(instance, surface)
-            surface = 0uL
-            surfaceCreated = false
+            if let accounting = windowObjectAccounting {
+                accounting.Release()
+            }
         }
+        surface = 0uL
+        surfaceCreated = false
+    }
+
+    private func CollectRetiredSwapchains() {
+        guard let storage = retiredSwapchains else {
+            return
+        }
+        var retiredGeneration uint64 = 0uL
+        while presentationRetirement.TryPopRetiredGeneration(out retiredGeneration) {
+            var found = false
+            var index int32 = 0
+            while index < retiredSwapchainCount {
+                if let retired = storage[index] {
+                    if retired.Generation.Generation == retiredGeneration {
+                        retired.Generation.Dispose()
+                        if retired.DestroySurface && retired.Surface != 0uL
+                            && instance != nint(0) {
+                            host.DestroyVulkanSurface(instance, retired.Surface)
+                            if let accounting = windowObjectAccounting {
+                                accounting.Release()
+                            }
+                        }
+                        var readIndex = index + 1
+                        while readIndex < retiredSwapchainCount {
+                            storage[readIndex - 1] = storage[readIndex]
+                            readIndex = readIndex + 1
+                        }
+                        retiredSwapchainCount = retiredSwapchainCount - 1
+                        storage[retiredSwapchainCount] = nil
+                        found = true
+                        break
+                    }
+                }
+                index = index + 1
+            }
+            if !found {
+                throw InvalidOperationException("Vulkan retired swapchain generation is missing")
+            }
+        }
+    }
+
+    private func DisposeRetiredSwapchains() {
+        guard let storage = retiredSwapchains else {
+            return
+        }
+        var index int32 = 0
+        while index < retiredSwapchainCount {
+            if let retired = storage[index] {
+                try {
+                    let presentCompletionResult = retired.Generation.WaitForPresentCompletion(presentationRetirement)
+                    RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, presentCompletionResult)
+                } catch (cleanup Exception) { }
+                try { retired.Generation.Dispose() } catch (cleanup Exception) { }
+                if retired.DestroySurface && retired.Surface != 0uL
+                    && instance != nint(0) {
+                    try { host.DestroyVulkanSurface(instance, retired.Surface) } catch (cleanup Exception) { }
+                    if let accounting = windowObjectAccounting {
+                        accounting.Release()
+                    }
+                }
+                storage[index] = nil
+            }
+            index = index + 1
+        }
+        retiredSwapchainCount = 0
+    }
+
+    private func RecreateSurface() bool {
+        DestroyCurrentSurface()
         var createdSurface VkSurfaceKHR = 0uL
         if !host.CreateVulkanSurface(instance, out createdSurface) || createdSurface == 0uL {
             return false
+        }
+        try {
+            if let accounting = windowObjectAccounting {
+                accounting.Allocate()
+            }
+        } catch (error Exception) {
+            try { host.DestroyVulkanSurface(instance, createdSurface) } catch (cleanup Exception) { }
+            throw error
         }
         surface = createdSurface
         surfaceCreated = true
@@ -92,6 +235,10 @@ internal unsafe partial class VulkanWindowTarget {
 
     private func TryQuerySelection(out selection VulkanWindowTargetSelection) bool {
         selection = VulkanWindowTargetSelection{}
+        if VulkanWindowTarget.TakeTestSurfaceLostForTest() {
+            surfaceLost = true
+            return false
+        }
         var capabilities = VkSurfaceCapabilitiesKHR{}
         let getSurfaceCapabilities = instanceDispatch.vkGetPhysicalDeviceSurfaceCapabilitiesKHR
         let capabilitiesResult = getSurfaceCapabilities(
@@ -256,8 +403,9 @@ internal unsafe partial class VulkanWindowTarget {
     private func WaitForGpu() bool {
         if let slot = frameSlot0 {
             let result = slot.PrepareAcquire()
+            RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, result)
             if result != VkConstants.VK_SUCCESS {
-                HandleFrameFailure(result)
+                HandleFrameFailure(result, VulkanDiagnosticEventIds.PresentWait)
                 return false
             }
             presentationRetirement.CollectCompleted(0u, slot.LastCompletedSerial)
@@ -265,8 +413,9 @@ internal unsafe partial class VulkanWindowTarget {
         }
         if let slot = frameSlot1 {
             let result = slot.PrepareAcquire()
+            RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, result)
             if result != VkConstants.VK_SUCCESS {
-                HandleFrameFailure(result)
+                HandleFrameFailure(result, VulkanDiagnosticEventIds.PresentWait)
                 return false
             }
             presentationRetirement.CollectCompleted(1u, slot.LastCompletedSerial)
@@ -274,30 +423,31 @@ internal unsafe partial class VulkanWindowTarget {
         }
         if let current = generation {
             let result = current.WaitForPresentCompletion(presentationRetirement)
+            RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, result)
             if result == VkConstants.VK_ERROR_SURFACE_LOST_KHR {
                 surfaceLost = true
-                return false
+                return true
             }
             if result != VkConstants.VK_SUCCESS {
-                HandleFrameFailure(result)
+                HandleFrameFailure(result, VulkanDiagnosticEventIds.PresentWait)
                 return false
             }
         }
         return true
     }
 
-    private func WaitDeviceIdle() {
+    private func WaitDeviceIdleResult() VkResult {
+        if let activeRuntime = runtime {
+            return activeRuntime.WaitDeviceIdleResult()
+        }
         if device == nint(0) || deviceWaitIdleAddress == nint(0) {
-            return
+            return VkConstants.VK_ERROR_INITIALIZATION_FAILED
         }
         let nullable = deviceWaitIdleAddress as (unmanaged[Cdecl] (VkDevice) -> VkResult)?
         if nullable == nil {
-            throw InvalidOperationException("vkDeviceWaitIdle has an invalid address")
+            return VkConstants.VK_ERROR_INITIALIZATION_FAILED
         }
         let deviceWaitIdleFunction = nullable!!
-        let result = deviceWaitIdleFunction(device)
-        if result != VkConstants.VK_SUCCESS {
-            throw InvalidOperationException("vkDeviceWaitIdle failed: " + result.ToString())
-        }
+        return deviceWaitIdleFunction(device)
     }
 }

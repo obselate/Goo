@@ -1,9 +1,9 @@
-package Goo
+package Goo.Vulkan.Generated
 
 import System.Runtime.InteropServices
 
-@StructLayout(LayoutKind.Explicit, Size: 112)
-internal unsafe struct AnalyticLinear3PushConstants {
+@StructLayout(LayoutKind.Explicit, Size: 128)
+unsafe struct AnalyticLinear4PushConstants {
     @FieldOffset(0) var rect_x float32
     @FieldOffset(4) var rect_y float32
     @FieldOffset(8) var rect_z float32
@@ -32,4 +32,8 @@ internal unsafe struct AnalyticLinear3PushConstants {
     @FieldOffset(100) var packedColors_y uint32
     @FieldOffset(104) var packedColors_z uint32
     @FieldOffset(108) var packedColors_w uint32
+    @FieldOffset(112) var packedColorsExtra_x uint32
+    @FieldOffset(116) var packedColorsExtra_y uint32
+    @FieldOffset(120) var packedColorsExtra_z uint32
+    @FieldOffset(124) var packedColorsExtra_w uint32
 }

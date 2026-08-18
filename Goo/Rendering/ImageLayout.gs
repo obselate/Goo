@@ -8,35 +8,179 @@ internal open class ImageSourceBinding {
   internal var Source ImageSourceProvider?
   internal var Lease ImageSourceLease?
   internal var SourceCompletion ImageSourceCompletion?
+  private var sourceChangedRegistration Action?
+  private var sourceChangedHandler Action?
+  private var contentVersionSnapshot uint64
+  private var ownerPost ((Action) -> void)?
+  private var ownerThreadId int32
+
+  internal func SetSourceChanged(callback Action) {
+    sourceChangedHandler = callback
+  }
 
   internal func BindSource(source ImageSourceProvider) {
-    Source = source
+    BindSource(source, 0uL)
+  }
+
+  private func BindSource(source ImageSourceProvider, minimumVersion uint64) {
+    captureOwner()
     var lease ImageSourceLease?
-    try { lease = source.Acquire() } catch (error Exception) { lease = nil }
-    if lease == nil || (lease?.IsDisposed ?? false) {
-      lease = ImageSourceLease()
-      lease?.Fail()
+    var acceptedVersion uint64
+    var observedVersion uint64
+    var accepted bool
+    var attempt int32 = 0
+    observedVersion = minimumVersion
+    while attempt < 2 && !accepted {
+      var before uint64
+      try { before = source.ContentVersion } catch (error Exception) { before = 0uL }
+      if before > observedVersion { observedVersion = before }
+      if before == 0uL || (minimumVersion != 0uL && before < minimumVersion) {
+        break
+      }
+      var candidate ImageSourceLease?
+      try { candidate = source.Acquire() } catch (error Exception) { candidate = nil }
+      if candidate == nil || (candidate?.IsDisposed ?? false) {
+        candidate?.Dispose()
+        break
+      }
+      candidate?.BindOwner(ownerPost, ownerThreadId)
+      if !(candidate?.BindContentVersion(before, source) ?? false) {
+        candidate?.Dispose()
+        attempt++
+        continue
+      }
+      var after uint64
+      try { after = source.ContentVersion } catch (error Exception) { after = 0uL }
+      if after > observedVersion { observedVersion = after }
+      if after == before {
+        lease = candidate
+        acceptedVersion = before
+        accepted = true
+        break
+      }
+      candidate?.Dispose()
+      if after == 0uL || after < before {
+        break
+      }
+      attempt++
     }
+    if !accepted {
+      lease = ImageSourceLease()
+      lease?.BindOwner(ownerPost, ownerThreadId)
+      lease?.Fail()
+      if observedVersion != 0uL {
+        lease?.BindContentVersion(observedVersion, source)
+        acceptedVersion = observedVersion
+      } else {
+        acceptedVersion = 0uL
+      }
+    }
+    Source = source
     Lease = lease
+    contentVersionSnapshot = acceptedVersion
+    let registration = func() {
+      dispatchToOwner(func() {
+        if Object.ReferenceEquals(Source, source) {
+          var version uint64
+          try { version = source.ContentVersion } catch (error Exception) { return }
+          if version == 0uL || version <= contentVersionSnapshot { return }
+          RebindSource(source)
+          sourceChangedHandler?.Invoke()
+        }
+      })
+    }
+    sourceChangedRegistration = registration
+    try {
+      source.ContentChanged += registration
+    } catch (error Exception) {
+    }
   }
+
+  private func captureOwner() {
+    if ownerThreadId != 0 { return }
+    ownerThreadId = Environment.CurrentManagedThreadId
+    if let owner = ElementHandles.CurrentOwner() {
+      ownerPost = func(action Action) { owner.Post(action) }
+    }
+  }
+
+  private func dispatchToOwner(action Action) {
+    if let queue = ownerPost {
+      if Environment.CurrentManagedThreadId != ownerThreadId {
+        try { queue(action) } catch (error Exception) { }
+        return
+      }
+    }
+    action()
+  }
+
   internal func RebindSource(source ImageSourceProvider) {
+    let sameSource = Object.ReferenceEquals(Source, source)
+    let priorVersion = if sameSource { contentVersionSnapshot } else { 0uL }
     ReleaseSource()
-    BindSource(source)
+    BindSource(source, priorVersion)
   }
-  internal func WatchSource(callback Action) {
-    SourceCompletion = Lease!!.OnCompleted(callback)
+
+  internal func WatchSource(callback Action[ImageSourceBindingToken]) {
+    SourceCompletion?.Dispose()
+    guard let source = Source else { return }
+    guard let lease = Lease else { return }
+    if contentVersionSnapshot == 0uL { return }
+    let token = ImageSourceBindingToken(this, source, lease, contentVersionSnapshot)
+    SourceCompletion = lease.OnCompleted(func() {
+      if IsCurrentToken(token) {
+        callback(token)
+      }
+    })
   }
+
+  internal func IsCurrentToken(token ImageSourceBindingToken) bool {
+    return Object.ReferenceEquals(token.Binding, this)
+      && Object.ReferenceEquals(Source, token.Source) && Object.ReferenceEquals(Lease, token.Lease)
+      && contentVersionSnapshot == token.Version
+  }
+
+  internal func CurrentToken() ImageSourceBindingToken? {
+    guard let source = Source else { return nil }
+    guard let lease = Lease else { return nil }
+    if contentVersionSnapshot == 0uL { return nil }
+    return ImageSourceBindingToken(this, source, lease, contentVersionSnapshot)
+  }
+
   internal func CompletedResult() DecodedImage? {
     SourceCompletion?.Dispose()
     SourceCompletion = nil
     return Lease?.Result()
   }
+
   internal func ReleaseSource() {
+    if let source = Source {
+      if let registration = sourceChangedRegistration {
+        try { source.ContentChanged -= registration } catch (error Exception) { }
+      }
+    }
+    sourceChangedRegistration = nil
     SourceCompletion?.Dispose()
     Lease?.Dispose()
     Source = nil
     Lease = nil
     SourceCompletion = nil
+    contentVersionSnapshot = 0uL
+  }
+}
+
+internal class ImageSourceBindingToken {
+  internal let Binding ImageSourceBinding
+  internal let Source ImageSourceProvider
+  internal let Lease ImageSourceLease
+  internal let Version uint64
+
+  internal init(binding ImageSourceBinding, source ImageSourceProvider, lease ImageSourceLease,
+    version uint64) {
+    Binding = binding
+    Source = source
+    Lease = lease
+    Version = version
   }
 }
 
@@ -47,9 +191,17 @@ internal class ImageLayouts {
     internal func Source(n Node) ImageSourceProvider? { return sourceState(n)?.Source }
     internal func Lease(n Node) ImageSourceLease? { return sourceState(n)?.Lease }
     internal func SourceCompletion(n Node) ImageSourceCompletion? { return sourceState(n)?.SourceCompletion }
+    internal func CurrentToken(n Node) ImageSourceBindingToken? {
+      return sourceState(n)?.CurrentToken()
+    }
     internal func IsCurrent(n Node, token object) bool {
-      return Object.ReferenceEquals(n.ImageRequest, token)
-        || Object.ReferenceEquals(sourceState(n), token)
+      if Object.ReferenceEquals(n.ImageRequest, token) {
+        return true
+      }
+      if let value = token as ImageSourceBindingToken? {
+        return sourceState(n)?.IsCurrentToken(value) ?? false
+      }
+      return Object.ReferenceEquals(sourceState(n), token)
     }
 
     internal func ApplyPath(n Node, path string, fit ImageFit,
@@ -105,6 +257,9 @@ internal class ImageLayouts {
       n.ImageIntrinsicWidth = intrinsicWidth
       n.ImageIntrinsicHeight = intrinsicHeight
       let value = ImageSourceBinding()
+      value.SetSourceChanged(func() {
+        ImageLayouts.refreshSource(n, value, completed)
+      })
       value.BindSource(source)
       if sourceValues == nil { sourceValues = ConditionalWeakTable[Node, ImageSourceBinding]() }
       sourceValues?.Add(n, value)
@@ -112,9 +267,8 @@ internal class ImageLayouts {
       if Refresh(n, value) {
         return
       }
-      let binding = value.Lease!!
-      value.WatchSource(func() {
-        ImageLayouts.invalidateSource(n, value, binding, completed)
+      value.WatchSource(func(token ImageSourceBindingToken) {
+        ImageLayouts.invalidateSource(n, value, token, completed)
       })
     }
 
@@ -229,12 +383,27 @@ internal class ImageLayouts {
         value.ReleaseSource()
       }
     }
-    private func invalidateSource(n Node, value ImageSourceBinding, lease ImageSourceLease,
+    private func refreshSource(n Node, value ImageSourceBinding,
+      completed ((Node, object) -> void)?) {
+      if n.Retired { return }
+      guard let current = sourceState(n) else { return }
+      if current != value { return }
+      if Refresh(n, value) {
+        if let callback = completed, let token = value.CurrentToken() { callback(n, token) }
+        return
+      }
+      guard let lease = value.Lease else { return }
+      if lease.IsComplete { return }
+      value.WatchSource(func(token ImageSourceBindingToken) {
+        ImageLayouts.invalidateSource(n, value, token, completed)
+      })
+    }
+    private func invalidateSource(n Node, value ImageSourceBinding, token ImageSourceBindingToken,
       completed ((Node, object) -> void)?) {
       if n.Retired { return }
       if let current = sourceState(n) {
-        if current == value && current.Lease == lease {
-          if let callback = completed { callback(n, value) }
+        if current == value && value.IsCurrentToken(token) {
+          if let callback = completed { callback(n, token) }
         }
       }
     }

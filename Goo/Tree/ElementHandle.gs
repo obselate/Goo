@@ -365,6 +365,8 @@ internal class ElementHandles {
       return owners!!.Peek()
     }
 
+    internal func CurrentOwner() Window? { return currentOwner() }
+
     internal func BorderBox(n Node) ElementRect {
       let bounds = TransformGeometry.BoundsToWindow(n)
       return ElementRect{ X: float64(bounds.X), Y: float64(bounds.Y),
@@ -564,8 +566,10 @@ internal class MetricSubscriptions {
       guard let state = windowState(owner, false) else {
         return
       }
-      let scaleX = logicalWidth > 0 ? float64(framebufferWidth) / float64(logicalWidth) : 1.0
-      let scaleY = logicalHeight > 0 ? float64(framebufferHeight) / float64(logicalHeight) : 1.0
+      let scaleX = logicalWidth > 0 && framebufferWidth > 0
+        ? float64(framebufferWidth) / float64(logicalWidth) : 0.0
+      let scaleY = logicalHeight > 0 && framebufferHeight > 0
+        ? float64(framebufferHeight) / float64(logicalHeight) : 0.0
       state.Reported = WindowMetrics{
         LogicalWidth: logicalWidth,
         LogicalHeight: logicalHeight,

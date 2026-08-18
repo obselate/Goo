@@ -16,6 +16,11 @@ internal data struct FrameProfilePoint {
   internal var Bytes int64
 }
 
+internal interface FrameProfileSink {
+  prop Active bool { get }
+  func Record(stage FrameProfileStage, ticks int64, bytes int64);
+}
+
 internal class FrameProfileTotal {
   internal var Ticks int64
   internal var Bytes int64
@@ -30,13 +35,31 @@ internal class FrameProfileTotal {
 
 internal class FrameProfiler {
   private let enabled bool
+  private var sink FrameProfileSink? = nil
   private var totals List[FrameProfileTotal]?
   private var warmupFrames int32
   private var frames int32
   private var rendered int32
   private var styleResolveNodes int64
 
+  internal prop Active bool {
+    get {
+      if enabled {
+        return true
+      }
+      if let current = sink {
+        return current.Active
+      }
+      return false
+    }
+  }
+
   internal prop Enabled bool { get { return enabled } }
+
+  internal prop Sink FrameProfileSink? {
+    get { return sink }
+    set { sink = value }
+  }
 
   internal init() {
     enabled = Environment.GetEnvironmentVariable("GOO_FRAME_PROFILE") == "1"
@@ -52,9 +75,14 @@ internal class FrameProfiler {
   }
 
   internal func Record(stage FrameProfileStage, start FrameProfilePoint) {
-    if !enabled { return }
+    if !Active { return }
     let elapsed = Elapsed(start)
-    Add(stage, elapsed.Ticks, elapsed.Bytes, 1)
+    if enabled {
+      Add(stage, elapsed.Ticks, elapsed.Bytes, 1)
+    }
+    if let current = sink {
+      current.Record(stage, elapsed.Ticks, elapsed.Bytes)
+    }
   }
 
   internal func Elapsed(start FrameProfilePoint) FrameProfilePoint {
@@ -78,20 +106,24 @@ internal class FrameProfiler {
     resolveBytes int64,
     resolveCalls int64,
   ) {
-    if !enabled { return }
+    if !Active { return }
     let elapsed = Elapsed(start)
-    Add(FrameProfileStage.Reconcile, elapsed.Ticks, elapsed.Bytes, 1)
-    Add(FrameProfileStage.Build, buildTicks, buildBytes, buildCalls)
-    Add(FrameProfileStage.StyleResolve, resolveTicks, resolveBytes, resolveCalls)
-
     let diffTicks = elapsed.Ticks - buildTicks - resolveTicks
     let diffBytes = elapsed.Bytes - buildBytes - resolveBytes
-    Add(
-      FrameProfileStage.Diff,
-      diffTicks < 0 ? 0 : diffTicks,
-      diffBytes < 0 ? 0 : diffBytes,
-      1,
-    )
+    let safeDiffTicks = diffTicks < 0 ? 0 : diffTicks
+    let safeDiffBytes = diffBytes < 0 ? 0 : diffBytes
+    if enabled {
+      Add(FrameProfileStage.Reconcile, elapsed.Ticks, elapsed.Bytes, 1)
+      Add(FrameProfileStage.Build, buildTicks, buildBytes, buildCalls)
+      Add(FrameProfileStage.StyleResolve, resolveTicks, resolveBytes, resolveCalls)
+      Add(FrameProfileStage.Diff, safeDiffTicks, safeDiffBytes, 1)
+    }
+    if let current = sink {
+      current.Record(FrameProfileStage.Reconcile, elapsed.Ticks, elapsed.Bytes)
+      current.Record(FrameProfileStage.Build, buildTicks, buildBytes)
+      current.Record(FrameProfileStage.StyleResolve, resolveTicks, resolveBytes)
+      current.Record(FrameProfileStage.Diff, safeDiffTicks, safeDiffBytes)
+    }
   }
 
   private func Add(stage FrameProfileStage, ticks int64, bytes int64, calls int64) {

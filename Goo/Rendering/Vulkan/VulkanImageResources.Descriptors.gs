@@ -20,6 +20,9 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             || descriptorSets[linearSlot] == 0uL {
             throw InvalidOperationException("Vulkan image descriptor capacity reached")
         }
+        if entries[index].State != VulkanImageResourceState.Empty {
+            throw InvalidOperationException("Vulkan image descriptor slot is still in use")
+        }
     }
 
     private func DescriptorFor(
@@ -31,7 +34,8 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         } else {
             entry.LinearDescriptor
         }
-        if binding.State == VulkanImageDescriptorState.Empty
+        if !entry.GpuPublished
+            || binding.State == VulkanImageDescriptorState.Empty
             || binding.Generation != generation
             || !SameSource(binding.ImageId, entry.Id)
             || !SameSource(binding.SamplerId, samplerId)
@@ -142,11 +146,25 @@ internal unsafe partial class VulkanImageResources : IDisposable {
 
     private func SameSource(entry VulkanImageResourceEntry, source VulkanResourceSource) bool {
         let registered = registry.Lookup(entry.Id, generation)
-        return registered.Found
-            && registered.Source.ProviderId == source.ProviderId
-            && registered.Source.SourceId == source.SourceId
-            && registered.Source.Version == source.Version
-            && registered.Source.Bytes == source.Bytes
+        if registered.Found {
+            return registered.Source.ProviderId == source.ProviderId
+                && registered.Source.SourceId == source.SourceId
+                && registered.Source.Version == source.Version
+                && registered.Source.Bytes == source.Bytes
+        }
+        let count = registry.CopyLogicalResources(logicalRecords)
+        var index int32 = 0
+        while index < count {
+            let logical = logicalRecords[index]
+            if SameSource(logical.Id, entry.Id) {
+                return logical.Source.ProviderId == source.ProviderId
+                    && logical.Source.SourceId == source.SourceId
+                    && logical.Source.Version == source.Version
+                    && logical.Source.Bytes == source.Bytes
+            }
+            index++
+        }
+        return false
     }
 
     private func RetireFence(entry VulkanImageResourceEntry, fence uint64) uint64 {

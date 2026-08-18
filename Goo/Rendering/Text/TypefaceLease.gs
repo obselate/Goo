@@ -9,23 +9,38 @@ internal sealed class TypefaceLease : IDisposable {
     this.resource = resource
   }
 
-  internal prop Font VulkanTextFont {
+  internal prop Provider VulkanTextProvider {
     get {
-      guard let value = resource else { throw ObjectDisposedException("TypefaceLease") }
-      return value.Font
+      lock (this) {
+        guard let value = resource else { throw ObjectDisposedException("TypefaceLease") }
+        return value.Provider
+      }
     }
   }
 
   internal prop Family string {
     get {
-      guard let value = resource else { throw ObjectDisposedException("TypefaceLease") }
-      return value.Family
+      lock (this) {
+        guard let value = resource else { throw ObjectDisposedException("TypefaceLease") }
+        return value.Family
+      }
+    }
+  }
+
+  internal prop IsRegistered bool {
+    get {
+      lock (this) {
+        guard let value = resource else { throw ObjectDisposedException("TypefaceLease") }
+        return value.IsRegistered
+      }
     }
   }
 
   internal func Duplicate() TypefaceLease {
-    guard let value = resource else { throw ObjectDisposedException("TypefaceLease") }
-    return value.Lease()
+    lock (this) {
+      guard let value = resource else { throw ObjectDisposedException("TypefaceLease") }
+      return value.Lease()
+    }
   }
 
   public func Dispose() {

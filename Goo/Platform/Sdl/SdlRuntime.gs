@@ -32,7 +32,7 @@ internal class SdlEventRouter {
   }
 }
 
-internal class SdlRuntime {
+internal partial class SdlRuntime {
   shared {
     private let requiredSubsystems uint32 = uint32(SDLInitFlags.Video | SDLInitFlags.Events)
     private let sync object = Object()
@@ -91,20 +91,45 @@ internal class SdlRuntime {
     }
 
     internal func PollEvents() {
+      PumpEvents(Int32.MaxValue)
+    }
+
+    internal func PumpEvents(maxEvents int32) int32 {
       RequireMainThread("SDL event polling")
-      var nativeEvent SDLEvent = SDLEvent{}
-      while SDL.PollEvent(&nativeEvent) {
-        DispatchOne(nativeEvent)
+      if maxEvents <= 0 {
+        return 0
       }
+      var nativeEvent SDLEvent = SDLEvent{}
+      var processed int32
+      while processed < maxEvents && SDL.PollEvent(&nativeEvent) {
+        DispatchOne(nativeEvent)
+        processed = processed + 1
+      }
+      return processed
     }
 
     internal func WaitEvents(timeoutMs int32) {
+      WaitEventsBounded(timeoutMs, Int32.MaxValue)
+    }
+
+    internal func WaitEventsBounded(timeoutMs int32, maxEvents int32) int32 {
       RequireMainThread("SDL event waiting")
+      if timeoutMs < 0 {
+        throw ArgumentOutOfRangeException("timeoutMs")
+      }
+      if maxEvents <= 0 {
+        return 0
+      }
       var nativeEvent SDLEvent = SDLEvent{}
+      var processed int32
       if SDL.WaitEventTimeout(&nativeEvent, timeoutMs) {
         DispatchOne(nativeEvent)
-        PollEvents()
+        processed = 1
+        if processed < maxEvents {
+          processed = processed + PumpEvents(maxEvents - processed)
+        }
       }
+      return processed
     }
 
     internal func Wake() {

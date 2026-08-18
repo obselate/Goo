@@ -167,9 +167,9 @@
       "source": "analytic.vert.glsl",
       "output": "analytic.vert.spv",
       "entryPoint": "main",
-      "sourceSha256": "fddebacfb2a0e17530d296d2b4710d64c6324eb18d663b49cff33cb31ecf7516",
-      "outputSha256": "cd132fb640a747524fd5eab420b96d9789585afaaf3bd13ca34950e16d0ed724",
-      "outputBytes": 1648,
+      "sourceSha256": "d5567c34221442857625e94507d47b92f40dd75c2e45d5da734919f34c58d04b",
+      "outputSha256": "32a6fad7ca2481fe5dec22987baa52e0bee6657e381b91a4ccc7f4aa70baaa7d",
+      "outputBytes": 1672,
       "capabilities": [
         1
       ]
@@ -180,35 +180,48 @@
       "source": "analytic_solid.frag.glsl",
       "output": "analytic_solid.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "2a4161608663098d5c7de3be88e4801fa7365e5ef3c1fbd068b216f544a8492c",
-      "outputSha256": "b01710d9f4b9da0e71e0f524593092003d6f3a8ea668befb02a73bae035f1207",
-      "outputBytes": 2388,
+      "sourceSha256": "4ead68a6a8d4dd0feeec4a6b09ca8b991e39c78afdcf4c929364a32f37d800b4",
+      "outputSha256": "2277480441a49beec5453b3a0f8969ea795f4aad66163010519783f0f19f9f34",
+      "outputBytes": 2412,
       "capabilities": [
         1
       ]
     },
     {
-      "id": "analytic_linear3_fragment",
+      "id": "analytic_border_fragment",
       "stage": "fragment",
-      "source": "analytic_linear3.frag.glsl",
-      "output": "analytic_linear3.frag.spv",
+      "source": "analytic_border.frag.glsl",
+      "output": "analytic_border.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "ab2af725a758086110e93d3182b86db46618b47df08229d48ca4e959b3fd3c60",
-      "outputSha256": "3518f6fe918d88f12b251811afb928ae9b3b0e30f3f68122960152c21c34e272",
-      "outputBytes": 2980,
+      "sourceSha256": "818303640a7cf7868dc080e16363094d7e6938adc62f98c48cfb57efc1223a3d",
+      "outputSha256": "abe2156d616af03f3680595414c64396d057cc786ba3b211385a2d45a1e7b6f1",
+      "outputBytes": 18544,
       "capabilities": [
         1
       ]
     },
     {
-      "id": "analytic_radial3_fragment",
+      "id": "analytic_linear4_fragment",
       "stage": "fragment",
-      "source": "analytic_radial3.frag.glsl",
-      "output": "analytic_radial3.frag.spv",
+      "source": "analytic_linear4.frag.glsl",
+      "output": "analytic_linear4.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "5eeef3f1b440f2d7e378cb4bb0d8294364f0b11a8c03ba4a39433671f90cbd73",
-      "outputSha256": "d43d75466c98a5834c0fad7189326e1441ee79a142eae80adbb257aa97ec3fd7",
-      "outputBytes": 2964,
+      "sourceSha256": "362736382c095342d73f692f5d14094392223aff332b6039632fdb528a8f610a",
+      "outputSha256": "62ef2d3a87dc63b4736f8015cfea475c48f63823e3345eb0cc6b9badb8893eea",
+      "outputBytes": 10124,
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "analytic_radial4_fragment",
+      "stage": "fragment",
+      "source": "analytic_radial4.frag.glsl",
+      "output": "analytic_radial4.frag.spv",
+      "entryPoint": "main",
+      "sourceSha256": "43b1191acb4bc023408ee051359a75fc8f67ee29f8c98834c4aead90600107ee",
+      "outputSha256": "892c6f64d30fd534bf45bb03783a064ad82b1bb90768091a8c381cc20dee6fcd",
+      "outputBytes": 10108,
       "capabilities": [
         1
       ]
@@ -219,9 +232,9 @@
       "source": "analytic_sampled_image.frag.glsl",
       "output": "analytic_sampled_image.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "6dc5e7a6f19c4f692e1470a6deb4271e44941b8ec389a0cfc426dfe5ebeb9007",
-      "outputSha256": "fc24a303af0c0ee861395cf337b9f26386565fc3e34e7ebcd549fadb5975a2b3",
-      "outputBytes": 1264,
+      "sourceSha256": "fb92bd24c31cfca9355fe4a7a1228b013b37a429258007a9c41199247d33452d",
+      "outputSha256": "5a833e52c5f17df93f160808ed4093d60304e82d6498cb82052017a7ae663ca9",
+      "outputBytes": 1288,
       "capabilities": [
         1
       ]
@@ -350,7 +363,7 @@
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 112,
+        "size": 128,
         "stages": [
           "vertex",
           "fragment"
@@ -389,6 +402,11 @@
           {
             "name": "packedColors",
             "offset": 96,
+            "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
             "type": "uvec4"
           }
         ]
@@ -439,17 +457,121 @@
       "hostPacking": {
         "path": "AnalyticSolidPushConstants.Generated.gs",
         "typeName": "AnalyticSolidPushConstants",
-        "sha256": "9e0aea6c796cbdb38d317fad704cffbc2016711f399a14c8f8f13bb39ffb2f04",
-        "bytes": 1404
+        "sha256": "4294eeac6b658f42dfff8aa1bd6fb793c5ce8bcda30985d45e9d0585a531ff0d",
+        "bytes": 1616
       }
     },
     {
-      "id": "analytic_linear3",
+      "id": "analytic_border",
       "topology": "triangle-list",
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 112,
+        "size": 128,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "widths",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 0,
+      "descriptors": [],
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_border_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "rgb11-11-10-alpha10-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "AnalyticBorderPushConstants.Generated.gs",
+        "typeName": "AnalyticBorderPushConstants",
+        "sha256": "dcc702e7a84b0c8a069b2b6c569f278910e0b73055cbe985a35ab79b930a548d",
+        "bytes": 1589
+      }
+    },
+    {
+      "id": "analytic_linear4",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 128,
         "stages": [
           "vertex",
           "fragment"
@@ -489,6 +611,11 @@
             "name": "packedColors",
             "offset": 96,
             "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
+            "type": "uvec4"
           }
         ]
       },
@@ -509,7 +636,7 @@
           ]
         },
         {
-          "shader": "analytic_linear3_fragment",
+          "shader": "analytic_linear4_fragment",
           "stage": "fragment",
           "entryPoint": "main",
           "inputs": [
@@ -536,19 +663,19 @@
       "cullMode": "none",
       "frontFace": "counter-clockwise",
       "hostPacking": {
-        "path": "AnalyticLinear3PushConstants.Generated.gs",
-        "typeName": "AnalyticLinear3PushConstants",
-        "sha256": "804513d362b13043c43838f54ee8eb10b13a38aad92ced4ae91e7947246af234",
-        "bytes": 1406
+        "path": "AnalyticLinear4PushConstants.Generated.gs",
+        "typeName": "AnalyticLinear4PushConstants",
+        "sha256": "21d877424a3068b87ba919e44ddeca60f7f5fb08456ffbaf07e528ac8d33984b",
+        "bytes": 1618
       }
     },
     {
-      "id": "analytic_radial3",
+      "id": "analytic_radial4",
       "topology": "triangle-list",
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 112,
+        "size": 128,
         "stages": [
           "vertex",
           "fragment"
@@ -588,6 +715,11 @@
             "name": "packedColors",
             "offset": 96,
             "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
+            "type": "uvec4"
           }
         ]
       },
@@ -608,7 +740,7 @@
           ]
         },
         {
-          "shader": "analytic_radial3_fragment",
+          "shader": "analytic_radial4_fragment",
           "stage": "fragment",
           "entryPoint": "main",
           "inputs": [
@@ -635,10 +767,10 @@
       "cullMode": "none",
       "frontFace": "counter-clockwise",
       "hostPacking": {
-        "path": "AnalyticRadial3PushConstants.Generated.gs",
-        "typeName": "AnalyticRadial3PushConstants",
-        "sha256": "a3fef01a91640db424ec07dd6aa5a9a68d8dce9288d866cd8e71d003cc4c5b58",
-        "bytes": 1406
+        "path": "AnalyticRadial4PushConstants.Generated.gs",
+        "typeName": "AnalyticRadial4PushConstants",
+        "sha256": "44bd8636ec836cbc6eecb30ef03121bffb6b334a1e98540fdb3b67db1298908c",
+        "bytes": 1618
       }
     },
     {
@@ -647,7 +779,7 @@
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 112,
+        "size": 128,
         "stages": [
           "vertex",
           "fragment"
@@ -686,6 +818,11 @@
           {
             "name": "packedColors",
             "offset": 96,
+            "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
             "type": "uvec4"
           }
         ]
@@ -746,8 +883,8 @@
       "hostPacking": {
         "path": "SampledImagePushConstants.Generated.gs",
         "typeName": "SampledImagePushConstants",
-        "sha256": "9cb2f4d14db1e76b556b8e5ad906b394d8ae8dc90b928e7b5f8a18078f998501",
-        "bytes": 1403
+        "sha256": "c54720462cc88aeca5e19e445a8238e19a77cf9b90ef51d1f69c9eab03cfeb51",
+        "bytes": 1615
       }
     },
     {

@@ -882,8 +882,10 @@ paths. G# 0.4 syntax cleanup should be one mechanical change with zero API and p
 
 ## Delivery waves
 
-`IMPLEMENTATION-PLAN.md` is authoritative for stage specifications and gates. The roadmap groups
-those stages into these Goo-core-only waves:
+`IMPLEMENTATION-PLAN.md` is the single current status and remaining-work tracker. This roadmap is
+historical supporting research, except that its Non-negotiable contract remains an external release
+invariant. `IMPLEMENTATION-HISTORY.md` preserves completed execution material. The roadmap originally
+grouped the stages into these Goo-core-only waves:
 
 ### Wave 0: compiler, requirements, and frozen evidence
 

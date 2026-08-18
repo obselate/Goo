@@ -1,13 +1,14 @@
 # Goo Gaps and Reductions Plan
 
-Status: active direct Vulkan product cutover. Architecture Q&A is accepted except O16, which remains a later measured AA decision. On 2026-08-17 Xaz approved removing Skia and Goo-owned C# immediately, accepting temporary local breakage, then moving the proven Vulkan implementation into Goo core until a Goo window starts and renders through Vulkan. No compatibility backend or fallback is retained.
+Status: accepted architecture and decision register. This file does not track current implementation
+progress. `IMPLEMENTATION-PLAN.md` is the single active status and remaining-work tracker. O16 remains
+a later measured AA decision.
 
 Date: 2026-08-17
 
 Branch: `gaps-and-reductions`
 
-This artifact records the accepted architecture direction and the work that remains before Goo
-product integration and shipping. The larger
+This artifact records the accepted architecture direction. The larger
 `GAPS-AND-REDUCTIONS.md` file is supporting research, not an approved architecture decision. The
 completed Skia responsibility inventory is in `VULKAN-SKIA-REPLACEMENT.md`.
 

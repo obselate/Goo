@@ -55,6 +55,10 @@ internal partial class VulkanWindowTarget {
                 RightWidth: value.RightWidth * scaleX,
                 BottomWidth: value.BottomWidth * scaleY,
                 LeftWidth: value.LeftWidth * scaleX,
+                RadiusTopLeft: ScaleRadius(value.RadiusTopLeft, scaleX, scaleY),
+                RadiusTopRight: ScaleRadius(value.RadiusTopRight, scaleX, scaleY),
+                RadiusBottomRight: ScaleRadius(value.RadiusBottomRight, scaleX, scaleY),
+                RadiusBottomLeft: ScaleRadius(value.RadiusBottomLeft, scaleX, scaleY),
                 TopColor: value.TopColor,
                 RightColor: value.RightColor,
                 BottomColor: value.BottomColor,
@@ -69,6 +73,10 @@ internal partial class VulkanWindowTarget {
             let value = frame.LinearGradients[index]
             frame.LinearGradients[index] = LinearGradientRecord{
                 Bounds: ScaleBounds(value.Bounds, scaleX, scaleY),
+                RadiusTopLeft: ScaleRadius(value.RadiusTopLeft, scaleX, scaleY),
+                RadiusTopRight: ScaleRadius(value.RadiusTopRight, scaleX, scaleY),
+                RadiusBottomRight: ScaleRadius(value.RadiusBottomRight, scaleX, scaleY),
+                RadiusBottomLeft: ScaleRadius(value.RadiusBottomLeft, scaleX, scaleY),
                 StartX: value.StartX * scaleX,
                 StartY: value.StartY * scaleY,
                 EndX: value.EndX * scaleX,
@@ -85,6 +93,10 @@ internal partial class VulkanWindowTarget {
             let value = frame.RadialGradients[index]
             frame.RadialGradients[index] = RadialGradientRecord{
                 Bounds: ScaleBounds(value.Bounds, scaleX, scaleY),
+                RadiusTopLeft: ScaleRadius(value.RadiusTopLeft, scaleX, scaleY),
+                RadiusTopRight: ScaleRadius(value.RadiusTopRight, scaleX, scaleY),
+                RadiusBottomRight: ScaleRadius(value.RadiusBottomRight, scaleX, scaleY),
+                RadiusBottomLeft: ScaleRadius(value.RadiusBottomLeft, scaleX, scaleY),
                 CenterX: value.CenterX * scaleX,
                 CenterY: value.CenterY * scaleY,
                 RadiusX: value.RadiusX * scaleX,

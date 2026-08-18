@@ -6,12 +6,20 @@ internal unsafe partial class VulkanWindowTarget {
         beginInfo.sType = VkConstants.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
         beginInfo.flags = uint32(VkConstants.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
         let beginCommandBuffer = dispatch.vkBeginCommandBuffer
+        let beginStart = DiagnosticTimestamp()
         let beginResult = beginCommandBuffer(slot.CommandBuffer, &beginInfo)
+        RecordDiagnosticResult(VulkanDiagnosticEventIds.CommandRecord, beginResult)
+        RecordDiagnosticTiming(VulkanDiagnosticEventIds.CommandRecord, VulkanDiagnosticCategories.Timing, beginStart)
         if beginResult != VkConstants.VK_SUCCESS {
-            HandleFrameFailure(beginResult)
-            ClearActiveFrame()
+            try {
+                HandleFrameFailure(beginResult, VulkanDiagnosticEventIds.CommandRecord)
+            } finally {
+                CloseDiagnosticFrame(false)
+                ClearActiveFrame()
+            }
             return false
         }
+        ResetDiagnosticTimestamp(slot)
         return true
     }
 
@@ -52,6 +60,7 @@ internal unsafe partial class VulkanWindowTarget {
         dependency.pImageMemoryBarriers = &barrier
         let pipelineBarrier = dispatch.vkCmdPipelineBarrier2
         pipelineBarrier(slot.CommandBuffer, &dependency)
+        RecordDiagnosticBarrier()
         var clear = VkClearValue{}
         clear.color.float32.values[0] = 0.0F
         clear.color.float32.values[1] = 0.0F
@@ -72,8 +81,10 @@ internal unsafe partial class VulkanWindowTarget {
         rendering.layerCount = 1u
         rendering.colorAttachmentCount = 1u
         rendering.pColorAttachments = &attachment
+        BeginDiagnosticTimestamp(slot, VulkanDiagnosticTimestampStage.Main)
         let beginRendering = dispatch.vkCmdBeginRendering
         beginRendering(slot.CommandBuffer, &rendering)
+        RecordDiagnosticPass()
         renderingBegun = true
     }
 
@@ -82,6 +93,7 @@ internal unsafe partial class VulkanWindowTarget {
         slot VulkanFrameSlot) {
         let endRendering = dispatch.vkCmdEndRendering
         endRendering(slot.CommandBuffer)
+        EndDiagnosticTimestamp(slot, VulkanDiagnosticTimestampStage.Main)
         var subresourceRange = VkImageSubresourceRange{}
         subresourceRange.aspectMask = uint32(VkConstants.VK_IMAGE_ASPECT_COLOR_BIT)
         subresourceRange.baseMipLevel = 0u
@@ -106,5 +118,6 @@ internal unsafe partial class VulkanWindowTarget {
         dependency.pImageMemoryBarriers = &barrier
         let pipelineBarrier = dispatch.vkCmdPipelineBarrier2
         pipelineBarrier(slot.CommandBuffer, &dependency)
+        RecordDiagnosticBarrier()
     }
 }

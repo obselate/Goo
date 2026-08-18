@@ -29,6 +29,8 @@ cmake -S "$work/src" -B "$work/build" -G Ninja \
   -DSDL_HIDAPI=OFF \
   -DSDL_JOYSTICK=OFF \
   -DSDL_KMSDRM=OFF \
+  -DSDL_OPENGL=OFF \
+  -DSDL_OPENGLES=OFF \
   -DSDL_POWER=OFF \
   -DSDL_RENDER=OFF \
   -DSDL_SENSOR=OFF \
@@ -36,7 +38,7 @@ cmake -S "$work/src" -B "$work/build" -G Ninja \
   -DSDL_STATIC=OFF \
   -DSDL_TEST_LIBRARY=OFF \
   -DSDL_TRAY=OFF \
-  -DSDL_VULKAN=OFF \
+  -DSDL_VULKAN=ON \
   -DSDL_WAYLAND=ON \
   -DSDL_X11=OFF
 cmake --build "$work/build"

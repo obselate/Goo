@@ -18,6 +18,16 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             || descriptorSetLayout == 0uL {
             throw InvalidOperationException("vkCreateDescriptorSetLayout failed")
         }
+        try {
+            if let accounting = objectAccounting {
+                accounting.Allocate()
+            }
+        } catch (error Exception) {
+            let destroyLayout = dispatch.vkDestroyDescriptorSetLayout
+            destroyLayout(device, descriptorSetLayout, nil)
+            descriptorSetLayout = 0uL
+            throw error
+        }
         poolSizes[0] = VkDescriptorPoolSize{}
         poolSizes[0]._type = VkConstants.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
         poolSizes[0].descriptorCount = uint32(descriptorCapacity)
@@ -31,6 +41,17 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             || descriptorPool == 0uL {
             DestroyGeneration()
             throw InvalidOperationException("vkCreateDescriptorPool failed")
+        }
+        try {
+            if let accounting = objectAccounting {
+                accounting.Allocate()
+            }
+        } catch (error Exception) {
+            let destroyPool = dispatch.vkDestroyDescriptorPool
+            destroyPool(device, descriptorPool, nil)
+            descriptorPool = 0uL
+            DestroyGeneration()
+            throw error
         }
         var descriptorIndex int32 = 0
         while descriptorIndex < descriptorCapacity {
@@ -46,6 +67,17 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         if allocateSets(device, &allocateInfo, &descriptorSets[0]) != VkConstants.VK_SUCCESS {
             DestroyGeneration()
             throw InvalidOperationException("vkAllocateDescriptorSets failed")
+        }
+        try {
+            while trackedDescriptorSetCount < descriptorCapacity {
+                if let accounting = objectAccounting {
+                    accounting.Allocate()
+                }
+                trackedDescriptorSetCount = trackedDescriptorSetCount + 1
+            }
+        } catch (error Exception) {
+            DestroyGeneration()
+            throw error
         }
         nearestSampler = CreateSampler(VkConstants.VK_FILTER_NEAREST)
         linearSampler = CreateSampler(VkConstants.VK_FILTER_LINEAR)
@@ -67,6 +99,15 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         if createSampler(device, &samplerInfo, nil, &sampler) != VkConstants.VK_SUCCESS || sampler == 0uL {
             throw InvalidOperationException("vkCreateSampler failed")
         }
+        try {
+            if let accounting = objectAccounting {
+                accounting.Allocate()
+            }
+        } catch (error Exception) {
+            let destroySampler = dispatch.vkDestroySampler
+            destroySampler(device, sampler, nil)
+            throw error
+        }
         return sampler
     }
 
@@ -80,6 +121,16 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         if createBuffer(device, &bufferInfo, nil, &stagingBuffer) != VkConstants.VK_SUCCESS
             || stagingBuffer == 0uL {
             throw InvalidOperationException("vkCreateBuffer failed")
+        }
+        try {
+            if let accounting = objectAccounting {
+                accounting.Allocate()
+            }
+        } catch (error Exception) {
+            let destroyBuffer = dispatch.vkDestroyBuffer
+            destroyBuffer(device, stagingBuffer, nil)
+            stagingBuffer = 0uL
+            throw error
         }
         stagingAllocation = allocator.AllocateBuffer(stagingBuffer,
             uint32(VkConstants.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
@@ -123,10 +174,17 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         if createImage(device, &imageInfo, nil, &image) != VkConstants.VK_SUCCESS || image == 0uL {
             throw InvalidOperationException("vkCreateImage failed")
         }
+        try {
+            if let accounting = objectAccounting {
+                accounting.Allocate()
+            }
+        } catch (error Exception) {
+            let destroyImage = dispatch.vkDestroyImage
+            destroyImage(device, image, nil)
+            throw error
+        }
         var allocation VulkanMemoryAllocation? = nil
         var view VkImageView = 0uL
-        var nearestDescriptor VulkanImageDescriptorBinding{}
-        var linearDescriptor VulkanImageDescriptorBinding{}
         var registration VulkanResourceRegistration{}
         try {
             allocation = allocator.AllocateImage(image,
@@ -149,15 +207,22 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             if createView(device, &viewInfo, nil, &view) != VkConstants.VK_SUCCESS || view == 0uL {
                 throw InvalidOperationException("vkCreateImageView failed")
             }
+            try {
+                if let accounting = objectAccounting {
+                    accounting.Allocate()
+                }
+            } catch (error Exception) {
+                let destroyView = dispatch.vkDestroyImageView
+                destroyView(device, view, nil)
+                view = 0uL
+                throw error
+            }
             EnsureRegistryPublication(bytes)
             registration = registry.Register(id, bytes, source, cacheable)
-            nearestDescriptor = BindDescriptorSet(index, id, samplerId, view,
-                VulkanImageSamplerMode.Nearest)
-            linearDescriptor = BindDescriptorSet(index, id, samplerId, view,
-                VulkanImageSamplerMode.Linear)
-            registry.PublishGpu(id, generation, image, nearestDescriptor.Slot)
             entries[index] = VulkanImageResourceEntry{
                 Id: id,
+                ProviderId: source.ProviderId,
+                SourceId: source.SourceId,
                 Width: width,
                 Height: height,
                 Bytes: bytes,
@@ -165,11 +230,12 @@ internal unsafe partial class VulkanImageResources : IDisposable {
                 SamplerMode: samplerMode,
                 Cacheable: cacheable,
                 State: VulkanImageResourceState.Resident,
+                GpuPublished: false,
                 Image: image,
                 ImageView: view,
                 Allocation: allocation,
-                NearestDescriptor: nearestDescriptor,
-                LinearDescriptor: linearDescriptor,
+                NearestDescriptor: VulkanImageDescriptorBinding{},
+                LinearDescriptor: VulkanImageDescriptorBinding{},
                 ImageLayout: VkConstants.VK_IMAGE_LAYOUT_UNDEFINED,
                 UploadedVersion: 0uL,
                 Upload: VulkanUploadReservation{},
@@ -178,6 +244,8 @@ internal unsafe partial class VulkanImageResources : IDisposable {
                 UploadCommandBuffer: 0uL,
                 UploadFence: 0uL,
                 PendingRetire: false,
+                DropLogicalOnRetire: false,
+                RecordingUseCount: 0,
                 LastUseFence: 0uL,
                 RetireFence: 0uL,
                 LastTouch: TouchValue(),
@@ -192,9 +260,15 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             if view != 0uL {
                 let destroyView = dispatch.vkDestroyImageView
                 destroyView(device, view, nil)
+                if let accounting = objectAccounting {
+                    accounting.Release()
+                }
             }
             let destroyImage = dispatch.vkDestroyImage
             destroyImage(device, image, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
             if allocation != nil {
                 allocator.Release(allocation!!)
             }
@@ -215,6 +289,14 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         let slot = DescriptorSlot(index, samplerMode)
         if slot < 0 || slot >= descriptorCapacity || descriptorSets[slot] == 0uL {
             throw InvalidOperationException("Vulkan image descriptor capacity reached")
+        }
+        let existing = if samplerMode == VulkanImageSamplerMode.Nearest {
+            entries[index].NearestDescriptor
+        } else {
+            entries[index].LinearDescriptor
+        }
+        if existing.State != VulkanImageDescriptorState.Empty {
+            throw InvalidOperationException("Vulkan image descriptor is still in use")
         }
         let token = uint64(view)
         var imageInfo = VkDescriptorImageInfo{}

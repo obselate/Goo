@@ -18,12 +18,16 @@ internal unsafe partial class VulkanImageResources : IDisposable {
     private let descriptorSets []VkDescriptorSet
     private let descriptorLayouts []VkDescriptorSetLayout
     private let poolSizes []VkDescriptorPoolSize
+    private let currentReferenceCounts []int32
     private let uploadRing VulkanUploadRing
+    private let diagnostics VulkanDiagnostics?
+    private let objectAccounting VulkanObjectAccounting?
     private let stagingByteCapacity VkDeviceSize
     private var stagingBuffer VkBuffer
     private var stagingAllocation VulkanMemoryAllocation? = nil
     private var descriptorPool VkDescriptorPool
     private var descriptorSetLayout VkDescriptorSetLayout
+    private var trackedDescriptorSetCount int32
     private var nearestSampler VkSampler
     private var linearSampler VkSampler
     private var generation uint64
@@ -66,7 +70,9 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         maximumLogicalSourceBytes VkDeviceSize,
         stagingBytes VkDeviceSize,
         uploadRangeCapacity int32,
-        initialGeneration uint64) {
+        nativeDiagnostics VulkanDiagnostics?,
+        initialGeneration uint64,
+        nativeObjectAccounting VulkanObjectAccounting?) {
         if nativeDevice == nint(0) {
             throw ArgumentException("Vulkan device is null", "nativeDevice")
         }
@@ -94,6 +100,8 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         device = nativeDevice
         dispatch = nativeDispatch
         allocator = nativeAllocator
+        diagnostics = nativeDiagnostics
+        objectAccounting = nativeObjectAccounting
         capacity = imageCapacity
         residentByteBudget = maximumResidentBytes
         stagingByteCapacity = stagingBytes
@@ -103,6 +111,7 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         descriptorSets = [descriptorCapacity]VkDescriptorSet
         descriptorLayouts = [descriptorCapacity]VkDescriptorSetLayout
         poolSizes = [1]VkDescriptorPoolSize
+        currentReferenceCounts = [imageCapacity]int32
         generation = initialGeneration
         highestCompletedFence = 0uL
         generationLastUseFence = 0uL
@@ -140,6 +149,9 @@ internal unsafe partial class VulkanImageResources : IDisposable {
                 && entry.RetireFence > highestCompletedFence {
                 throw InvalidOperationException("Vulkan image retirement is still in flight")
             }
+            if entry.RecordingUseCount != 0 || entry.PendingRetire {
+                throw InvalidOperationException("Vulkan image recording reservation is still active")
+            }
             entryIndex++
         }
         let uploadStats = uploadRing.Stats
@@ -148,6 +160,7 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         }
         try {
             DestroyGpuResources()
+            ClearCurrentReferences()
             registry.SetGpuGeneration(nextGeneration)
             uploadRing.SetGeneration(nextGeneration)
             generation = nextGeneration
@@ -156,6 +169,7 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             flushPrepared = false
             CreateGeneration()
         } catch (error Exception) {
+            ClearCurrentReferences()
             DestroyGeneration()
             DestroyStagingBuffer()
             uploadRing.Dispose()

@@ -23,8 +23,9 @@ runtime_files=(
 vulkan_files=(
   Vulkan/Runtime/HarfBuzz-COPYING.txt
   Vulkan/Shaders/analytic.vert.spv
-  Vulkan/Shaders/analytic_linear3.frag.spv
-  Vulkan/Shaders/analytic_radial3.frag.spv
+  Vulkan/Shaders/analytic_border.frag.spv
+  Vulkan/Shaders/analytic_linear4.frag.spv
+  Vulkan/Shaders/analytic_radial4.frag.spv
   Vulkan/Shaders/analytic_sampled_image.frag.spv
   Vulkan/Shaders/analytic_solid.frag.spv
   Vulkan/Shaders/hb_gpu.vert.spv

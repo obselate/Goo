@@ -114,6 +114,10 @@ internal struct PerEdgeBorderRecord {
     internal var RightWidth float32
     internal var BottomWidth float32
     internal var LeftWidth float32
+    internal var RadiusTopLeft float32
+    internal var RadiusTopRight float32
+    internal var RadiusBottomRight float32
+    internal var RadiusBottomLeft float32
     internal var TopColor uint32
     internal var RightColor uint32
     internal var BottomColor uint32
@@ -129,6 +133,10 @@ internal struct GradientStopRecord {
 
 internal struct LinearGradientRecord {
     internal var Bounds ConservativeBounds
+    internal var RadiusTopLeft float32
+    internal var RadiusTopRight float32
+    internal var RadiusBottomRight float32
+    internal var RadiusBottomLeft float32
     internal var StartX float32
     internal var StartY float32
     internal var EndX float32
@@ -141,6 +149,10 @@ internal struct LinearGradientRecord {
 
 internal struct RadialGradientRecord {
     internal var Bounds ConservativeBounds
+    internal var RadiusTopLeft float32
+    internal var RadiusTopRight float32
+    internal var RadiusBottomRight float32
+    internal var RadiusBottomLeft float32
     internal var CenterX float32
     internal var CenterY float32
     internal var RadiusX float32

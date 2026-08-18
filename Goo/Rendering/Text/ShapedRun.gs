@@ -16,10 +16,10 @@ internal sealed class ShapedRun : IDisposable {
   internal prop VisualStart float32 { get; set; }
   internal prop VisualEnd float32 { get; set; }
   internal prop OwnsTypeface bool { get; set; }
-  internal prop Font VulkanTextFont {
+  internal prop Provider VulkanTextProvider {
     get {
       guard let lease = typefaceLease else { throw ObjectDisposedException("ShapedRun") }
-      return lease.Font
+      return lease.Provider
     }
   }
   private let typefaceLease TypefaceLease?

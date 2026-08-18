@@ -37,20 +37,38 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     }
 
     private func ValidateGradientStops(frame SceneFrame, start int32, count int32) {
-        if count != 3 || start < 0 || start > frame.GradientStopCount - 3 {
-            throw NotSupportedException("Vulkan primitive renderer requires exactly three gradient stops")
+        if count < 2 || count > MaxGradientStops || start < 0
+            || start > frame.GradientStopCount - count {
+            throw NotSupportedException("Vulkan primitive renderer requires two to four gradient stops")
         }
         let first = frame.GradientStops[start]
         let second = frame.GradientStops[start + 1]
-        let third = frame.GradientStops[start + 2]
         ValidateFinite(first.Offset, "gradient stop offset")
         ValidateFinite(second.Offset, "gradient stop offset")
-        ValidateFinite(third.Offset, "gradient stop offset")
         if first.Offset < 0.0F || first.Offset > 1.0F
             || second.Offset < 0.0F || second.Offset > 1.0F
-            || third.Offset < 0.0F || third.Offset > 1.0F
-            || first.Offset > second.Offset || second.Offset > third.Offset {
+            || first.Offset > second.Offset {
             throw ArgumentOutOfRangeException("gradient stop range")
+        }
+        if count >= 3 {
+            let third = frame.GradientStops[start + 2]
+            ValidateFinite(third.Offset, "gradient stop offset")
+            if third.Offset < 0.0F || third.Offset > 1.0F || second.Offset > third.Offset {
+                throw ArgumentOutOfRangeException("gradient stop range")
+            }
+        }
+        if count >= 4 {
+            let fourth = frame.GradientStops[start + 3]
+            ValidateFinite(fourth.Offset, "gradient stop offset")
+            if fourth.Offset < 0.0F || fourth.Offset > 1.0F {
+                throw ArgumentOutOfRangeException("gradient stop range")
+            }
+            if count >= 3 {
+                let third = frame.GradientStops[start + 2]
+                if third.Offset > fourth.Offset {
+                    throw ArgumentOutOfRangeException("gradient stop range")
+                }
+            }
         }
     }
 
@@ -171,9 +189,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         ValidateRadius(value.RightWidth)
         ValidateRadius(value.BottomWidth)
         ValidateRadius(value.LeftWidth)
-        if value.Style != 0u {
-            throw NotSupportedException("Vulkan primitive renderer supports only solid borders")
-        }
+        ValidateRadius(value.RadiusTopLeft)
+        ValidateRadius(value.RadiusTopRight)
+        ValidateRadius(value.RadiusBottomRight)
+        ValidateRadius(value.RadiusBottomLeft)
         ValidateTransformIndex(frame, value.TransformIndex)
         let transform = ResolveTransform(frame, value.TransformIndex)
         if bounds.IsEmpty {
@@ -183,6 +202,43 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         let bottomWidth = ClampLength(value.BottomWidth, Max(bounds.Height - topWidth, 0.0F))
         let rightWidth = ClampLength(value.RightWidth, bounds.Width)
         let leftWidth = ClampLength(value.LeftWidth, Max(bounds.Width - rightWidth, 0.0F))
+        if value.Style != uint32(int32(BorderStyle.Solid))
+            && value.Style != uint32(int32(BorderStyle.Dashed))
+            && value.Style != uint32(int32(BorderStyle.Dotted)) {
+            throw NotSupportedException("Vulkan primitive renderer received an unknown border style")
+        }
+        let rounded = value.RadiusTopLeft > 0.0F || value.RadiusTopRight > 0.0F
+            || value.RadiusBottomRight > 0.0F || value.RadiusBottomLeft > 0.0F
+        if value.Style != uint32(int32(BorderStyle.Solid)) || rounded {
+            var push = AnalyticBorderPushConstants{}
+            FillTransform(&push, bounds, transform, extent)
+            push.widths_x = topWidth
+            push.widths_y = rightWidth
+            push.widths_z = bottomWidth
+            push.widths_w = leftWidth
+            push.radii_x = value.RadiusTopLeft
+            push.radii_y = value.RadiusTopRight
+            push.radii_z = value.RadiusBottomRight
+            push.radii_w = value.RadiusBottomLeft
+            push.params_x = 0.0F
+            push.params_y = bounds.Width
+            push.params_z = bounds.Width + bounds.Height
+            push.params_w = bounds.Width + bounds.Height + bounds.Width
+            let top = PackColor(value.TopColor, 1.0F)
+            let right = PackColor(value.RightColor, 1.0F)
+            let bottom = PackColor(value.BottomColor, 1.0F)
+            let left = PackColor(value.LeftColor, 1.0F)
+            push.packedColors_x = top.Rgb
+            push.packedColors_y = right.Rgb
+            push.packedColors_z = bottom.Rgb
+            push.packedColors_w = PackAlphaTriplet(top.Alpha, right.Alpha, bottom.Alpha)
+            push.packedColorsExtra_x = left.Rgb
+            push.packedColorsExtra_y = left.Alpha
+            push.packedColorsExtra_z = 0u
+            push.packedColorsExtra_w = value.Style
+            BindAndDraw(commandBuffer, borderPipeline, *void(&push))
+            return
+        }
         let interiorHeight = Max(bounds.Height - topWidth - bottomWidth, 0.0F)
         if topWidth > 0.0F {
             EmitSolidResolved(commandBuffer, extent, ConservativeBounds{
@@ -228,6 +284,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         ValidateFinite(value.StartY, "linear gradient start y")
         ValidateFinite(value.EndX, "linear gradient end x")
         ValidateFinite(value.EndY, "linear gradient end y")
+        ValidateRadius(value.RadiusTopLeft)
+        ValidateRadius(value.RadiusTopRight)
+        ValidateRadius(value.RadiusBottomRight)
+        ValidateRadius(value.RadiusBottomLeft)
         ValidateOpacity(value.Opacity)
         ValidateTransformIndex(frame, value.TransformIndex)
         ValidateGradientStops(frame, value.StopStart, value.StopCount)
@@ -235,15 +295,19 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         if value.Bounds.IsEmpty {
             return
         }
-        var push = AnalyticLinear3PushConstants{}
+        var push = AnalyticLinear4PushConstants{}
         FillTransform(&push, value.Bounds, transform, extent)
+        push.radii_x = value.RadiusTopLeft
+        push.radii_y = value.RadiusTopRight
+        push.radii_z = value.RadiusBottomRight
+        push.radii_w = value.RadiusBottomLeft
         let width = Max(value.Bounds.Width, 0.0001F)
         let height = Max(value.Bounds.Height, 0.0001F)
         push.params_x = (value.StartX - value.Bounds.X) / width
         push.params_y = (value.StartY - value.Bounds.Y) / height
         push.params_z = (value.EndX - value.Bounds.X) / width
         push.params_w = (value.EndY - value.Bounds.Y) / height
-        FillLinearStops(&push, frame, value.StopStart, value.Opacity)
+        FillLinearStops(&push, frame, value.StopStart, value.StopCount, value.Opacity)
         BindAndDraw(commandBuffer, linearPipeline, *void(&push))
     }
 
@@ -257,6 +321,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         ValidateFinite(value.CenterY, "radial gradient center y")
         ValidateRadius(value.RadiusX)
         ValidateRadius(value.RadiusY)
+        ValidateRadius(value.RadiusTopLeft)
+        ValidateRadius(value.RadiusTopRight)
+        ValidateRadius(value.RadiusBottomRight)
+        ValidateRadius(value.RadiusBottomLeft)
         ValidateOpacity(value.Opacity)
         ValidateTransformIndex(frame, value.TransformIndex)
         ValidateGradientStops(frame, value.StopStart, value.StopCount)
@@ -264,15 +332,19 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         if value.Bounds.IsEmpty {
             return
         }
-        var push = AnalyticRadial3PushConstants{}
+        var push = AnalyticRadial4PushConstants{}
         FillTransform(&push, value.Bounds, transform, extent)
+        push.radii_x = value.RadiusTopLeft
+        push.radii_y = value.RadiusTopRight
+        push.radii_z = value.RadiusBottomRight
+        push.radii_w = value.RadiusBottomLeft
         let width = Max(value.Bounds.Width, 0.0001F)
         let height = Max(value.Bounds.Height, 0.0001F)
         push.params_x = (value.CenterX - value.Bounds.X) / width
         push.params_y = (value.CenterY - value.Bounds.Y) / height
         push.params_z = Max(value.RadiusX / width, 0.0001F)
         push.params_w = Max(value.RadiusY / height, 0.0001F)
-        FillRadialStops(&push, frame, value.StopStart, value.Opacity)
+        FillRadialStops(&push, frame, value.StopStart, value.StopCount, value.Opacity)
         BindAndDraw(commandBuffer, radialPipeline, *void(&push))
     }
 
@@ -327,11 +399,26 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         push.params_y = value.SourceY
         push.params_z = value.SourceWidth
         push.params_w = value.SourceHeight
-        imageResources!!.BindDescriptor(commandBuffer, pipelineLayout, value.ImageId,
-            value.SamplerId, samplerMode, resourceGeneration)
+        EnsureDescriptorLayout(pipelineLayout)
+        let sameDescriptor = sampledDescriptorBound
+            && SameResourceId(sampledImageId, value.ImageId)
+            && SameResourceId(sampledSamplerId, value.SamplerId)
+            && sampledSamplerMode == samplerMode
+            && sampledGeneration == resourceGeneration
+        if !sameDescriptor {
+            imageResources!!.BindDescriptor(commandBuffer, pipelineLayout, value.ImageId,
+                value.SamplerId, samplerMode, resourceGeneration)
+            recordDescriptorChangeCount++
+            sampledDescriptorBound = true
+            sampledImageId = value.ImageId
+            sampledSamplerId = value.SamplerId
+            sampledSamplerMode = samplerMode
+            sampledGeneration = resourceGeneration
+        }
         if activePipeline != sampledPipeline {
             let bindPipeline = dispatch.vkCmdBindPipeline
             bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, sampledPipeline)
+            recordPipelineChangeCount++
             activePipeline = sampledPipeline
         }
         let pushConstants = dispatch.vkCmdPushConstants
@@ -348,7 +435,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         extent VkExtent2D,
         value CachedGlyphRunRefRecord,
         frame SceneFrame) {
-        if textAtlas == nil || textPipelineLayout == 0uL {
+        if textAtlases == nil || textPipelineLayout == 0uL {
             throw NotSupportedException("Vulkan primitive renderer has no text atlas pipeline")
         }
         ValidateBounds(value.Bounds)
@@ -373,9 +460,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         if value.Bounds.IsEmpty {
             return
         }
+        let atlas = textAtlases!!.Resolve(value.AtlasId)
         let atlasTexelOffset = uint64(value.AtlasTexelOffset)
         let atlasTexelCount = uint64(value.AtlasTexelCount)
-        let atlasTexelTotal = uint64(textAtlas!!.TexelCount)
+        let atlasTexelTotal = uint64(atlas.TexelCount)
         if atlasTexelCount == 0uL || atlasTexelOffset >= atlasTexelTotal {
             throw ArgumentOutOfRangeException("cached glyph atlas range")
         }
@@ -437,10 +525,19 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
             push.foreground_z = linearChannels[blue]
         }
         push.foreground_w = alpha
-        textAtlas!!.BindDescriptor(commandBuffer, textPipelineLayout)
-        let bindPipeline = dispatch.vkCmdBindPipeline
-        bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline)
-        activePipeline = selectedPipeline
+        EnsureDescriptorLayout(textPipelineLayout)
+        if !textDescriptorBound || !SameResourceId(textAtlasId, value.AtlasId) {
+            atlas.BindDescriptor(commandBuffer, textPipelineLayout)
+            recordDescriptorChangeCount++
+            textDescriptorBound = true
+            textAtlasId = value.AtlasId
+        }
+        if activePipeline != selectedPipeline {
+            let bindPipeline = dispatch.vkCmdBindPipeline
+            bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline)
+            recordPipelineChangeCount++
+            activePipeline = selectedPipeline
+        }
         let pushConstants = dispatch.vkCmdPushConstants
         pushConstants(commandBuffer, textPipelineLayout,
             uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
@@ -472,7 +569,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     }
 
     private func FillTransform(
-        push *AnalyticLinear3PushConstants,
+        push *AnalyticBorderPushConstants,
         bounds ConservativeBounds,
         transform PrimitiveTransform,
         extent VkExtent2D) {
@@ -493,7 +590,28 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     }
 
     private func FillTransform(
-        push *AnalyticRadial3PushConstants,
+        push *AnalyticLinear4PushConstants,
+        bounds ConservativeBounds,
+        transform PrimitiveTransform,
+        extent VkExtent2D) {
+        push->rect_x = bounds.X
+        push->rect_y = bounds.Y
+        push->rect_z = bounds.Width
+        push->rect_w = bounds.Height
+        let width = float32(extent.width)
+        let height = float32(extent.height)
+        push->transform0_x = 2.0F * transform.A / width
+        push->transform0_y = 2.0F * transform.C / width
+        push->transform0_z = 2.0F * transform.TX / width - 1.0F
+        push->transform0_w = 0.0F
+        push->transform1_x = 2.0F * transform.B / height
+        push->transform1_y = 2.0F * transform.D / height
+        push->transform1_z = 2.0F * transform.TY / height - 1.0F
+        push->transform1_w = 0.0F
+    }
+
+    private func FillTransform(
+        push *AnalyticRadial4PushConstants,
         bounds ConservativeBounds,
         transform PrimitiveTransform,
         extent VkExtent2D) {
@@ -535,51 +653,79 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     }
 
     private func FillLinearStops(
-        push *AnalyticLinear3PushConstants,
+        push *AnalyticLinear4PushConstants,
         frame SceneFrame,
         start int32,
+        count int32,
         opacity float32) {
         let first = frame.GradientStops[start]
         let second = frame.GradientStops[start + 1]
-        let third = frame.GradientStops[start + 2]
+        var third = second
+        var fourth = second
+        if count >= 3 {
+            third = frame.GradientStops[start + 2]
+        }
+        if count >= 4 {
+            fourth = frame.GradientStops[start + 3]
+        }
         push->stopPositions_x = first.Offset
         push->stopPositions_y = second.Offset
         push->stopPositions_z = third.Offset
-        push->stopPositions_w = 0.0F
+        push->stopPositions_w = fourth.Offset
         let packedFirst = PackColor(first.Color, opacity)
         let packedSecond = PackColor(second.Color, opacity)
         let packedThird = PackColor(third.Color, opacity)
+        let packedFourth = PackColor(fourth.Color, opacity)
         push->packedColors_x = packedFirst.Rgb
         push->packedColors_y = packedSecond.Rgb
         push->packedColors_z = packedThird.Rgb
         push->packedColors_w = PackAlphaTriplet(packedFirst.Alpha, packedSecond.Alpha, packedThird.Alpha)
+        push->packedColorsExtra_x = packedFourth.Rgb
+        push->packedColorsExtra_y = packedFourth.Alpha
+        push->packedColorsExtra_z = uint32(count)
+        push->packedColorsExtra_w = 0u
     }
 
     private func FillRadialStops(
-        push *AnalyticRadial3PushConstants,
+        push *AnalyticRadial4PushConstants,
         frame SceneFrame,
         start int32,
+        count int32,
         opacity float32) {
         let first = frame.GradientStops[start]
         let second = frame.GradientStops[start + 1]
-        let third = frame.GradientStops[start + 2]
+        var third = second
+        var fourth = second
+        if count >= 3 {
+            third = frame.GradientStops[start + 2]
+        }
+        if count >= 4 {
+            fourth = frame.GradientStops[start + 3]
+        }
         push->stopPositions_x = first.Offset
         push->stopPositions_y = second.Offset
         push->stopPositions_z = third.Offset
-        push->stopPositions_w = 0.0F
+        push->stopPositions_w = fourth.Offset
         let packedFirst = PackColor(first.Color, opacity)
         let packedSecond = PackColor(second.Color, opacity)
         let packedThird = PackColor(third.Color, opacity)
+        let packedFourth = PackColor(fourth.Color, opacity)
         push->packedColors_x = packedFirst.Rgb
         push->packedColors_y = packedSecond.Rgb
         push->packedColors_z = packedThird.Rgb
         push->packedColors_w = PackAlphaTriplet(packedFirst.Alpha, packedSecond.Alpha, packedThird.Alpha)
+        push->packedColorsExtra_x = packedFourth.Rgb
+        push->packedColorsExtra_y = packedFourth.Alpha
+        push->packedColorsExtra_z = uint32(count)
+        push->packedColorsExtra_w = 0u
     }
 
     private func BindAndDraw(commandBuffer VkCommandBuffer, pipeline VkPipeline, pushData *void) {
+        EnsureDescriptorLayout(pipelineLayout)
         if activePipeline != pipeline {
             let bindPipeline = dispatch.vkCmdBindPipeline
             bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline)
+            recordPipelineChangeCount++
             activePipeline = pipeline
         }
         let push = dispatch.vkCmdPushConstants
@@ -589,6 +735,26 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
             0u, PushConstantSize, pushData)
         let draw = dispatch.vkCmdDraw
         draw(commandBuffer, 6u, 1u, 0u, 0u)
+    }
+
+    private func EnsureDescriptorLayout(layout VkPipelineLayout) {
+        if boundDescriptorLayout == layout {
+            return
+        }
+        boundDescriptorLayout = layout
+        sampledDescriptorBound = false
+        sampledImageId = ResourceId{}
+        sampledSamplerId = ResourceId{}
+        sampledSamplerMode = VulkanImageSamplerMode.Nearest
+        sampledGeneration = 0uL
+        textDescriptorBound = false
+        textAtlasId = ResourceId{}
+    }
+
+    private func SameResourceId(left ResourceId, right ResourceId) bool {
+        return left.Kind == right.Kind
+            && left.LogicalId == right.LogicalId
+            && left.Version == right.Version
     }
 
     private func PushClip(commandBuffer VkCommandBuffer, clip PrimitiveClip) {

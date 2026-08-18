@@ -12,35 +12,22 @@ internal unsafe data struct SdlVulkanExtensionPointer {
 internal unsafe partial class SdlHost {
   internal func LoadVulkanLibrary() bool {
     ThrowIfDisposed()
-    let path *uint8 = nil
-    return SDL.VulkanLoadLibrary(path)
+    return SdlRuntime.AcquireVulkan()
   }
 
   internal func GetVulkanGetInstanceProcAddr() nint {
     ThrowIfDisposed()
-    return SDL_Vulkan_GetVkGetInstanceProcAddrRaw()
+    return SdlRuntime.GetVulkanGetInstanceProcAddress()
   }
 
   internal func UnloadVulkanLibrary() {
     ThrowIfDisposed()
-    SDL.VulkanUnloadLibrary()
+    SdlRuntime.ReleaseVulkan()
   }
 
   internal func GetVulkanInstanceExtensions() []string {
     ThrowIfDisposed()
-    var count uint32 = 0u
-    let raw = SDL.VulkanGetInstanceExtensions(&count)
-    if raw == nil || count == 0u {
-      throw InvalidOperationException("SDL_Vulkan_GetInstanceExtensions failed: " + SDL.GetErrorS())
-    }
-    let pointers = *SdlVulkanExtensionPointer(raw)
-    let values = [int32(count)]string
-    var index uint32 = 0u
-    while index < count {
-      values[index] = Marshal.PtrToStringUTF8(nint(pointers[index].Value)) ?? ""
-      index++
-    }
-    return values
+    return SdlRuntime.GetVulkanInstanceExtensions()
   }
 
   internal func CreateVulkanSurface(instance nint, out surface uint64) bool {

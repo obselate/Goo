@@ -32,6 +32,9 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
                     if block.memory != 0uL {
                         let freeMemory = deviceDispatch.vkFreeMemory
                         freeMemory(device, block.memory, nil)
+                        if let accounting = objectAccounting {
+                            accounting.Release()
+                        }
                         block.memory = 0uL
                     }
                     block.allocationCount = 0u
@@ -82,6 +85,10 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
         if heapIndex >= memoryProperties.memoryHeapCount {
             throw InvalidOperationException("Vulkan memory allocation references an invalid heap")
         }
+        budget.Refresh()
+        if !budget.CanAllocate(heapIndex, blockSize) {
+            throw InvalidOperationException("Vulkan memory heap budget exceeded")
+        }
         let heap = MemoryHeap(memoryProperties, heapIndex)
         let current = heapResidentBytes[int32(heapIndex)]
         if blockSize > heap.size || current > heap.size - blockSize {
@@ -108,6 +115,7 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
     private func ResetAllocation(allocation VulkanMemoryAllocation) {
         allocation.memory = 0uL
         allocation.size = 0uL
+        allocation.placementSpan = 0uL
         allocation.offset = 0uL
         allocation.memoryTypeIndex = 0u
         allocation.heapIndex = 0u

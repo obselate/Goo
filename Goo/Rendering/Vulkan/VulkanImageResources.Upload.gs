@@ -21,11 +21,15 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         if source.Bytes != bytes || source.Version != id.Version {
             throw ArgumentException("Vulkan image source does not match image extent", "source")
         }
+        SupersedeOlderSourceVersions(source)
         let existingIndex = FindLogicalIndex(id)
         if existingIndex >= 0 {
             var existing = entries[existingIndex]
             if existing.State == VulkanImageResourceState.Resident
                 || existing.State == VulkanImageResourceState.UploadPending {
+                if existing.PendingRetire {
+                    throw InvalidOperationException("Vulkan image is pending retirement")
+                }
                 if existing.Id.Version == id.Version {
                     EnsureExactMetadata(existing, id, width, height, source, cacheable, samplerId, samplerMode)
                     registry.Register(id, bytes, source, cacheable)
@@ -123,11 +127,28 @@ internal unsafe partial class VulkanImageResources : IDisposable {
     }
 
     internal func RecordUploads(commandBuffer VkCommandBuffer, expectedGeneration uint64) int32 {
+        var recordedBytes VkDeviceSize = 0uL
+        var recordedBarriers int32 = 0
+        return RecordUploads(commandBuffer, expectedGeneration, out recordedBytes,
+            out recordedBarriers)
+    }
+
+    internal func RecordUploads(commandBuffer VkCommandBuffer, expectedGeneration uint64,
+        out recordedBytes VkDeviceSize) int32 {
+        var recordedBarriers int32 = 0
+        return RecordUploads(commandBuffer, expectedGeneration, out recordedBytes,
+            out recordedBarriers)
+    }
+
+    internal func RecordUploads(commandBuffer VkCommandBuffer, expectedGeneration uint64,
+        out recordedBytes VkDeviceSize, out recordedBarriers int32) int32 {
         EnsureOpen()
         ValidateGeneration(expectedGeneration)
         if commandBuffer == nint(0) {
             throw ArgumentException("Command buffer is null", "commandBuffer")
         }
+        recordedBytes = 0uL
+        recordedBarriers = 0
         var recorded int32 = 0
         var index int32 = 0
         while index < entries.Length {
@@ -166,6 +187,8 @@ internal unsafe partial class VulkanImageResources : IDisposable {
                 entry.UploadRecorded = true
                 entries[index] = entry
                 recorded++
+                recordedBytes = recordedBytes + entry.Upload.Size
+                recordedBarriers = recordedBarriers + 2
             }
             index++
         }
@@ -177,11 +200,24 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         if stagingAllocation == nil {
             return VkConstants.VK_SUCCESS
         }
-        let result = allocator.FlushBeforeSubmit(stagingAllocation!!)
-        if result == VkConstants.VK_SUCCESS {
-            flushPrepared = true
+        var flushed bool = false
+        var index int32 = 0
+        while index < entries.Length {
+            let entry = entries[index]
+            if entry.State == VulkanImageResourceState.UploadPending
+                && entry.Upload.Succeeded && !entry.UploadSubmitted {
+                let result = allocator.FlushBeforeSubmit(stagingAllocation!!,
+                    entry.Upload.Offset, entry.Upload.Size)
+                if result != VkConstants.VK_SUCCESS {
+                    flushPrepared = false
+                    return result
+                }
+                flushed = true
+            }
+            index = index + 1
         }
-        return result
+        flushPrepared = flushed
+        return VkConstants.VK_SUCCESS
     }
 
     internal func AbortUploads(commandBuffer VkCommandBuffer, expectedGeneration uint64) int32 {
@@ -218,7 +254,13 @@ internal unsafe partial class VulkanImageResources : IDisposable {
                 entry.UploadCommandBuffer = 0uL
                 entry.UploadFence = 0uL
                 entry.PendingRetire = false
+                let dropLogicalOnRetire = entry.DropLogicalOnRetire
                 entries[index] = entry
+                if dropLogicalOnRetire {
+                    if !Retire(entry.Id, generation, highestCompletedFence) {
+                        throw InvalidOperationException("Vulkan image retirement failed")
+                    }
+                }
                 aborted++
             }
             index++
@@ -258,7 +300,13 @@ internal unsafe partial class VulkanImageResources : IDisposable {
                 entry.UploadCommandBuffer = 0uL
                 entry.UploadFence = 0uL
                 entry.PendingRetire = false
+                let dropLogicalOnRetire = entry.DropLogicalOnRetire
                 entries[index] = entry
+                if dropLogicalOnRetire {
+                    if !Retire(entry.Id, generation, highestCompletedFence) {
+                        throw InvalidOperationException("Vulkan image retirement failed")
+                    }
+                }
                 aborted++
             }
             index++
@@ -359,6 +407,13 @@ internal unsafe partial class VulkanImageResources : IDisposable {
                 }
                 entry.UploadSubmitted = true
                 entry.UploadFence = fence
+                if entry.PendingRetire {
+                    let safeFence = RetireFence(entry, fence)
+                    entry.RetireFence = safeFence
+                    if safeFence > generationLastUseFence {
+                        generationLastUseFence = safeFence
+                    }
+                }
                 entry.ImageLayout = VkConstants.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                 entries[index] = entry
             }
@@ -370,6 +425,50 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         return tracked
     }
 
+    internal func ReserveRecording(id ResourceId, expectedGeneration uint64) {
+        EnsureOpen()
+        ValidateGeneration(expectedGeneration)
+        let index = FindExactIndex(id)
+        if index < 0 {
+            throw InvalidOperationException("Vulkan image is not registered")
+        }
+        var entry = entries[index]
+        if entry.State != VulkanImageResourceState.Resident
+            || !entry.GpuPublished || entry.PendingRetire {
+            throw InvalidOperationException("Vulkan image is not available for recording")
+        }
+        if entry.RecordingUseCount == Int32.MaxValue {
+            throw InvalidOperationException("Vulkan image recording reservation capacity reached")
+        }
+        entry.RecordingUseCount++
+        entry.LastTouch = TouchValue()
+        entries[index] = entry
+    }
+
+    internal func ReleaseRecording(id ResourceId, expectedGeneration uint64) bool {
+        EnsureOpen()
+        ValidateGeneration(expectedGeneration)
+        let index = FindExactIndex(id)
+        if index < 0 {
+            return false
+        }
+        var entry = entries[index]
+        if entry.RecordingUseCount == 0 {
+            return false
+        }
+        entry.RecordingUseCount--
+        let retire = entry.PendingRetire && entry.RecordingUseCount == 0
+        if retire {
+            entry.PendingRetire = false
+        }
+        entry.LastTouch = TouchValue()
+        entries[index] = entry
+        if retire && !Retire(id, generation, highestCompletedFence) {
+            throw InvalidOperationException("Vulkan image retirement failed")
+        }
+        return true
+    }
+
     internal func MarkUsed(id ResourceId, expectedGeneration uint64, fence uint64) {
         EnsureOpen()
         ValidateGeneration(expectedGeneration)
@@ -378,10 +477,14 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         }
         let index = FindExactIndex(id)
         if index < 0 {
-            throw InvalidOperationException("Vulkan image is not registered")
+            return
         }
-        if entries[index].PendingRetire {
-            throw InvalidOperationException("Vulkan image is pending retirement")
+        if entries[index].RecordingUseCount == 0 {
+            return
+        }
+        if entries[index].State != VulkanImageResourceState.Resident
+            || !entries[index].GpuPublished {
+            throw InvalidOperationException("Vulkan image upload is not complete")
         }
         registry.MarkUsed(id, expectedGeneration, fence)
         var entry = entries[index]
@@ -391,8 +494,18 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         if fence > generationLastUseFence {
             generationLastUseFence = fence
         }
+        if entry.RecordingUseCount > 0 {
+            entry.RecordingUseCount--
+        }
+        let retire = entry.PendingRetire && entry.RecordingUseCount == 0
+        if retire {
+            entry.PendingRetire = false
+        }
         entry.LastTouch = TouchValue()
         entries[index] = entry
+        if retire && !Retire(id, generation, fence) {
+            throw InvalidOperationException("Vulkan image retirement failed")
+        }
     }
 
     internal func Retire(id ResourceId, expectedGeneration uint64, fence uint64) bool {
@@ -403,6 +516,18 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             return false
         }
         var entry = entries[index]
+        if entry.RecordingUseCount != 0 {
+            let safeFence = RetireFence(entry, fence)
+            entry.PendingRetire = true
+            if safeFence > entry.RetireFence {
+                entry.RetireFence = safeFence
+            }
+            entries[index] = entry
+            if entry.RetireFence > generationLastUseFence {
+                generationLastUseFence = entry.RetireFence
+            }
+            return true
+        }
         if entry.PendingRetire {
             if entry.State == VulkanImageResourceState.UploadPending
                 && entry.UploadSubmitted {
@@ -432,11 +557,13 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         if entry.State == VulkanImageResourceState.Retiring {
             let safeFence = RetireFence(entry, fence)
             if safeFence > entry.RetireFence {
-                let retiredEntry = RetireDescriptors(entry, safeFence)
-                if !registry.Retire(id, safeFence) {
-                    throw InvalidOperationException("Vulkan image registry entry is not resident")
+                if entry.GpuPublished {
+                    let retiredEntry = RetireDescriptors(entry, safeFence)
+                    if !registry.Retire(id, safeFence) {
+                        throw InvalidOperationException("Vulkan image registry entry is not resident")
+                    }
+                    entry = retiredEntry
                 }
-                entry = retiredEntry
                 entry.RetireFence = safeFence
                 entries[index] = entry
                 if safeFence > generationLastUseFence {
@@ -450,6 +577,25 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         }
         let cancelUpload = entry.Upload.Succeeded && !entry.UploadSubmitted
         let safeFence = RetireFence(entry, fence)
+        if !entry.GpuPublished {
+            if cancelUpload {
+                if !uploadRing.Cancel(entry.Upload) {
+                    throw InvalidOperationException("Vulkan image upload reservation is stale")
+                }
+                entry.Upload = VulkanUploadReservation{}
+                entry.UploadRecorded = false
+                entry.UploadSubmitted = false
+                entry.UploadCommandBuffer = 0uL
+                entry.UploadFence = 0uL
+            }
+            entry.RetireFence = safeFence
+            entry.State = VulkanImageResourceState.Retiring
+            entries[index] = entry
+            if entry.RetireFence > generationLastUseFence {
+                generationLastUseFence = entry.RetireFence
+            }
+            return true
+        }
         let registryLookup = registry.Lookup(id, generation)
         if !registryLookup.Found {
             throw InvalidOperationException("Vulkan image registry entry is stale")
@@ -478,6 +624,37 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             generationLastUseFence = entry.RetireFence
         }
         return true
+    }
+
+    private func SupersedeOlderSourceVersions(source VulkanResourceSource) {
+        var superseded bool = false
+        var index int32 = 0
+        while index < entries.Length {
+            let entry = entries[index]
+            if entry.State != VulkanImageResourceState.Empty
+                && entry.ProviderId == source.ProviderId
+                && entry.SourceId == source.SourceId
+                && entry.Id.Version < source.Version {
+                var marked = entry
+                marked.DropLogicalOnRetire = true
+                if entry.State == VulkanImageResourceState.UploadPending
+                    && entry.Upload.Succeeded && entry.UploadRecorded
+                    && !entry.UploadSubmitted {
+                    marked.PendingRetire = true
+                    entries[index] = marked
+                } else {
+                    entries[index] = marked
+                    if !Retire(entry.Id, generation, highestCompletedFence) {
+                        throw InvalidOperationException("Vulkan image retirement failed")
+                    }
+                }
+                superseded = true
+            }
+            index++
+        }
+        if superseded {
+            Collect(highestCompletedFence)
+        }
     }
 
 }

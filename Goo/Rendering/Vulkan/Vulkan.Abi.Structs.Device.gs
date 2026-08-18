@@ -57,6 +57,21 @@ internal unsafe struct VkPhysicalDeviceMemoryProperties {
 }
 
 @StructLayout(LayoutKind.Sequential)
+internal unsafe struct VkPhysicalDeviceMemoryProperties2 {
+    var sType VkStructureType
+    var pNext *void
+    var memoryProperties VkPhysicalDeviceMemoryProperties
+}
+
+@StructLayout(LayoutKind.Sequential)
+internal unsafe struct VkPhysicalDeviceMemoryBudgetPropertiesEXT {
+    var sType VkStructureType
+    var pNext *void
+    fixed heapBudget [16]VkDeviceSize
+    fixed heapUsage [16]VkDeviceSize
+}
+
+@StructLayout(LayoutKind.Sequential)
 internal unsafe struct VkPhysicalDeviceProperties {
     var apiVersion uint32
     var driverVersion uint32

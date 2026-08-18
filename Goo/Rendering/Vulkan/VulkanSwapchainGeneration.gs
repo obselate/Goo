@@ -11,6 +11,7 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
     private let extent VkExtent2D
     private let generation uint64
     private let presentFenceEnabled bool
+    private let objectAccounting VulkanObjectAccounting?
     private var imageCount uint32
     private var swapchain VkSwapchainKHR
     private var images []?VkImage = nil
@@ -22,6 +23,7 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
     private var presentIds []?uint64 = nil
     private var imageLayouts []?VkImageLayout = nil
     private var disposed bool
+    private var trackedImageCount int32
 
     internal prop Handle VkSwapchainKHR {
         get {
@@ -83,7 +85,8 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
         chosenCompositeAlpha VkCompositeAlphaFlagBitsKHR,
         oldSwapchain VkSwapchainKHR,
         generationId uint64,
-        enablePresentFence bool) {
+        enablePresentFence bool,
+        nativeObjectAccounting VulkanObjectAccounting?) {
         if nativeDevice == nint(0) {
             throw ArgumentException("Vulkan device is null", "nativeDevice")
         }
@@ -127,6 +130,7 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
         this.extent = resolvedExtent
         this.generation = generationId
         this.presentFenceEnabled = enablePresentFence
+        objectAccounting = nativeObjectAccounting
         this.imageCount = requestedImageCount
         Create(chosenPresentMode, chosenCompositeAlpha, oldSwapchain)
     }
@@ -318,6 +322,9 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
             while index < storage.Length {
                 if storage[index] != 0uL {
                     destroySemaphore(device, storage[index], nil)
+                    if let accounting = objectAccounting {
+                        accounting.Release()
+                    }
                     storage[index] = 0uL
                 }
                 index++
@@ -329,6 +336,9 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
             while index < storage.Length {
                 if storage[index] != 0uL {
                     destroyFence(device, storage[index], nil)
+                    if let accounting = objectAccounting {
+                        accounting.Release()
+                    }
                     storage[index] = 0uL
                 }
                 index++
@@ -340,6 +350,9 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
             while index < storage.Length {
                 if storage[index] != 0uL {
                     destroyImageView(device, storage[index], nil)
+                    if let accounting = objectAccounting {
+                        accounting.Release()
+                    }
                     storage[index] = 0uL
                 }
                 index++
@@ -348,6 +361,17 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
         if swapchain != 0uL {
             let destroySwapchain = dispatch.vkDestroySwapchainKHR
             destroySwapchain(device, swapchain, nil)
+            var index int32 = 0
+            while index < trackedImageCount {
+                if let accounting = objectAccounting {
+                    accounting.Release()
+                }
+                index = index + 1
+            }
+            trackedImageCount = 0
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
             swapchain = 0uL
         }
     }
@@ -408,6 +432,16 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
             if createResult != VkConstants.VK_SUCCESS || swapchain == 0uL {
                 throw InvalidOperationException("vkCreateSwapchainKHR failed")
             }
+            try {
+                if let accounting = objectAccounting {
+                    accounting.Allocate()
+                }
+            } catch (error Exception) {
+                let destroySwapchain = dispatch.vkDestroySwapchainKHR
+                destroySwapchain(device, swapchain, nil)
+                swapchain = 0uL
+                throw error
+            }
 
             var queriedImageCount uint32 = 0u
             let getSwapchainImages = dispatch.vkGetSwapchainImagesKHR
@@ -461,6 +495,16 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
                     throw InvalidOperationException("Swapchain image enumeration failed")
                 }
             }
+            try {
+                while trackedImageCount < int32(imageCount) {
+                    if let accounting = objectAccounting {
+                        accounting.Allocate()
+                    }
+                    trackedImageCount = trackedImageCount + 1
+                }
+            } catch (error Exception) {
+                throw error
+            }
 
             var imageIndex uint32 = 0u
             while imageIndex < imageCount {
@@ -484,6 +528,15 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
                 if viewResult != VkConstants.VK_SUCCESS || imageView == 0uL {
                     throw InvalidOperationException("vkCreateImageView failed")
                 }
+                try {
+                    if let accounting = objectAccounting {
+                        accounting.Allocate()
+                    }
+                } catch (error Exception) {
+                    let destroyImageView = dispatch.vkDestroyImageView
+                    destroyImageView(device, imageView, nil)
+                    throw error
+                }
                 viewStorage[int32(imageIndex)] = imageView
                 imageLayouts!![int32(imageIndex)] = VkConstants.VK_IMAGE_LAYOUT_UNDEFINED
                 imageIndex++
@@ -498,6 +551,15 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
                 let semaphoreResult = createSemaphore(device, &semaphoreCreateInfo, nil, &semaphore)
                 if semaphoreResult != VkConstants.VK_SUCCESS || semaphore == 0uL {
                     throw InvalidOperationException("vkCreateSemaphore failed for swapchain render semaphore")
+                }
+                try {
+                    if let accounting = objectAccounting {
+                        accounting.Allocate()
+                    }
+                } catch (error Exception) {
+                    let destroySemaphore = dispatch.vkDestroySemaphore
+                    destroySemaphore(device, semaphore, nil)
+                    throw error
                 }
                 semaphoreStorage[int32(imageIndex)] = semaphore
                 imageIndex++
@@ -514,6 +576,15 @@ internal unsafe class VulkanSwapchainGeneration : IDisposable {
                     let fenceResult = createFence(device, &fenceCreateInfo, nil, &fence)
                     if fenceResult != VkConstants.VK_SUCCESS || fence == 0uL {
                         throw InvalidOperationException("vkCreateFence failed for swapchain present fence")
+                    }
+                    try {
+                        if let accounting = objectAccounting {
+                            accounting.Allocate()
+                        }
+                    } catch (error Exception) {
+                        let destroyFence = dispatch.vkDestroyFence
+                        destroyFence(device, fence, nil)
+                        throw error
                     }
                     fenceStorage[int32(imageIndex)] = fence
                     imageIndex++

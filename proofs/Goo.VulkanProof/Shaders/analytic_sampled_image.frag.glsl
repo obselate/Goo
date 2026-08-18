@@ -8,6 +8,7 @@ layout(push_constant) uniform PushConstants {
     vec4 params;
     vec4 stopPositions;
     uvec4 packedColors;
+    uvec4 packedColorsExtra;
 } pc;
 
 layout(set = 0, binding = 0) uniform sampler2D imageTexture;

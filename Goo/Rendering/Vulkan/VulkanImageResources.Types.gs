@@ -33,6 +33,8 @@ internal data struct VulkanImageDescriptorBinding {
 
 internal data struct VulkanImageResourceEntry {
     var Id ResourceId
+    var ProviderId uint64
+    var SourceId uint64
     var Width uint32
     var Height uint32
     var Bytes VkDeviceSize
@@ -40,6 +42,7 @@ internal data struct VulkanImageResourceEntry {
     var SamplerMode VulkanImageSamplerMode
     var Cacheable bool
     var State VulkanImageResourceState
+    var GpuPublished bool
     var Image VkImage
     var ImageView VkImageView
     var Allocation VulkanMemoryAllocation?
@@ -53,6 +56,8 @@ internal data struct VulkanImageResourceEntry {
     var UploadCommandBuffer VkCommandBuffer
     var UploadFence uint64
     var PendingRetire bool
+    var DropLogicalOnRetire bool
+    var RecordingUseCount int32
     var LastUseFence uint64
     var RetireFence uint64
     var LastTouch uint64

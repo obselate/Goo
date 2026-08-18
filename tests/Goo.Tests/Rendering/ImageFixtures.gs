@@ -372,6 +372,8 @@ internal class TestImageSourceProvider : ImageSourceProvider {
   internal var Lease ImageSourceLease?
   internal var Acquires int32
   internal var Releases int32
+  prop ContentVersion uint64 { get { return 1uL } }
+  event ContentChanged Action
   internal prop ThrowOnRelease bool { get; set; }
   internal prop ReturnDisposed bool { get; set; }
   func Acquire() ImageSourceLease {

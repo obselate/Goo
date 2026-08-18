@@ -5,6 +5,8 @@ import System.Collections.Generic
 
 /// Supplies one image binding when a Goo element mounts.
 public interface ImageSourceProvider {
+  prop ContentVersion uint64 { get; }
+  event ContentChanged Action
   /// Creates the lease Goo owns and disposes for one mounted element.
   func Acquire() ImageSourceLease;
 }
@@ -46,6 +48,8 @@ public class ImageSource : ImageSourceProvider, IDisposable {
   public prop Width int32 { get { return width } }
   /// Gets this immutable source's pixel height.
   public prop Height int32 { get { return height } }
+  public prop ContentVersion uint64 { get { return 1uL } }
+  public event ContentChanged Action
   /// Gets whether this source has released its owner reference.
   public prop IsDisposed bool {
     get {
@@ -109,6 +113,10 @@ public class ImageSourceLease : IDisposable {
   private var completed bool
   private var failed bool
   private var disposed bool
+  private var versionSnapshot uint64
+  private var contentVersionProvider ImageSourceProvider?
+  private var ownerPost ((Action) -> void)?
+  private var ownerThreadId int32
 
   /// Raised synchronously once when Goo releases this binding.
   public event Released Action
@@ -125,6 +133,37 @@ public class ImageSourceLease : IDisposable {
     image = retained
     owner = retained == nil ? nil : source
     failed = retained == nil
+  }
+
+  internal func BindContentVersion(version uint64) bool {
+    return BindContentVersion(version, nil)
+  }
+
+  internal func BindContentVersion(version uint64, provider ImageSourceProvider?) bool {
+    if version == 0uL { throw ArgumentOutOfRangeException("version") }
+    lock registrations {
+      if disposed { return false }
+      if versionSnapshot != 0uL && versionSnapshot != version { return false }
+      contentVersionProvider = provider
+      if completed {
+        if versionSnapshot == 0uL { versionSnapshot = version }
+        return true
+      }
+      versionSnapshot = version
+      return true
+    }
+  }
+
+  internal func BindOwner(post ((Action) -> void)?, threadId int32) {
+    if threadId == 0 { return }
+    lock registrations {
+      if disposed || ownerThreadId != 0 { return }
+      ownerPost = post
+      ownerThreadId = threadId
+      for registration in registrations {
+        registration.BindOwner(post, threadId)
+      }
+    }
   }
 
   /// Gets whether the provider completed this binding.
@@ -162,25 +201,69 @@ public class ImageSourceLease : IDisposable {
 
   private func complete(source ImageSource?) bool {
     var completedRegistrations []?ImageSourceCompletion = nil
+    var provider ImageSourceProvider?
+    var snapshot uint64
     var retained DecodedImage?
-    if source != nil { retained = source?.retainImage() }
+    var finalProvider ImageSourceProvider?
+    var finalSnapshot uint64
     lock registrations {
       if disposed || completed {
-        retained?.Release()
-        if retained != nil { source?.releaseLease() }
         return false
       }
-      completed = true
-      image = retained
-      owner = retained == nil ? nil : source
-      failed = retained == nil
-      completedRegistrations = registrations.ToArray()
-      registrations.Clear()
+      provider = contentVersionProvider
+      snapshot = versionSnapshot
+    }
+    if !providerVersionMatches(provider, snapshot) { return false }
+    if let currentSource = source { retained = currentSource.retainImage() }
+    lock registrations {
+      if disposed || completed {
+        finalProvider = nil
+        finalSnapshot = 0uL
+      } else {
+        finalProvider = contentVersionProvider
+        finalSnapshot = versionSnapshot
+      }
+    }
+    if !Object.ReferenceEquals(provider, finalProvider) || snapshot != finalSnapshot
+      || !providerVersionMatches(finalProvider, finalSnapshot) {
+      retained?.Release()
+      if retained != nil { source?.releaseLease() }
+      return false
+    }
+    var published bool
+    lock registrations {
+      if disposed || completed || !Object.ReferenceEquals(contentVersionProvider, finalProvider)
+        || versionSnapshot != finalSnapshot {
+        published = false
+      } else {
+        completed = true
+        image = retained
+        owner = retained == nil ? nil : source
+        failed = retained == nil
+        completedRegistrations = registrations.ToArray()
+        registrations.Clear()
+        published = true
+      }
+    }
+    if !published {
+      retained?.Release()
+      if retained != nil { source?.releaseLease() }
+      return false
     }
     if let current = completedRegistrations {
-      for registration in current { registration.Invoke() }
+      for registration in current { registration.InvokeOnOwner() }
     }
     return true
+  }
+
+  private func providerVersionMatches(provider ImageSourceProvider?, snapshot uint64) bool {
+    if let currentProvider = provider {
+      if snapshot == 0uL { return false }
+      var currentVersion uint64
+      try { currentVersion = currentProvider.ContentVersion } catch (error Exception) { return false }
+      return currentVersion != 0uL && currentVersion == snapshot
+    }
+    return snapshot == 0uL
   }
 
   /// Completes this binding as a failure.
@@ -191,14 +274,21 @@ public class ImageSourceLease : IDisposable {
     if Object.ReferenceEquals(callback, nil) { throw ArgumentNullException("callback") }
     let registration = ImageSourceCompletion(callback, registrations)
     var invokeNow bool
+    var post ((Action) -> void)?
+    var threadId int32
     lock registrations {
-      if completed {
+      post = ownerPost
+      threadId = ownerThreadId
+      registration.BindOwner(post, threadId)
+      if completed && !disposed {
         invokeNow = true
       } else if !disposed {
         registrations.Add(registration)
+      } else {
+        registration.Dispose()
       }
     }
-    if invokeNow { registration.Invoke() }
+    if invokeNow { registration.InvokeOnOwner() }
     return registration
   }
 
@@ -215,8 +305,11 @@ public class ImageSourceLease : IDisposable {
         image = nil
         source = owner
         owner = nil
+        contentVersionProvider = nil
         cancelled = registrations.ToArray()
         registrations.Clear()
+        ownerPost = nil
+        ownerThreadId = 0
         release = true
       }
     }
@@ -244,10 +337,22 @@ public class ImageSourceLease : IDisposable {
 internal class ImageSourceCompletion : IDisposable {
   private let gate object
   private var callback Action?
+  private var ownerPost ((Action) -> void)?
+  private var ownerThreadId int32
 
   internal init(callback Action, gate object) {
     this.gate = gate
     this.callback = callback
+  }
+
+  internal func BindOwner(post ((Action) -> void)?, threadId int32) {
+    if threadId == 0 { return }
+    lock gate {
+      if ownerThreadId == 0 {
+        ownerPost = post
+        ownerThreadId = threadId
+      }
+    }
   }
 
   public func Dispose() {
@@ -261,5 +366,25 @@ internal class ImageSourceCompletion : IDisposable {
       callback = nil
     }
     current?.Invoke()
+  }
+
+  internal func InvokeOnOwner() {
+    var post ((Action) -> void)?
+    var threadId int32
+    lock gate {
+      post = ownerPost
+      threadId = ownerThreadId
+    }
+    if let queue = post {
+      if Environment.CurrentManagedThreadId != threadId {
+        try {
+          queue(func() { Invoke() })
+        } catch (error Exception) {
+          Dispose()
+        }
+        return
+      }
+    }
+    Invoke()
   }
 }

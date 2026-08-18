@@ -13,18 +13,119 @@ internal unsafe partial class VulkanWindowTarget {
         if getProcAddress == nint(0) {
             throw InvalidOperationException("SDL Vulkan global procedure lookup is unavailable")
         }
-        CreateInstance()
-        LoadInstanceDispatch()
+        if let shared = VulkanSharedRuntime.TryAcquire() {
+            runtime = shared
+            ApplySharedRuntime(shared)
+            CreateSurface()
+            ValidateSharedPresentationSupport()
+        } else {
+            diagnostics = VulkanDiagnostics.Create(
+                Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1")
+            if diagnostics != nil {
+                objectAccounting = VulkanObjectAccounting(nil)
+                sharedObjectAccounting = VulkanObjectAccounting(objectAccounting)
+                windowObjectAccounting = VulkanObjectAccounting(objectAccounting)
+            }
+            CreateInstance()
+            LoadInstanceDispatch()
+            CreateSurface()
+            SelectPhysicalDevice()
+            CreateDevice()
+            LoadDeviceDispatch()
+            AcquireQueue()
+            var sharedMemoryProperties = VkPhysicalDeviceMemoryProperties{}
+            let getMemoryProperties = instanceDispatch.vkGetPhysicalDeviceMemoryProperties
+            getMemoryProperties(physicalDevice, &sharedMemoryProperties)
+            var sharedPhysicalProperties = VkPhysicalDeviceProperties{}
+            let getPhysicalDeviceProperties = instanceDispatch.vkGetPhysicalDeviceProperties
+            getPhysicalDeviceProperties(physicalDevice, &sharedPhysicalProperties)
+            runtime = VulkanSharedRuntime.Publish(
+                instance,
+                instanceDispatch,
+                physicalDevice,
+                device,
+                dispatch,
+                queue,
+                queue,
+                queueFamilyIndex,
+                queueFamilyIndex,
+                deviceWaitIdleAddress,
+                instanceMaintenanceVariant,
+                swapchainMaintenanceVariant,
+                deviceFacts,
+                sharedMemoryProperties,
+                sharedPhysicalProperties.limits.maxMemoryAllocationCount,
+                sharedPhysicalProperties.limits.nonCoherentAtomSize,
+                sharedPhysicalProperties.limits.bufferImageGranularity,
+                memoryBudgetSupported,
+                diagnostics,
+                debugUtilsEnabled,
+                validation,
+                validationMessenger,
+                validationMessengerCreated,
+                instanceDestroyAvailable,
+                deviceDestroyAvailable,
+                objectAccounting,
+                sharedObjectAccounting)
+            validation = nil
+            validationMessenger = 0uL
+            validationMessengerCreated = false
+        }
+        CreateCommandResources()
+    }
+
+    private func CreateSurface() {
         var createdSurface VkSurfaceKHR = 0uL
         if !host.CreateVulkanSurface(instance, out createdSurface) || createdSurface == 0uL {
             throw InvalidOperationException("SDL Vulkan surface creation failed")
         }
+        try {
+            if let accounting = windowObjectAccounting {
+                accounting.Allocate()
+            }
+        } catch (error Exception) {
+            try { host.DestroyVulkanSurface(instance, createdSurface) } catch (cleanup Exception) { }
+            throw error
+        }
         surface = createdSurface
         surfaceCreated = true
-        SelectPhysicalDevice()
-        CreateDevice()
-        LoadDeviceDispatch()
-        CreateCommandResources()
+    }
+
+    private func ApplySharedRuntime(shared VulkanSharedLease) {
+        diagnostics = shared.Diagnostics
+        objectAccounting = shared.ObjectAccounting
+        if let accounting = objectAccounting {
+            windowObjectAccounting = VulkanObjectAccounting(accounting)
+        }
+        instance = shared.Instance
+        instanceDispatch = shared.InstanceDispatch
+        physicalDevice = shared.PhysicalDevice
+        device = shared.Device
+        dispatch = shared.Dispatch
+        queue = shared.GraphicsQueue
+        queueFamilyIndex = shared.GraphicsFamilyIndex
+        deviceWaitIdleAddress = shared.DeviceWaitIdleAddress
+        instanceMaintenanceVariant = shared.InstanceMaintenanceVariant
+        swapchainMaintenanceVariant = shared.SwapchainMaintenanceVariant
+        debugUtilsEnabled = shared.DebugUtilsEnabled
+        deviceFacts = shared.Facts
+        memoryAllocator = shared.MemoryAllocator
+        imageResources = shared.ImageResources
+        timestampValidBits = deviceFacts.TimestampValidBits
+        timestampPeriod = deviceFacts.TimestampPeriod
+        timestampComputeAndGraphics = deviceFacts.TimestampComputeAndGraphics
+        instanceDestroyAvailable = true
+        deviceDestroyAvailable = true
+    }
+
+    private func ValidateSharedPresentationSupport() {
+        var supported VkBool32 = VkConstants.VK_FALSE
+        let surfaceSupport = instanceDispatch.vkGetPhysicalDeviceSurfaceSupportKHR
+        let result = surfaceSupport(physicalDevice, queueFamilyIndex, surface, &supported)
+        if result != VkConstants.VK_SUCCESS || supported != VkConstants.VK_TRUE
+            || !host.GetVulkanPresentationSupport(instance, physicalDevice, queueFamilyIndex) {
+            throw InvalidOperationException("Vulkan shared queue does not support the SDL surface")
+        }
     }
 
     private func CreateInstance() {
@@ -33,11 +134,16 @@ internal unsafe partial class VulkanWindowTarget {
             throw InvalidOperationException("SDL Vulkan instance extensions are unavailable")
         }
         instanceMaintenanceVariant = ResolveInstanceMaintenanceVariant()
+        debugUtilsEnabled = diagnostics != nil
+            && HasInstanceExtensionName(VkConstants.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+        validation = VulkanDiagnosticsValidation.Create(diagnostics, debugUtilsEnabled)
         let surfaceMaintenanceName = if instanceMaintenanceVariant == VulkanSwapchainMaintenanceVariant.Khr {
             VulkanWindowTargetExtensionNames.SurfaceMaintenanceKhr
         } else {
             VulkanWindowTargetExtensionNames.SurfaceMaintenanceExt
         }
+        let addDebugUtilsExtension = debugUtilsEnabled
+            && !ContainsExtensionName(requiredExtensions, VkConstants.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
         var enabledExtensionCount int32 = requiredExtensions.Length
         if instanceMaintenanceVariant != VulkanSwapchainMaintenanceVariant.None
             && !ContainsExtensionName(requiredExtensions, surfaceMaintenanceName) {
@@ -45,6 +151,9 @@ internal unsafe partial class VulkanWindowTarget {
         }
         if instanceMaintenanceVariant != VulkanSwapchainMaintenanceVariant.None
             && !ContainsExtensionName(requiredExtensions, VkConstants.VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME) {
+            enabledExtensionCount = enabledExtensionCount + 1
+        }
+        if addDebugUtilsExtension {
             enabledExtensionCount = enabledExtensionCount + 1
         }
         var extensionStorage []nint = [enabledExtensionCount]nint
@@ -74,6 +183,12 @@ internal unsafe partial class VulkanWindowTarget {
                 extensionPointers[extensionIndex].Value = *int8(storage)
                 extensionIndex = extensionIndex + 1
             }
+            if addDebugUtilsExtension {
+                let storage = Marshal.StringToCoTaskMemUTF8(VkConstants.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+                extensionStorage[extensionIndex] = storage
+                extensionPointers[extensionIndex].Value = *int8(storage)
+                extensionIndex = extensionIndex + 1
+            }
             appNameStorage = Marshal.StringToCoTaskMemUTF8("Goo")
             engineNameStorage = Marshal.StringToCoTaskMemUTF8("Goo")
             var applicationInfo = VkApplicationInfo{}
@@ -88,6 +203,29 @@ internal unsafe partial class VulkanWindowTarget {
             createInfo.pApplicationInfo = &applicationInfo
             createInfo.enabledExtensionCount = uint32(enabledExtensionCount)
             createInfo.ppEnabledExtensionNames = &extensionPointers[0].Value
+            var debugMessengerCreateInfo = VkDebugUtilsMessengerCreateInfoEXT{}
+            if let currentValidation = validation {
+                let callbackAddress = Marshal.GetFunctionPointerForDelegate(currentValidation.Callback)
+                let callback = callbackAddress as (unmanaged[Cdecl] (VkDebugUtilsMessageSeverityFlagBitsEXT, VkDebugUtilsMessageTypeFlagsEXT, nint, nint) -> VkBool32)?
+                if callback == nil {
+                    throw InvalidOperationException("Vulkan validation callback address is unavailable")
+                }
+                debugMessengerCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT
+                debugMessengerCreateInfo.messageSeverity = uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+                    | uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+                debugMessengerCreateInfo.messageType = uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
+                    | uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+                    | uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
+                debugMessengerCreateInfo.pfnUserCallback = callback!!
+                debugMessengerCreateInfo.pUserData = nil
+                createInfo.pNext = *void(&debugMessengerCreateInfo)
+            }
+            if let currentDiagnostics = diagnostics {
+                currentDiagnostics.CaptureInstanceFacts(
+                    VkConstants.VK_API_VERSION_1_3,
+                    uint32(enabledExtensionCount),
+                    if debugUtilsEnabled { 1u } else { 0u })
+            }
             let address = ResolveGlobalProc(nint(0), "vkCreateInstance")
             let nullable = address as (unmanaged[Cdecl] (*VkInstanceCreateInfo, *VkAllocationCallbacks, *VkInstance) -> VkResult)?
             if nullable == nil {
@@ -99,7 +237,22 @@ internal unsafe partial class VulkanWindowTarget {
             if result != VkConstants.VK_SUCCESS || createdInstance == nint(0) {
                 throw InvalidOperationException("vkCreateInstance failed: " + result.ToString())
             }
+            try {
+                if let accounting = sharedObjectAccounting {
+                    accounting.Allocate()
+                }
+            } catch (error Exception) {
+                let destroyInstance = ResolveGlobalProc(createdInstance, "vkDestroyInstance") as (unmanaged[Cdecl] (VkInstance, *VkAllocationCallbacks) -> void)?
+                if destroyInstance != nil {
+                    let destroyInstanceFunction = destroyInstance!!
+                    destroyInstanceFunction(createdInstance, nil)
+                }
+                throw error
+            }
             instance = createdInstance
+            if let currentValidation = validation {
+                currentValidation.KeepAlive()
+            }
         } finally {
             var index int32 = 0
             while index < extensionStorage.Length {
@@ -164,6 +317,31 @@ internal unsafe partial class VulkanWindowTarget {
         return VulkanSwapchainMaintenanceVariant.None
     }
 
+    private func HasInstanceExtensionName(expected string) bool {
+        let address = ResolveGlobalProc(nint(0), "vkEnumerateInstanceExtensionProperties")
+        let nullable = address as (unmanaged[Cdecl] (*int8, *uint32, *VkExtensionProperties) -> VkResult)?
+        if nullable == nil {
+            return false
+        }
+        let enumerate = nullable!!
+        var count uint32 = 0u
+        if enumerate(nil, &count, nil) != VkConstants.VK_SUCCESS || count == 0u {
+            return false
+        }
+        let extensions *VkExtensionProperties = stackalloc [int32(count)]VkExtensionProperties
+        if enumerate(nil, &count, extensions) != VkConstants.VK_SUCCESS {
+            return false
+        }
+        var index uint32 = 0u
+        while index < count {
+            if ExtensionNameEquals(&extensions[index], expected) {
+                return true
+            }
+            index = index + 1u
+        }
+        return false
+    }
+
     private func ContainsExtensionName(extensions []string, expected string) bool {
         var index int32 = 0
         while index < extensions.Length {
@@ -213,12 +391,80 @@ internal unsafe partial class VulkanWindowTarget {
         let getPhysicalDeviceMemoryProperties = ResolveGlobalProc(instance, "vkGetPhysicalDeviceMemoryProperties") as (unmanaged[Cdecl] (VkPhysicalDevice, *VkPhysicalDeviceMemoryProperties) -> void)?
         if getPhysicalDeviceMemoryProperties == nil { throw InvalidOperationException("vkGetPhysicalDeviceMemoryProperties is unavailable") }
         instanceDispatch.vkGetPhysicalDeviceMemoryProperties = getPhysicalDeviceMemoryProperties!!
+        let getPhysicalDeviceMemoryProperties2 = ResolveGlobalProc(instance, "vkGetPhysicalDeviceMemoryProperties2") as (unmanaged[Cdecl] (VkPhysicalDevice, *VkPhysicalDeviceMemoryProperties2) -> void)?
+        if getPhysicalDeviceMemoryProperties2 == nil { throw InvalidOperationException("vkGetPhysicalDeviceMemoryProperties2 is unavailable") }
+        instanceDispatch.vkGetPhysicalDeviceMemoryProperties2 = getPhysicalDeviceMemoryProperties2!!
         let getPhysicalDeviceFormatProperties = ResolveGlobalProc(instance, "vkGetPhysicalDeviceFormatProperties") as (unmanaged[Cdecl] (VkPhysicalDevice, VkFormat, *VkFormatProperties) -> void)?
         if getPhysicalDeviceFormatProperties == nil { throw InvalidOperationException("vkGetPhysicalDeviceFormatProperties is unavailable") }
         instanceDispatch.vkGetPhysicalDeviceFormatProperties = getPhysicalDeviceFormatProperties!!
         let createDevice = ResolveGlobalProc(instance, "vkCreateDevice") as (unmanaged[Cdecl] (VkPhysicalDevice, *VkDeviceCreateInfo, *VkAllocationCallbacks, *VkDevice) -> VkResult)?
         if createDevice == nil { throw InvalidOperationException("vkCreateDevice is unavailable") }
         instanceDispatch.vkCreateDevice = createDevice!!
+        if debugUtilsEnabled {
+            let createMessenger = ResolveGlobalProc(instance, "vkCreateDebugUtilsMessengerEXT") as (unmanaged[Cdecl] (VkInstance, *VkDebugUtilsMessengerCreateInfoEXT, *VkAllocationCallbacks, *VkDebugUtilsMessengerEXT) -> VkResult)?
+            if createMessenger == nil { throw InvalidOperationException("vkCreateDebugUtilsMessengerEXT is unavailable") }
+            instanceDispatch.vkCreateDebugUtilsMessengerEXT = createMessenger!!
+            let destroyMessenger = ResolveGlobalProc(instance, "vkDestroyDebugUtilsMessengerEXT") as (unmanaged[Cdecl] (VkInstance, VkDebugUtilsMessengerEXT, *VkAllocationCallbacks) -> void)?
+            if destroyMessenger == nil { throw InvalidOperationException("vkDestroyDebugUtilsMessengerEXT is unavailable") }
+            instanceDispatch.vkDestroyDebugUtilsMessengerEXT = destroyMessenger!!
+            CreateValidationMessenger()
+        }
+    }
+
+    private func CreateValidationMessenger() {
+        if !debugUtilsEnabled || validation == nil || instance == nint(0) {
+            return
+        }
+        let currentValidation = validation!!
+        let callbackAddress = Marshal.GetFunctionPointerForDelegate(currentValidation.Callback)
+        let callback = callbackAddress as (unmanaged[Cdecl] (VkDebugUtilsMessageSeverityFlagBitsEXT, VkDebugUtilsMessageTypeFlagsEXT, nint, nint) -> VkBool32)?
+        if callback == nil {
+            throw InvalidOperationException("Vulkan validation callback address is unavailable")
+        }
+        var createInfo = VkDebugUtilsMessengerCreateInfoEXT{}
+        createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT
+        createInfo.messageSeverity = uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+            | uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+        createInfo.messageType = uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
+            | uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+            | uint32(VkConstants.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
+        createInfo.pfnUserCallback = callback!!
+        createInfo.pUserData = nil
+        let createMessenger = instanceDispatch.vkCreateDebugUtilsMessengerEXT
+        let result = createMessenger(instance, &createInfo, nil, &validationMessenger)
+        RecordDiagnosticResult(VulkanDiagnosticEventIds.ValidationMessage, result)
+        if result != VkConstants.VK_SUCCESS || validationMessenger == 0uL {
+            validationMessenger = 0uL
+            throw InvalidOperationException("vkCreateDebugUtilsMessengerEXT failed: " + result.ToString())
+        }
+        try {
+            if let accounting = sharedObjectAccounting {
+                accounting.Allocate()
+            }
+        } catch (error Exception) {
+            let destroyMessenger = instanceDispatch.vkDestroyDebugUtilsMessengerEXT
+            destroyMessenger(instance, validationMessenger, nil)
+            validationMessenger = 0uL
+            throw error
+        }
+        validationMessengerCreated = true
+        currentValidation.KeepAlive()
+    }
+
+    private func DestroyValidationMessenger() {
+        if validationMessengerCreated && instance != nint(0)
+            && instanceDispatch.vkDestroyDebugUtilsMessengerEXT != nil {
+            let destroyMessenger = instanceDispatch.vkDestroyDebugUtilsMessengerEXT
+            destroyMessenger(instance, validationMessenger, nil)
+            if let accounting = sharedObjectAccounting {
+                accounting.Release()
+            }
+            validationMessenger = 0uL
+            validationMessengerCreated = false
+        }
+        if let currentValidation = validation {
+            currentValidation.KeepAlive()
+        }
     }
 
     private func SelectPhysicalDevice() {
@@ -242,6 +488,20 @@ internal unsafe partial class VulkanWindowTarget {
                 && HasRequiredDeviceExtensions(candidate)
                 && HasRequiredFeatures(candidate) {
                 physicalDevice = candidate
+                CaptureDiagnosticDeviceFacts(properties)
+                timestampPeriod = properties.limits.timestampPeriod
+                timestampComputeAndGraphics = properties.limits.timestampComputeAndGraphics
+                deviceFacts = VulkanSharedDeviceFacts{
+                    ApiVersion: properties.apiVersion,
+                    DriverVersion: properties.driverVersion,
+                    VendorId: properties.vendorID,
+                    DeviceId: properties.deviceID,
+                    DeviceType: properties.deviceType,
+                    TimestampValidBits: timestampValidBits,
+                    TimestampPeriod: timestampPeriod,
+                    TimestampComputeAndGraphics: timestampComputeAndGraphics,
+                }
+                CaptureDiagnosticTimestampCapabilities()
                 return
             }
             deviceIndex = deviceIndex + 1u
@@ -270,6 +530,7 @@ internal unsafe partial class VulkanWindowTarget {
                 if supportResult == VkConstants.VK_SUCCESS && supported == VkConstants.VK_TRUE
                     && host.GetVulkanPresentationSupport(instance, candidate, familyIndex) {
                     queueFamilyIndex = familyIndex
+                    timestampValidBits = family.timestampValidBits
                     return true
                 }
             }
@@ -291,6 +552,7 @@ internal unsafe partial class VulkanWindowTarget {
         var hasSwapchain = false
         var hasMaintenanceExt = false
         var hasMaintenanceKhr = false
+        var hasMemoryBudget = false
         var index uint32 = 0u
         while index < count {
             if ExtensionNameEquals(&extensions[index], VkConstants.VK_KHR_SWAPCHAIN_EXTENSION_NAME) {
@@ -302,6 +564,9 @@ internal unsafe partial class VulkanWindowTarget {
             if ExtensionNameEquals(&extensions[index], VulkanWindowTargetExtensionNames.SwapchainMaintenanceKhr) {
                 hasMaintenanceKhr = true
             }
+            if ExtensionNameEquals(&extensions[index], VkConstants.VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) {
+                hasMemoryBudget = true
+            }
             index = index + 1u
         }
         swapchainMaintenanceVariant = VulkanSwapchainMaintenanceVariant.None
@@ -310,6 +575,7 @@ internal unsafe partial class VulkanWindowTarget {
         } else if instanceMaintenanceVariant == VulkanSwapchainMaintenanceVariant.Ext && hasMaintenanceExt {
             swapchainMaintenanceVariant = VulkanSwapchainMaintenanceVariant.Ext
         }
+        memoryBudgetSupported = hasMemoryBudget
         return hasSwapchain
     }
 
@@ -368,16 +634,22 @@ internal unsafe partial class VulkanWindowTarget {
         queueInfo.queueFamilyIndex = queueFamilyIndex
         queueInfo.queueCount = 1u
         queueInfo.pQueuePriorities = priorities
-        var extensionStorage []nint = [2]nint
+        var extensionStorage []nint = [3]nint
         try {
             extensionStorage[0] = Marshal.StringToCoTaskMemUTF8(VkConstants.VK_KHR_SWAPCHAIN_EXTENSION_NAME)
-            let extensionPointers *VulkanWindowTargetExtensionPointer = stackalloc [2]VulkanWindowTargetExtensionPointer
+            let extensionPointers *VulkanWindowTargetExtensionPointer = stackalloc [3]VulkanWindowTargetExtensionPointer
             extensionPointers[0].Value = *int8(extensionStorage[0])
             var deviceExtensionCount uint32 = 1u
             if swapchainMaintenanceVariant != VulkanSwapchainMaintenanceVariant.None {
                 extensionStorage[1] = Marshal.StringToCoTaskMemUTF8(MaintenanceDeviceExtensionName())
                 extensionPointers[1].Value = *int8(extensionStorage[1])
                 deviceExtensionCount = 2u
+            }
+            if memoryBudgetSupported {
+                let extensionIndex = int32(deviceExtensionCount)
+                extensionStorage[extensionIndex] = Marshal.StringToCoTaskMemUTF8(VkConstants.VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)
+                extensionPointers[extensionIndex].Value = *int8(extensionStorage[extensionIndex])
+                deviceExtensionCount = deviceExtensionCount + 1u
             }
             var createInfo = VkDeviceCreateInfo{}
             createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO
@@ -391,6 +663,18 @@ internal unsafe partial class VulkanWindowTarget {
             let result = createDevice(physicalDevice, &createInfo, nil, &createdDevice)
             if result != VkConstants.VK_SUCCESS || createdDevice == nint(0) {
                 throw InvalidOperationException("vkCreateDevice failed: " + result.ToString())
+            }
+            try {
+                if let accounting = sharedObjectAccounting {
+                    accounting.Allocate()
+                }
+            } catch (error Exception) {
+                let destroyDevice = ResolveGlobalProc(instance, "vkDestroyDevice") as (unmanaged[Cdecl] (VkDevice, *VkAllocationCallbacks) -> void)?
+                if destroyDevice != nil {
+                    let destroyDeviceFunction = destroyDevice!!
+                    destroyDeviceFunction(createdDevice, nil)
+                }
+                throw error
             }
             device = createdDevice
         } finally {
@@ -406,6 +690,22 @@ internal unsafe partial class VulkanWindowTarget {
     }
 
     private func CreateCommandResources() {
+        if let activeRuntime = runtime {
+            memoryAllocator = activeRuntime.MemoryAllocator
+            imageResources = activeRuntime.ImageResources
+        } else {
+            throw InvalidOperationException("Vulkan shared runtime is unavailable")
+        }
+        if let currentDiagnostics = diagnostics {
+            let currentTimestampState = VulkanDiagnosticTimestampState(currentDiagnostics, windowObjectAccounting)
+            timestampState = currentTimestampState
+            currentTimestampState.CreateTimestampQueryPool(
+                device,
+                dispatch,
+                timestampValidBits,
+                timestampPeriod,
+                timestampComputeAndGraphics)
+        }
         var poolInfo = VkCommandPoolCreateInfo{}
         poolInfo.sType = VkConstants.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO
         poolInfo.flags = uint32(VkConstants.VK_COMMAND_POOL_CREATE_TRANSIENT_BIT)
@@ -417,6 +717,15 @@ internal unsafe partial class VulkanWindowTarget {
         if poolResult != VkConstants.VK_SUCCESS || createdCommandPool == 0uL {
             throw InvalidOperationException("vkCreateCommandPool failed: " + poolResult.ToString())
         }
+        try {
+            if let accounting = windowObjectAccounting {
+                accounting.Allocate()
+            }
+        } catch (error Exception) {
+            let destroyCommandPool = dispatch.vkDestroyCommandPool
+            destroyCommandPool(device, createdCommandPool, nil)
+            throw error
+        }
         commandPool = createdCommandPool
         let buffers *VkCommandBuffer = stackalloc [2]VkCommandBuffer
         var allocateInfo = VkCommandBufferAllocateInfo{}
@@ -427,30 +736,47 @@ internal unsafe partial class VulkanWindowTarget {
         let allocateCommandBuffers = dispatch.vkAllocateCommandBuffers
         let allocateResult = allocateCommandBuffers(device, &allocateInfo, buffers)
         if allocateResult != VkConstants.VK_SUCCESS {
+            let destroyCommandPool = dispatch.vkDestroyCommandPool
+            destroyCommandPool(device, commandPool, nil)
+            if let accounting = windowObjectAccounting {
+                accounting.Release()
+            }
+            commandPool = 0uL
             throw InvalidOperationException("vkAllocateCommandBuffers failed: " + allocateResult.ToString())
         }
-        var acquiredQueue VkQueue = nint(0)
-        let getDeviceQueue = dispatch.vkGetDeviceQueue
-        getDeviceQueue(device, queueFamilyIndex, 0u, &acquiredQueue)
-        if acquiredQueue == nint(0) {
-            throw InvalidOperationException("Vulkan queue acquisition failed")
+        var trackedCommandBuffers int32 = 0
+        try {
+            while trackedCommandBuffers < 2 {
+                if let accounting = windowObjectAccounting {
+                    accounting.Allocate()
+                }
+                trackedCommandBuffers = trackedCommandBuffers + 1
+            }
+        } catch (error Exception) {
+            while trackedCommandBuffers > 0 {
+                if let accounting = windowObjectAccounting {
+                    accounting.Release()
+                }
+                trackedCommandBuffers = trackedCommandBuffers - 1
+            }
+            let destroyCommandPool = dispatch.vkDestroyCommandPool
+            destroyCommandPool(device, commandPool, nil)
+            if let accounting = windowObjectAccounting {
+                accounting.Release()
+            }
+            commandPool = 0uL
+            throw error
         }
-        queue = acquiredQueue
-        runtime = VulkanRuntime(instance, instanceDispatch)
-        runtime!!.AttachDevice(
-            physicalDevice,
-            device,
-            dispatch,
-            queue,
-            queue,
-            queueFamilyIndex,
-            queueFamilyIndex)
-        frameSlot0 = VulkanFrameSlot(device, dispatch, buffers[0])
-        frameSlot1 = VulkanFrameSlot(device, dispatch, buffers[1])
-        var memoryProperties = VkPhysicalDeviceMemoryProperties{}
-        let getMemoryProperties = instanceDispatch.vkGetPhysicalDeviceMemoryProperties
-        getMemoryProperties(physicalDevice, &memoryProperties)
-        memoryAllocator = VulkanMemoryAllocator(device, dispatch, memoryProperties, 256u)
+        commandBufferObjectCount = trackedCommandBuffers
+        frameSlot0 = VulkanFrameSlot(device, dispatch, buffers[0], windowObjectAccounting)
+        frameSlot1 = VulkanFrameSlot(device, dispatch, buffers[1], windowObjectAccounting)
+        guard let activeRuntime = runtime else {
+            throw InvalidOperationException("Vulkan shared runtime is unavailable")
+        }
+        imageScene = VulkanImageScene(
+            activeRuntime.ImageIdentityRegistry,
+            activeRuntime.ImageResources,
+            activeRuntime.Generation)
         var physicalProperties = VkPhysicalDeviceProperties{}
         let getPhysicalDeviceProperties = instanceDispatch.vkGetPhysicalDeviceProperties
         getPhysicalDeviceProperties(physicalDevice, &physicalProperties)
@@ -459,9 +785,20 @@ internal unsafe partial class VulkanWindowTarget {
         if atlasByteSize < 8192uL {
             throw InvalidOperationException("Vulkan text atlas capacity is too small")
         }
-        textAtlas = VulkanTextAtlas(device, dispatch, memoryAllocator!!, atlasByteSize,
-            physicalProperties.limits.maxTexelBufferElements)
+        textAtlas = VulkanTextAtlasSet(device, dispatch, memoryAllocator!!, atlasByteSize,
+            physicalProperties.limits.maxTexelBufferElements,
+            activeRuntime.PrimitiveState.TextDescriptorSetLayout, windowObjectAccounting)
         textScene = VulkanTextScene(textAtlas!!)
+    }
+
+    private func AcquireQueue() {
+        var acquiredQueue VkQueue = nint(0)
+        let getDeviceQueue = dispatch.vkGetDeviceQueue
+        getDeviceQueue(device, queueFamilyIndex, 0u, &acquiredQueue)
+        if acquiredQueue == nint(0) {
+            throw InvalidOperationException("Vulkan queue acquisition failed")
+        }
+        queue = acquiredQueue
     }
 
     private func MaintenanceDeviceExtensionName() string {

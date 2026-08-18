@@ -79,29 +79,37 @@ internal func BuildScenePlanProof(frame SceneFrame, version uint64) {
 
     frame.AddGradientStop(GradientStopRecord{ Offset: 0.0F, Color: 0x101820FFu })
     frame.AddGradientStop(GradientStopRecord{ Offset: 0.5F, Color: 0x406080FFu })
+    frame.AddGradientStop(GradientStopRecord{ Offset: 0.75F, Color: 0x80A0C0FFu })
     frame.AddGradientStop(GradientStopRecord{ Offset: 1.0F, Color: 0xC0E0FFFFu })
     frame.AddLinearGradient(LinearGradientRecord{
         Bounds: bounds,
+        RadiusTopLeft: 2.0F,
+        RadiusTopRight: 3.0F,
+        RadiusBottomRight: 4.0F,
+        RadiusBottomLeft: 5.0F,
         StartX: 0.0F,
         StartY: 0.0F,
         EndX: 48.0F,
         EndY: 36.0F,
         StopStart: 0,
-        StopCount: 3,
+        StopCount: 4,
         Opacity: 0.81F,
         TransformIndex: transformIndex,
     })
     frame.AddGradientStop(GradientStopRecord{ Offset: 0.0F, Color: 0xFFCC00FFu })
-    frame.AddGradientStop(GradientStopRecord{ Offset: 0.35F, Color: 0xCC00AAFFu })
     frame.AddGradientStop(GradientStopRecord{ Offset: 1.0F, Color: 0x4400FFFFu })
     frame.AddRadialGradient(RadialGradientRecord{
         Bounds: ConservativeBounds{ X: 8.0F, Y: 9.0F, Width: 28.0F, Height: 20.0F },
+        RadiusTopLeft: 1.0F,
+        RadiusTopRight: 2.0F,
+        RadiusBottomRight: 3.0F,
+        RadiusBottomLeft: 4.0F,
         CenterX: 22.0F,
         CenterY: 19.0F,
         RadiusX: 18.0F,
         RadiusY: 12.0F,
-        StopStart: 3,
-        StopCount: 3,
+        StopStart: 4,
+        StopCount: 2,
         Opacity: 0.77F,
         TransformIndex: transformIndex,
     })
@@ -194,7 +202,7 @@ internal func RunScenePlanProof() bool {
     let frame = SceneFrame(1)
     let version uint64 = 1uL
     BuildScenePlanProof(frame, version)
-    let expectedDigest uint64 = 602956050187730187uL
+    let expectedDigest uint64 = 13713550411312889679uL
     let expectedGrowth = frame.GrowthOperations
     RequireScenePlanProof(frame.ChunkCount == 1, "S09 scene plan chunk count")
     RequireScenePlanProof(frame.DrawRefCount == 18, "S09 scene plan draw count")

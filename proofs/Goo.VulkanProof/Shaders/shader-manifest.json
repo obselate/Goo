@@ -176,20 +176,30 @@
       ]
     },
     {
-      "id": "analytic_linear3_fragment",
+      "id": "analytic_border_fragment",
       "stage": "fragment",
-      "source": "analytic_linear3.frag.glsl",
-      "output": "analytic_linear3.frag.spv",
+      "source": "analytic_border.frag.glsl",
+      "output": "analytic_border.frag.spv",
       "entryPoint": "main",
       "capabilities": [
         1
       ]
     },
     {
-      "id": "analytic_radial3_fragment",
+      "id": "analytic_linear4_fragment",
       "stage": "fragment",
-      "source": "analytic_radial3.frag.glsl",
-      "output": "analytic_radial3.frag.spv",
+      "source": "analytic_linear4.frag.glsl",
+      "output": "analytic_linear4.frag.spv",
+      "entryPoint": "main",
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "analytic_radial4_fragment",
+      "stage": "fragment",
+      "source": "analytic_radial4.frag.glsl",
+      "output": "analytic_radial4.frag.spv",
       "entryPoint": "main",
       "capabilities": [
         1
@@ -318,7 +328,7 @@
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 112,
+        "size": 128,
         "stages": [
           "vertex",
           "fragment"
@@ -357,6 +367,11 @@
           {
             "name": "packedColors",
             "offset": 96,
+            "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
             "type": "uvec4"
           }
         ]
@@ -410,12 +425,12 @@
       }
     },
     {
-      "id": "analytic_linear3",
+      "id": "analytic_border",
       "topology": "triangle-list",
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 112,
+        "size": 128,
         "stages": [
           "vertex",
           "fragment"
@@ -437,7 +452,7 @@
             "type": "vec4"
           },
           {
-            "name": "radii",
+            "name": "widths",
             "offset": 48,
             "type": "vec4"
           },
@@ -447,13 +462,18 @@
             "type": "vec4"
           },
           {
-            "name": "stopPositions",
+            "name": "radii",
             "offset": 80,
             "type": "vec4"
           },
           {
             "name": "packedColors",
             "offset": 96,
+            "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
             "type": "uvec4"
           }
         ]
@@ -475,7 +495,7 @@
           ]
         },
         {
-          "shader": "analytic_linear3_fragment",
+          "shader": "analytic_border_fragment",
           "stage": "fragment",
           "entryPoint": "main",
           "inputs": [
@@ -502,17 +522,17 @@
       "cullMode": "none",
       "frontFace": "counter-clockwise",
       "hostPacking": {
-        "path": "AnalyticLinear3PushConstants.Generated.gs",
-        "typeName": "AnalyticLinear3PushConstants"
+        "path": "AnalyticBorderPushConstants.Generated.gs",
+        "typeName": "AnalyticBorderPushConstants"
       }
     },
     {
-      "id": "analytic_radial3",
+      "id": "analytic_linear4",
       "topology": "triangle-list",
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 112,
+        "size": 128,
         "stages": [
           "vertex",
           "fragment"
@@ -552,6 +572,11 @@
             "name": "packedColors",
             "offset": 96,
             "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
+            "type": "uvec4"
           }
         ]
       },
@@ -572,7 +597,7 @@
           ]
         },
         {
-          "shader": "analytic_radial3_fragment",
+          "shader": "analytic_linear4_fragment",
           "stage": "fragment",
           "entryPoint": "main",
           "inputs": [
@@ -599,8 +624,110 @@
       "cullMode": "none",
       "frontFace": "counter-clockwise",
       "hostPacking": {
-        "path": "AnalyticRadial3PushConstants.Generated.gs",
-        "typeName": "AnalyticRadial3PushConstants"
+        "path": "AnalyticLinear4PushConstants.Generated.gs",
+        "typeName": "AnalyticLinear4PushConstants"
+      }
+    },
+    {
+      "id": "analytic_radial4",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 128,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 0,
+      "descriptors": [],
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_radial4_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "rgb11-11-10-alpha10-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "AnalyticRadial4PushConstants.Generated.gs",
+        "typeName": "AnalyticRadial4PushConstants"
       }
     },
     {
@@ -609,7 +736,7 @@
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 112,
+        "size": 128,
         "stages": [
           "vertex",
           "fragment"
@@ -648,6 +775,11 @@
           {
             "name": "packedColors",
             "offset": 96,
+            "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
             "type": "uvec4"
           }
         ]

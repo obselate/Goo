@@ -64,6 +64,8 @@
 !/tools/Goo.ShaderGen/**
 !/tools/Goo.TextNative/
 !/tools/Goo.TextNative/**
+!/tools/Goo.UnicodeGen/
+!/tools/Goo.UnicodeGen/**
 
 !/proofs/
 /proofs/*
@@ -93,6 +95,7 @@
 !/Directory.Build.props
 !/Directory.Packages.props
 !/GAPS-AND-REDUCTIONS.md
+!/IMPLEMENTATION-HISTORY.md
 !/IMPLEMENTATION-PLAN.md
 !/PLAN-FOR-REVIEW.md
 !/VULKAN-SKIA-REPLACEMENT.md

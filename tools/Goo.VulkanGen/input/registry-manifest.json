@@ -8,7 +8,8 @@
     "VK_KHR_swapchain",
     "VK_KHR_win32_surface",
     "VK_KHR_wayland_surface",
-    "VK_EXT_debug_utils"
+    "VK_EXT_debug_utils",
+    "VK_EXT_memory_budget"
   ],
   "globalCommands": [
     "vkGetInstanceProcAddr",
@@ -30,6 +31,7 @@
     "vkGetPhysicalDeviceSurfaceFormatsKHR",
     "vkGetPhysicalDeviceSurfacePresentModesKHR",
     "vkGetPhysicalDeviceMemoryProperties",
+    "vkGetPhysicalDeviceMemoryProperties2",
     "vkGetPhysicalDeviceFormatProperties",
     "vkCreateDevice",
     "vkCreateDebugUtilsMessengerEXT",
@@ -115,6 +117,7 @@
     "VkPhysicalDeviceVulkan13Features",
     "VkMemoryDedicatedRequirements",
     "VkMemoryDedicatedAllocateInfo",
+    "VkPhysicalDeviceMemoryBudgetPropertiesEXT",
     "VkPipelineRenderingCreateInfo",
     "VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT",
     "VkSwapchainPresentFenceInfoEXT",
@@ -129,6 +132,8 @@
     "VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME",
     "VK_EXT_SURFACE_MAINTENANCE_1_SPEC_VERSION",
     "VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME",
-    "VK_KHR_GET_SURFACE_CAPABILITIES_2_SPEC_VERSION"
+    "VK_KHR_GET_SURFACE_CAPABILITIES_2_SPEC_VERSION",
+    "VK_EXT_MEMORY_BUDGET_EXTENSION_NAME",
+    "VK_EXT_MEMORY_BUDGET_SPEC_VERSION"
   ]
 }

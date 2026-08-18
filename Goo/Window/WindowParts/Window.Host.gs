@@ -1,19 +1,167 @@
 package Goo
 
 import System
+import System.Collections.Generic
 import System.Diagnostics
 import System.Numerics
 import System.Threading
 
+internal class WindowScheduler {
+  private const EventBudget int32 = 64
+  private const DefaultWaitMs int32 = 250
+  private let windows List[Window] = List[Window]()
+  private var snapshot []Window = []Window{}
+  private var snapshotCount int32
+  private var nextWindow int32
+  private var running bool
+
+  private func EnsureSnapshotCapacity(required int32) {
+    if required <= snapshot.Length {
+      return
+    }
+    var capacity = snapshot.Length
+    if capacity == 0 {
+      capacity = 4
+    }
+    while capacity < required {
+      if capacity > 1073741823 {
+        capacity = required
+      } else {
+        capacity = capacity * 2
+      }
+    }
+    snapshot = [capacity]Window
+  }
+
+  private func CaptureSnapshot() int32 {
+    let count = windows.Count
+    EnsureSnapshotCapacity(count)
+    if count < snapshotCount {
+      Array.Clear(snapshot, count, snapshotCount - count)
+    }
+    var index int32
+    while index < count {
+      snapshot[index] = windows[index]
+      index = index + 1
+    }
+    snapshotCount = count
+    return count
+  }
+
+  internal func Register(window Window) {
+    if !windows.Contains(window) {
+      windows.Add(window)
+    }
+  }
+
+  internal func Unregister(window Window) {
+    let index = windows.IndexOf(window)
+    if index < 0 {
+      return
+    }
+    windows.RemoveAt(index)
+    if windows.Count == 0 {
+      nextWindow = 0
+    } else if nextWindow >= windows.Count {
+      nextWindow = 0
+    }
+  }
+
+  internal func Run(owner Window) {
+    if running {
+      throw InvalidOperationException("Window scheduler is already running")
+    }
+    running = true
+    nextWindow = 0
+    try {
+      let clock = Stopwatch.StartNew()
+      var last = clock.Elapsed.TotalSeconds
+      while owner.IsOpen {
+        let currentCount = CaptureSnapshot()
+        if currentCount == 0 {
+          break
+        }
+        var anyDemand bool
+        var waitMs int32 = DefaultWaitMs
+        var currentIndex int32
+        while currentIndex < currentCount {
+          let window = snapshot[currentIndex]
+          if !window.IsOpen {
+            currentIndex = currentIndex + 1
+            continue
+          }
+          if window.SchedulerHasDemand() {
+            anyDemand = true
+          }
+          let candidate = window.SchedulerIdleWaitMs()
+          if candidate < waitMs {
+            waitMs = candidate
+          }
+          currentIndex = currentIndex + 1
+        }
+        var eventCount int32
+        if anyDemand {
+          eventCount = SdlRuntime.PumpEvents(EventBudget)
+        } else {
+          eventCount = SdlRuntime.WaitEventsBounded(waitMs, EventBudget)
+        }
+        let serviceAll = !anyDemand || eventCount != 0
+        let afterEventsCount = CaptureSnapshot()
+        var afterEventsIndex int32
+        while afterEventsIndex < afterEventsCount {
+          let window = snapshot[afterEventsIndex]
+          if window.IsOpen {
+            window.RefreshSchedulerMetrics()
+          }
+          afterEventsIndex = afterEventsIndex + 1
+        }
+        let now = clock.Elapsed.TotalSeconds
+        let dt = now - last
+        last = now
+        let count = afterEventsCount
+        if count == 0 {
+          break
+        }
+        let start = nextWindow % count
+        var offset int32
+        while offset < count {
+          let window = snapshot[(start + offset) % count]
+          if window.IsOpen && (serviceAll || window.SchedulerHasDemand()) {
+            window.PumpScheduled(dt)
+          }
+          offset = offset + 1
+        }
+        nextWindow = (start + 1) % count
+      }
+    } finally {
+      running = false
+    }
+  }
+}
+
 /// Hosts a Goo tree in an SDL window.
 public partial class Window {
   shared {
+    private let scheduler WindowScheduler = WindowScheduler()
+
     /// Configures process-wide application identity before SDL initialization.
     /// @param name human-readable application name
     /// @param version application version
     /// @param identifier unique reverse-domain identifier
     public func ConfigureApplication(name string, version string, identifier string) {
       SdlRuntime.ConfigureApplication(name, version, identifier)
+    }
+
+    internal func RegisterLiveWindow(window Window) {
+      scheduler.Register(window)
+    }
+
+    internal func UnregisterLiveWindow(window Window) {
+      scheduler.Unregister(window)
+    }
+
+    internal func RunLiveWindowScheduler(owner Window) {
+      scheduler.Run(owner)
     }
   }
 
@@ -66,6 +214,9 @@ public partial class Window {
       uiThreadBound = true
       configureHost(native)
       windowTarget = VulkanWindowTarget(native)
+      if let target = windowTarget {
+        profiler.Sink = target
+      }
       if !applyNativeResize(
         native.LogicalWidth,
         native.LogicalHeight,
@@ -78,6 +229,7 @@ public partial class Window {
       input.Attach(native)
       native.Show()
       IsOpen = true
+      Window.RegisterLiveWindow(this)
       return this
     } catch (e Exception) {
       Close()
@@ -149,6 +301,15 @@ public partial class Window {
   /// @param dt elapsed seconds since the previous frame
   public func Pump(dt float64) {
     requireUiThread("Window.Pump")
+    pumpCore(dt, true)
+  }
+
+  internal func PumpScheduled(dt float64) {
+    requireUiThread("Window scheduled pump")
+    pumpCore(dt, false)
+  }
+
+  private func pumpCore(dt float64, waitForEvents bool) {
     if !motionFinite(dt) || dt < 0.0 {
       throw ArgumentOutOfRangeException("dt")
     }
@@ -162,16 +323,15 @@ public partial class Window {
     if !IsOpen {
       return
     }
-    let profiling = profiler.Enabled
+    let profiling = profiler.Active
     let frameProfile = profiling ? profiler.Start() : FrameProfilePoint{}
     let eventsProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-    if hasDemand() {
-      native.PollEvents()
-    } else {
-      // No demand: block for native/Wake events instead of spinning. The
-      // timeout is a fallback net (or the caret's next blink deadline);
-      // real wakeups (input, Wake()) return immediately regardless of it.
-      native.WaitEvents(idleWaitMs())
+    if waitForEvents {
+      if hasDemand() {
+        native.PollEvents()
+      } else {
+        native.WaitEvents(idleWaitMs())
+      }
     }
     let repeatStartTicks = Stopwatch.GetTimestamp()
     if !native.IsClosing && drainCloseRequest() {
@@ -260,6 +420,21 @@ public partial class Window {
     return motionPump.Active || resolver.Animating.Count > 0 || renderDirty || pendingRebuild != 0
       || pendingImageCompletion != 0 || pendingRetainedInvalidation != 0 || hasScrollDemand()
       || accessibility?.HasDemand == true || hasPostedActions() || MetricSubscriptions.HasDemand(this)
+      || windowTarget?.NeedsRender == true
+      || Interlocked.CompareExchange(&closeRequested, 0, 0) != 0
+      || host?.IsClosing == true
+  }
+
+  internal func SchedulerHasDemand() bool {
+    return hasDemand()
+  }
+
+  internal func SchedulerIdleWaitMs() int32 {
+    return idleWaitMs()
+  }
+
+  internal func RefreshSchedulerMetrics() {
+    host?.RefreshMetricsIfChanged()
   }
 
   // The idle wait timeout: 250ms by default, shortened to land on the next
@@ -291,13 +466,7 @@ public partial class Window {
     requireOpenThread("Window.Run")
     Open()
     try {
-      let clock = Stopwatch.StartNew()
-      var last = clock.Elapsed.TotalSeconds
-      while IsOpen {
-        let now = clock.Elapsed.TotalSeconds
-        Pump(now - last)
-        last = now
-      }
+      Window.RunLiveWindowScheduler(this)
     } finally {
       if IsOpen {
         Close()
@@ -313,7 +482,10 @@ public partial class Window {
       try {
         input.Dispose()
       } finally {
-        windowTarget?.Dispose()
+        if let target = windowTarget {
+          profiler.Sink = nil
+          target.Dispose()
+        }
         windowTarget = nil
         host?.Dispose()
         host = nil
@@ -334,6 +506,7 @@ public partial class Window {
 
   internal func Close() {
     requireUiThread("Window.Close")
+    Window.UnregisterLiveWindow(this)
     stopPosts()
     stopImageCompletions()
     stopRetainedInvalidations()
@@ -373,9 +546,9 @@ public partial class Window {
 
   private func renderFrame() {
     if let target = windowTarget {
-      let paintProfile = profiler.Enabled ? profiler.Start() : FrameProfilePoint{}
+      let paintProfile = profiler.Active ? profiler.Start() : FrameProfilePoint{}
       target.Render(node, Background, dpi)
-      if profiler.Enabled {
+      if profiler.Active {
         profiler.Record(FrameProfileStage.Paint, paintProfile)
       }
     }
@@ -397,12 +570,8 @@ public partial class Window {
 
   private func applyNativeResize(logicalWidth int32, logicalHeight int32,
     newFramebufferWidth int32, newFramebufferHeight int32) bool {
-    HandleResize(logicalWidth, logicalHeight)
-    if newFramebufferWidth <= 0 || newFramebufferHeight <= 0 {
-      return true
-    }
-    dpi = DpiScale(logicalWidth, logicalHeight, newFramebufferWidth, newFramebufferHeight)
-    requestRender()
+    let framebufferValid = newFramebufferWidth > 0 && newFramebufferHeight > 0
+    HandleResize(logicalWidth, logicalHeight, framebufferValid)
     guard let target = windowTarget else {
       return false
     }
@@ -411,6 +580,9 @@ public partial class Window {
     }
     framebufferWidth = newFramebufferWidth
     framebufferHeight = newFramebufferHeight
+    if framebufferValid {
+      dpi = DpiScale(logicalWidth, logicalHeight, newFramebufferWidth, newFramebufferHeight)
+    }
     return true
   }
 }

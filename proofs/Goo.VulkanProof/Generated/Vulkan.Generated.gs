@@ -336,6 +336,8 @@ class VkConstants {
         const VK_EVENT_SET VkResult = 3
         const VK_EXT_DEBUG_UTILS_EXTENSION_NAME string = "VK_EXT_debug_utils"
         const VK_EXT_DEBUG_UTILS_SPEC_VERSION int32 = 2
+        const VK_EXT_MEMORY_BUDGET_EXTENSION_NAME string = "VK_EXT_memory_budget"
+        const VK_EXT_MEMORY_BUDGET_SPEC_VERSION int32 = 1
         const VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME string = "VK_EXT_surface_maintenance1"
         const VK_EXT_SURFACE_MAINTENANCE_1_SPEC_VERSION int32 = 1
         const VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME string = "VK_EXT_swapchain_maintenance1"
@@ -845,6 +847,8 @@ class VkConstants {
         const VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS VkStructureType = 1000127000
         const VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 VkStructureType = 1000146003
         const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 VkStructureType = 1000059000
+        const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT VkStructureType = 1000237000
+        const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 VkStructureType = 1000059006
         const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT VkStructureType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR
         const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR VkStructureType = 1000275000
         const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES VkStructureType = 51
@@ -1646,6 +1650,14 @@ unsafe struct VkPhysicalDeviceLimits {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkPhysicalDeviceMemoryBudgetPropertiesEXT {
+    var sType VkStructureType
+    var pNext *void
+    fixed heapBudget [16]VkDeviceSize
+    fixed heapUsage [16]VkDeviceSize
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkPhysicalDeviceMemoryProperties {
     var memoryTypeCount uint32
     var memoryTypes_0 VkMemoryType
@@ -1697,6 +1709,13 @@ unsafe struct VkPhysicalDeviceMemoryProperties {
     var memoryHeaps_13 VkMemoryHeap
     var memoryHeaps_14 VkMemoryHeap
     var memoryHeaps_15 VkMemoryHeap
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkPhysicalDeviceMemoryProperties2 {
+    var sType VkStructureType
+    var pNext *void
+    var memoryProperties VkPhysicalDeviceMemoryProperties
 }
 
 @StructLayout(LayoutKind.Sequential)
@@ -2222,6 +2241,7 @@ unsafe struct VkInstanceDispatch {
     var vkGetPhysicalDeviceSurfaceFormatsKHR unmanaged[Cdecl] (VkPhysicalDevice, VkSurfaceKHR, *uint32, *VkSurfaceFormatKHR) -> VkResult
     var vkGetPhysicalDeviceSurfacePresentModesKHR unmanaged[Cdecl] (VkPhysicalDevice, VkSurfaceKHR, *uint32, *VkPresentModeKHR) -> VkResult
     var vkGetPhysicalDeviceMemoryProperties unmanaged[Cdecl] (VkPhysicalDevice, *VkPhysicalDeviceMemoryProperties) -> void
+    var vkGetPhysicalDeviceMemoryProperties2 unmanaged[Cdecl] (VkPhysicalDevice, *VkPhysicalDeviceMemoryProperties2) -> void
     var vkGetPhysicalDeviceFormatProperties unmanaged[Cdecl] (VkPhysicalDevice, VkFormat, *VkFormatProperties) -> void
     var vkCreateDevice unmanaged[Cdecl] (VkPhysicalDevice, *VkDeviceCreateInfo, *VkAllocationCallbacks, *VkDevice) -> VkResult
     var vkCreateDebugUtilsMessengerEXT unmanaged[Cdecl] (VkInstance, *VkDebugUtilsMessengerCreateInfoEXT, *VkAllocationCallbacks, *VkDebugUtilsMessengerEXT) -> VkResult

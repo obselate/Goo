@@ -1,0 +1,14 @@
+<Project Sdk="Gsharp.NET.Sdk/0.4.1">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GooFailedIdleSmoke</RootNamespace>
+    <AssemblyName>Goo.Tests</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Goo/Goo.gsproj"
+                      AdditionalProperties="Configuration=Test$(Configuration);IncludeTestFixtures=true;GooTestFixturesProps=$(MSBuildProjectDirectory)/Goo.FailedIdleFixtures.props" />
+  </ItemGroup>
+</Project>

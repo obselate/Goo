@@ -63,6 +63,14 @@ internal partial class SceneFrame {
             hash = HashFloat(hash, value.RightWidth)
             hash = HashFloat(hash, value.BottomWidth)
             hash = HashFloat(hash, value.LeftWidth)
+            if value.RadiusTopLeft != 0.0F || value.RadiusTopRight != 0.0F
+                || value.RadiusBottomRight != 0.0F || value.RadiusBottomLeft != 0.0F {
+                hash = Mix(hash, 1uL)
+                hash = HashFloat(hash, value.RadiusTopLeft)
+                hash = HashFloat(hash, value.RadiusTopRight)
+                hash = HashFloat(hash, value.RadiusBottomRight)
+                hash = HashFloat(hash, value.RadiusBottomLeft)
+            }
             hash = Mix(hash, uint64(value.TopColor))
             hash = Mix(hash, uint64(value.RightColor))
             hash = Mix(hash, uint64(value.BottomColor))
@@ -84,6 +92,10 @@ internal partial class SceneFrame {
         while index < linearGradientCount {
             let value = linearGradients[index]
             hash = HashBounds(hash, value.Bounds)
+            hash = HashFloat(hash, value.RadiusTopLeft)
+            hash = HashFloat(hash, value.RadiusTopRight)
+            hash = HashFloat(hash, value.RadiusBottomRight)
+            hash = HashFloat(hash, value.RadiusBottomLeft)
             hash = HashFloat(hash, value.StartX)
             hash = HashFloat(hash, value.StartY)
             hash = HashFloat(hash, value.EndX)
@@ -99,6 +111,10 @@ internal partial class SceneFrame {
         while index < radialGradientCount {
             let value = radialGradients[index]
             hash = HashBounds(hash, value.Bounds)
+            hash = HashFloat(hash, value.RadiusTopLeft)
+            hash = HashFloat(hash, value.RadiusTopRight)
+            hash = HashFloat(hash, value.RadiusBottomRight)
+            hash = HashFloat(hash, value.RadiusBottomLeft)
             hash = HashFloat(hash, value.CenterX)
             hash = HashFloat(hash, value.CenterY)
             hash = HashFloat(hash, value.RadiusX)
@@ -319,7 +335,8 @@ internal partial class SceneFrame {
     }
 
     private func ValidateGradientRange(start int32, count int32) {
-        if start < 0 || count < 0 || start > gradientStopCount || count > gradientStopCount - start {
+        if start < 0 || count < 2 || count > 4
+            || start > gradientStopCount || count > gradientStopCount - start {
             throw ArgumentOutOfRangeException("gradient stop range")
         }
     }

@@ -1,0 +1,85 @@
+package Goo
+
+import System.IO
+import System.Text
+
+internal unsafe partial class VulkanDiagnostics {
+    private func OptionalBudgetValue(available uint32, value uint64) string {
+        if available == 0u {
+            return "null"
+        }
+        return value.ToString()
+    }
+
+    private func Hex(buffer []?uint8, offset int32, length uint32) string {
+        let text = StringBuilder()
+        if let bytes = buffer {
+            var index uint32 = 0u
+            while index < length {
+                text.Append(bytes[offset + int32(index)].ToString("x2"))
+                index++
+            }
+        }
+        return text.ToString()
+    }
+
+    internal func FlushNdjson(writer TextWriter) {
+        if !IsSealed {
+            return
+        }
+        if let storage = trace {
+            let total = TraceWriteCount
+            let start = total > int64(storage.Length) ? total - int64(storage.Length) : 0L
+            var index = start
+            while index < total {
+                let record = storage[int32(index % int64(storage.Length))]
+                writer.WriteLine("{\"kind\":\"trace\",\"run\":${record.run},\"workload\":${record.workload},\"process\":${record.process},\"window\":${record.window},\"frame\":${record.frame},\"sample\":${record.sample},\"queue\":${record.queue},\"submission\":${record.submission},\"fence\":${record.fence},\"query\":${record.query},\"event\":${record.eventId},\"category\":${record.category},\"severity\":${record.severity},\"result\":${record.result},\"value0\":${record.value0},\"value1\":${record.value1}}")
+                index++
+            }
+        }
+        if let storage = results {
+            let total = ResultWriteCount
+            let start = total > int64(storage.Length) ? total - int64(storage.Length) : 0L
+            var index = start
+            while index < total {
+                let record = storage[int32(index % int64(storage.Length))]
+                writer.WriteLine("{\"kind\":\"result\",\"ordinal\":${record.ordinal},\"event\":${record.eventId},\"classification\":${record.classification},\"frame\":${record.frame},\"queue\":${record.queue},\"submission\":${record.submission},\"fence\":${record.fence},\"result\":${record.result}}")
+                index++
+            }
+        }
+        if let records = validation {
+            if let bytes = validationText {
+                let total = ValidationWriteCount
+                let start = total > int64(records.Length) ? total - int64(records.Length) : 0L
+                var index = start
+                while index < total {
+                    let record = records[int32(index % int64(records.Length))]
+                    let text = StringBuilder()
+                    var byteIndex int32 = 0
+                    while byteIndex < int32(record.messageLength) && byteIndex < ValidationTextCapacity {
+                        text.Append(bytes[int32(record.messageOffset) + byteIndex].ToString("x2"))
+                        byteIndex++
+                    }
+                    writer.WriteLine("{\"kind\":\"validation\",\"severity\":${record.severity},\"types\":${record.types},\"messageId\":${record.messageId},\"messageHash\":${record.messageHash},\"messageLength\":${record.messageLength},\"messageTruncated\":${record.messageTruncated},\"messageHex\":\"${text}\"}")
+                    index++
+                }
+            }
+        }
+        if Fatal.captured {
+            let deviceName = Hex(fatalDeviceName, 0, uint32(FatalNameCapacity))
+            let snapshot = fatalCounters
+            writer.WriteLine("{\"kind\":\"fatal\",\"code\":${fatalCode},\"value\":${fatalValue},\"traceAtCapture\":${fatalTraceWrite},\"validationAtCapture\":${fatalValidationWrite},\"resultAtCapture\":${fatalResultWrite},\"instanceApiVersion\":${fatalInstanceApiVersion},\"physicalApiVersion\":${fatalPhysicalApiVersion},\"driverVersion\":${fatalDriverVersion},\"vendorId\":${fatalVendorId},\"deviceId\":${fatalDeviceId},\"deviceType\":${fatalDeviceType},\"timelineSemaphore\":${fatalTimelineSemaphore},\"synchronization2\":${fatalSynchronization2},\"dynamicRendering\":${fatalDynamicRendering},\"debugUtilsAvailable\":${fatalDebugUtilsAvailable},\"instanceExtensionCount\":${fatalInstanceExtensionCount},\"deviceExtensionCount\":${fatalDeviceExtensionCount},\"extensionCount\":${fatalExtensionCount},\"extensionDropped\":${fatalExtensionDropped},\"window\":${fatalWindow},\"surface\":${fatalSurface},\"swapchain\":${fatalSwapchain},\"frame\":${fatalFrame},\"generation\":${fatalGeneration},\"heapBudgetAvailable\":${fatalHeapBudgetAvailable},\"heapBudgetSampleCurrent\":${fatalHeapBudgetSampleCurrent},\"heapBudget\":${OptionalBudgetValue(fatalHeapBudgetAvailable, fatalHeapBudget)},\"driverHeapUsage\":${OptionalBudgetValue(fatalHeapBudgetAvailable, fatalDriverHeapUsage)},\"heapAllocated\":${fatalHeapAllocated},\"retiredBytes\":${fatalRetiredBytes},\"liveObjects\":${fatalLiveObjects},\"lastSubmission\":${fatalLastSubmission},\"lastQueue\":${fatalLastQueue},\"lastFence\":${fatalLastFence},\"lastResultEvent\":${fatalLastResultEvent},\"lastResult\":${fatalLastResult},\"deviceNameHex\":\"${deviceName}\",\"rebuildCount\":${snapshot.rebuildCount},\"layoutCount\":${snapshot.layoutCount},\"planCompileCount\":${snapshot.planCompileCount},\"uploadCount\":${snapshot.uploadCount},\"recordCount\":${snapshot.recordCount},\"submitCount\":${snapshot.submitCount},\"presentCount\":${snapshot.presentCount},\"readbackCount\":${snapshot.readbackCount},\"managedAllocatedBytes\":${snapshot.managedAllocatedBytes},\"vulkanObjectCount\":${snapshot.vulkanObjectCount},\"vulkanObjectAllocationCount\":${snapshot.vulkanObjectAllocationCount},\"vulkanDeviceMemoryAllocationCount\":${snapshot.vulkanDeviceMemoryAllocationCount},\"vulkanDeviceMemoryBytes\":${snapshot.vulkanDeviceMemoryBytes},\"cacheBytes\":${snapshot.cacheBytes},\"imageEvictionCount\":${snapshot.imageEvictionCount},\"imageRetirementCount\":${snapshot.imageRetirementCount},\"allocatorBytes\":${snapshot.allocatorBytes},\"dirtyChunkCount\":${snapshot.dirtyChunkCount},\"reusedChunkCount\":${snapshot.reusedChunkCount},\"uploadBytes\":${snapshot.uploadBytes},\"drawCount\":${snapshot.drawCount},\"pipelineChangeCount\":${snapshot.pipelineChangeCount},\"descriptorChangeCount\":${snapshot.descriptorChangeCount},\"passCount\":${snapshot.passCount},\"barrierCount\":${snapshot.barrierCount},\"damageCount\":${snapshot.damageCount},\"damageArea\":${snapshot.damageArea},\"surfaceRecoveryCount\":${snapshot.surfaceRecoveryCount},\"deviceRecoveryCount\":${snapshot.deviceRecoveryCount},\"validationErrorCount\":${snapshot.validationErrorCount},\"resultCount\":${snapshot.resultCount},\"resultFailureCount\":${snapshot.resultFailureCount}}")
+            if let records = fatalExtensions {
+                var index int32 = 0
+                while index < fatalExtensionCount {
+                    let record = records[index]
+                    let name = Hex(fatalExtensionText, int32(record.offset), record.length)
+                    writer.WriteLine("{\"kind\":\"fatal_extension\",\"scope\":${record.extensionKind},\"hash\":${record.hash},\"length\":${record.length},\"truncated\":${record.truncated},\"nameHex\":\"${name}\"}")
+                    index++
+                }
+            }
+        }
+        let snapshot = counters.Snapshot
+        writer.WriteLine("{\"kind\":\"counters\",\"rebuildCount\":${snapshot.rebuildCount},\"layoutCount\":${snapshot.layoutCount},\"planCompileCount\":${snapshot.planCompileCount},\"uploadCount\":${snapshot.uploadCount},\"recordCount\":${snapshot.recordCount},\"submitCount\":${snapshot.submitCount},\"presentCount\":${snapshot.presentCount},\"readbackCount\":${snapshot.readbackCount},\"managedAllocatedBytes\":${snapshot.managedAllocatedBytes},\"heapBudgetAvailable\":${snapshot.heapBudgetAvailable},\"heapBudgetSampleCurrent\":${snapshot.heapBudgetSampleCurrent},\"heapBudget\":${OptionalBudgetValue(snapshot.heapBudgetAvailable, snapshot.heapBudget)},\"driverHeapUsage\":${OptionalBudgetValue(snapshot.heapBudgetAvailable, snapshot.driverHeapUsage)},\"vulkanObjectCount\":${snapshot.vulkanObjectCount},\"vulkanObjectAllocationCount\":${snapshot.vulkanObjectAllocationCount},\"vulkanDeviceMemoryAllocationCount\":${snapshot.vulkanDeviceMemoryAllocationCount},\"vulkanDeviceMemoryBytes\":${snapshot.vulkanDeviceMemoryBytes},\"cacheBytes\":${snapshot.cacheBytes},\"imageEvictionCount\":${snapshot.imageEvictionCount},\"imageRetirementCount\":${snapshot.imageRetirementCount},\"allocatorBytes\":${snapshot.allocatorBytes},\"dirtyChunkCount\":${snapshot.dirtyChunkCount},\"reusedChunkCount\":${snapshot.reusedChunkCount},\"uploadBytes\":${snapshot.uploadBytes},\"drawCount\":${snapshot.drawCount},\"pipelineChangeCount\":${snapshot.pipelineChangeCount},\"descriptorChangeCount\":${snapshot.descriptorChangeCount},\"passCount\":${snapshot.passCount},\"barrierCount\":${snapshot.barrierCount},\"damageCount\":${snapshot.damageCount},\"damageArea\":${snapshot.damageArea},\"surfaceRecoveryCount\":${snapshot.surfaceRecoveryCount},\"deviceRecoveryCount\":${snapshot.deviceRecoveryCount},\"validationErrorCount\":${snapshot.validationErrorCount},\"resultCount\":${snapshot.resultCount},\"resultFailureCount\":${snapshot.resultFailureCount},\"traceDropped\":${traceDropped},\"resultDropped\":${resultDropped},\"validationDropped\":${validationDropped},\"validationErrors\":${validationErrors},\"fatalCode\":${fatalCode},\"fatalValue\":${fatalValue}}")
+    }
+}

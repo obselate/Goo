@@ -3,7 +3,7 @@ package Goo.VulkanProof
 internal class PixelSceneContract {
     const Width uint32 = 64u
     const Height uint32 = 64u
-    const ExpectedDigest uint64 = 3293081366429027451uL
+    const ExpectedDigest uint64 = 13605107734007775944uL
     const ClearColor uint32 = 0x0000FFFFu
     const BackgroundColor uint32 = 0x000000FFu
     const SolidColor uint32 = 0xFF0000FFu
@@ -91,6 +91,57 @@ internal func BuildPixelScene(frame SceneFrame, version uint64) {
         Style: 0u,
         TransformIndex: -1,
     })
+    frame.AddPerEdgeBorder(PerEdgeBorderRecord{
+        Bounds: ConservativeBounds{ X: 5.0F, Y: 42.0F, Width: 14.0F, Height: 12.0F },
+        TopWidth: 2.0F,
+        RightWidth: 2.0F,
+        BottomWidth: 2.0F,
+        LeftWidth: 2.0F,
+        RadiusTopLeft: 4.0F,
+        RadiusTopRight: 4.0F,
+        RadiusBottomRight: 4.0F,
+        RadiusBottomLeft: 4.0F,
+        TopColor: PixelSceneContract.BorderTopColor,
+        RightColor: PixelSceneContract.BorderRightColor,
+        BottomColor: PixelSceneContract.BorderBottomColor,
+        LeftColor: PixelSceneContract.BorderLeftColor,
+        Style: 0u,
+        TransformIndex: -1,
+    })
+    frame.AddPerEdgeBorder(PerEdgeBorderRecord{
+        Bounds: ConservativeBounds{ X: 23.0F, Y: 42.0F, Width: 14.0F, Height: 12.0F },
+        TopWidth: 2.0F,
+        RightWidth: 2.0F,
+        BottomWidth: 2.0F,
+        LeftWidth: 2.0F,
+        RadiusTopLeft: 4.0F,
+        RadiusTopRight: 4.0F,
+        RadiusBottomRight: 4.0F,
+        RadiusBottomLeft: 4.0F,
+        TopColor: PixelSceneContract.BorderTopColor,
+        RightColor: PixelSceneContract.BorderRightColor,
+        BottomColor: PixelSceneContract.BorderBottomColor,
+        LeftColor: PixelSceneContract.BorderLeftColor,
+        Style: 1u,
+        TransformIndex: -1,
+    })
+    frame.AddPerEdgeBorder(PerEdgeBorderRecord{
+        Bounds: ConservativeBounds{ X: 41.0F, Y: 42.0F, Width: 14.0F, Height: 12.0F },
+        TopWidth: 3.0F,
+        RightWidth: 3.0F,
+        BottomWidth: 3.0F,
+        LeftWidth: 3.0F,
+        RadiusTopLeft: 4.0F,
+        RadiusTopRight: 4.0F,
+        RadiusBottomRight: 4.0F,
+        RadiusBottomLeft: 4.0F,
+        TopColor: PixelSceneContract.BorderTopColor,
+        RightColor: PixelSceneContract.BorderRightColor,
+        BottomColor: PixelSceneContract.BorderBottomColor,
+        LeftColor: PixelSceneContract.BorderLeftColor,
+        Style: 2u,
+        TransformIndex: -1,
+    })
     frame.AddUnderline(UnderlineRecord{
         Bounds: ConservativeBounds{ X: 43.0F, Y: 20.0F, Width: 10.0F, Height: 2.0F },
         Thickness: 2.0F,
@@ -101,30 +152,38 @@ internal func BuildPixelScene(frame SceneFrame, version uint64) {
     let linearStart = frame.GradientStopCount
     frame.AddGradientStop(GradientStopRecord{ Offset: 0.0F, Color: PixelSceneContract.BorderTopColor })
     frame.AddGradientStop(GradientStopRecord{ Offset: 0.5F, Color: PixelSceneContract.BorderRightColor })
+    frame.AddGradientStop(GradientStopRecord{ Offset: 0.75F, Color: PixelSceneContract.BorderBottomColor })
     frame.AddGradientStop(GradientStopRecord{ Offset: 1.0F, Color: PixelSceneContract.BorderBottomColor })
     frame.AddLinearGradient(LinearGradientRecord{
         Bounds: ConservativeBounds{ X: 6.0F, Y: 25.0F, Width: 16.0F, Height: 10.0F },
+        RadiusTopLeft: 5.0F,
+        RadiusTopRight: 2.0F,
+        RadiusBottomRight: 2.0F,
+        RadiusBottomLeft: 2.0F,
         StartX: 6.0F,
         StartY: 30.0F,
         EndX: 22.0F,
         EndY: 30.0F,
         StopStart: linearStart,
-        StopCount: 3,
+        StopCount: 4,
         Opacity: 1.0F,
         TransformIndex: -1,
     })
     let radialStart = frame.GradientStopCount
     frame.AddGradientStop(GradientStopRecord{ Offset: 0.0F, Color: 0xFFFF00FFu })
-    frame.AddGradientStop(GradientStopRecord{ Offset: 0.5F, Color: PixelSceneContract.BorderRightColor })
     frame.AddGradientStop(GradientStopRecord{ Offset: 1.0F, Color: PixelSceneContract.BorderBottomColor })
     frame.AddRadialGradient(RadialGradientRecord{
         Bounds: ConservativeBounds{ X: 27.0F, Y: 25.0F, Width: 18.0F, Height: 16.0F },
+        RadiusTopLeft: 5.0F,
+        RadiusTopRight: 2.0F,
+        RadiusBottomRight: 2.0F,
+        RadiusBottomLeft: 2.0F,
         CenterX: 36.0F,
         CenterY: 33.0F,
         RadiusX: 9.0F,
         RadiusY: 8.0F,
         StopStart: radialStart,
-        StopCount: 3,
+        StopCount: 2,
         Opacity: 1.0F,
         TransformIndex: -1,
     })
@@ -187,7 +246,28 @@ internal unsafe func VerifyPixelSceneReadbackWithClear(
     if !ExactPixel(readback, width, 41, 12, PixelSceneContract.BorderLeftColor) {
         return false
     }
+    if !Dominant(readback, width, 12, 43, 0, 1, 2, 32) {
+        return false
+    }
+    if !Dominant(readback, width, 26, 43, 0, 1, 2, 32) {
+        return false
+    }
+    if !DimmedCorner(readback, width, 32, 43) {
+        return false
+    }
+    if !Dominant(readback, width, 42, 43, 0, 1, 2, 32) {
+        return false
+    }
+    if !DimmedCorner(readback, width, 46, 43) {
+        return false
+    }
     if !ExactPixel(readback, width, 47, 20, PixelSceneContract.UnderlineColor) {
+        return false
+    }
+    if !DimmedCorner(readback, width, 6, 25) {
+        return false
+    }
+    if !DimmedCorner(readback, width, 27, 25) {
         return false
     }
     if !Dominant(readback, width, 7, 30, 0, 1, 2, 32) {
@@ -223,6 +303,17 @@ private unsafe func ExactPixel(
         && readback[offset + 1] == uint8((packed >> int32(16)) & int32(255))
         && readback[offset + 2] == uint8((packed >> int32(8)) & int32(255))
         && readback[offset + 3] == uint8(packed & int32(255))
+}
+
+private unsafe func DimmedCorner(
+    readback *uint8,
+    width uint32,
+    x int32,
+    y int32) bool {
+    let offset = PixelOffset(width, x, y)
+    return readback[offset] <= 64u
+        && readback[offset + 1] <= 64u
+        && readback[offset + 2] <= 64u
 }
 
 private unsafe func Dominant(

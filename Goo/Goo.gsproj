@@ -26,6 +26,8 @@
     <PackageReference Include="Unicode.Bidi" />
   </ItemGroup>
   <Import Project="../tests/Goo.Tests/Goo.TestFixtures.props"
-          Condition="'$(IncludeTestFixtures)' == 'true'" />
+          Condition="'$(IncludeTestFixtures)' == 'true' and '$(GooTestFixturesProps)' == ''" />
+  <Import Project="$(GooTestFixturesProps)"
+          Condition="'$(IncludeTestFixtures)' == 'true' and '$(GooTestFixturesProps)' != ''" />
   <Import Project="Goo.Packaging.targets" />
 </Project>

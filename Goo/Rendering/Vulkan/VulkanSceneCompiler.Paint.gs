@@ -56,25 +56,206 @@ internal partial class VulkanSceneCompiler {
         }
     }
 
-    private func AddScrollTransform(node Node, parentIndex int32) int32 {
-        let x = Finite(node.ScrollX) ? node.ScrollX : 0.0F
-        let y = Finite(node.ScrollY) ? node.ScrollY : 0.0F
-        if x == 0.0F && y == 0.0F {
-            return parentIndex
+    private func RecordUnsupportedFields(node Node, bounds ConservativeBounds) {
+        if node.HasBackgroundImageState {
+            let path = BackgroundImageLayouts.Path(node)
+            let source = BackgroundImageLayouts.Source(node)
+            if path != "" && source == nil {
+                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BackgroundImage,
+                    VulkanSceneUnsupportedPrimitive.BackgroundImage)
+            } else if source != nil && imageScene == nil {
+                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BackgroundImageSource,
+                    VulkanSceneUnsupportedPrimitive.BackgroundImage)
+            }
+            if ((path != "" && source == nil)
+                || (source != nil && imageScene == nil))
+                && node.BackgroundImageFit != ImageFit.Cover {
+                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BackgroundImageFit,
+                    VulkanSceneUnsupportedPrimitive.BackgroundImage)
+            }
         }
-        return frame.AddTransform(TransformRecord{
-            A: 1.0F,
-            B: 0.0F,
-            C: 0.0F,
-            D: 1.0F,
-            TX: -x,
-            TY: -y,
-            ParentIndex: parentIndex,
-        })
+        if node.HasClipPath {
+            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ClipPath,
+                VulkanSceneUnsupportedPrimitive.ClipPath)
+            if ClipPaths.Fit(node) != ShapeFit.Fill {
+                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ClipPathFit,
+                    VulkanSceneUnsupportedPrimitive.ClipPath)
+            }
+        }
+        if node.BlendMode != BlendMode.Normal {
+            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BlendMode,
+                VulkanSceneUnsupportedPrimitive.Blend)
+        }
+        if boxShadowCount(node.BoxShadows) != 0 {
+            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BoxShadows,
+                VulkanSceneUnsupportedPrimitive.BoxShadow)
+        }
+        if node.HasOutlineState {
+            let width = node.OutlineWidth
+            if width.HasMagnitude {
+                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.OutlineWidth,
+                    VulkanSceneUnsupportedPrimitive.Outline)
+            }
+            if !transparent(node.OutlineColor) {
+                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.OutlineColor,
+                    VulkanSceneUnsupportedPrimitive.Outline)
+            }
+            let offset = node.OutlineOffset
+            if offset.HasMagnitude {
+                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.OutlineOffset,
+                    VulkanSceneUnsupportedPrimitive.Outline)
+            }
+        }
+        if node.HasTextShadowState {
+            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
+                VulkanSceneUnsupportedPrimitive.TextShadow)
+        }
+        if node.HasTextStrokeState {
+            let width = node.TextStrokeWidth
+            if width.HasMagnitude {
+                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextStrokeWidth,
+                    VulkanSceneUnsupportedPrimitive.TextStroke)
+            }
+            if !transparent(node.TextStrokeColor) {
+                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextStrokeColor,
+                    VulkanSceneUnsupportedPrimitive.TextStroke)
+            }
+        }
+        if node.TextDecoration != TextDecoration.None {
+            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextDecoration,
+                VulkanSceneUnsupportedPrimitive.Text)
+        }
+        if node.Kind == NodeKind.Text && PassiveTextPresentations.Read(node) != nil {
+            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextStyleRanges,
+                VulkanSceneUnsupportedPrimitive.Text)
+        }
+        if node.BorderStyle != BorderStyle.Solid
+            && node.BorderStyle != BorderStyle.Dashed
+            && node.BorderStyle != BorderStyle.Dotted
+            && HasBorderWidth(node, bounds) {
+            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BorderStyle,
+                VulkanSceneUnsupportedPrimitive.Border)
+        }
+        switch node.Kind {
+            case NodeKind.Image {
+                let source = node.ImageSource
+                if node.ImagePath != "" && source == nil {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ImagePath,
+                        VulkanSceneUnsupportedPrimitive.Image)
+                } else if source != nil && imageScene == nil {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ImageSource,
+                        VulkanSceneUnsupportedPrimitive.Image)
+                }
+                if ((node.ImagePath != "" && source == nil)
+                    || (source != nil && imageScene == nil))
+                    && node.ImageFit != ImageFit.Contain {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ImageFit,
+                        VulkanSceneUnsupportedPrimitive.Image)
+                }
+            }
+            case NodeKind.Shape {
+                if node.ShapePath.CommandCount != 0 {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapePath,
+                        VulkanSceneUnsupportedPrimitive.Shape)
+                }
+                if node.ShapeFit != ShapeFit.Contain {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeFit,
+                        VulkanSceneUnsupportedPrimitive.Shape)
+                }
+                if node.ShapeFillRule != FillRule.NonZero {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeFillRule,
+                        VulkanSceneUnsupportedPrimitive.Shape)
+                }
+                if node.BorderLeftWidth.HasMagnitude {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeStrokeWidth,
+                        VulkanSceneUnsupportedPrimitive.Shape)
+                }
+                if !transparent(node.BorderLeftColor) {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeStrokeColor,
+                        VulkanSceneUnsupportedPrimitive.Shape)
+                }
+                if node.ShapeStrokeCap != StrokeCap.Butt {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeStrokeCap,
+                        VulkanSceneUnsupportedPrimitive.Shape)
+                }
+                if node.ShapeStrokeJoin != StrokeJoin.Miter {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeStrokeJoin,
+                        VulkanSceneUnsupportedPrimitive.Shape)
+                }
+                if node.MiterLimit != 4.0 {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeMiterLimit,
+                        VulkanSceneUnsupportedPrimitive.Shape)
+                }
+                if node.ShapeCornerRadius != 0.0 {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeCornerRadius,
+                        VulkanSceneUnsupportedPrimitive.Shape)
+                }
+                if let dashes = node.Dashes {
+                    if dashes.Intervals.Count != 0 {
+                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeDashes,
+                            VulkanSceneUnsupportedPrimitive.Shape)
+                    }
+                }
+            }
+            case NodeKind.Entry {
+                if node.Buffer != "" {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EntryValue,
+                        VulkanSceneUnsupportedPrimitive.TextEntry)
+                }
+                if node.Placeholder != "" {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EntryPlaceholder,
+                        VulkanSceneUnsupportedPrimitive.TextEntry)
+                }
+                if !node.SelectionColor.Equals(defaultSelectionColor()) {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EntrySelectionColor,
+                        VulkanSceneUnsupportedPrimitive.TextEntry)
+                }
+            }
+            case NodeKind.Editor {
+                if let state = node.EditorState {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorDocument,
+                        VulkanSceneUnsupportedPrimitive.TextEditor)
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorController,
+                        VulkanSceneUnsupportedPrimitive.TextEditor)
+                    if state.LayerCount != 0 {
+                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorLayers,
+                            VulkanSceneUnsupportedPrimitive.TextEditor)
+                    }
+                }
+                if node.EditorReadOnly {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorReadOnly,
+                        VulkanSceneUnsupportedPrimitive.TextEditor)
+                }
+                if node.Placeholder != "" {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorPlaceholder,
+                        VulkanSceneUnsupportedPrimitive.TextEditor)
+                }
+                if !node.SelectionColor.Equals(defaultSelectionColor()) {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorSelectionColor,
+                        VulkanSceneUnsupportedPrimitive.TextEditor)
+                }
+                if !node.EditorCaretColor.Equals(Color.White) {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorCaretColor,
+                        VulkanSceneUnsupportedPrimitive.TextEditor)
+                }
+                if !transparent(node.EditorCurrentLineColor) {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorCurrentLineColor,
+                        VulkanSceneUnsupportedPrimitive.TextEditor)
+                }
+                if node.EditorOverscanLines != 3 {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorOverscanLines,
+                        VulkanSceneUnsupportedPrimitive.TextEditor)
+                }
+            }
+            case _ { }
+        }
     }
 
-    private func HasOverflowClip(node Node) bool {
-        return node.OverflowX != Overflow.Visible || node.OverflowY != Overflow.Visible
+    private func HasBorderWidth(node Node, bounds ConservativeBounds) bool {
+        return ResolveLength(node.BorderTopWidth, MinDimension(bounds)) > 0.0F
+            || ResolveLength(node.BorderRightWidth, MinDimension(bounds)) > 0.0F
+            || ResolveLength(node.BorderBottomWidth, MinDimension(bounds)) > 0.0F
+            || ResolveLength(node.BorderLeftWidth, MinDimension(bounds)) > 0.0F
     }
 
     private func PaintNode(
@@ -82,22 +263,38 @@ internal partial class VulkanSceneCompiler {
         bounds ConservativeBounds,
         opacity float32,
         transformIndex int32) {
-        var paintedGradient = false
         if let gradient = node.BackgroundGradient {
-            if HasRadius(node, bounds) {
-                MarkUnsupported(VulkanSceneUnsupportedKind.Gradient)
-            } else {
-                paintedGradient = PaintGradient(gradient, bounds, opacity, transformIndex)
-            }
-        }
-        if !paintedGradient {
+            PaintGradient(node, gradient, bounds, opacity, transformIndex)
+        } else {
             PaintSolid(node.BackgroundColor, node, bounds, opacity, transformIndex)
+        }
+        if let scene = imageScene {
+            scene.Emit(
+                frame,
+                bounds,
+                BackgroundImageLayouts.CurrentToken(node),
+                node.BackgroundImageFit,
+                opacity,
+                transformIndex)
+        }
+        if node.Kind == NodeKind.Image {
+            if let scene = imageScene {
+                scene.Emit(
+                    frame,
+                    bounds,
+                    ImageLayouts.CurrentToken(node),
+                    node.ImageFit,
+                    opacity,
+                    transformIndex)
+            }
         }
         PaintBorder(node, bounds, opacity, transformIndex)
         if node.Kind == NodeKind.Text {
             if let renderer = textScene {
                 if !renderer.Emit(frame, node, opacity, transformIndex) {
-                    MarkUnsupported(VulkanSceneUnsupportedKind.Text)
+                    MarkUnsupported(node, VulkanSceneUnsupportedKind.Text,
+                        VulkanSceneUnsupportedField.Content,
+                        VulkanSceneUnsupportedPrimitive.Text)
                     unsupportedNodeCount = unsupportedNodeCount + 1
                 }
             }
@@ -146,7 +343,9 @@ internal partial class VulkanSceneCompiler {
         if top <= 0.0F && right <= 0.0F && bottom <= 0.0F && left <= 0.0F {
             return
         }
-        if node.BorderStyle != BorderStyle.Solid {
+        if node.BorderStyle != BorderStyle.Solid
+            && node.BorderStyle != BorderStyle.Dashed
+            && node.BorderStyle != BorderStyle.Dotted {
             MarkUnsupported(VulkanSceneUnsupportedKind.BorderStyle)
             return
         }
@@ -156,26 +355,43 @@ internal partial class VulkanSceneCompiler {
             RightWidth: right,
             BottomWidth: bottom,
             LeftWidth: left,
+            RadiusTopLeft: Radius(node.BorderTopLeftRadius, node.BorderRadius, bounds),
+            RadiusTopRight: Radius(node.BorderTopRightRadius, node.BorderRadius, bounds),
+            RadiusBottomRight: Radius(node.BorderBottomRightRadius, node.BorderRadius, bounds),
+            RadiusBottomLeft: Radius(node.BorderBottomLeftRadius, node.BorderRadius, bounds),
             TopColor: EffectiveColor(node.BorderTopColor, opacity),
             RightColor: EffectiveColor(node.BorderRightColor, opacity),
             BottomColor: EffectiveColor(node.BorderBottomColor, opacity),
             LeftColor: EffectiveColor(node.BorderLeftColor, opacity),
-            Style: uint32(int32(BorderStyle.Solid)),
+            Style: uint32(int32(node.BorderStyle)),
             TransformIndex: transformIndex,
         })
     }
 
     private func PaintGradient(
+        node Node,
         gradient Gradient,
         bounds ConservativeBounds,
         opacity float32,
-        transformIndex int32) bool {
+        transformIndex int32) {
+        if bounds.IsEmpty {
+            return
+        }
         let stops = gradient.Stops
-        if stops.Count != 3 || bounds.IsEmpty {
-            if stops.Count != 3 {
-                MarkUnsupported(VulkanSceneUnsupportedKind.Gradient)
-            }
-            return false
+        let primitive = switch gradient {
+            case linear is LinearGradient: VulkanSceneUnsupportedPrimitive.LinearGradient
+            case radial is RadialGradient: VulkanSceneUnsupportedPrimitive.RadialGradient
+            case _: VulkanSceneUnsupportedPrimitive.Gradient
+        }
+        if primitive == VulkanSceneUnsupportedPrimitive.Gradient {
+            MarkUnsupported(node, VulkanSceneUnsupportedKind.Gradient,
+                VulkanSceneUnsupportedField.BackgroundGradient, primitive)
+            return
+        }
+        if stops.Count < 2 || stops.Count > 4 {
+            MarkUnsupported(node, VulkanSceneUnsupportedKind.Gradient,
+                VulkanSceneUnsupportedField.BackgroundGradient, primitive)
+            return
         }
         let start = frame.GradientStopCount
         var index int32 = 0
@@ -197,34 +413,44 @@ internal partial class VulkanSceneCompiler {
                 let centerY = bounds.Y + bounds.Height * 0.5F
                 frame.AddLinearGradient(LinearGradientRecord{
                     Bounds: bounds,
+                    RadiusTopLeft: Radius(node.BorderTopLeftRadius, node.BorderRadius, bounds),
+                    RadiusTopRight: Radius(node.BorderTopRightRadius, node.BorderRadius, bounds),
+                    RadiusBottomRight: Radius(node.BorderBottomRightRadius, node.BorderRadius, bounds),
+                    RadiusBottomLeft: Radius(node.BorderBottomLeftRadius, node.BorderRadius, bounds),
                     StartX: centerX - dx * half,
                     StartY: centerY - dy * half,
                     EndX: centerX + dx * half,
                     EndY: centerY + dy * half,
                     StopStart: start,
-                    StopCount: 3,
+                    StopCount: stops.Count,
                     Opacity: opacity,
                     TransformIndex: transformIndex,
                 })
-                return true
+                return
             }
             case radial is RadialGradient {
                 frame.AddRadialGradient(RadialGradientRecord{
                     Bounds: bounds,
+                    RadiusTopLeft: Radius(node.BorderTopLeftRadius, node.BorderRadius, bounds),
+                    RadiusTopRight: Radius(node.BorderTopRightRadius, node.BorderRadius, bounds),
+                    RadiusBottomRight: Radius(node.BorderBottomRightRadius, node.BorderRadius, bounds),
+                    RadiusBottomLeft: Radius(node.BorderBottomLeftRadius, node.BorderRadius, bounds),
                     CenterX: bounds.X + bounds.Width * float32(radial.CenterX),
                     CenterY: bounds.Y + bounds.Height * float32(radial.CenterY),
                     RadiusX: bounds.Width * float32(radial.Radius),
                     RadiusY: bounds.Height * float32(radial.Radius),
                     StopStart: start,
-                    StopCount: 3,
+                    StopCount: stops.Count,
                     Opacity: opacity,
                     TransformIndex: transformIndex,
                 })
-                return true
+                return
             }
             case _ {
-                MarkUnsupported(VulkanSceneUnsupportedKind.Gradient)
-                return false
+                MarkUnsupported(node, VulkanSceneUnsupportedKind.Gradient,
+                    VulkanSceneUnsupportedField.BackgroundGradient,
+                    VulkanSceneUnsupportedPrimitive.Gradient)
+                return
             }
         }
     }

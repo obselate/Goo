@@ -6,5 +6,11 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Goo" Version="0.2.0" />
+    <Content Include="../../proofs/Goo.VulkanProof/Assets/Text/VendSans-VariableFont_wght.ttf"
+             Link="VendSans-VariableFont_wght.ttf"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../proofs/Goo.VulkanProof/Assets/Text/HarfBuzz-adwaita-colrv1.ttf"
+             Link="HarfBuzz-adwaita-colrv1.ttf"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
