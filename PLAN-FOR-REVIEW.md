@@ -1,6 +1,6 @@
 # Goo Gaps and Reductions Plan
 
-Status: architecture Q&A accepted except O16, which remains a later measured AA decision. S12-I01 versioned stable ImageSourceProvider contract accepted. The locked text stack now has an active non-shipping Vulkan proof exercising the proposed Goo-internal provider boundary. The proof is partially implemented and its remaining gates are listed below. Goo product integration has not started. Goo.InternalTextInterop remains live until the atomic Vulkan cutover.
+Status: active direct Vulkan product cutover. Architecture Q&A is accepted except O16, which remains a later measured AA decision. On 2026-08-17 Xaz approved removing Skia and Goo-owned C# immediately, accepting temporary local breakage, then moving the proven Vulkan implementation into Goo core until a Goo window starts and renders through Vulkan. No compatibility backend or fallback is retained.
 
 Date: 2026-08-17
 
@@ -145,11 +145,11 @@ remain outside the accepted stack. GPUI remains a comparison source only.
 The full service-by-service map, candidate evidence, and replacement proof corpus are in
 `VULKAN-SKIA-REPLACEMENT.md`.
 
-### Implemented non-shipping Vulkan text proof state
+### Implemented Vulkan text proof state
 
-This is proof status only. It is not Goo product integration, and it does not retire
-`Goo.InternalTextInterop`. That path remains live as the current Skia baseline until the atomic
-Vulkan cutover passes its gates.
+This proof is the validated source for the active product cutover. Promote reusable components into
+Goo core without proof harness behavior. `Goo.InternalTextInterop` and the Skia path are removed
+before full parity is restored. Temporary local breakage is accepted.
 
 The proof provider is implemented in G# and directly P/Invokes the pinned upstream HarfBuzz and
 `hb-gpu` C ABIs to exercise the proposed Goo-internal provider boundary. It carries pinned,
@@ -204,8 +204,8 @@ Exit: the requirements, open questions, evidence, and decision points match the 
 5. Rebuild every historical compiler finding against the exact selected version.
 6. Map each fixed finding to current Goo source.
 7. Remove a workaround only when a focused package or runtime probe proves it is obsolete.
-8. Keep `Goo.InternalTextInterop` intact as the current Skia baseline until its responsibilities are
-   replaced and the atomic Vulkan cutover gates pass.
+8. Remove `Goo.InternalTextInterop` during the active clean-break cutover and restore each required
+   responsibility in G#.
 9. Keep renderer behavior, runtime-helper migration, and public API changes out of this upgrade.
 10. Capture clean build, package, API, startup, idle, frame, allocation, memory, and binary baselines.
 

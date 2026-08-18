@@ -1,0 +1,182 @@
+package Goo
+
+import System
+import System.Runtime.InteropServices
+
+internal unsafe partial class VulkanWindowTarget {
+    private func ResolveGlobalProc(nativeInstance VkInstance, name string) nint {
+        let storage = Marshal.StringToCoTaskMemUTF8(name)
+        try {
+            let nullable = getProcAddress as (unmanaged[Cdecl] (VkInstance, *int8) -> unmanaged[Cdecl] () -> void)?
+            if nullable == nil {
+                throw InvalidOperationException("Vulkan global procedure lookup has an invalid address")
+            }
+            let getProcAddressFunction = nullable!!
+            let result = getProcAddressFunction(nativeInstance, *int8(storage))
+            let address = result as nint?
+            if address == nil {
+                return nint(0)
+            }
+            return address!!
+        } finally {
+            Marshal.FreeCoTaskMem(storage)
+        }
+    }
+
+    private func ResolveDeviceProc(name string) nint {
+        let storage = Marshal.StringToCoTaskMemUTF8(name)
+        try {
+            let getDeviceProcAddr = instanceDispatch.vkGetDeviceProcAddr
+            let result = getDeviceProcAddr(device, *int8(storage))
+            let address = result as nint?
+            if address == nil {
+                return nint(0)
+            }
+            return address!!
+        } finally {
+            Marshal.FreeCoTaskMem(storage)
+        }
+    }
+
+    private func ExtensionNameEquals(property *VkExtensionProperties, expected string) bool {
+        let expectedStorage = Marshal.StringToCoTaskMemUTF8(expected)
+        try {
+            let expectedPointer = *int8(expectedStorage)
+            let actualPointer = property->extensionName
+            var index uint32 = 0u
+            while index < VkConstants.VK_MAX_EXTENSION_NAME_SIZE {
+                let actual = actualPointer[index]
+                let wanted = expectedPointer[index]
+                if actual != wanted {
+                    return false
+                }
+                if actual == 0 {
+                    return true
+                }
+                index = index + 1u
+            }
+            return false
+        } finally {
+            Marshal.FreeCoTaskMem(expectedStorage)
+        }
+    }
+
+    private func LoadDeviceDispatch() {
+        let destroyDevice = ResolveDeviceProc("vkDestroyDevice") as (unmanaged[Cdecl] (VkDevice, *VkAllocationCallbacks) -> void)?
+        if destroyDevice == nil { throw InvalidOperationException("vkDestroyDevice is unavailable") }
+        dispatch.vkDestroyDevice = destroyDevice!!
+        deviceDestroyAvailable = true
+        let getDeviceQueue = ResolveDeviceProc("vkGetDeviceQueue") as (unmanaged[Cdecl] (VkDevice, uint32, uint32, *VkQueue) -> void)?
+        if getDeviceQueue == nil { throw InvalidOperationException("vkGetDeviceQueue is unavailable") }
+        dispatch.vkGetDeviceQueue = getDeviceQueue!!
+        let createSwapchain = ResolveDeviceProc("vkCreateSwapchainKHR") as (unmanaged[Cdecl] (VkDevice, *VkSwapchainCreateInfoKHR, *VkAllocationCallbacks, *VkSwapchainKHR) -> VkResult)?
+        if createSwapchain == nil { throw InvalidOperationException("vkCreateSwapchainKHR is unavailable") }
+        dispatch.vkCreateSwapchainKHR = createSwapchain!!
+        let destroySwapchain = ResolveDeviceProc("vkDestroySwapchainKHR") as (unmanaged[Cdecl] (VkDevice, VkSwapchainKHR, *VkAllocationCallbacks) -> void)?
+        if destroySwapchain == nil { throw InvalidOperationException("vkDestroySwapchainKHR is unavailable") }
+        dispatch.vkDestroySwapchainKHR = destroySwapchain!!
+        let getSwapchainImages = ResolveDeviceProc("vkGetSwapchainImagesKHR") as (unmanaged[Cdecl] (VkDevice, VkSwapchainKHR, *uint32, *VkImage) -> VkResult)?
+        if getSwapchainImages == nil { throw InvalidOperationException("vkGetSwapchainImagesKHR is unavailable") }
+        dispatch.vkGetSwapchainImagesKHR = getSwapchainImages!!
+        let createCommandPool = ResolveDeviceProc("vkCreateCommandPool") as (unmanaged[Cdecl] (VkDevice, *VkCommandPoolCreateInfo, *VkAllocationCallbacks, *VkCommandPool) -> VkResult)?
+        if createCommandPool == nil { throw InvalidOperationException("vkCreateCommandPool is unavailable") }
+        dispatch.vkCreateCommandPool = createCommandPool!!
+        let destroyCommandPool = ResolveDeviceProc("vkDestroyCommandPool") as (unmanaged[Cdecl] (VkDevice, VkCommandPool, *VkAllocationCallbacks) -> void)?
+        if destroyCommandPool == nil { throw InvalidOperationException("vkDestroyCommandPool is unavailable") }
+        dispatch.vkDestroyCommandPool = destroyCommandPool!!
+        let allocateCommandBuffers = ResolveDeviceProc("vkAllocateCommandBuffers") as (unmanaged[Cdecl] (VkDevice, *VkCommandBufferAllocateInfo, *VkCommandBuffer) -> VkResult)?
+        if allocateCommandBuffers == nil { throw InvalidOperationException("vkAllocateCommandBuffers is unavailable") }
+        dispatch.vkAllocateCommandBuffers = allocateCommandBuffers!!
+        let resetCommandBuffer = ResolveDeviceProc("vkResetCommandBuffer") as (unmanaged[Cdecl] (VkCommandBuffer, VkCommandBufferResetFlags) -> VkResult)?
+        if resetCommandBuffer == nil { throw InvalidOperationException("vkResetCommandBuffer is unavailable") }
+        dispatch.vkResetCommandBuffer = resetCommandBuffer!!
+        let createSemaphore = ResolveDeviceProc("vkCreateSemaphore") as (unmanaged[Cdecl] (VkDevice, *VkSemaphoreCreateInfo, *VkAllocationCallbacks, *VkSemaphore) -> VkResult)?
+        if createSemaphore == nil { throw InvalidOperationException("vkCreateSemaphore is unavailable") }
+        dispatch.vkCreateSemaphore = createSemaphore!!
+        let destroySemaphore = ResolveDeviceProc("vkDestroySemaphore") as (unmanaged[Cdecl] (VkDevice, VkSemaphore, *VkAllocationCallbacks) -> void)?
+        if destroySemaphore == nil { throw InvalidOperationException("vkDestroySemaphore is unavailable") }
+        dispatch.vkDestroySemaphore = destroySemaphore!!
+        let createFence = ResolveDeviceProc("vkCreateFence") as (unmanaged[Cdecl] (VkDevice, *VkFenceCreateInfo, *VkAllocationCallbacks, *VkFence) -> VkResult)?
+        if createFence == nil { throw InvalidOperationException("vkCreateFence is unavailable") }
+        dispatch.vkCreateFence = createFence!!
+        let destroyFence = ResolveDeviceProc("vkDestroyFence") as (unmanaged[Cdecl] (VkDevice, VkFence, *VkAllocationCallbacks) -> void)?
+        if destroyFence == nil { throw InvalidOperationException("vkDestroyFence is unavailable") }
+        dispatch.vkDestroyFence = destroyFence!!
+        let waitForFences = ResolveDeviceProc("vkWaitForFences") as (unmanaged[Cdecl] (VkDevice, uint32, *VkFence, VkBool32, uint64) -> VkResult)?
+        if waitForFences == nil { throw InvalidOperationException("vkWaitForFences is unavailable") }
+        dispatch.vkWaitForFences = waitForFences!!
+        let getFenceStatus = ResolveDeviceProc("vkGetFenceStatus") as (unmanaged[Cdecl] (VkDevice, VkFence) -> VkResult)?
+        if getFenceStatus == nil { throw InvalidOperationException("vkGetFenceStatus is unavailable") }
+        dispatch.vkGetFenceStatus = getFenceStatus!!
+        let resetFences = ResolveDeviceProc("vkResetFences") as (unmanaged[Cdecl] (VkDevice, uint32, *VkFence) -> VkResult)?
+        if resetFences == nil { throw InvalidOperationException("vkResetFences is unavailable") }
+        dispatch.vkResetFences = resetFences!!
+        let acquireNextImage = ResolveDeviceProc("vkAcquireNextImageKHR") as (unmanaged[Cdecl] (VkDevice, VkSwapchainKHR, uint64, VkSemaphore, VkFence, *uint32) -> VkResult)?
+        if acquireNextImage == nil { throw InvalidOperationException("vkAcquireNextImageKHR is unavailable") }
+        dispatch.vkAcquireNextImageKHR = acquireNextImage!!
+        let beginCommandBuffer = ResolveDeviceProc("vkBeginCommandBuffer") as (unmanaged[Cdecl] (VkCommandBuffer, *VkCommandBufferBeginInfo) -> VkResult)?
+        if beginCommandBuffer == nil { throw InvalidOperationException("vkBeginCommandBuffer is unavailable") }
+        dispatch.vkBeginCommandBuffer = beginCommandBuffer!!
+        let endCommandBuffer = ResolveDeviceProc("vkEndCommandBuffer") as (unmanaged[Cdecl] (VkCommandBuffer) -> VkResult)?
+        if endCommandBuffer == nil { throw InvalidOperationException("vkEndCommandBuffer is unavailable") }
+        dispatch.vkEndCommandBuffer = endCommandBuffer!!
+        let pipelineBarrier = ResolveDeviceProc("vkCmdPipelineBarrier2") as (unmanaged[Cdecl] (VkCommandBuffer, *VkDependencyInfo) -> void)?
+        if pipelineBarrier == nil { throw InvalidOperationException("vkCmdPipelineBarrier2 is unavailable") }
+        dispatch.vkCmdPipelineBarrier2 = pipelineBarrier!!
+        let queueSubmit = ResolveDeviceProc("vkQueueSubmit2") as (unmanaged[Cdecl] (VkQueue, uint32, *VkSubmitInfo2, VkFence) -> VkResult)?
+        if queueSubmit == nil { throw InvalidOperationException("vkQueueSubmit2 is unavailable") }
+        dispatch.vkQueueSubmit2 = queueSubmit!!
+        let queuePresent = ResolveDeviceProc("vkQueuePresentKHR") as (unmanaged[Cdecl] (VkQueue, *VkPresentInfoKHR) -> VkResult)?
+        if queuePresent == nil { throw InvalidOperationException("vkQueuePresentKHR is unavailable") }
+        dispatch.vkQueuePresentKHR = queuePresent!!
+        let createImageView = ResolveDeviceProc("vkCreateImageView") as (unmanaged[Cdecl] (VkDevice, *VkImageViewCreateInfo, *VkAllocationCallbacks, *VkImageView) -> VkResult)?
+        if createImageView == nil { throw InvalidOperationException("vkCreateImageView is unavailable") }
+        dispatch.vkCreateImageView = createImageView!!
+        let destroyImageView = ResolveDeviceProc("vkDestroyImageView") as (unmanaged[Cdecl] (VkDevice, VkImageView, *VkAllocationCallbacks) -> void)?
+        if destroyImageView == nil { throw InvalidOperationException("vkDestroyImageView is unavailable") }
+        dispatch.vkDestroyImageView = destroyImageView!!
+        let createShaderModule = ResolveDeviceProc("vkCreateShaderModule") as (unmanaged[Cdecl] (VkDevice, *VkShaderModuleCreateInfo, *VkAllocationCallbacks, *VkShaderModule) -> VkResult)?
+        if createShaderModule == nil { throw InvalidOperationException("vkCreateShaderModule is unavailable") }
+        dispatch.vkCreateShaderModule = createShaderModule!!
+        let destroyShaderModule = ResolveDeviceProc("vkDestroyShaderModule") as (unmanaged[Cdecl] (VkDevice, VkShaderModule, *VkAllocationCallbacks) -> void)?
+        if destroyShaderModule == nil { throw InvalidOperationException("vkDestroyShaderModule is unavailable") }
+        dispatch.vkDestroyShaderModule = destroyShaderModule!!
+        let createPipelineLayout = ResolveDeviceProc("vkCreatePipelineLayout") as (unmanaged[Cdecl] (VkDevice, *VkPipelineLayoutCreateInfo, *VkAllocationCallbacks, *VkPipelineLayout) -> VkResult)?
+        if createPipelineLayout == nil { throw InvalidOperationException("vkCreatePipelineLayout is unavailable") }
+        dispatch.vkCreatePipelineLayout = createPipelineLayout!!
+        let destroyPipelineLayout = ResolveDeviceProc("vkDestroyPipelineLayout") as (unmanaged[Cdecl] (VkDevice, VkPipelineLayout, *VkAllocationCallbacks) -> void)?
+        if destroyPipelineLayout == nil { throw InvalidOperationException("vkDestroyPipelineLayout is unavailable") }
+        dispatch.vkDestroyPipelineLayout = destroyPipelineLayout!!
+        let createGraphicsPipelines = ResolveDeviceProc("vkCreateGraphicsPipelines") as (unmanaged[Cdecl] (VkDevice, VkPipelineCache, uint32, *VkGraphicsPipelineCreateInfo, *VkAllocationCallbacks, *VkPipeline) -> VkResult)?
+        if createGraphicsPipelines == nil { throw InvalidOperationException("vkCreateGraphicsPipelines is unavailable") }
+        dispatch.vkCreateGraphicsPipelines = createGraphicsPipelines!!
+        let destroyPipeline = ResolveDeviceProc("vkDestroyPipeline") as (unmanaged[Cdecl] (VkDevice, VkPipeline, *VkAllocationCallbacks) -> void)?
+        if destroyPipeline == nil { throw InvalidOperationException("vkDestroyPipeline is unavailable") }
+        dispatch.vkDestroyPipeline = destroyPipeline!!
+        let beginRendering = ResolveDeviceProc("vkCmdBeginRendering") as (unmanaged[Cdecl] (VkCommandBuffer, *VkRenderingInfo) -> void)?
+        if beginRendering == nil { throw InvalidOperationException("vkCmdBeginRendering is unavailable") }
+        dispatch.vkCmdBeginRendering = beginRendering!!
+        let endRendering = ResolveDeviceProc("vkCmdEndRendering") as (unmanaged[Cdecl] (VkCommandBuffer) -> void)?
+        if endRendering == nil { throw InvalidOperationException("vkCmdEndRendering is unavailable") }
+        dispatch.vkCmdEndRendering = endRendering!!
+        let bindPipeline = ResolveDeviceProc("vkCmdBindPipeline") as (unmanaged[Cdecl] (VkCommandBuffer, VkPipelineBindPoint, VkPipeline) -> void)?
+        if bindPipeline == nil { throw InvalidOperationException("vkCmdBindPipeline is unavailable") }
+        dispatch.vkCmdBindPipeline = bindPipeline!!
+        let pushConstants = ResolveDeviceProc("vkCmdPushConstants") as (unmanaged[Cdecl] (VkCommandBuffer, VkPipelineLayout, VkShaderStageFlags, uint32, uint32, *void) -> void)?
+        if pushConstants == nil { throw InvalidOperationException("vkCmdPushConstants is unavailable") }
+        dispatch.vkCmdPushConstants = pushConstants!!
+        let draw = ResolveDeviceProc("vkCmdDraw") as (unmanaged[Cdecl] (VkCommandBuffer, uint32, uint32, uint32, uint32) -> void)?
+        if draw == nil { throw InvalidOperationException("vkCmdDraw is unavailable") }
+        dispatch.vkCmdDraw = draw!!
+        let setViewport = ResolveDeviceProc("vkCmdSetViewport") as (unmanaged[Cdecl] (VkCommandBuffer, uint32, uint32, *VkViewport) -> void)?
+        if setViewport == nil { throw InvalidOperationException("vkCmdSetViewport is unavailable") }
+        dispatch.vkCmdSetViewport = setViewport!!
+        let setScissor = ResolveDeviceProc("vkCmdSetScissor") as (unmanaged[Cdecl] (VkCommandBuffer, uint32, uint32, *VkRect2D) -> void)?
+        if setScissor == nil { throw InvalidOperationException("vkCmdSetScissor is unavailable") }
+        dispatch.vkCmdSetScissor = setScissor!!
+        deviceWaitIdleAddress = ResolveDeviceProc("vkDeviceWaitIdle")
+        if deviceWaitIdleAddress == nint(0) {
+            throw InvalidOperationException("vkDeviceWaitIdle is unavailable")
+        }
+    }
+}

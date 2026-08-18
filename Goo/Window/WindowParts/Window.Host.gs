@@ -4,7 +4,6 @@ import System
 import System.Diagnostics
 import System.Numerics
 import System.Threading
-import Goo.InternalTextInterop
 
 /// Hosts a Goo tree in an SDL window.
 public partial class Window {
@@ -50,7 +49,6 @@ public partial class Window {
     prepare()
 
     try {
-      let nativeRenderer = toSdlRenderer(Renderer)
       let native = SdlHost(
         Title,
         Width,
@@ -62,13 +60,12 @@ public partial class Window {
         decorated,
         resizable,
         transparent,
-        nativeRenderer,
         VSync,
         func(px int32, py int32) SdlHitResult { return hitTest(px, py) })
       host = native
       uiThreadBound = true
       configureHost(native)
-      windowTarget = SdlRenderTargetFactory.Create(native)
+      windowTarget = VulkanWindowTarget(native)
       if !applyNativeResize(
         native.LogicalWidth,
         native.LogicalHeight,
@@ -344,67 +341,42 @@ public partial class Window {
       teardownNative()
     } finally {
       try {
-        retainedPainter?.ClearNativeResources()
+        if let tree = node {
+          node = nil
+          TextLayouts.DisposeTree(tree)
+        }
       } finally {
         try {
-          try {
-            if let tree = node {
-              node = nil
-              TextLayouts.DisposeTree(tree)
-            }
-          } finally {
-            try {
-              MetricSubscriptions.Flush(this)
-            } finally {
-              MetricSubscriptions.ClearWindow(this)
-            }
-          }
+          MetricSubscriptions.Flush(this)
         } finally {
-          motionPump.Clear()
-          pendingRebuild = 0
-          pendingPaintResourceInvalidation = 0
-          lock cellQueueGate {
-            cellTransactionActive = false
-            pendingCells.Clear()
-            deferredCells.Clear()
-            cellBatch.Clear()
-            fiberBatch.Clear()
-          }
-          paintResourceHook = nil
-          imageCompletionHook = nil
-          retainedInvalidationHook = nil
-          resolver.PaintResourceInvalidated = nil
-          cellHook = nil
-          hookInstalled = false
+          MetricSubscriptions.ClearWindow(this)
         }
       }
+      motionPump.Clear()
+      pendingRebuild = 0
+      pendingPaintResourceInvalidation = 0
+      lock cellQueueGate {
+        cellTransactionActive = false
+        pendingCells.Clear()
+        deferredCells.Clear()
+        cellBatch.Clear()
+        fiberBatch.Clear()
+      }
+      paintResourceHook = nil
+      imageCompletionHook = nil
+      retainedInvalidationHook = nil
+      resolver.PaintResourceInvalidated = nil
+      cellHook = nil
+      hookInstalled = false
     }
   }
 
   private func renderFrame() {
     if let target = windowTarget {
-      let canvas = target.Canvas
-      let profiling = profiler.Enabled
-      canvas.Save()
-      try {
-        canvas.Scale(dpi.X, dpi.Y)
-        let paintProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-        PaintTo(canvas)
-        if profiling {
-          profiler.Record(FrameProfileStage.Paint, paintProfile)
-        }
-      } finally {
-        canvas.Restore()
-      }
-      let canvasProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-      canvas.Flush()
-      if profiling {
-        profiler.Record(FrameProfileStage.CanvasFlush, canvasProfile)
-      }
-      let targetProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-      target.Flush()
-      if profiling {
-        profiler.Record(FrameProfileStage.TargetFlush, targetProfile)
+      let paintProfile = profiler.Enabled ? profiler.Start() : FrameProfilePoint{}
+      target.Render(node, Background, dpi)
+      if profiler.Enabled {
+        profiler.Record(FrameProfileStage.Paint, paintProfile)
       }
     }
   }

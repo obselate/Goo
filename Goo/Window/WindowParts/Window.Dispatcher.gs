@@ -3,7 +3,6 @@ package Goo
 import System
 import System.Collections.Generic
 import System.Threading
-import Goo.InternalTextInterop
 
 /// Hosts a Goo tree in an SDL window.
 public partial class Window {

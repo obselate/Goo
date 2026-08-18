@@ -4,7 +4,6 @@ import System
 import System.Collections.Generic
 import System.Globalization
 import Facebook.Yoga
-import Goo.InternalTextInterop
 
 internal class TextEditorResolvedSegment {
   internal prop Source TextRange { get; init; }

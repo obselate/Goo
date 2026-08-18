@@ -2,7 +2,6 @@ package Goo
 
 import System
 import System.Collections.Generic
-import Goo.InternalTextInterop
 
 /// Supplies one image binding when a Goo element mounts.
 public interface ImageSourceProvider {

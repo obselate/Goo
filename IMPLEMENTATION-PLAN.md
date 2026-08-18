@@ -1,6 +1,6 @@
 # Goo Core Vulkan Implementation Plan
 
-Status: active, S00 through S10 complete, S11 qualifies the accepted open OpenType text direction, O03 accepts the same Goo-owned or freely redistributable implementation direction for arbitrary paths, and S12 has a Linux proof qualification on local commit `622ee82`; S12-I01 now locks the versioned stable ImageSourceProvider contract, while Windows 11 and S18 public-contract migration remain open. The existing HarfBuzz/FreeType proof is frozen as non-shipping evidence, compositor-driven lifecycle actions and Windows runtime qualification remain deferred
+Status: active direct product cutover. On 2026-08-17 Xaz approved removing Skia and Goo-owned C# before Vulkan parity is complete. Temporary local build and runtime breakage is accepted. Vulkan proof components now move into Goo core in dependency order. The acceptance gate is a working Goo window rendered only by Vulkan. No Skia, OpenGL, CPU raster, or fallback backend may remain.
 
 Date: 2026-08-17
 
@@ -51,10 +51,11 @@ application controls, persistence, storage, restore policy, or monitor policy.
 
 ### 2.1 Product cutover rule
 
-The Vulkan implementation can be developed and measured in a non-shipping proof target. That target
-is not a Goo backend and is not referenced by the Goo runtime package.
+The prior atomic-cutover sequencing rule is superseded. Remove the old backend first, accept a
+temporarily broken local branch, then move the proven Vulkan components into Goo core and restore
+working behavior in dependency order. Do not retain a selectable or hidden compatibility backend.
 
-The first production integration of direct Vulkan into Goo must also remove:
+The direct Vulkan cutover removes:
 
 - The Skia renderer and all product `SK*` references.
 - SkiaSharp and SkiaSharp.HarfBuzz package references.
@@ -126,7 +127,7 @@ These contracts must be accepted before renderer implementation starts.
 | C11 | Runtime GPU resources can be reconstructed from logical sources after device loss |
 | C12 | Public `VectorPath`, `PathBuilder`, `ImageSourceProvider`, text editing, and hit-test behavior remain backend-neutral contracts |
 | C13 | Runtime packages contain precompiled SPIR-V only. The registry generator, shader compiler, validation layers, probes, and software ICD do not ship |
-| C14 | Vulkan proof code remains outside the shipping Goo runtime until the atomic cutover stage |
+| C14 | Promote reusable proof components into Goo core only after removing proof harness behavior and changing their ownership to production Goo |
 
 ## 4. Dependency graph
 
@@ -149,7 +150,7 @@ S00 scope and evidence lock
   -> S15 retained segments and per-image damage
   -> S16 multi-window scheduling and bounded recovery
   -> S17 remaining required Goo core mechanisms and platform adapters
-  -> S18 atomic Goo cutover and Skia runtime removal
+  -> S18 clean-break Goo cutover and Vulkan startup restoration
   -> S19 Windows/Linux qualification and package release gate
 ```
 
@@ -186,7 +187,7 @@ constraints unless the lead records evidence that a dependency is not real.
 
 | Decision | Implementation stages |
 |---|---|
-| O01 Skia transition | S08-S16 use a non-shipping proof. S18 is the first product Vulkan integration and removes Skia atomically |
+| O01 Skia transition | S18 removes Skia first, promotes validated Vulkan components, and accepts temporary local breakage until Vulkan startup is restored |
 | O02 text stack | S11 qualifies the accepted open OpenType direction after freezing the existing HarfBuzz/FreeType proof. Shipping requires source, license, redistribution, corpus, ABI, resource, visual-quality, performance, allocation, lifecycle, package, and both-RID gates |
 | O03 paths | S13 uses the selected Goo-owned or freely redistributable curve and Vulkan implementation. Goo owns conversion, CPU hit testing, clipping, paint composition, caching, and lifetime |
 | O04 images and SVG | S12 owns decoded pixels and providers. S13 adds build-time compiled SVG assets |
@@ -225,11 +226,9 @@ Work:
 
 Required specification:
 
-- No Vulkan, public API redesign, renderer removal, or runtime-helper migration is mixed into G#
-  0.4.1 stabilization.
-- `Goo.InternalTextInterop` remains the verified Skia baseline implementation through the
-  non-shipping Vulkan proof. Its responsibilities move to G# only when their replacements satisfy
-  the S18 atomic cutover entry gates.
+- G# 0.4.1 remains the locked compiler baseline for the direct product cutover.
+- `Goo.InternalTextInterop` is removed before parity. Required responsibilities move directly into
+  G# as Vulkan integration reaches each product surface.
 - `PLAN-FOR-REVIEW.md` remains the architecture source of truth.
 - Supporting research does not silently become an accepted dependency.
 
@@ -331,8 +330,8 @@ Work:
 5. Record one disposition per historical finding.
 6. Remove a Goo workaround only when the exact selected SDK proves it obsolete.
 7. Keep a workaround when removal changes allocation, runtime, package, or generated IL behavior.
-8. Preserve `Goo.InternalTextInterop` and its current responsibilities as part of the verified Skia
-   baseline.
+8. Record which `Goo.InternalTextInterop` responsibilities must be replaced in G#, then remove the
+   helper with the Skia backend.
 9. Delete the temporary matrix source and output after the disposition record is written.
 
 Expected matrix dispositions to verify:
@@ -357,9 +356,9 @@ Required specifications:
 - Keep the XML documentation packaging target until clean pack evidence proves it unnecessary.
 - A compiler fix does not automatically justify deleting an allocation-motivated workaround.
 - Yoga.Net and other external or vendored C# dependencies remain unchanged.
-- Text shaping, native resource lifetime, renderer behavior, and package shape stay equivalent.
-- The final G#-only Goo-owned runtime boundary remains mandatory at S18. S02 does not move or delete
-  the current helper merely to recreate temporary Skia and OpenGL behavior in G#.
+- Text shaping and native resource lifetime are restored through the locked Vulkan text stack.
+- The G#-only Goo-owned runtime boundary applies throughout the cutover. Do not recreate temporary
+  Skia or OpenGL behavior in G#.
 
 Minimal TDD:
 
@@ -681,9 +680,9 @@ Reopen when:
 
 Boundary:
 
-- This is a non-shipping Vulkan proof target.
-- Goo's product renderer remains Skia until S18.
-- The proof is not selectable through the public API and is not packed.
+- This began as a non-shipping Vulkan proof target.
+- Its validated components are promoted during the active clean-break product cutover.
+- Proof harness behavior remains outside the public API and package.
 
 Implementation status on 2026-08-17:
 
@@ -871,8 +870,8 @@ Qualification evidence:
 - Khronos validation and synchronization validation reported `0` errors and `0` fatal errors.
 - Linux x64 NativeAOT output was `1,690,680` bytes with SHA-256
   `44923f77ce793d6e4d1302699446420698de806a4878ccf21f538b4a32039e54`.
-- The proof remains non-shipping. Product `Goo/` is untouched, no Skia fallback exists, and Windows
-  runtime qualification remains deferred to the Windows 11 VM.
+- The recorded proof remains non-shipping evidence. Its reusable Vulkan components now move into
+  product `Goo/`. Windows runtime qualification remains deferred to the Windows 11 VM.
 - Mapped noncoherent memory uses a conservative whole-block flush and invalidate. This is safe and
   non-blocking for S10. Range-granular, atom-aligned operations remain an S14 performance
   optimization and reopen risk if later measurements require them.
@@ -942,9 +941,8 @@ Status:
 
 - O02/Q2 accepts OpenType inputs with a Goo-owned or freely redistributable text and vector
   implementation.
-- The existing HarfBuzz/FreeType proof is frozen as a non-shipping evidence baseline.
-  Do not extend it or integrate it into Goo until the open implementation is selected. It is not a
-  runtime fallback until that decision is made.
+- The existing HarfBuzz core and `hb-gpu` proof is frozen as non-shipping evidence. Its locked,
+  trimmed text-provider path moves into Goo without FreeType or a CPU raster fallback.
 - The official Slug repository is accepted as the rendering-stage shader upstream. Its algorithm
   patent has been dedicated to the public domain. Its two official MIT/Apache-2.0 HLSL reference
   shaders may be vendored, ported, or compiled with required notice and credit. The public repository
@@ -1044,13 +1042,12 @@ Status and qualification evidence:
 - Local commit `622ee82` adds the proof-only G# image provider/source ownership path with dual nearest/linear Vulkan samplers. Async decoder completions must publish through the provider's constructing thread.
 - Linux JIT image E2E recorded nearest digest `2726448270383127845` and linear digest `10848324327350558369`. Warm recording and rehydration reported `allocated=0`; the resident plateau, fence-safe retirement, and logical-source rehydration gates passed.
 - Linux x64 NativeAOT produced `1,728,520` bytes with SHA-256 `ec24ac566e4af3aed568059a482e7b017784baf13185b9811a8268e7235edce6`.
-- Product Goo remains untouched. No codec was added. S12-I01 now locks the versioned stable
-  `ImageSourceProvider` contract. S12 remains open for Windows 11 VM qualification and S18
-  public-contract migration.
+- No codec was added. S12-I01 locks the versioned stable `ImageSourceProvider` contract. S12 remains
+  open for Windows 11 VM qualification and direct product-contract migration.
 
 S12-I01 accepted contract:
 
-- S18 adds the read-only `ImageSourceProvider.ContentVersion uint64` property and parameterless
+- The direct cutover adds the read-only `ImageSourceProvider.ContentVersion uint64` property and parameterless
   `ImageSourceProvider.ContentChanged` event. `ImageSourceProvider.Acquire()` remains unchanged and
   `ImageSourceLease` gains no public member. Treat the two interface additions as a breaking change
   for custom providers and update the approved API baseline and generated documentation atomically.
@@ -1450,24 +1447,15 @@ Reopen when:
 
 - A proposed mechanism can be composed from public primitives or requires application policy.
 
-### S18. Perform the atomic Goo production cutover
+### S18. Perform the clean-break Goo production cutover
 
 Entry:
 
-- S08 through S16 proof components pass T02, T03, and T04.
-- S17 required core mechanisms and platform adapters pass their exit gates.
-- S11 has qualified the accepted open OpenType text direction, and its text corpus, ABI, G# NativeAOT,
-  resource, device-loss, and Windows/Linux gates pass independently.
-- S13's open path corpus, ABI, resource lifetime, visual-quality, performance, allocation, and
-  Windows/Linux gates pass independently.
-- O03 and O16 are accepted.
-- No required renderer behavior still depends on Skia.
-- T02 through T04 and every applicable Q10 workload have been rerun after S17. Pre-S17 evidence does
-  not satisfy this entry gate.
-- Every Q10 gate measurable in the non-shipping proof passes on both platforms. Final product
-  dependency, package, NativeAOT size, and product-source gates remain for this cutover and S19.
+- The branch is `gaps-and-reductions` and the recorded Skia baseline remains available as evidence.
+- Removing the old backend before feature parity is explicitly approved.
+- Temporary local build and runtime breakage is accepted.
 
-Atomic work:
+Ordered cutover work:
 
 1. Integrate the typed scene compiler and Vulkan runtime into Goo.
 2. Replace `Painter.PaintTo(SKCanvas)` and the `SdlRenderTarget` product path.
@@ -1761,8 +1749,8 @@ pass before the next row starts.
 | B06B | Retained segment/damage implementation | Sparse workload measurement | Damage-journal lifecycle scenarios | S15 single-window sparse gates pass |
 | B06C | Multi-window scheduler | Recovery-injection harness | WSI/resource lifetime audit | S16 three-window and recovery gates pass |
 | B07 | Protected text mechanism | UIA and AT-SPI adapters | Public-composition and remaining-core-gap proof | S17 contains only required non-composable mechanisms |
-| B08A | Read-only Skia deletion inventory | Read-only API migration inventory | Read-only final package manifest | Lead performs S18 atomic integration once |
-| B08B | Windows hardware qualification | Linux hardware qualification | RID package/dependency/source audit | S19 passes after the atomic cutover |
+| B08A | Skia deletion and product Vulkan promotion | G# product API migration | Product package manifest | Lead integrates continuously until the Vulkan window starts |
+| B08B | Windows hardware qualification | Linux hardware qualification | RID package/dependency/source audit | S19 passes after direct cutover |
 
 ### 11.3 Files reserved for lead integration
 

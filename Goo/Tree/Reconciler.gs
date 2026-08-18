@@ -1,6 +1,5 @@
 package Goo
 
-import Goo.InternalTextInterop
 import System
 import System.Collections.Generic
 
@@ -740,7 +739,6 @@ internal class Reconciler {
     var paintChanged = false
     var inputChanged = false
     var hitGeometryChanged = false
-    var pathEffectsChanged = false
     var geometryChanged = false
     if !n.ShapePath.Equals(s.Path) {
       n.ShapePath = s.Path
@@ -786,17 +784,12 @@ internal class Reconciler {
       paintChanged = true
       inputChanged = true
       hitGeometryChanged = true
-      pathEffectsChanged = true
       geometryChanged = true
     }
     if !sameDashPattern(n.Dashes, s.Dashes) {
       n.Dashes = s.Dashes
       paintChanged = true
-      pathEffectsChanged = true
       geometryChanged = true
-    }
-    if pathEffectsChanged {
-      ShapePathEffects.Dispose(n)
     }
     if geometryChanged {
       ShapeGeometry.Dispose(n)

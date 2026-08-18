@@ -25,12 +25,12 @@ public data struct Color {
     return Color{ r: r, g: g, b: b, a: normalizeAlpha(alpha) }
   }
 
-  internal func ToSkia() uint32 {
+  internal func ToPackedRgba() uint32 {
     let alpha = uint32(clamp255(a))
     let red = uint32(clamp255(r))
     let green = uint32(clamp255(g))
     let blue = uint32(clamp255(b))
-    return (alpha << 24) | (red << 16) | (green << 8) | blue
+    return (red << 24) | (green << 16) | (blue << 8) | alpha
   }
 
   shared {

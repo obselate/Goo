@@ -1,7 +1,6 @@
 package Goo
 
 import System
-import Goo.InternalTextInterop
 
 /// Hosts a Goo tree in an SDL window.
 public partial class Window {
@@ -22,14 +21,6 @@ public partial class Window {
       case SdlHostState.Maximized: WindowState.Maximized
       case SdlHostState.Fullscreen: WindowState.Fullscreen
       case _: throw NotSupportedException("Window.fromSdlState: unhandled state " + value.ToString())
-    }
-  }
-
-  private func toSdlRenderer(value WindowRenderer) SdlHostRenderer {
-    return switch value {
-      case WindowRenderer.Gpu: SdlHostRenderer.Gpu
-      case WindowRenderer.Raster: SdlHostRenderer.Raster
-      case _: throw NotSupportedException("Window.toSdlRenderer: unhandled renderer " + value.ToString())
     }
   }
 

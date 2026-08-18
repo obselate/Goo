@@ -13,7 +13,6 @@ MAX_GLIBC = (2, 35)
 PACKAGE_FILES = {
     "_rels/.rels",
     "Goo.nuspec",
-    "lib/net10.0/Goo.InternalTextInterop.dll",
     "lib/net10.0/Yoga.Net.dll",
     "lib/net10.0/Goo.xml",
     "lib/net10.0/Goo.dll",
@@ -23,33 +22,62 @@ PACKAGE_FILES = {
     "LICENSE",
     "THIRD-PARTY-NOTICES.md",
     "buildTransitive/Goo.targets",
+    "contentFiles/any/any/Vulkan/Runtime/HarfBuzz-COPYING.txt",
+    "contentFiles/any/any/Vulkan/Shaders/analytic.vert.spv",
+    "contentFiles/any/any/Vulkan/Shaders/analytic_linear3.frag.spv",
+    "contentFiles/any/any/Vulkan/Shaders/analytic_radial3.frag.spv",
+    "contentFiles/any/any/Vulkan/Shaders/analytic_sampled_image.frag.spv",
+    "contentFiles/any/any/Vulkan/Shaders/analytic_solid.frag.spv",
+    "contentFiles/any/any/Vulkan/Shaders/hb_gpu.vert.spv",
+    "contentFiles/any/any/Vulkan/Shaders/hb_gpu_draw.frag.spv",
+    "contentFiles/any/any/Vulkan/Shaders/hb_gpu_paint.frag.spv",
+    "contentFiles/any/any/Vulkan/Shaders/harfbuzz-14.3.1.provenance.json",
+    "contentFiles/any/any/Vulkan/Shaders/shader-manifest.json",
+    "contentFiles/any/any/Vulkan/Shaders/solid_quad.frag.spv",
+    "contentFiles/any/any/Vulkan/Shaders/solid_quad.vert.spv",
     "runtimes/linux-x64/native/libSDL3.so",
+    "runtimes/linux-x64/native/libgoo-harfbuzz-gpu.so",
+    "runtimes/linux-x64/native/libgoo-harfbuzz.so",
+    "runtimes/linux-x64/native/text-native-build.json",
+    "runtimes/win-x64/native/goo-harfbuzz-gpu.dll",
+    "runtimes/win-x64/native/goo-harfbuzz.dll",
+    "runtimes/win-x64/native/text-native-build.json",
     "[Content_Types].xml",
 }
 BUNDLE_FILES = {
-    "Goo.InternalTextInterop.dll",
     "Goo.PackageSmoke.deps.json",
     "Goo.PackageSmoke.dll",
     "Goo.PackageSmoke.runtimeconfig.json",
     "Goo.dll",
     "Gsharp.Extensions.dll",
-    "HarfBuzzSharp.dll",
     "Hexa.NET.SDL3.dll",
     "HexaGen.Runtime.dll",
-    "SkiaSharp.HarfBuzz.dll",
-    "SkiaSharp.dll",
     "Unicode.Bidi.dll",
     "Yoga.Net.dll",
-    "libHarfBuzzSharp.so",
     "libSDL3.so",
-    "libSkiaSharp.so",
+    "libgoo-harfbuzz-gpu.so",
+    "libgoo-harfbuzz.so",
+    "text-native-build.json",
+    "Vulkan/Runtime/HarfBuzz-COPYING.txt",
+    "Vulkan/Shaders/analytic.vert.spv",
+    "Vulkan/Shaders/analytic_linear3.frag.spv",
+    "Vulkan/Shaders/analytic_radial3.frag.spv",
+    "Vulkan/Shaders/analytic_sampled_image.frag.spv",
+    "Vulkan/Shaders/analytic_solid.frag.spv",
+    "Vulkan/Shaders/hb_gpu.vert.spv",
+    "Vulkan/Shaders/hb_gpu_draw.frag.spv",
+    "Vulkan/Shaders/hb_gpu_paint.frag.spv",
+    "Vulkan/Shaders/harfbuzz-14.3.1.provenance.json",
+    "Vulkan/Shaders/shader-manifest.json",
+    "Vulkan/Shaders/solid_quad.frag.spv",
+    "Vulkan/Shaders/solid_quad.vert.spv",
     "LICENSE",
     "README.md",
     "CHANGELOG.md",
     "THIRD-PARTY-NOTICES.md",
     "SHA256SUMS",
 }
-NATIVE_NAMES = {"libSDL3.so", "libSkiaSharp.so", "libHarfBuzzSharp.so"}
+NATIVE_NAMES = {"libSDL3.so", "libgoo-harfbuzz-gpu.so", "libgoo-harfbuzz.so"}
 
 
 def digest(path: Path) -> str:
@@ -116,7 +144,7 @@ def validate_package(path: Path) -> str:
 def parse_checksums(path: Path) -> dict[str, str]:
     checksums: dict[str, str] = {}
     for line in path.read_text(encoding="utf-8").splitlines():
-        match = re.fullmatch(r"([0-9a-f]{64})  ([^/]+)", line)
+        match = re.fullmatch(r"([0-9a-f]{64})  ([^\n]+)", line)
         if match is None or match.group(2) in checksums:
             raise SystemExit(f"invalid checksum line: {line!r}")
         checksums[match.group(2)] = match.group(1)

@@ -1,0 +1,67 @@
+package Goo
+
+import System
+
+internal enum VulkanMemoryResourceClass {
+    Buffer;
+    Image;
+}
+
+internal enum VulkanMemoryAllocationState {
+    Empty;
+    Live;
+    Retired;
+}
+
+internal unsafe class VulkanMemoryBlock {
+    var memory VkDeviceMemory
+    var size VkDeviceSize
+    var memoryTypeIndex uint32
+    var heapIndex uint32
+    var propertyFlags VkMemoryPropertyFlags
+    var hostVisible bool
+    var hostCoherent bool
+    var resourceClass VulkanMemoryResourceClass
+    var dedicated bool
+    var mapped *void
+    var allocationCount uint32
+}
+
+internal unsafe class VulkanMemoryAllocation {
+    var memory VkDeviceMemory
+    var size VkDeviceSize
+    var offset VkDeviceSize
+    var memoryTypeIndex uint32
+    var heapIndex uint32
+    var propertyFlags VkMemoryPropertyFlags
+    var hostVisible bool
+    var hostCoherent bool
+    var dedicated bool
+    var mapped *void
+    var block VulkanMemoryBlock?
+    var activeIndex int32
+    var blockFresh bool
+    var pendingBind bool
+    var state VulkanMemoryAllocationState
+}
+
+internal data struct VulkanMemoryPlacement {
+    var block VulkanMemoryBlock?
+    var offset VkDeviceSize
+    var newBlock bool
+}
+
+internal data struct VulkanMemoryTypeSelection {
+    var memoryTypeIndex uint32
+    var heapIndex uint32
+    var propertyFlags VkMemoryPropertyFlags
+}
+
+internal data struct VulkanMemoryCounters {
+    var liveBytes VkDeviceSize
+    var liveAllocations uint64
+    var retiredBytes VkDeviceSize
+    var retiredAllocations uint64
+    var residentBytes VkDeviceSize
+    var residentAllocations uint64
+}

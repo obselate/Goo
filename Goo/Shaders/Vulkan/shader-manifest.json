@@ -1,0 +1,972 @@
+{
+  "schema": 3,
+  "toolchain": {
+    "sdk": "1.4.357.0",
+    "compiler": {
+      "project": "google/shaderc",
+      "version": "2026.3",
+      "commit": "ef2c68b4871a3c399a0808321b51379847a54673",
+      "executable": "glslc"
+    },
+    "validator": {
+      "project": "KhronosGroup/SPIRV-Tools",
+      "version": "2026.3",
+      "commit": "b707790a898e44038547df54580022fc1cf89c3d",
+      "executable": "spirv-val"
+    },
+    "dependencies": [
+      {
+        "project": "KhronosGroup/glslang",
+        "version": "16.4.0",
+        "commit": "168d452a4f460d24b588fed08477a81c44ee27a1"
+      },
+      {
+        "project": "KhronosGroup/SPIRV-Headers",
+        "version": "1.4.357.0",
+        "commit": "29981f65241605e08b0ede4cfeb999fe3b723c6a"
+      }
+    ],
+    "archives": [
+      {
+        "rid": "linux-x64",
+        "file": "vulkansdk-linux-x86_64-1.4.357.0.tar.xz",
+        "url": "https://sdk.lunarg.com/sdk/download/1.4.357.0/linux/vulkansdk-linux-x86_64-1.4.357.0.tar.xz",
+        "sha256": "0f09bf6a0625e346bf004be70b92907e934a4c76606b323441b2baf3a5a0e66d"
+      },
+      {
+        "rid": "win-x64",
+        "file": "vulkansdk-windows-X64-1.4.357.0.exe",
+        "url": "https://sdk.lunarg.com/sdk/download/1.4.357.0/windows/vulkansdk-windows-X64-1.4.357.0.exe",
+        "sha256": "81f474711e9042f4cd22b31b2f7a8870db2e428b21586fb43dd80150be97310d"
+      }
+    ],
+    "registry": {
+      "project": "KhronosGroup/Vulkan-Headers",
+      "version": "1.4.357.0",
+      "commit": "e3b1eec08173d6b825cd3ac88c885a63b621504a1",
+      "vkXmlSha256": "264d0d7350e37d70c82407fb430d085040fc01a9a961d43dec8c2d6ed1dfd183"
+    }
+  },
+  "target": {
+    "language": "glsl",
+    "glslVersion": "450core",
+    "vulkan": "1.3",
+    "spirv": "1.6"
+  },
+  "compileFlags": [
+    "--target-env=vulkan1.3",
+    "--target-spv=spv1.6",
+    "-std=450core",
+    "-O",
+    "-Werror"
+  ],
+  "assemblies": [
+    {
+      "id": "hb_gpu_vertex",
+      "kind": "harfbuzz-hb-gpu-glsl",
+      "tag": "14.3.1",
+      "commit": "ab5ecbb83985034a76214ac0b2b833dcd590d774",
+      "provenance": "harfbuzz-14.3.1.provenance.json",
+      "provenanceSha256": "8e6d1033c5358754101cc5000a11b39e7a7cd17926186a1140503bbe365ecb63",
+      "atlasSet": 0,
+      "atlasBinding": 0,
+      "parts": [
+        {
+          "path": "upstream/harfbuzz-14.3.1/src/hb-gpu-vertex.glsl",
+          "sha256": "a2d278b8fd6588f47e788f37f6add64e21f38a132a04f5c62e7092f4fe83a7a7"
+        },
+        {
+          "path": "generated/wrappers/hb_gpu.vert.wrapper.glsl",
+          "sha256": "063e7f572e647586070a8560eac1192749dd07cc29a7dc1a286fb214f3599c92"
+        }
+      ]
+    },
+    {
+      "id": "hb_gpu_draw_fragment",
+      "kind": "harfbuzz-hb-gpu-glsl",
+      "tag": "14.3.1",
+      "commit": "ab5ecbb83985034a76214ac0b2b833dcd590d774",
+      "provenance": "harfbuzz-14.3.1.provenance.json",
+      "provenanceSha256": "8e6d1033c5358754101cc5000a11b39e7a7cd17926186a1140503bbe365ecb63",
+      "atlasSet": 0,
+      "atlasBinding": 0,
+      "parts": [
+        {
+          "path": "upstream/harfbuzz-14.3.1/src/hb-gpu-fragment.glsl",
+          "sha256": "104eb5b9512467f8dc08c897e03168c001b5b25cccd026fc41da84f1f682c6e3"
+        },
+        {
+          "path": "upstream/harfbuzz-14.3.1/src/hb-gpu-draw-fragment.glsl",
+          "sha256": "cb70fd3b4db78d02652d0e3a419fe859b7ec5d1f30ee97cba7eaa2cf8ed404eb"
+        },
+        {
+          "path": "generated/wrappers/hb_gpu_draw.frag.wrapper.glsl",
+          "sha256": "8cf9e65daa7b4a149e84cc7d4777008f13e7633ba5d8ef326b0dd1cd7dcfdce7"
+        }
+      ]
+    },
+    {
+      "id": "hb_gpu_paint_fragment",
+      "kind": "harfbuzz-hb-gpu-glsl",
+      "tag": "14.3.1",
+      "commit": "ab5ecbb83985034a76214ac0b2b833dcd590d774",
+      "provenance": "harfbuzz-14.3.1.provenance.json",
+      "provenanceSha256": "8e6d1033c5358754101cc5000a11b39e7a7cd17926186a1140503bbe365ecb63",
+      "atlasSet": 0,
+      "atlasBinding": 0,
+      "parts": [
+        {
+          "path": "upstream/harfbuzz-14.3.1/src/hb-gpu-fragment.glsl",
+          "sha256": "104eb5b9512467f8dc08c897e03168c001b5b25cccd026fc41da84f1f682c6e3"
+        },
+        {
+          "path": "upstream/harfbuzz-14.3.1/src/hb-gpu-draw-fragment.glsl",
+          "sha256": "cb70fd3b4db78d02652d0e3a419fe859b7ec5d1f30ee97cba7eaa2cf8ed404eb"
+        },
+        {
+          "path": "upstream/harfbuzz-14.3.1/src/hb-gpu-paint-fragment.glsl",
+          "sha256": "95e5868c3c1197962eb1976838b683fa2f7a7829375d170b3a59706e39538337"
+        },
+        {
+          "path": "generated/wrappers/hb_gpu_paint.frag.wrapper.glsl",
+          "sha256": "df5572da972796670fd282f81a27429860ec3bb93a999cf1d17649e77d1cf3c2"
+        }
+      ]
+    }
+  ],
+  "shaders": [
+    {
+      "id": "solid_quad_vertex",
+      "stage": "vertex",
+      "source": "solid_quad.vert.glsl",
+      "output": "solid_quad.vert.spv",
+      "entryPoint": "main",
+      "sourceSha256": "8036438d2d1ef522d23ef8f2121d2db8e7019546ed094841f98cbb073df95ddd",
+      "outputSha256": "1b06771f89e2a446dff2ad8cc26b5b4a1d3d2b7b6f658d07f32c3aeaae12dd66",
+      "outputBytes": 1232,
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "solid_quad_fragment",
+      "stage": "fragment",
+      "source": "solid_quad.frag.glsl",
+      "output": "solid_quad.frag.spv",
+      "entryPoint": "main",
+      "sourceSha256": "e97231f17ab1e568bd56de7d9f0465097c618628ce4c728af096dd77e4c30c3a",
+      "outputSha256": "0a3563abcb74db08a7263045b7fa23462249ed069cd7289b80c96812ef1db500",
+      "outputBytes": 312,
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "analytic_vertex",
+      "stage": "vertex",
+      "source": "analytic.vert.glsl",
+      "output": "analytic.vert.spv",
+      "entryPoint": "main",
+      "sourceSha256": "fddebacfb2a0e17530d296d2b4710d64c6324eb18d663b49cff33cb31ecf7516",
+      "outputSha256": "cd132fb640a747524fd5eab420b96d9789585afaaf3bd13ca34950e16d0ed724",
+      "outputBytes": 1648,
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "analytic_solid_fragment",
+      "stage": "fragment",
+      "source": "analytic_solid.frag.glsl",
+      "output": "analytic_solid.frag.spv",
+      "entryPoint": "main",
+      "sourceSha256": "2a4161608663098d5c7de3be88e4801fa7365e5ef3c1fbd068b216f544a8492c",
+      "outputSha256": "b01710d9f4b9da0e71e0f524593092003d6f3a8ea668befb02a73bae035f1207",
+      "outputBytes": 2388,
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "analytic_linear3_fragment",
+      "stage": "fragment",
+      "source": "analytic_linear3.frag.glsl",
+      "output": "analytic_linear3.frag.spv",
+      "entryPoint": "main",
+      "sourceSha256": "ab2af725a758086110e93d3182b86db46618b47df08229d48ca4e959b3fd3c60",
+      "outputSha256": "3518f6fe918d88f12b251811afb928ae9b3b0e30f3f68122960152c21c34e272",
+      "outputBytes": 2980,
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "analytic_radial3_fragment",
+      "stage": "fragment",
+      "source": "analytic_radial3.frag.glsl",
+      "output": "analytic_radial3.frag.spv",
+      "entryPoint": "main",
+      "sourceSha256": "5eeef3f1b440f2d7e378cb4bb0d8294364f0b11a8c03ba4a39433671f90cbd73",
+      "outputSha256": "d43d75466c98a5834c0fad7189326e1441ee79a142eae80adbb257aa97ec3fd7",
+      "outputBytes": 2964,
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "analytic_sampled_image_fragment",
+      "stage": "fragment",
+      "source": "analytic_sampled_image.frag.glsl",
+      "output": "analytic_sampled_image.frag.spv",
+      "entryPoint": "main",
+      "sourceSha256": "6dc5e7a6f19c4f692e1470a6deb4271e44941b8ec389a0cfc426dfe5ebeb9007",
+      "outputSha256": "fc24a303af0c0ee861395cf337b9f26386565fc3e34e7ebcd549fadb5975a2b3",
+      "outputBytes": 1264,
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "hb_gpu_vertex",
+      "stage": "vertex",
+      "source": "hb_gpu.vert.wrapper.glsl",
+      "output": "hb_gpu.vert.spv",
+      "entryPoint": "main",
+      "assembly": "hb_gpu_vertex",
+      "sourceSha256": "9dbe7db8aaf4d4e8f57540f950ae887f96b42b816e12272c6be6d32631277f7c",
+      "outputSha256": "324ce0579d3cbc1708f9425b09e861530b2fe4aa4d549aafac4cb4c982403f6a",
+      "outputBytes": 2760,
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "hb_gpu_draw_fragment",
+      "stage": "fragment",
+      "source": "hb_gpu_draw.frag.wrapper.glsl",
+      "output": "hb_gpu_draw.frag.spv",
+      "entryPoint": "main",
+      "assembly": "hb_gpu_draw_fragment",
+      "sourceSha256": "37528bab3427eb0514f3659c5a0fb26ffa7f448f7b52e6fcecf0fb44a745d4f9",
+      "outputSha256": "0bfd33458e3d9433b337bcfd2fecd9c89e0b94090068c53db5ddbb2bd53cca9a",
+      "outputBytes": 43984,
+      "capabilities": [
+        1,
+        46
+      ]
+    },
+    {
+      "id": "hb_gpu_paint_fragment",
+      "stage": "fragment",
+      "source": "hb_gpu_paint.frag.wrapper.glsl",
+      "output": "hb_gpu_paint.frag.spv",
+      "entryPoint": "main",
+      "assembly": "hb_gpu_paint_fragment",
+      "sourceSha256": "f127434759237a06cbd3318eb9c640f9ed46851e77b6d0e4bfc3cb54a30edbce",
+      "outputSha256": "e91d99e593ee932e864c340588a3a9715902e0d9e941dc1b021c551c7ab1ce50",
+      "outputBytes": 280492,
+      "capabilities": [
+        1,
+        46
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "id": "solid_quad",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 32,
+        "stages": [
+          "vertex"
+        ],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "color",
+            "offset": 16,
+            "type": "vec4"
+          }
+        ]
+      },
+      "descriptorCount": 0,
+      "descriptors": [],
+      "stages": [
+        {
+          "shader": "solid_quad_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "color"
+            }
+          ]
+        },
+        {
+          "shader": "solid_quad_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "color"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "disabled",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "SolidQuadPushConstants.Generated.gs",
+        "typeName": "SolidQuadPushConstants",
+        "sha256": "801ed20e71cc24186daea9e0628253412ed04bb84d1613c8aa2e9b9d64d8b31d",
+        "bytes": 476
+      }
+    },
+    {
+      "id": "analytic_solid",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 112,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 0,
+      "descriptors": [],
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_solid_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "rgb11-11-10-alpha10-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "AnalyticSolidPushConstants.Generated.gs",
+        "typeName": "AnalyticSolidPushConstants",
+        "sha256": "9e0aea6c796cbdb38d317fad704cffbc2016711f399a14c8f8f13bb39ffb2f04",
+        "bytes": 1404
+      }
+    },
+    {
+      "id": "analytic_linear3",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 112,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 0,
+      "descriptors": [],
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_linear3_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "rgb11-11-10-alpha10-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "AnalyticLinear3PushConstants.Generated.gs",
+        "typeName": "AnalyticLinear3PushConstants",
+        "sha256": "804513d362b13043c43838f54ee8eb10b13a38aad92ced4ae91e7947246af234",
+        "bytes": 1406
+      }
+    },
+    {
+      "id": "analytic_radial3",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 112,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 0,
+      "descriptors": [],
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_radial3_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "rgb11-11-10-alpha10-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "AnalyticRadial3PushConstants.Generated.gs",
+        "typeName": "AnalyticRadial3PushConstants",
+        "sha256": "a3fef01a91640db424ec07dd6aa5a9a68d8dce9288d866cd8e71d003cc4c5b58",
+        "bytes": 1406
+      }
+    },
+    {
+      "id": "analytic_sampled_image",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 112,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 1,
+      "descriptors": [
+        {
+          "set": 0,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        }
+      ],
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_sampled_image_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "straight-srgb-rgba8-sampled-to-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "SampledImagePushConstants.Generated.gs",
+        "typeName": "SampledImagePushConstants",
+        "sha256": "9cb2f4d14db1e76b556b8e5ad906b394d8ae8dc90b928e7b5f8a18078f998501",
+        "bytes": 1403
+      }
+    },
+    {
+      "id": "hb_gpu_draw",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 128,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "transform",
+            "offset": 0,
+            "type": "mat4"
+          },
+          {
+            "name": "viewport",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "glyphBounds",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "glyphInput",
+            "offset": 96,
+            "type": "uvec4"
+          },
+          {
+            "name": "foreground",
+            "offset": 112,
+            "type": "vec4"
+          }
+        ]
+      },
+      "descriptorCount": 1,
+      "descriptors": [
+        {
+          "set": 0,
+          "binding": 0,
+          "type": "uniform-texel-buffer",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        }
+      ],
+      "stages": [
+        {
+          "shader": "hb_gpu_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "v_texcoord"
+            },
+            {
+              "location": 1,
+              "type": "uint",
+              "name": "v_glyphLoc"
+            }
+          ]
+        },
+        {
+          "shader": "hb_gpu_draw_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "v_texcoord"
+            },
+            {
+              "location": 1,
+              "type": "uint",
+              "name": "v_glyphLoc"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "hb-gpu-premultiplied-linear-foreground",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "HbGpuTextPushConstants.Generated.gs",
+        "typeName": "HbGpuTextPushConstants",
+        "sha256": "f2cc2d979fd0541663abdb79c8ed17999b8dbcf2c68c7932fcaccdcd1cb785d4",
+        "bytes": 1640
+      }
+    },
+    {
+      "id": "hb_gpu_paint",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 128,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "transform",
+            "offset": 0,
+            "type": "mat4"
+          },
+          {
+            "name": "viewport",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "glyphBounds",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "glyphInput",
+            "offset": 96,
+            "type": "uvec4"
+          },
+          {
+            "name": "foreground",
+            "offset": 112,
+            "type": "vec4"
+          }
+        ]
+      },
+      "descriptorCount": 1,
+      "descriptors": [
+        {
+          "set": 0,
+          "binding": 0,
+          "type": "uniform-texel-buffer",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        }
+      ],
+      "stages": [
+        {
+          "shader": "hb_gpu_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "v_texcoord"
+            },
+            {
+              "location": 1,
+              "type": "uint",
+              "name": "v_glyphLoc"
+            }
+          ]
+        },
+        {
+          "shader": "hb_gpu_paint_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "v_texcoord"
+            },
+            {
+              "location": 1,
+              "type": "uint",
+              "name": "v_glyphLoc"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "hb-gpu-premultiplied-linear-foreground",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "HbGpuTextPushConstants.Generated.gs",
+        "typeName": "HbGpuTextPushConstants",
+        "sha256": "f2cc2d979fd0541663abdb79c8ed17999b8dbcf2c68c7932fcaccdcd1cb785d4",
+        "bytes": 1640
+      }
+    }
+  ]
+}

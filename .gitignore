@@ -30,9 +30,6 @@
 
 !/Goo/
 !/Goo/**
-!/Goo.InternalTextInterop/
-!/Goo.InternalTextInterop/**
-
 !/tests/
 !/tests/**
 /tests/GooExtended.Tests/

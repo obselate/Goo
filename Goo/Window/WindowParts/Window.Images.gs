@@ -2,7 +2,6 @@ package Goo
 
 import System
 import System.Collections.Generic
-import Goo.InternalTextInterop
 import System.Threading
 
 internal data struct ImageCompletionWork {

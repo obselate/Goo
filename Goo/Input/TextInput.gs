@@ -3,7 +3,6 @@ package Goo
 import System
 import System.Collections.Generic
 import System.Text
-import Goo.InternalTextInterop
 
 internal class TextInput {
   private var focused Node?

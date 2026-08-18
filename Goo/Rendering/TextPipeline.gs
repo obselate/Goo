@@ -3,7 +3,6 @@ package Goo
 import System
 import System.Collections.Generic
 import System.Runtime.CompilerServices
-import Goo.InternalTextInterop
 
 // Value snapshots keep the common single-paragraph path allocation-neutral.
 internal data struct TextSourceSnapshot(Source string, Display string, Transform TextTransform) { }

@@ -1,6 +1,11 @@
 <Project>
   <PropertyGroup>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeGooImplementationAssemblies</TargetsForTfmSpecificBuildOutput>
+    <GooVulkanShaderRoot>$(MSBuildProjectDirectory)/Shaders/Vulkan</GooVulkanShaderRoot>
+    <GooVulkanRuntimeRoot>$(MSBuildProjectDirectory)/Runtime/Vulkan</GooVulkanRuntimeRoot>
+    <GooVulkanEffectiveRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</GooVulkanEffectiveRid>
+    <GooVulkanEffectiveRid Condition="'$(GooVulkanEffectiveRid)' == '' and $([MSBuild]::IsOSPlatform('Linux'))">linux-x64</GooVulkanEffectiveRid>
+    <GooVulkanEffectiveRid Condition="'$(GooVulkanEffectiveRid)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">win-x64</GooVulkanEffectiveRid>
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(MSBuildProjectDirectory)/../README.md" Pack="true" PackagePath="/" />
@@ -12,7 +17,99 @@
     <None Include="$(GooLinuxSdlPath)"
           Pack="true" PackagePath="runtimes/linux-x64/native/libSDL3.so"
           Condition="'$(GooLinuxSdlPath)' != '' and Exists('$(GooLinuxSdlPath)')" />
+
+    <None Update="$(GooVulkanShaderRoot)/*.spv"
+          Pack="true"
+          PackagePath="contentFiles/any/any/Vulkan/Shaders/%(Filename)%(Extension)"
+          PackageBuildAction="None"
+          PackageCopyToOutput="true" />
+    <None Update="$(GooVulkanShaderRoot)/shader-manifest.json"
+          Pack="true"
+          PackagePath="contentFiles/any/any/Vulkan/Shaders/shader-manifest.json"
+          PackageBuildAction="None"
+          PackageCopyToOutput="true" />
+    <None Update="$(GooVulkanShaderRoot)/harfbuzz-14.3.1.provenance.json"
+          Pack="true"
+          PackagePath="contentFiles/any/any/Vulkan/Shaders/harfbuzz-14.3.1.provenance.json"
+          PackageBuildAction="None"
+          PackageCopyToOutput="true" />
+    <None Update="$(GooVulkanRuntimeRoot)/HarfBuzz-COPYING.txt"
+          Pack="true"
+          PackagePath="contentFiles/any/any/Vulkan/Runtime/HarfBuzz-COPYING.txt"
+          PackageBuildAction="None"
+          PackageCopyToOutput="true" />
+
+    <None Update="$(GooVulkanRuntimeRoot)/linux-x64/*.so"
+          Pack="true"
+          PackagePath="runtimes/linux-x64/native/%(Filename)%(Extension)" />
+    <None Update="$(GooVulkanRuntimeRoot)/linux-x64/text-native-build.json"
+          Pack="true"
+          PackagePath="runtimes/linux-x64/native/text-native-build.json" />
+    <None Update="$(GooVulkanRuntimeRoot)/win-x64/*.dll"
+          Pack="true"
+          PackagePath="runtimes/win-x64/native/%(Filename)%(Extension)" />
+    <None Update="$(GooVulkanRuntimeRoot)/win-x64/text-native-build.json"
+          Pack="true"
+          PackagePath="runtimes/win-x64/native/text-native-build.json" />
+
+    <None Update="$(GooVulkanShaderRoot)/*.spv"
+          Link="Vulkan/Shaders/%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="Always" />
+    <None Update="$(GooVulkanShaderRoot)/shader-manifest.json"
+          Link="Vulkan/Shaders/shader-manifest.json"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="Always" />
+    <None Update="$(GooVulkanShaderRoot)/harfbuzz-14.3.1.provenance.json"
+          Link="Vulkan/Shaders/harfbuzz-14.3.1.provenance.json"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="Always" />
+    <None Update="$(GooVulkanRuntimeRoot)/HarfBuzz-COPYING.txt"
+          Link="Vulkan/Runtime/HarfBuzz-COPYING.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="Always" />
+
+    <None Update="$(GooVulkanRuntimeRoot)/linux-x64/*.so"
+          Condition="'$(GooVulkanEffectiveRid)' == 'linux-x64'"
+          Link="%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="Always" />
+    <None Update="$(GooVulkanRuntimeRoot)/linux-x64/text-native-build.json"
+          Condition="'$(GooVulkanEffectiveRid)' == 'linux-x64'"
+          Link="text-native-build.json"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="Always" />
+    <None Update="$(GooVulkanRuntimeRoot)/win-x64/*.dll"
+          Condition="'$(GooVulkanEffectiveRid)' == 'win-x64'"
+          Link="%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="Always" />
+    <None Update="$(GooVulkanRuntimeRoot)/win-x64/text-native-build.json"
+          Condition="'$(GooVulkanEffectiveRid)' == 'win-x64'"
+          Link="text-native-build.json"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="Always" />
   </ItemGroup>
+
+  <Target Name="ValidateGooVulkanPackageAssets" BeforeTargets="Build;Pack">
+    <Error Condition="!Exists('$(GooVulkanShaderRoot)/solid_quad.vert.spv')"
+           Text="Goo Vulkan asset is missing: $(GooVulkanShaderRoot)/solid_quad.vert.spv" />
+    <Error Condition="!Exists('$(GooVulkanShaderRoot)/solid_quad.frag.spv')"
+           Text="Goo Vulkan asset is missing: $(GooVulkanShaderRoot)/solid_quad.frag.spv" />
+    <Error Condition="!Exists('$(GooVulkanShaderRoot)/shader-manifest.json')"
+           Text="Goo Vulkan metadata is missing: $(GooVulkanShaderRoot)/shader-manifest.json" />
+    <Error Condition="!Exists('$(GooVulkanRuntimeRoot)/linux-x64/libgoo-harfbuzz.so')"
+           Text="Goo Vulkan Linux HarfBuzz payload is missing." />
+    <Error Condition="!Exists('$(GooVulkanRuntimeRoot)/linux-x64/libgoo-harfbuzz-gpu.so')"
+           Text="Goo Vulkan Linux hb-gpu payload is missing." />
+    <Error Condition="!Exists('$(GooVulkanRuntimeRoot)/win-x64/goo-harfbuzz.dll')"
+           Text="Goo Vulkan Windows HarfBuzz payload is missing." />
+    <Error Condition="!Exists('$(GooVulkanRuntimeRoot)/win-x64/goo-harfbuzz-gpu.dll')"
+           Text="Goo Vulkan Windows hb-gpu payload is missing." />
+    <Error Condition="!Exists('$(GooVulkanRuntimeRoot)/HarfBuzz-COPYING.txt')"
+           Text="Goo Vulkan HarfBuzz license is missing." />
+  </Target>
+
   <Target Name="ValidateGooLinuxSdlPackageAsset" BeforeTargets="Pack">
     <Error Condition="'$(GooLinuxSdlPath)' == '' or !Exists('$(GooLinuxSdlPath)')"
            Text="Packing Goo requires -p:GooLinuxSdlPath=/absolute/path/to/a glibc-2.35-compatible libSDL3.so." />
@@ -29,7 +126,7 @@
           DependsOnTargets="BuildOnlySettings;ResolveReferences">
     <ItemGroup>
       <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths)"
-          Condition="'%(ReferenceCopyLocalPaths.Filename)' == 'Goo.InternalTextInterop' or '%(ReferenceCopyLocalPaths.Filename)' == 'Yoga.Net'">
+          Condition="'%(ReferenceCopyLocalPaths.Filename)' == 'Yoga.Net'">
         <TargetPath>%(ReferenceCopyLocalPaths.Filename)%(ReferenceCopyLocalPaths.Extension)</TargetPath>
         <FinalOutputPath>%(ReferenceCopyLocalPaths.FullPath)</FinalOutputPath>
       </BuildOutputInPackage>

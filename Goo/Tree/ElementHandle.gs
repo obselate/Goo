@@ -3,7 +3,6 @@ package Goo
 import System
 import System.Collections.Generic
 import System.Runtime.CompilerServices
-import Goo.InternalTextInterop
 
 /// Represents a consumer-owned handle for one mounted element.
 public class ElementHandle {

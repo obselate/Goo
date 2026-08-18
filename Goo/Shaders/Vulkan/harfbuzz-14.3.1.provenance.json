@@ -1,0 +1,25 @@
+{
+  "project": "harfbuzz/harfbuzz",
+  "tag": "14.3.1",
+  "commit": "ab5ecbb83985034a76214ac0b2b833dcd590d774",
+  "license": "COPYING",
+  "licenseSha256": "ba8f810f2455c2f08e2d56bb49b72f37fcf68f1f4fade38977cfd7372050ad64",
+  "sources": [
+    {
+      "path": "src/hb-gpu-vertex.glsl",
+      "sha256": "a2d278b8fd6588f47e788f37f6add64e21f38a132a04f5c62e7092f4fe83a7a7"
+    },
+    {
+      "path": "src/hb-gpu-fragment.glsl",
+      "sha256": "104eb5b9512467f8dc08c897e03168c001b5b25cccd026fc41da84f1f682c6e3"
+    },
+    {
+      "path": "src/hb-gpu-draw-fragment.glsl",
+      "sha256": "cb70fd3b4db78d02652d0e3a419fe859b7ec5d1f30ee97cba7eaa2cf8ed404eb"
+    },
+    {
+      "path": "src/hb-gpu-paint-fragment.glsl",
+      "sha256": "95e5868c3c1197962eb1976838b683fa2f7a7829375d170b3a59706e39538337"
+    }
+  ]
+}

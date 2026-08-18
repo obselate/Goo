@@ -1,7 +1,6 @@
 package Goo
 
 import System
-import Goo.InternalTextInterop
 
 internal func fromSdlPointerButton(value SdlHostPointerButton) PointerButton {
   return switch value {

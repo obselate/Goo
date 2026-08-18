@@ -3,7 +3,6 @@ package Goo
 import System
 import System.Collections.Generic
 import System.Diagnostics
-import Goo.InternalTextInterop
 
 internal class KeyboardInput {
   private var queue List[KeyboardEvent]

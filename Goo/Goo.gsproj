@@ -20,16 +20,8 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="$(MSBuildProjectDirectory)/../Goo.InternalTextInterop/Goo.InternalTextInterop.csproj"
-                      PrivateAssets="all"
-                      GlobalPropertiesToRemove="IncludeTestFixtures" />
     <ProjectReference Include="$(MSBuildProjectDirectory)/../vendor/Yoga.Net/src/Yoga.Net/Yoga.Net.csproj"
                       PrivateAssets="all" />
-    <PackageReference Include="SkiaSharp" />
-    <PackageReference Include="SkiaSharp.HarfBuzz" />
-    <PackageReference Include="HarfBuzzSharp" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
-    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
     <PackageReference Include="Hexa.NET.SDL3" ExcludeAssets="native" />
     <PackageReference Include="Unicode.Bidi" />
   </ItemGroup>

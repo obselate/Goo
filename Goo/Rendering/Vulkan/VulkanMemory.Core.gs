@@ -1,0 +1,333 @@
+package Goo
+
+import System
+
+internal unsafe partial class VulkanMemoryAllocator : IDisposable {
+    private const MaxTrackedAllocations uint64 = 1048576uL
+    private const InitialActiveCapacity int32 = 32
+    private const InitialBlockCapacity int32 = 4
+    private const BufferBlockSize VkDeviceSize = 1048576uL
+    private const ImageBlockSize VkDeviceSize = 4194304uL
+    private const BufferDedicatedThreshold VkDeviceSize = 524288uL
+    private const ImageDedicatedThreshold VkDeviceSize = 2097152uL
+
+    private let device VkDevice
+    private let deviceDispatch VkDeviceDispatch
+    private let memoryProperties VkPhysicalDeviceMemoryProperties
+    private let maxAllocationCount uint64
+    private let heapResidentBytes []VkDeviceSize
+    private var activeAllocations []VulkanMemoryAllocation?
+    private var blocks []VulkanMemoryBlock?
+    private var activeCount int32
+    private var blockCount int32
+    private var liveBytes VkDeviceSize
+    private var liveAllocations uint64
+    private var retiredBytes VkDeviceSize
+    private var retiredAllocations uint64
+    private var residentBytes VkDeviceSize
+    private var residentAllocations uint64
+    private var disposed bool
+
+    internal prop LiveBytes VkDeviceSize { get { return liveBytes } }
+    internal prop LiveAllocationCount uint64 { get { return liveAllocations } }
+    internal prop RetiredBytes VkDeviceSize { get { return retiredBytes } }
+    internal prop RetiredAllocationCount uint64 { get { return retiredAllocations } }
+    internal prop ResidentBytes VkDeviceSize { get { return residentBytes } }
+    internal prop ResidentAllocationCount uint64 { get { return residentAllocations } }
+
+    internal init(nativeDevice VkDevice, nativeDispatch VkDeviceDispatch,
+        physicalProperties VkPhysicalDeviceMemoryProperties, allocationLimit uint32) {
+        if physicalProperties.memoryTypeCount == 0u || physicalProperties.memoryTypeCount > VkConstants.VK_MAX_MEMORY_TYPES {
+            throw ArgumentOutOfRangeException("memoryTypeCount")
+        }
+        if physicalProperties.memoryHeapCount == 0u || physicalProperties.memoryHeapCount > VkConstants.VK_MAX_MEMORY_HEAPS {
+            throw ArgumentOutOfRangeException("memoryHeapCount")
+        }
+        if allocationLimit == 0u {
+            throw ArgumentOutOfRangeException("maxAllocationCount")
+        }
+        this.device = nativeDevice
+        this.deviceDispatch = nativeDispatch
+        this.memoryProperties = physicalProperties
+        let requestedMaximum = uint64(allocationLimit)
+        if requestedMaximum > MaxTrackedAllocations {
+            this.maxAllocationCount = MaxTrackedAllocations
+        } else {
+            this.maxAllocationCount = requestedMaximum
+        }
+        heapResidentBytes = [int32(VkConstants.VK_MAX_MEMORY_HEAPS)]VkDeviceSize
+        activeAllocations = [InitialActiveCapacity]VulkanMemoryAllocation?
+        let initialBlockCapacity = if this.maxAllocationCount < uint64(InitialBlockCapacity) {
+            int32(this.maxAllocationCount)
+        } else {
+            InitialBlockCapacity
+        }
+        blocks = [initialBlockCapacity]VulkanMemoryBlock?
+    }
+
+    internal prop Counters VulkanMemoryCounters {
+        get {
+            return VulkanMemoryCounters{
+                liveBytes: liveBytes,
+                liveAllocations: liveAllocations,
+                retiredBytes: retiredBytes,
+                retiredAllocations: retiredAllocations,
+                residentBytes: residentBytes,
+                residentAllocations: residentAllocations,
+            }
+        }
+    }
+
+    internal func SelectMemoryType(typeBits uint32, requiredProperties VkMemoryPropertyFlags,
+        preferredProperties VkMemoryPropertyFlags) VulkanMemoryTypeSelection {
+        EnsureOpen()
+        var found bool = false
+        var bestIndex uint32 = 0u
+        var bestScore int32 = -1
+        var index uint32 = 0u
+        var bit uint32 = 1u
+        while index < memoryProperties.memoryTypeCount {
+            if (typeBits & bit) != 0u {
+                let memoryType = MemoryType(memoryProperties, index)
+                if (memoryType.propertyFlags & requiredProperties) == requiredProperties {
+                    let score = BitCount(memoryType.propertyFlags & preferredProperties)
+                    if !found || score > bestScore {
+                        found = true
+                        bestIndex = index
+                        bestScore = score
+                    }
+                }
+            }
+            index++
+            bit = bit << 1
+        }
+        if !found {
+            throw InvalidOperationException("No compatible Vulkan memory type")
+        }
+        let selected = MemoryType(memoryProperties, bestIndex)
+        if selected.heapIndex >= memoryProperties.memoryHeapCount {
+            throw InvalidOperationException("Vulkan memory type references an invalid heap")
+        }
+        return VulkanMemoryTypeSelection{
+            memoryTypeIndex: bestIndex,
+            heapIndex: selected.heapIndex,
+            propertyFlags: selected.propertyFlags,
+        }
+    }
+
+    internal func AllocateImage(image VkImage, requiredProperties VkMemoryPropertyFlags,
+        preferredProperties VkMemoryPropertyFlags) VulkanMemoryAllocation {
+        if image == 0uL {
+            throw ArgumentOutOfRangeException("image")
+        }
+        EnsureOpen()
+        var dedicatedRequirements = VkMemoryDedicatedRequirements{
+            sType: VkConstants.VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS,
+            pNext: nil,
+            prefersDedicatedAllocation: 0u,
+            requiresDedicatedAllocation: 0u,
+        }
+        var requirements = VkMemoryRequirements2{
+            sType: VkConstants.VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+            pNext: *void(&dedicatedRequirements),
+            memoryRequirements: VkMemoryRequirements{},
+        }
+        var requirementsInfo = VkImageMemoryRequirementsInfo2{
+            sType: VkConstants.VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+            pNext: nil,
+            image: image,
+        }
+        let getImageMemoryRequirements2 = deviceDispatch.vkGetImageMemoryRequirements2
+        getImageMemoryRequirements2(device, &requirementsInfo, &requirements)
+        return AllocateImageMemory(image, requirements.memoryRequirements, dedicatedRequirements,
+            requiredProperties, preferredProperties)
+    }
+
+    internal func AllocateBuffer(buffer VkBuffer, requiredProperties VkMemoryPropertyFlags,
+        preferredProperties VkMemoryPropertyFlags) VulkanMemoryAllocation {
+        if buffer == 0uL {
+            throw ArgumentOutOfRangeException("buffer")
+        }
+        EnsureOpen()
+        var dedicatedRequirements = VkMemoryDedicatedRequirements{
+            sType: VkConstants.VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS,
+            pNext: nil,
+            prefersDedicatedAllocation: 0u,
+            requiresDedicatedAllocation: 0u,
+        }
+        var requirements = VkMemoryRequirements2{
+            sType: VkConstants.VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+            pNext: *void(&dedicatedRequirements),
+            memoryRequirements: VkMemoryRequirements{},
+        }
+        var requirementsInfo = VkBufferMemoryRequirementsInfo2{
+            sType: VkConstants.VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+            pNext: nil,
+            buffer: buffer,
+        }
+        let getBufferMemoryRequirements2 = deviceDispatch.vkGetBufferMemoryRequirements2
+        getBufferMemoryRequirements2(device, &requirementsInfo, &requirements)
+        return AllocateBufferMemory(buffer, requirements.memoryRequirements, dedicatedRequirements,
+            requiredProperties, preferredProperties)
+    }
+
+    internal func Map(allocation VulkanMemoryAllocation) VkResult {
+        EnsureUsable(allocation)
+        if !allocation.hostVisible {
+            throw InvalidOperationException("Vulkan memory is not host visible")
+        }
+        if allocation.mapped != nil {
+            return VkConstants.VK_SUCCESS
+        }
+        let block = allocation.block!!
+        if block.mapped == nil {
+            return VkConstants.VK_ERROR_MEMORY_MAP_FAILED
+        }
+        allocation.mapped = PointerAt(block.mapped, allocation.offset)
+        if allocation.mapped == nil {
+            return VkConstants.VK_ERROR_MEMORY_MAP_FAILED
+        }
+        return VkConstants.VK_SUCCESS
+    }
+
+    internal func Unmap(allocation VulkanMemoryAllocation) {
+        EnsureUsable(allocation)
+        allocation.mapped = nil
+    }
+
+    internal func InvalidateAfterFence(allocation VulkanMemoryAllocation) VkResult {
+        EnsureUsable(allocation)
+        if allocation.hostCoherent {
+            return VkConstants.VK_SUCCESS
+        }
+        if !allocation.hostVisible {
+            throw InvalidOperationException("Vulkan memory is not host visible")
+        }
+        if allocation.mapped == nil {
+            throw InvalidOperationException("Vulkan memory must be mapped before invalidation")
+        }
+        let block = allocation.block!!
+        var mappedRange = VkMappedMemoryRange{
+            sType: VkConstants.VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+            pNext: nil,
+            memory: block.memory,
+            offset: 0uL,
+            size: VkConstants.VK_WHOLE_SIZE,
+        }
+        let invalidateMappedMemoryRanges = deviceDispatch.vkInvalidateMappedMemoryRanges
+        return invalidateMappedMemoryRanges(device, 1u, &mappedRange)
+    }
+
+    internal func FlushBeforeSubmit(allocation VulkanMemoryAllocation) VkResult {
+        EnsureUsable(allocation)
+        if allocation.hostCoherent {
+            return VkConstants.VK_SUCCESS
+        }
+        if !allocation.hostVisible {
+            throw InvalidOperationException("Vulkan memory is not host visible")
+        }
+        if allocation.mapped == nil {
+            throw InvalidOperationException("Vulkan memory must be mapped before flushing")
+        }
+        let block = allocation.block!!
+        var mappedRange = VkMappedMemoryRange{
+            sType: VkConstants.VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+            pNext: nil,
+            memory: block.memory,
+            offset: 0uL,
+            size: VkConstants.VK_WHOLE_SIZE,
+        }
+        let flushMappedMemoryRanges = deviceDispatch.vkFlushMappedMemoryRanges
+        return flushMappedMemoryRanges(device, 1u, &mappedRange)
+    }
+
+    internal func Retire(allocation VulkanMemoryAllocation) {
+        if allocation.state != VulkanMemoryAllocationState.Live {
+            return
+        }
+        if allocation.size > uint64.MaxValue - retiredBytes {
+            throw OverflowException("Vulkan retired memory counter overflow")
+        }
+        liveBytes -= allocation.size
+        liveAllocations--
+        retiredBytes += allocation.size
+        retiredAllocations++
+        allocation.state = VulkanMemoryAllocationState.Retired
+    }
+
+    internal func Release(allocation VulkanMemoryAllocation) {
+        if allocation.state == VulkanMemoryAllocationState.Empty {
+            return
+        }
+        let block = allocation.block
+        let removeBlock = allocation.dedicated || (allocation.pendingBind && allocation.blockFresh)
+        if block != nil {
+            let owningBlock = block!!
+            if owningBlock.allocationCount == 0u {
+                throw InvalidOperationException("Vulkan memory block allocation count underflow")
+            }
+            owningBlock.allocationCount--
+        }
+        if allocation.state == VulkanMemoryAllocationState.Live {
+            liveBytes -= allocation.size
+            liveAllocations--
+        } else if allocation.state == VulkanMemoryAllocationState.Retired {
+            retiredBytes -= allocation.size
+            retiredAllocations--
+        }
+        RemoveActive(allocation)
+        allocation.mapped = nil
+        ResetAllocation(allocation)
+        if removeBlock && block != nil {
+            RemoveBlock(block!!)
+        } else if block != nil && block!!.allocationCount == 0u {
+            TrimEmptyPooledBlocks(block!!)
+        }
+    }
+
+    public func Dispose() {
+        if disposed {
+            return
+        }
+        disposed = true
+        var allocationIndex int32 = 0
+        while allocationIndex < activeCount {
+            if let allocation = activeAllocations[allocationIndex] {
+                ResetAllocation(allocation)
+                activeAllocations[allocationIndex] = nil
+            }
+            allocationIndex = allocationIndex + 1
+        }
+        activeCount = 0
+        var blockIndex int32 = 0
+        let unmapMemory = deviceDispatch.vkUnmapMemory
+        let freeMemory = deviceDispatch.vkFreeMemory
+        while blockIndex < blockCount {
+            if let block = blocks[blockIndex] {
+                if block.mapped != nil {
+                    unmapMemory(device, block.memory)
+                    block.mapped = nil
+                }
+                if block.memory != 0uL {
+                    freeMemory(device, block.memory, nil)
+                    block.memory = 0uL
+                }
+            }
+            blocks[blockIndex] = nil
+            blockIndex = blockIndex + 1
+        }
+        var heapIndex int32 = 0
+        while heapIndex < heapResidentBytes.Length {
+            heapResidentBytes[heapIndex] = 0uL
+            heapIndex = heapIndex + 1
+        }
+        liveBytes = 0uL
+        liveAllocations = 0uL
+        retiredBytes = 0uL
+        retiredAllocations = 0uL
+        residentBytes = 0uL
+        residentAllocations = 0uL
+        blockCount = 0
+    }
+
+}

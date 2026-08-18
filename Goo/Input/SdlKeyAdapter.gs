@@ -1,7 +1,6 @@
 package Goo
 
 import System
-import Goo.InternalTextInterop
 
 internal func fromSdlModifiers(value SdlHostModifiers) KeyModifiers {
   return KeyModifiers{

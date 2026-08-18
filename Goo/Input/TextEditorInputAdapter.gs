@@ -2,7 +2,6 @@ package Goo
 
 import System
 import System.Globalization
-import Goo.InternalTextInterop
 
 internal class TextEditorInputAdapter {
   shared {

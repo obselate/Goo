@@ -4,8 +4,6 @@ import System
 import System.Collections.Generic
 import System.Diagnostics
 import System.Numerics
-import SkiaSharp
-import Goo.InternalTextInterop
 import System.Threading
 
 internal data struct DirtyCellSubmission {
@@ -442,23 +440,6 @@ public partial class Window {
     if node == previous {
       node = replacement
     }
-  }
-
-  internal func PaintTo(canvas SKCanvas) {
-    canvas.Clear(SKColor(Background.ToSkia()))
-    guard let n = node else {
-      return
-    }
-    if retainedPainter == nil {
-      retainedPainter = Painter{ RetainGradientShaders: true }
-    }
-    retainedPainter?.Paint(n, canvas)
-  }
-
-  internal func UpdateAndPaint(canvas SKCanvas) {
-    UpdateTree()
-    PaintTo(canvas)
-    markFrameRendered()
   }
 
   internal func HandleResize(w int32, h int32) {

@@ -3,7 +3,6 @@ package Goo
 import System
 import System.Runtime.CompilerServices
 import Facebook.Yoga
-import Goo.InternalTextInterop
 
 internal open class ImageSourceBinding {
   internal var Source ImageSourceProvider?

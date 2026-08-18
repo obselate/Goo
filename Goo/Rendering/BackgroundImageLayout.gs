@@ -2,7 +2,6 @@ package Goo
 
 import System
 import System.Runtime.CompilerServices
-import Goo.InternalTextInterop
 
 internal class BackgroundImageLayouts {
   shared {

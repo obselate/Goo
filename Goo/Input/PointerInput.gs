@@ -3,7 +3,6 @@ package Goo
 import System
 import System.Collections.Generic
 import System.Numerics
-import Goo.InternalTextInterop
 
 internal partial class PointerInput {
   private let mouse PointerContact

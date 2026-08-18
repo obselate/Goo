@@ -1,6 +1,5 @@
 package Goo
 
-import Goo.InternalTextInterop
 
 /// Specifies the visual side of a text position at a directional boundary.
 public enum TextAffinity { Upstream; Downstream }

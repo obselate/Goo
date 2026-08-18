@@ -5,8 +5,6 @@ import System.Collections.Generic
 import System.Globalization
 import System.Runtime.CompilerServices
 import Facebook.Yoga
-import Goo.InternalTextInterop
-import SkiaSharp
 
 internal class TextLine {
   internal prop Content string { get; init; }
@@ -221,7 +219,6 @@ internal class TextLayouts {
       }
       if n.Kind == NodeKind.Shape {
         ShapeGeometry.Dispose(n)
-        ShapePathEffects.Dispose(n)
       }
       BackgroundImageLayouts.Dispose(n)
       ClipPathGeometry.Dispose(n)
@@ -300,79 +297,6 @@ internal class TextLayouts {
         h = height
       }
       return YGSize{ Width: w, Height: h }
-    }
-
-    internal func Paint(n Node, canvas SKCanvas, paint SKPaint, contentX float32,
-      contentY float32, contentWidth float32) {
-      let layout = For(n, contentWidth)
-      PaintLayout(n, layout, canvas, paint, contentX, contentY, contentWidth, 0.0F)
-    }
-
-    internal func PaintLayout(n Node, layout TextLayout, canvas SKCanvas, paint SKPaint,
-      contentX float32, contentY float32, contentWidth float32, cullPad float32) {
-      PaintGlyphs(n, layout, canvas, paint, contentX, contentY, contentWidth, cullPad)
-      let decoration = n.TextDecoration
-      if decoration == TextDecoration.None {
-        return
-      }
-      let natural = layout.Descent - layout.Ascent
-      let lineHeight = resolvedLineHeight(n)
-      let clip = canvas.LocalClipBounds
-      var thickness = natural * 0.06F
-      if thickness < 1.0F { thickness = 1.0F }
-      for i in 0 ... layout.Lines.Count {
-        let line = layout.Lines[i]
-        let leading = (lineHeight - natural) * 0.5F
-        let baseline = contentY + float32(i) * lineHeight + leading - layout.Ascent
-        if cullPad >= 0.0F
-          && (baseline + layout.Ascent - cullPad > clip.Bottom
-            || baseline + layout.Descent + thickness * 2.0F + cullPad < clip.Top) {
-          continue
-        }
-        let x = contentX + lineOffset(n, line, contentWidth)
-        PaintDecoration(decoration, canvas, paint, x, baseline, line.DisplayWidth,
-          layout.Ascent, layout.Descent)
-      }
-    }
-
-    internal func PaintGlyphs(n Node, layout TextLayout, canvas SKCanvas, paint SKPaint,
-      contentX float32, contentY float32, contentWidth float32, cullPad float32) {
-      let natural = layout.Descent - layout.Ascent
-      let lineHeight = resolvedLineHeight(n)
-      let clip = canvas.LocalClipBounds
-      for i in 0 ... layout.Lines.Count {
-        let line = layout.Lines[i]
-        guard let shaped = line.Shape else {
-          continue
-        }
-        let leading = (lineHeight - natural) * 0.5F
-        let baseline = contentY + float32(i) * lineHeight + leading - layout.Ascent
-        if cullPad >= 0.0F
-          && (baseline + shaped.InkTop - cullPad > clip.Bottom
-            || baseline + shaped.InkBottom + cullPad < clip.Top) {
-          continue
-        }
-        let x = contentX + lineOffset(n, line, contentWidth)
-        TextShaping.Paint(shaped, canvas, paint, x, baseline)
-      }
-    }
-
-    internal func PaintDecoration(decoration TextDecoration, canvas SKCanvas, paint SKPaint, x float32,
-      baseline float32, width float32, ascent float32, descent float32) {
-      if width <= 0.0F {
-        return
-      }
-      var thickness = (descent - ascent) * 0.06F
-      if thickness < 1.0F { thickness = 1.0F }
-      let bits = int32(decoration)
-      if (bits & int32(TextDecoration.Underline)) != 0 {
-        var offset = descent * 0.45F
-        if offset < thickness { offset = thickness }
-        canvas.DrawRect(SKRect.Create(x, baseline + offset, width, thickness), paint)
-      }
-      if (bits & int32(TextDecoration.LineThrough)) != 0 {
-        canvas.DrawRect(SKRect.Create(x, baseline + ascent * 0.35F, width, thickness), paint)
-      }
     }
 
     internal func lineOffset(n Node, line TextLine, contentWidth float32) float32 {
@@ -818,7 +742,7 @@ internal class TextLayouts {
     }
 
     internal func padding(n Node, edge YGEdge) float32 {
-      return resolvedEdgePadding(n, edge, 0.0F)
+      return resolveEdgePadding(n, edge, 0.0F)
     }
 
     internal func borderPx(n Node, edge YGEdge) float32 {
