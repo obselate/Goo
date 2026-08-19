@@ -177,7 +177,7 @@ internal unsafe class VulkanTextAtlas : IDisposable {
         if !uploadPending || flushPrepared {
             return VkConstants.VK_SUCCESS
         }
-        let result = allocator.FlushBeforeSubmit(stagingAllocation!!)
+        let result = allocator.FlushBeforeSubmit(stagingAllocation!!, 0uL, byteSize)
         if result == VkConstants.VK_SUCCESS {
             flushPrepared = true
         }

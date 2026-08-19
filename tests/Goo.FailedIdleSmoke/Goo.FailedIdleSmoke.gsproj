@@ -11,4 +11,10 @@
     <ProjectReference Include="../../Goo/Goo.gsproj"
                       AdditionalProperties="Configuration=Test$(Configuration);IncludeTestFixtures=true;GooTestFixturesProps=$(MSBuildProjectDirectory)/Goo.FailedIdleFixtures.props" />
   </ItemGroup>
+  <Target Name="UseGooLinuxSdlForFailedIdleSmoke"
+          AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(GooLinuxSdlPath)' != '' and Exists('$(GooLinuxSdlPath)')">
+    <Copy SourceFiles="$(GooLinuxSdlPath)"
+          DestinationFiles="$(TargetDir)libSDL3.so" />
+  </Target>
 </Project>

@@ -153,6 +153,8 @@ internal partial class VulkanWindowTarget {
                 GlyphMaxY: value.GlyphMaxY,
                 Color: value.Color,
                 RenderMode: value.RenderMode,
+                EffectMode: value.EffectMode,
+                EffectRadius: value.EffectRadius,
                 TransformIndex: value.TransformIndex,
             }
             index = index + 1

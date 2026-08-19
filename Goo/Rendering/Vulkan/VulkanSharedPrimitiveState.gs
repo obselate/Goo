@@ -12,6 +12,7 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
     private let pipelineLayout VkPipelineLayout
     private let textPipelineLayout VkPipelineLayout
     private var solidPipeline VkPipeline
+    private var shadowPipeline VkPipeline
     private var borderPipeline VkPipeline
     private var linearPipeline VkPipeline
     private var radialPipeline VkPipeline
@@ -24,6 +25,7 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
     internal prop PipelineLayout VkPipelineLayout { get { return pipelineLayout } }
     internal prop TextPipelineLayout VkPipelineLayout { get { return textPipelineLayout } }
     internal prop SolidPipeline VkPipeline { get { return solidPipeline } }
+    internal prop ShadowPipeline VkPipeline { get { return shadowPipeline } }
     internal prop BorderPipeline VkPipeline { get { return borderPipeline } }
     internal prop LinearPipeline VkPipeline { get { return linearPipeline } }
     internal prop RadialPipeline VkPipeline { get { return radialPipeline } }
@@ -34,6 +36,7 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
         get {
             var count uint64 = 0uL
             if solidPipeline != 0uL { count++ }
+            if shadowPipeline != 0uL { count++ }
             if borderPipeline != 0uL { count++ }
             if linearPipeline != 0uL { count++ }
             if radialPipeline != 0uL { count++ }
@@ -52,6 +55,7 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
         nativeTextPipelineLayout VkPipelineLayout,
         vertexModule VkShaderModule,
         solidModule VkShaderModule,
+        shadowModule VkShaderModule,
         borderModule VkShaderModule,
         linearModule VkShaderModule,
         radialModule VkShaderModule,
@@ -74,7 +78,8 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
             throw ArgumentException("Vulkan text pipeline layout is null", "nativeTextPipelineLayout")
         }
         if vertexModule == 0uL || solidModule == 0uL || borderModule == 0uL
-            || linearModule == 0uL || radialModule == 0uL || sampledModule == 0uL {
+            || shadowModule == 0uL || linearModule == 0uL || radialModule == 0uL
+            || sampledModule == 0uL {
             throw ArgumentException("Vulkan primitive shader module is null")
         }
         if textVertexModule == 0uL || textFragmentModule == 0uL
@@ -88,7 +93,7 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
         pipelineLayout = nativePipelineLayout
         textPipelineLayout = nativeTextPipelineLayout
         try {
-            Create(vertexModule, solidModule, borderModule, linearModule,
+            Create(vertexModule, solidModule, shadowModule, borderModule, linearModule,
                 radialModule, sampledModule, textVertexModule, textFragmentModule,
                 textPaintFragmentModule)
         } catch (error Exception) {
@@ -100,6 +105,7 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
     private func Create(
         vertexModule VkShaderModule,
         solidModule VkShaderModule,
+        shadowModule VkShaderModule,
         borderModule VkShaderModule,
         linearModule VkShaderModule,
         radialModule VkShaderModule,
@@ -111,6 +117,7 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
         try {
             entryPointStorage = Marshal.StringToCoTaskMemUTF8("main")
             solidPipeline = CreatePipeline(vertexModule, solidModule, pipelineLayout, entryPointStorage)
+            shadowPipeline = CreatePipeline(vertexModule, shadowModule, pipelineLayout, entryPointStorage)
             borderPipeline = CreatePipeline(vertexModule, borderModule, pipelineLayout, entryPointStorage)
             linearPipeline = CreatePipeline(vertexModule, linearModule, pipelineLayout, entryPointStorage)
             radialPipeline = CreatePipeline(vertexModule, radialModule, pipelineLayout, entryPointStorage)
@@ -266,6 +273,13 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
             }
             sampledPipeline = 0uL
         }
+        if shadowPipeline != 0uL {
+            destroyPipeline(device, shadowPipeline, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            shadowPipeline = 0uL
+        }
         if radialPipeline != 0uL {
             destroyPipeline(device, radialPipeline, nil)
             if let accounting = objectAccounting {
@@ -311,6 +325,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
     private let formatStates []VulkanSharedPrimitiveFormatState?
     private var vertexModule VkShaderModule
     private var solidModule VkShaderModule
+    private var shadowModule VkShaderModule
     private var borderModule VkShaderModule
     private var linearModule VkShaderModule
     private var radialModule VkShaderModule
@@ -331,6 +346,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
             var count uint64 = 0uL
             if vertexModule != 0uL { count++ }
             if solidModule != 0uL { count++ }
+            if shadowModule != 0uL { count++ }
             if borderModule != 0uL { count++ }
             if linearModule != 0uL { count++ }
             if radialModule != 0uL { count++ }
@@ -375,6 +391,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
         formatStates = [FormatCapacity]VulkanSharedPrimitiveFormatState?
         let vertexCode = LoadShaderCode("analytic.vert.spv")
         let solidCode = LoadShaderCode("analytic_solid.frag.spv")
+        let shadowCode = LoadShaderCode("analytic_shadow.frag.spv")
         let borderCode = LoadShaderCode("analytic_border.frag.spv")
         let linearCode = LoadShaderCode("analytic_linear4.frag.spv")
         let radialCode = LoadShaderCode("analytic_radial4.frag.spv")
@@ -385,6 +402,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
         try {
             vertexModule = CreateShaderModule(vertexCode, "analytic.vert.spv")
             solidModule = CreateShaderModule(solidCode, "analytic_solid.frag.spv")
+            shadowModule = CreateShaderModule(shadowCode, "analytic_shadow.frag.spv")
             borderModule = CreateShaderModule(borderCode, "analytic_border.frag.spv")
             linearModule = CreateShaderModule(linearCode, "analytic_linear4.frag.spv")
             radialModule = CreateShaderModule(radialCode, "analytic_radial4.frag.spv")
@@ -422,6 +440,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
             textPipelineLayout,
             vertexModule,
             solidModule,
+            shadowModule,
             borderModule,
             linearModule,
             radialModule,
@@ -632,6 +651,13 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
                 accounting.Release()
             }
             sampledModule = 0uL
+        }
+        if shadowModule != 0uL {
+            destroyShaderModule(device, shadowModule, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            shadowModule = 0uL
         }
         if radialModule != 0uL {
             destroyShaderModule(device, radialModule, nil)

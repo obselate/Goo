@@ -1,0 +1,10 @@
+{
+  "source": "https://github.com/harfbuzz/harfbuzz/releases/download/14.3.1/harfbuzz-14.3.1.tar.xz",
+  "sourcePath": "test/shape/data/aots/fonts/gpos1_1_simple_f2.otf",
+  "archiveSha256": "9dae9538aae2ffdf70cec31f2c27bf68e2aaeeae3112688467697d5faf6194f7",
+  "fixtureSha256": "d9452393901ac684b162ad939154fea709a07b671ef2d844e095da39b6909fc8",
+  "license": "Apache License 2.0",
+  "licenseFile": "HarfBuzz-aots-COPYING.txt",
+  "format": "CFF OpenType",
+  "glyphs": ["U+0041", "U+0061"]
+}

@@ -1,7 +1,6 @@
 package Goo
 
 import System
-import System.Globalization
 
 internal class TextEditorInputAdapter {
   shared {
@@ -44,7 +43,11 @@ internal class TextEditorInputAdapter {
       guard let controller = n.EditorController else {
         return
       }
-      let caret = TextEditorLayouts.CaretRect(n, controller.Selection.Active)
+      let caret = if let composition = controller.Composition {
+        TextEditorLayouts.CompositionCaretRect(n, composition)
+      } else {
+        TextEditorLayouts.CaretRect(n, controller.Selection.Active)
+      }
       let left = n.Rect.X + caret.X
       let top = n.Rect.Y + caret.Y
       setImeArea(host, n, left, top, caret.W, caret.H)
@@ -76,7 +79,7 @@ internal class TextEditorInputAdapter {
       if text.Length == 0 {
         return TextSelection{ Anchor: position, Active: position }
       }
-      let starts = StringInfo.ParseCombiningCharacters(text)
+      let starts = UnicodeGraphemes.Starts(text)
       var index int32 = 0
       while index < starts.Length && starts[index] < position.Offset { index++ }
       if index == starts.Length || starts[index] > position.Offset {

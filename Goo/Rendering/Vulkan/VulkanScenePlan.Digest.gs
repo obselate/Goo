@@ -157,6 +157,8 @@ internal partial class SceneFrame {
             hash = HashFloat(hash, value.GlyphMaxY)
             hash = Mix(hash, uint64(value.Color))
             hash = Mix(hash, uint64(value.RenderMode))
+            hash = Mix(hash, uint64(value.EffectMode))
+            hash = HashFloat(hash, value.EffectRadius)
             hash = Mix(hash, uint64(value.TransformIndex))
             index = index + 1
         }

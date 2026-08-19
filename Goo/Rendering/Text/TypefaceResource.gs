@@ -12,6 +12,7 @@ internal sealed class TypefaceResource : IDisposable {
 
   internal prop Provider VulkanTextProvider { get { return font } }
   internal prop Family string { get { return family } }
+  internal prop ByteSize int64 { get { return font.ByteSize } }
   internal prop IsRegistered bool { get { return sourceId != 0uL } }
 
   internal init(family string, bytes []uint8, faceIndex uint32,

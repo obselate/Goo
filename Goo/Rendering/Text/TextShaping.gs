@@ -4,6 +4,7 @@ import System
 import System.Collections.Generic
 import System.IO
 import System.Text
+import System.Threading
 
 private data struct TextFontSelection(Family string, Path string?, Registration FontRegistration?) { }
 private data struct TextProviderShapeResult(Workspace VulkanTextShapingWorkspace, Count int32) { }
@@ -16,7 +17,9 @@ internal class TextShaping {
     private let PrimaryFacesLock object = Object()
     private var FontFilesCache []string = []string{}
     private var primaryFaceDisposals int32
+    private var primaryFaceCacheBytes int64
     private const PrimaryFaceCacheCapacity int32 = 64
+    private const PrimaryFaceCacheByteBudget int64 = 33554432L
     private const ShapingWorkspaceRetainedCapacity int32 = 4096
     @ThreadStatic
     private var shapingWorkspace VulkanTextShapingWorkspace?
@@ -156,6 +159,14 @@ internal class TextShaping {
       return PrimaryFaceCacheCapacity
     }
 
+    internal func PrimaryFaceCacheByteBudgetForTests() int64 {
+      return PrimaryFaceCacheByteBudget
+    }
+
+    internal func PrimaryFaceCacheBytesForTests() int64 {
+      lock (PrimaryFacesLock) { return primaryFaceCacheBytes }
+    }
+
     internal func PrimaryFaceDisposalsForTests() int32 {
       return primaryFaceDisposals
     }
@@ -186,13 +197,15 @@ internal class TextShaping {
           return ShapedText(text, runs, 0.0F, ascent, descent, rightToLeft)
         }
 
+        let scriptRuns = UnicodeScripts.Resolve(paragraph)
         let resolution = if let value = paragraphResolution { value } else {
           ResolveBidi(paragraph, direction)
         }
         if resolution.Info == nil {
           appendDirectionalRange(paragraph, lineStart, lineLength, lineStart, direction == 2,
             families, weight, italic, size, letterSpacing, primary, fallbackCandidates,
-            runs, ref cursor, ref extra, ref ascent, ref descent, ref hasCluster, ref priorCluster)
+            runs, ref cursor, ref extra, ref ascent, ref descent, ref hasCluster, ref priorCluster,
+            scriptRuns)
           return ShapedText(text, runs, cursor + extra, ascent, descent,
             direction == 2)
         }
@@ -215,7 +228,8 @@ internal class TextShaping {
           let rtl = info.Levels[visualRun.Start].IsRtl()
           appendDirectionalRange(paragraph, visualRun.Start, visualRun.Length, lineStart, rtl,
             families, weight, italic, size, letterSpacing, primary, fallbackCandidates,
-            runs, ref cursor, ref extra, ref ascent, ref descent, ref hasCluster, ref priorCluster)
+            runs, ref cursor, ref extra, ref ascent, ref descent, ref hasCluster, ref priorCluster,
+            scriptRuns)
         }
         return ShapedText(text, runs, cursor + extra, ascent, descent,
           rightToLeft)
@@ -232,24 +246,41 @@ internal class TextShaping {
       lineStart int32, rtl bool, families string, weight int32, italic bool, size float32,
       letterSpacing float32, primary TypefaceLease, fallbackCandidates List[TypefaceLease],
       runs List[ShapedRun], ref cursor float32, ref extra float32, ref ascent float32,
-      ref descent float32, ref hasCluster bool, ref priorCluster uint32) {
-      let text = paragraph.Substring(rangeStart, rangeLength)
-      let scriptRuns = UnicodeScripts.Resolve(text)
+      ref descent float32, ref hasCluster bool, ref priorCluster uint32,
+      scriptRuns []UnicodeScriptRun) {
+      let localScriptRuns = SliceScriptRuns(scriptRuns, rangeStart, rangeLength)
       if rtl {
-        var scriptIndex = scriptRuns.Length
+        var scriptIndex = localScriptRuns.Length
         while scriptIndex > 0 {
           scriptIndex--
           appendScriptRange(paragraph, rangeStart, lineStart, rtl, families, weight, italic,
             size, letterSpacing, primary, fallbackCandidates, runs, ref cursor, ref extra,
-            ref ascent, ref descent, ref hasCluster, ref priorCluster, scriptRuns[scriptIndex])
+            ref ascent, ref descent, ref hasCluster, ref priorCluster,
+            localScriptRuns[scriptIndex])
         }
       } else {
-        for scriptRun in scriptRuns {
+        for scriptRun in localScriptRuns {
           appendScriptRange(paragraph, rangeStart, lineStart, rtl, families, weight, italic,
             size, letterSpacing, primary, fallbackCandidates, runs, ref cursor, ref extra,
             ref ascent, ref descent, ref hasCluster, ref priorCluster, scriptRun)
         }
       }
+    }
+
+    private func SliceScriptRuns(source []UnicodeScriptRun, rangeStart int32,
+      rangeLength int32) []UnicodeScriptRun {
+      let rangeEnd = rangeStart + rangeLength
+      let result = List[UnicodeScriptRun]()
+      for run in source {
+        let runEnd = run.Start + run.Length
+        if runEnd <= rangeStart || run.Start >= rangeEnd { continue }
+        let start = if run.Start < rangeStart { rangeStart } else { run.Start }
+        let end = if runEnd > rangeEnd { rangeEnd } else { runEnd }
+        if end > start {
+          result.Add(UnicodeScriptRun(start - rangeStart, end - start, run.Script))
+        }
+      }
+      return result.ToArray()
     }
 
     private func appendScriptRange(paragraph string, rangeStart int32, lineStart int32,
@@ -570,7 +601,8 @@ internal class TextShaping {
       let key = families + "|" + weight.ToString() + "|" + (if italic { "1" } else { "0" })
         + "|g" + registryGeneration.ToString() + "|s" + sourceId.ToString()
         + "|r" + sourceGeneration.ToString()
-      var evicted TypefaceResource?
+      var evicted List[TypefaceResource]?
+      var uncached TypefaceResource?
       var lease TypefaceLease
       lock (PrimaryFacesLock) {
         if PrimaryFaces.TryGetValue(key, out var cached) { return cached.Lease() }
@@ -586,17 +618,31 @@ internal class TextShaping {
           TypefaceResource(selection.Family, File.ReadAllBytes(selection.Path!!), 0u, nil,
             0uL, 0uL)
         }
-        PrimaryFaces.Add(key, resource)
-        PrimaryFaceOrder.Enqueue(key)
-        if PrimaryFaceOrder.Count > PrimaryFaceCacheCapacity {
-          let oldKey = PrimaryFaceOrder.Dequeue()
-          if PrimaryFaces.Remove(oldKey, out var removed) { evicted = removed }
+        if resource.ByteSize > PrimaryFaceCacheByteBudget {
+          lease = resource.Lease()
+          uncached = resource
+        } else {
+          PrimaryFaces.Add(key, resource)
+          PrimaryFaceOrder.Enqueue(key)
+          primaryFaceCacheBytes = primaryFaceCacheBytes + resource.ByteSize
+          while PrimaryFaceOrder.Count > PrimaryFaceCacheCapacity
+            || primaryFaceCacheBytes > PrimaryFaceCacheByteBudget {
+            let oldKey = PrimaryFaceOrder.Dequeue()
+            if PrimaryFaces.Remove(oldKey, out var removed) {
+              primaryFaceCacheBytes = primaryFaceCacheBytes - removed.ByteSize
+              if evicted == nil { evicted = List[TypefaceResource]() }
+              evicted!!.Add(removed)
+            }
+          }
+          lease = resource.Lease()
         }
-        lease = resource.Lease()
       }
-      if let value = evicted {
-        value.Release()
-        primaryFaceDisposals++
+      if let value = uncached { value.Release() }
+      if let values = evicted {
+        for value in values {
+          value.Release()
+          Interlocked.Increment(&primaryFaceDisposals)
+        }
       }
       return lease
     }

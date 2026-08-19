@@ -194,6 +194,7 @@ internal class TextInput {
         if let controller = next.EditorController {
           next.BlinkT = 0.0
           controller.Focus()
+          TextEditorLayouts.FollowCaret(next, controller.Selection.Active)
         }
       }
     }
@@ -431,8 +432,29 @@ internal class TextInput {
       || splitsSurrogatePair(value, selectionStart + selectionLength) {
       return TextCompositionEvent{ Text: value, SelectionStart: 0, SelectionLength: 0 }
     }
-    return TextCompositionEvent{ Text: value, SelectionStart: selectionStart,
-      SelectionLength: selectionLength }
+    let starts = UnicodeGraphemes.Starts(value)
+    let start = if selectionStart == value.Length { value.Length }
+      else { compositionBoundaryBefore(starts, selectionStart) }
+    let end = if selectionLength == 0 { start }
+      else { compositionBoundaryAfter(starts, value.Length, selectionStart + selectionLength) }
+    return TextCompositionEvent{ Text: value, SelectionStart: start,
+      SelectionLength: end - start }
+  }
+
+  private func compositionBoundaryBefore(starts []int32, offset int32) int32 {
+    var result int32 = 0
+    for start in starts {
+      if start > offset { break }
+      result = start
+    }
+    return result
+  }
+
+  private func compositionBoundaryAfter(starts []int32, length int32, offset int32) int32 {
+    for start in starts {
+      if start >= offset { return start }
+    }
+    return length
   }
 
   private func splitsSurrogatePair(value string, offset int32) bool {

@@ -588,6 +588,32 @@ internal unsafe partial class VulkanWindowTarget {
         } catch (cleanup Exception) { }
     }
 
+    private func RemoveTextAtlasDiagnosticContribution() {
+        let token = textAtlasDiagnosticsToken
+        if token == 0uL {
+            return
+        }
+        textAtlasDiagnosticsToken = 0uL
+        if let current = diagnostics {
+            current.RemoveTextAtlasContribution(token)
+        }
+    }
+
+    private func PublishTextAtlasDiagnosticContribution(
+        current VulkanDiagnostics, stats VulkanTextAtlasSetStats) {
+        if textAtlasDiagnosticsToken == 0uL {
+            textAtlasDiagnosticsToken = current.RegisterTextAtlasContribution()
+        }
+        if textAtlasDiagnosticsToken != 0uL {
+            current.SetTextAtlasContribution(
+                textAtlasDiagnosticsToken,
+                uint64(stats.AtlasCount),
+                uint64(stats.ByteBudget),
+                uint64(stats.ResidentByteSize),
+                stats.LiveObjectCount)
+        }
+    }
+
     private func CaptureDiagnosticResources() {
         try {
             if let current = diagnostics {
@@ -626,10 +652,20 @@ internal unsafe partial class VulkanWindowTarget {
                 if let resources = imageResources {
                     let stats = resources.Stats
                     cacheBytes = cacheBytes + uint64(stats.ResidentBytes)
+                    current.SetImageByteBudget(uint64(stats.ResidentByteBudget))
+                    current.SetImageResidentBytes(uint64(stats.ResidentBytes))
+                    current.SetImageLiveObjectCount(stats.LiveObjectCount)
+                    current.SetImagePeakResidentBytes(uint64(stats.ResidentBytes))
+                    current.SetImagePeakLiveObjectCount(stats.LiveObjectCount)
                 }
                 if let atlas = textAtlas {
                     let stats = atlas.Stats
-                    cacheBytes = cacheBytes + uint64(stats.ByteSize)
+                    cacheBytes = cacheBytes + uint64(stats.ResidentByteSize)
+                    PublishTextAtlasDiagnosticContribution(current, stats)
+                    current.SetTextAtlasPeakCount(uint64(stats.AtlasCount))
+                    current.SetTextAtlasPeakByteBudget(uint64(stats.ByteBudget))
+                    current.SetTextAtlasPeakResidentBytes(uint64(stats.ResidentByteSize))
+                    current.SetTextAtlasPeakLiveObjectCount(stats.LiveObjectCount)
                 }
                 current.SetCacheBytes(cacheBytes)
                 current.CaptureResourceFacts(

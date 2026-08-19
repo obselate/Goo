@@ -23,6 +23,7 @@ runtime_files=(
 vulkan_files=(
   Vulkan/Runtime/HarfBuzz-COPYING.txt
   Vulkan/Shaders/analytic.vert.spv
+  Vulkan/Shaders/analytic_shadow.frag.spv
   Vulkan/Shaders/analytic_border.frag.spv
   Vulkan/Shaders/analytic_linear4.frag.spv
   Vulkan/Shaders/analytic_radial4.frag.spv
@@ -40,6 +41,15 @@ publish_extras=(
   Goo.PackageSmoke.pdb
   Gsharp.Extensions.pdb
   Gsharp.Extensions.xml
+  VendSans-VariableFont_wght.ttf
+  HarfBuzz-adwaita-colrv1.ttf
+  HarfBuzz-TTC.ttc
+  HarfBuzz-cff-f1.otf
+  HarfBuzz-cff-f2.otf
+  HarfBuzz-cff.otc
+  HarfBuzz-cff-style-regular.otf
+  HarfBuzz-cff-style-bold.otf
+  HarfBuzz-cff-style-italic.otf
 )
 
 mapfile -t actual < <(find "$publish" -mindepth 1 -type f \

@@ -1,6 +1,7 @@
 package Goo
 
 import System
+import System.Collections.Generic
 import System.Threading
 
 internal unsafe partial class VulkanDiagnostics {
@@ -24,6 +25,13 @@ internal unsafe partial class VulkanDiagnostics {
     private let fatalExtensions []?VulkanDiagnosticFatalExtensionRecord
     private let fatalExtensionText []?uint8
     private let counters VulkanDiagnosticCounters
+    private let textAtlasContributionGate object
+    private let textAtlasContributions List[VulkanDiagnosticTextAtlasContribution]
+    private var nextTextAtlasContributionId uint64 = 1uL
+    private var textAtlasContributionAtlasCount uint64
+    private var textAtlasContributionByteBudget uint64
+    private var textAtlasContributionResidentBytes uint64
+    private var textAtlasContributionLiveObjectCount uint64
     private var traceWrite int64
     private var traceDropped int64
     private var resultWrite int64
@@ -149,6 +157,8 @@ internal unsafe partial class VulkanDiagnostics {
         fatalExtensions = [FatalExtensionCapacity]VulkanDiagnosticFatalExtensionRecord
         fatalExtensionText = [FatalExtensionCapacity * FatalNameCapacity]uint8
         counters = VulkanDiagnosticCounters()
+        textAtlasContributionGate = Object()
+        textAtlasContributions = List[VulkanDiagnosticTextAtlasContribution]()
     }
 
     internal func Record(run uint64, workload uint64, process uint64, window uint64,
@@ -579,6 +589,173 @@ internal unsafe partial class VulkanDiagnostics {
     internal func AddUploadBytes(value uint64) {
         if !EnterWriter() { return }
         try { counters.AddUploadBytes(value) } finally { ExitWriter() }
+    }
+    internal func SetImageByteBudget(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetImageByteBudget(value) } finally { ExitWriter() }
+    }
+    internal func SetImageResidentBytes(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetImageResidentBytes(value) } finally { ExitWriter() }
+    }
+    internal func SetImageLiveObjectCount(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetImageLiveObjectCount(value) } finally { ExitWriter() }
+    }
+    internal func SetImagePeakResidentBytes(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetImagePeakResidentBytes(value) } finally { ExitWriter() }
+    }
+    internal func SetImagePeakLiveObjectCount(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetImagePeakLiveObjectCount(value) } finally { ExitWriter() }
+    }
+    internal func SetTextAtlasCount(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetTextAtlasCount(value) } finally { ExitWriter() }
+    }
+    internal func SetTextAtlasByteBudget(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetTextAtlasByteBudget(value) } finally { ExitWriter() }
+    }
+    internal func SetTextAtlasResidentBytes(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetTextAtlasResidentBytes(value) } finally { ExitWriter() }
+    }
+    internal func SetTextAtlasLiveObjectCount(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetTextAtlasLiveObjectCount(value) } finally { ExitWriter() }
+    }
+    internal func SetTextAtlasPeakCount(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetTextAtlasPeakCount(value) } finally { ExitWriter() }
+    }
+    internal func SetTextAtlasPeakByteBudget(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetTextAtlasPeakByteBudget(value) } finally { ExitWriter() }
+    }
+    internal func SetTextAtlasPeakResidentBytes(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetTextAtlasPeakResidentBytes(value) } finally { ExitWriter() }
+    }
+    internal func SetTextAtlasPeakLiveObjectCount(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetTextAtlasPeakLiveObjectCount(value) } finally { ExitWriter() }
+    }
+    internal func AddTextAtlasRecordedUploadBytes(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.AddTextAtlasRecordedUploadBytes(value) } finally { ExitWriter() }
+    }
+    internal func RegisterTextAtlasContribution() uint64 {
+        if IsSealed {
+            return 0uL
+        }
+        lock (textAtlasContributionGate) {
+            if nextTextAtlasContributionId == uint64.MaxValue {
+                throw OverflowException("Vulkan text atlas diagnostic contribution id overflow")
+            }
+            let id = nextTextAtlasContributionId
+            nextTextAtlasContributionId = nextTextAtlasContributionId + 1uL
+            textAtlasContributions.Add(VulkanDiagnosticTextAtlasContribution{ Id: id })
+            return id
+        }
+    }
+
+    internal func SetTextAtlasContribution(id uint64, atlasCount uint64, byteBudget uint64,
+        residentBytes uint64, liveObjectCount uint64) {
+        if id == 0uL || IsSealed {
+            return
+        }
+        lock (textAtlasContributionGate) {
+            var index int32 = 0
+            while index < textAtlasContributions.Count {
+                let current = textAtlasContributions[index]
+                if current.Id == id {
+                    let nextAtlasCount = ReplaceTextAtlasContribution(
+                        textAtlasContributionAtlasCount, current.AtlasCount, atlasCount)
+                    let nextByteBudget = ReplaceTextAtlasContribution(
+                        textAtlasContributionByteBudget, current.ByteBudget, byteBudget)
+                    let nextResidentBytes = ReplaceTextAtlasContribution(
+                        textAtlasContributionResidentBytes, current.ResidentBytes, residentBytes)
+                    let nextLiveObjectCount = ReplaceTextAtlasContribution(
+                        textAtlasContributionLiveObjectCount, current.LiveObjectCount, liveObjectCount)
+                    textAtlasContributionAtlasCount = nextAtlasCount
+                    textAtlasContributionByteBudget = nextByteBudget
+                    textAtlasContributionResidentBytes = nextResidentBytes
+                    textAtlasContributionLiveObjectCount = nextLiveObjectCount
+                    textAtlasContributions[index] = VulkanDiagnosticTextAtlasContribution{
+                        Id: id,
+                        AtlasCount: atlasCount,
+                        ByteBudget: byteBudget,
+                        ResidentBytes: residentBytes,
+                        LiveObjectCount: liveObjectCount,
+                    }
+                    counters.SetTextAtlasCount(nextAtlasCount)
+                    counters.SetTextAtlasByteBudget(nextByteBudget)
+                    counters.SetTextAtlasResidentBytes(nextResidentBytes)
+                    counters.SetTextAtlasLiveObjectCount(nextLiveObjectCount)
+                    return
+                }
+                index = index + 1
+            }
+        }
+    }
+
+    internal func RemoveTextAtlasContribution(id uint64) {
+        if id == 0uL {
+            return
+        }
+        lock (textAtlasContributionGate) {
+            var index int32 = 0
+            while index < textAtlasContributions.Count {
+                let current = textAtlasContributions[index]
+                if current.Id == id {
+                    let nextAtlasCount = ReplaceTextAtlasContribution(
+                        textAtlasContributionAtlasCount, current.AtlasCount, 0uL)
+                    let nextByteBudget = ReplaceTextAtlasContribution(
+                        textAtlasContributionByteBudget, current.ByteBudget, 0uL)
+                    let nextResidentBytes = ReplaceTextAtlasContribution(
+                        textAtlasContributionResidentBytes, current.ResidentBytes, 0uL)
+                    let nextLiveObjectCount = ReplaceTextAtlasContribution(
+                        textAtlasContributionLiveObjectCount, current.LiveObjectCount, 0uL)
+                    textAtlasContributionAtlasCount = nextAtlasCount
+                    textAtlasContributionByteBudget = nextByteBudget
+                    textAtlasContributionResidentBytes = nextResidentBytes
+                    textAtlasContributionLiveObjectCount = nextLiveObjectCount
+                    textAtlasContributions.RemoveAt(index)
+                    counters.SetTextAtlasCount(nextAtlasCount)
+                    counters.SetTextAtlasByteBudget(nextByteBudget)
+                    counters.SetTextAtlasResidentBytes(nextResidentBytes)
+                    counters.SetTextAtlasLiveObjectCount(nextLiveObjectCount)
+                    return
+                }
+                index = index + 1
+            }
+        }
+    }
+
+    private func ReplaceTextAtlasContribution(total uint64, previous uint64,
+        next uint64) uint64 {
+        if next >= previous {
+            let delta = next - previous
+            if total > uint64.MaxValue - delta {
+                throw OverflowException("Vulkan text atlas diagnostic counter overflow")
+            }
+            return total + delta
+        }
+        let delta = previous - next
+        if delta > total {
+            throw InvalidOperationException("Vulkan text atlas diagnostic counter underflow")
+        }
+        return total - delta
+    }
+    internal func AddTextAtlasEviction(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.AddTextAtlasEviction(value) } finally { ExitWriter() }
+    }
+    internal func AddTextAtlasRetirement(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.AddTextAtlasRetirement(value) } finally { ExitWriter() }
     }
     internal func AddImageEviction(value uint64) {
         if !EnterWriter() { return }

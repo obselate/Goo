@@ -101,7 +101,7 @@
         },
         {
           "path": "proofs/Goo.VulkanProof/Shaders/hb_gpu_draw.frag.wrapper.glsl",
-          "sha256": "8cf9e65daa7b4a149e84cc7d4777008f13e7633ba5d8ef326b0dd1cd7dcfdce7"
+          "sha256": "a5fd76f4d996c41999ff93c6668fcaa4e3b4de7ee0029f00cd57cb0dccf04c3b"
         }
       ]
     },
@@ -170,6 +170,16 @@
       "stage": "fragment",
       "source": "analytic_solid.frag.glsl",
       "output": "analytic_solid.frag.spv",
+      "entryPoint": "main",
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "analytic_shadow_fragment",
+      "stage": "fragment",
+      "source": "analytic_shadow.frag.glsl",
+      "output": "analytic_shadow.frag.spv",
       "entryPoint": "main",
       "capabilities": [
         1
@@ -394,6 +404,108 @@
         },
         {
           "shader": "analytic_solid_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "rgb11-11-10-alpha10-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "AnalyticSolidPushConstants.Generated.gs",
+        "typeName": "AnalyticSolidPushConstants"
+      }
+    },
+    {
+      "id": "analytic_shadow",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 128,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 0,
+      "descriptors": [],
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_shadow_fragment",
           "stage": "fragment",
           "entryPoint": "main",
           "inputs": [

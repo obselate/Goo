@@ -74,6 +74,8 @@ internal enum VulkanSceneUnsupportedField {
     EditorOverscanLines = 46;
     BorderRadius = 47;
     ClipDepth = 48;
+    EditorSlots = 49;
+    EditorComposition = 50;
 }
 
 internal enum VulkanSceneUnsupportedPrimitive {

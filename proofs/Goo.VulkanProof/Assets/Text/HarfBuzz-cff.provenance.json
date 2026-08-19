@@ -1,0 +1,18 @@
+{
+  "source": "generated from the pinned HarfBuzz 14.3.1 test corpus",
+  "sourcePaths": [
+    "test/shape/data/aots/fonts/gpos1_1_simple_f1.otf",
+    "test/shape/data/aots/fonts/gpos1_1_simple_f2.otf"
+  ],
+  "archiveSha256": "9dae9538aae2ffdf70cec31f2c27bf68e2aaeeae3112688467697d5faf6194f7",
+  "fixtureSha256": "1e558fc043dde738a2a38f8b31b1eafd5211eb7f5ccd2f6c1ab18ddac094e8b8",
+  "license": "Apache License 2.0",
+  "licenseFile": "HarfBuzz-aots-COPYING.txt",
+  "format": "CFF OpenType Collection",
+  "faceCount": 2,
+  "generation": "fontTools TTCollection with the two pinned CFF inputs in source order",
+  "faces": [
+    { "sourcePath": "test/shape/data/aots/fonts/gpos1_1_simple_f1.otf", "faceIndex": 0 },
+    { "sourcePath": "test/shape/data/aots/fonts/gpos1_1_simple_f2.otf", "faceIndex": 1 }
+  ]
+}

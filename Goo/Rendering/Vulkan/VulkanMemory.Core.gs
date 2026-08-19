@@ -16,7 +16,6 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
     private let memoryProperties VkPhysicalDeviceMemoryProperties
     private let maxAllocationCount uint64
     private let nonCoherentAtomSize VkDeviceSize
-    private let bufferImageGranularity VkDeviceSize
     private let budget VulkanMemoryBudgetState
     private let objectAccounting VulkanObjectAccounting?
     private let heapResidentBytes []VkDeviceSize
@@ -78,7 +77,6 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
         this.deviceDispatch = nativeDispatch
         this.memoryProperties = physicalProperties
         this.nonCoherentAtomSize = physicalNonCoherentAtomSize
-        this.bufferImageGranularity = physicalBufferImageGranularity
         budget = nativeBudget
         objectAccounting = nativeObjectAccounting
         let requestedMaximum = uint64(allocationLimit)

@@ -2,13 +2,14 @@ package Goo
 
 import System
 import System.Collections.Generic
-import System.Globalization
 import Facebook.Yoga
 
 internal class TextEditorResolvedSegment {
   internal prop Source TextRange { get; init; }
   internal prop DisplayStart int32 { get; init; }
   internal prop DisplayLength int32 { get; init; }
+  internal prop CompositionSelectionStart int32 { get; init; }
+  internal prop CompositionSelectionEnd int32 { get; init; }
   internal prop Atomic bool { get; init; }
   internal prop Composition bool { get; init; }
   internal prop Slot bool { get; init; }
@@ -41,6 +42,8 @@ internal class TextEditorProjection {
   internal prop Text string { get; init; }
   internal prop Atomic bool { get; init; }
   internal prop Composition bool { get; init; }
+  internal prop CompositionSelectionStart int32 { get; init; }
+  internal prop CompositionSelectionLength int32 { get; init; }
   internal prop Slot bool { get; init; }
   internal prop BlockSlot bool { get; init; }
   internal prop SlotKey string { get; init; }
@@ -740,6 +743,78 @@ internal class TextEditorLayouts {
         W: 1.5F, H: visual.Height }
     }
 
+    internal func CompositionCaretRect(n Node, composition TextComposition) Rect {
+      let width = TextLayouts.ContentWidth(n)
+      let height = TextLayouts.ContentHeight(n)
+      let layout = For(n, width, height)
+      let contentLeft = TextLayouts.ContentLeft(n) - n.Rect.X
+      let contentTop = TextLayouts.ContentTop(n) - n.Rect.Y
+      let scrollY = if let state = n.EditorState { float32(state.Controller.ScrollTargetY) } else { 0.0F }
+      let scrollX = if let state = n.EditorState { float32(state.Controller.ScrollTargetX) } else { 0.0F }
+      var lineIndex int32 = 0
+      while lineIndex < layout.Lines.Count {
+        let line = layout.Lines[lineIndex]
+        var caret int32 = 0
+        if !CompositionCaretDisplayIndex(line, composition, out caret) {
+          lineIndex = lineIndex + 1
+          continue
+        }
+        if caret == line.DisplayLength && lineIndex + 1 < layout.Lines.Count {
+          let next = layout.Lines[lineIndex + 1]
+          if next.Paragraph == line.Paragraph && next.DisplayStart == line.DisplayStart + line.DisplayLength {
+            lineIndex = lineIndex + 1
+            continue
+          }
+        }
+        let x = CaretX(line, caret, TextAffinity.Downstream)
+        let aligned = editorLineOffset(n, line, width)
+        return Rect{ X: contentLeft + aligned + x - scrollX,
+          Y: contentTop + line.Top - scrollY, W: 1.5F, H: line.Height }
+      }
+      return CaretRect(n, TextPosition{ Offset: composition.Range.Start,
+        Affinity: TextAffinity.Downstream })
+    }
+
+    private func CompositionCaretDisplayIndex(line TextEditorVisualLine,
+      composition TextComposition, out index int32) bool {
+      index = 0
+      for segment in line.Paragraph.Segments {
+        if !segment.Composition || segment.Source.Start != composition.Range.Start
+          || segment.Source.Length != composition.Range.Length { continue }
+        let absolute = segment.DisplayStart + segment.CompositionSelectionStart
+        if absolute < line.DisplayStart
+          || absolute > line.DisplayStart + line.DisplayLength { return false }
+        index = absolute - line.DisplayStart
+        return true
+      }
+      return false
+    }
+
+    internal func CompositionDisplayRange(line TextEditorVisualLine,
+      composition TextComposition, out start int32, out end int32) bool {
+      start = 0
+      end = 0
+      for segment in line.Paragraph.Segments {
+        if !segment.Composition || segment.Source.Start != composition.Range.Start
+          || segment.Source.Length != composition.Range.Length { continue }
+        var displayStart = segment.DisplayStart + segment.CompositionSelectionStart
+        var displayEnd = segment.DisplayStart + segment.CompositionSelectionEnd
+        let segmentEnd = segment.DisplayStart + segment.DisplayLength
+        if displayStart < segment.DisplayStart { displayStart = segment.DisplayStart }
+        if displayStart > segmentEnd { displayStart = segmentEnd }
+        if displayEnd < displayStart { displayEnd = displayStart }
+        if displayEnd > segmentEnd { displayEnd = segmentEnd }
+        start = displayStart - line.DisplayStart
+        end = displayEnd - line.DisplayStart
+        if start < 0 { start = 0 }
+        if end < 0 { end = 0 }
+        if start > line.DisplayLength { start = line.DisplayLength }
+        if end > line.DisplayLength { end = line.DisplayLength }
+        return true
+      }
+      return false
+    }
+
     internal func SyncScroll(n Node) {
       if let state = n.EditorState {
         let layout = For(n, TextLayouts.ContentWidth(n), TextLayouts.ContentHeight(n))
@@ -1130,7 +1205,7 @@ internal class TextEditorLayouts {
       paragraph TextEditorResolvedParagraph, start int32, limit int32, width float32,
       top float32, measure ShapedText?) float32 {
       let breakMap = LineBreakOpportunities.Resolve(paragraph.Text)
-      let elements = StringInfo.ParseCombiningCharacters(paragraph.Text)
+      let elements = UnicodeGraphemes.Starts(paragraph.Text)
       var cursor = start
       var lineTop = top
       while cursor < limit {
@@ -1320,11 +1395,16 @@ internal class TextEditorLayouts {
       var natural = shape.CaretX(end - displayStart, int32(TextAffinity.Downstream))
         - shape.CaretX(start - displayStart, int32(TextAffinity.Downstream))
       if natural < 0.0F { natural = -natural }
-      line.Runs.Add(TextPaintRun{ Shape: run,
+      let retained = TextPaintRun{ Shape: run,
         X: shape.CaretX(start - displayStart, int32(TextAffinity.Downstream)) + correction,
         DisplayStart: start,
         DisplayLength: end - start,
-        Style: style })
+        Style: style }
+      if style.Decoration != TextDecoration.None && TextShaping.GlyphCount(run) > 0 {
+        let segments = run.SelectionRects(0, end - start)
+        if segments.Length > 0 { TextPaintDecorations.Set(retained, segments) }
+      }
+      line.Runs.Add(retained)
       return run.Width - natural
     }
 
@@ -1357,10 +1437,26 @@ internal class TextEditorLayouts {
           let projectionText = TextLayouts.transformText(projection.Text, style.Transform)
           let displayStart = display.Length
           display = display + projectionText
+          var compositionSelectionStart int32 = 0
+          var compositionSelectionEnd int32 = 0
+          if projection.Composition {
+            var selectionStart = projection.CompositionSelectionStart
+            if selectionStart < 0 { selectionStart = 0 }
+            if selectionStart > projection.Text.Length { selectionStart = projection.Text.Length }
+            var selectionEnd = selectionStart + projection.CompositionSelectionLength
+            if selectionEnd > projection.Text.Length { selectionEnd = projection.Text.Length }
+            if selectionEnd < selectionStart { selectionEnd = selectionStart }
+            compositionSelectionStart = transformedCompositionOffset(projection.Text,
+              selectionStart, style.Transform)
+            compositionSelectionEnd = transformedCompositionOffset(projection.Text,
+              selectionEnd, style.Transform)
+          }
           result.Segments.Add(TextEditorResolvedSegment{
             Source: projection.Range,
             DisplayStart: displayStart,
             DisplayLength: projectionText.Length,
+            CompositionSelectionStart: compositionSelectionStart,
+            CompositionSelectionEnd: compositionSelectionEnd,
             Atomic: projection.Atomic,
             Composition: projection.Composition,
             Slot: projection.Slot,
@@ -1381,6 +1477,12 @@ internal class TextEditorLayouts {
       result.Text = display
       result.Resolution = state.ParagraphResolution(n, display, fingerprint)
       return result
+    }
+
+    private func transformedCompositionOffset(text string, offset int32,
+      transform TextTransform) int32 {
+      if transform == TextTransform.None { return offset }
+      return TextLayouts.transformText(text.Substring(0, offset), transform).Length
     }
 
     private func appendSourceSegment(result TextEditorResolvedParagraph, ref display string,
@@ -1405,7 +1507,7 @@ internal class TextEditorLayouts {
         appendResolvedSource(result, ref display, text, start, text.Length, style, false)
         return
       }
-      let starts = StringInfo.ParseCombiningCharacters(text)
+      let starts = UnicodeGraphemes.Starts(text)
       var runStart int32 = 0
       for i in 0 ... starts.Length {
         let clusterStart = starts[i]
@@ -1468,7 +1570,9 @@ internal class TextEditorLayouts {
       }
       if let composition = state.Controller.Composition {
         values.Add(TextEditorProjection{ Range: composition.Range, Text: composition.Text,
-          Atomic: true, Composition: true })
+          Atomic: true, Composition: true,
+          CompositionSelectionStart: composition.SelectionStart,
+          CompositionSelectionLength: composition.SelectionLength })
       }
       sortEditorItems(values, projectionSortKey)
       return values
@@ -1600,6 +1704,10 @@ internal class TextEditorLayouts {
           let length = relative > segment.Source.Length ? segment.Source.Length : relative
           return segment.Source.Start + length
         }
+        if segment.DisplayLength == 0 && display == segment.DisplayStart {
+          return affinity == TextAffinity.Upstream ? segment.Source.Start
+            : segment.Source.Start + segment.Source.Length
+        }
         if display == segment.DisplayStart { return segment.Source.Start }
         if display == end { return segment.Source.Start + segment.Source.Length }
         return affinity == TextAffinity.Upstream ? segment.Source.Start
@@ -1689,7 +1797,7 @@ internal class TextEditorLayouts {
 
     private func visualCarets(line TextEditorVisualLine) List[TextEditorVisualCaret] {
       let values = List[TextEditorVisualCaret]()
-      let starts = StringInfo.ParseCombiningCharacters(line.Paragraph.Text)
+      let starts = UnicodeGraphemes.Starts(line.Paragraph.Text)
       for i in 0 ... starts.Length + 1 {
         let display = i == starts.Length ? line.Paragraph.Text.Length : starts[i]
         if display < line.DisplayStart || display > line.DisplayStart + line.DisplayLength { continue }
@@ -1973,7 +2081,7 @@ internal class TextEditorLayouts {
     }
 
     private func nextEditorGrapheme(text string, start int32) int32 {
-      let starts = StringInfo.ParseCombiningCharacters(text)
+      let starts = UnicodeGraphemes.Starts(text)
       for i in 0 ... starts.Length {
         if starts[i] > start { return starts[i] }
       }
@@ -1998,6 +2106,8 @@ internal func paragraphChanged(paragraph TextRange, changes IReadOnlyList[TextCh
 internal func sameEditorComposition(left TextComposition?, right TextComposition?) bool {
   guard let leftValue = left, let rightValue = right else { return left == nil && right == nil }
   return leftValue.Range == rightValue.Range && leftValue.Text == rightValue.Text
+    && leftValue.SelectionStart == rightValue.SelectionStart
+    && leftValue.SelectionLength == rightValue.SelectionLength
 }
 
 internal class TextEditorLayerBindings {

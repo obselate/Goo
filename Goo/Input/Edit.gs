@@ -1,7 +1,6 @@
 package Goo
 
 import System
-import System.Globalization
 
 internal data struct EditState {
   internal var Text string
@@ -26,18 +25,20 @@ internal class Edit {
 
   internal func Backspace(s EditState) EditState {
     if HasSelection(s) { return Insert(s, "") }
-    let end = elementStart(s.Text, s.Caret)
+    let starts = UnicodeGraphemes.Starts(s.Text)
+    let end = elementStart(starts, s.Text.Length, s.Caret)
     if end == 0 { return s }
-    let start = previousElement(s.Text, end)
+    let start = previousElement(starts, s.Text.Length, end)
     let text = s.Text.Substring(0, start) + s.Text.Substring(end)
     return EditState{ Text: text, Caret: start, Anchor: start }
   }
 
   internal func Delete(s EditState) EditState {
     if HasSelection(s) { return Insert(s, "") }
-    let start = elementStart(s.Text, s.Caret)
+    let starts = UnicodeGraphemes.Starts(s.Text)
+    let start = elementStart(starts, s.Text.Length, s.Caret)
     if start == s.Text.Length { return s }
-    let end = nextElement(s.Text, start)
+    let end = nextElement(starts, s.Text.Length, start)
     let text = s.Text.Substring(0, start) + s.Text.Substring(end)
     return EditState{ Text: text, Caret: start, Anchor: start }
   }
@@ -69,7 +70,8 @@ internal class Edit {
     var i = index
     if i < 0 { i = 0 }
     if i >= s.Text.Length { i = s.Text.Length - 1 }
-    let start = elementStart(s.Text, i)
+    let starts = UnicodeGraphemes.Starts(s.Text)
+    let start = elementStart(starts, s.Text.Length, i)
     let word = isWord(s.Text, start)
     var lo int32 = 0
     var scan int32 = 0
@@ -80,13 +82,13 @@ internal class Edit {
         lo = scan
         runWord = currentWord
       }
-      let next = scan + StringInfo.GetNextTextElementLength(s.Text, scan)
+      let next = nextElement(starts, s.Text.Length, scan)
       if next > start { break }
       scan = next
     }
     var hi = start
     while hi < s.Text.Length && isWord(s.Text, hi) == word {
-      hi = hi + StringInfo.GetNextTextElementLength(s.Text, hi)
+      hi = nextElement(starts, s.Text.Length, hi)
     }
     return EditState{ Text: s.Text, Caret: hi, Anchor: lo }
   }
@@ -99,7 +101,8 @@ internal class Edit {
   }
 
   internal func prevWord(text string, from int32) int32 {
-    let limit = elementStart(text, from)
+    let starts = UnicodeGraphemes.Starts(text)
+    let limit = elementStart(starts, text.Length, from)
     var i int32 = 0
     var latestWordStart int32 = 0
     var hasWord = false
@@ -111,51 +114,71 @@ internal class Edit {
         hasWord = true
       }
       previousWord = currentWord
-      i = i + StringInfo.GetNextTextElementLength(text, i)
+      i = nextElement(starts, text.Length, i)
     }
     return hasWord ? latestWordStart : 0
   }
 
   internal func nextWord(text string, from int32) int32 {
-    var i = elementStart(text, from)
+    let starts = UnicodeGraphemes.Starts(text)
+    var i = elementStart(starts, text.Length, from)
     while i < text.Length && !isWord(text, i) {
-      i = i + StringInfo.GetNextTextElementLength(text, i)
+      i = nextElement(starts, text.Length, i)
     }
     while i < text.Length && isWord(text, i) {
-      i = i + StringInfo.GetNextTextElementLength(text, i)
+      i = nextElement(starts, text.Length, i)
     }
     return i
   }
 
-  private func elementStart(text string, index int32) int32 {
+  private func elementStart(starts []int32, length int32, index int32) int32 {
     var target = index
     if target < 0 { target = 0 }
-    if target >= text.Length { return text.Length }
-    var start int32 = 0
-    while start < target {
-      let next = start + StringInfo.GetNextTextElementLength(text, start)
-      if next > target { return start }
-      start = next
+    if target >= length { return length }
+    var low int32 = 0
+    var high = starts.Length
+    while low < high {
+      let middle = low + (high - low) / 2
+      if starts[middle] <= target {
+        low = middle + 1
+      } else {
+        high = middle
+      }
     }
-    return start
+    return starts[low - 1]
   }
 
-  private func nextElement(text string, from int32) int32 {
-    let start = elementStart(text, from)
-    if start == text.Length { return start }
-    return start + StringInfo.GetNextTextElementLength(text, start)
+  private func nextElement(starts []int32, length int32, from int32) int32 {
+    let start = elementStart(starts, length, from)
+    if start == length { return start }
+    var low int32 = 0
+    var high = starts.Length
+    while low < high {
+      let middle = low + (high - low) / 2
+      if starts[middle] <= start {
+        low = middle + 1
+      } else {
+        high = middle
+      }
+    }
+    return if low < starts.Length { starts[low] } else { length }
   }
 
-  private func previousElement(text string, from int32) int32 {
+  private func previousElement(starts []int32, length int32, from int32) int32 {
     var target = from
-    if target > text.Length { target = text.Length }
+    if target > length { target = length }
     if target <= 0 { return 0 }
-    var start int32 = 0
-    while true {
-      let next = start + StringInfo.GetNextTextElementLength(text, start)
-      if next >= target { return start }
-      start = next
+    var low int32 = 0
+    var high = starts.Length
+    while low < high {
+      let middle = low + (high - low) / 2
+      if starts[middle] < target {
+        low = middle + 1
+      } else {
+        high = middle
+      }
     }
+    return if low == 0 { 0 } else { starts[low - 1] }
   }
 
   private func isWord(text string, elementStart int32) bool {

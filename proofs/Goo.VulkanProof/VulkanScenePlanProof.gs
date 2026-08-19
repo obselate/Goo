@@ -202,7 +202,7 @@ internal func RunScenePlanProof() bool {
     let frame = SceneFrame(1)
     let version uint64 = 1uL
     BuildScenePlanProof(frame, version)
-    let expectedDigest uint64 = 13713550411312889679uL
+    let expectedDigest uint64 = 15074701355080062927uL
     let expectedGrowth = frame.GrowthOperations
     RequireScenePlanProof(frame.ChunkCount == 1, "S09 scene plan chunk count")
     RequireScenePlanProof(frame.DrawRefCount == 18, "S09 scene plan draw count")

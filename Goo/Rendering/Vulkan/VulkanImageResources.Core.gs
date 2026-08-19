@@ -60,6 +60,13 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         }
     }
 
+    private func ClearDiagnosticImageState() {
+        if let currentDiagnostics = diagnostics {
+            currentDiagnostics.SetImageResidentBytes(0uL)
+            currentDiagnostics.SetImageLiveObjectCount(0uL)
+        }
+    }
+
     internal init(
         nativeDevice VkDevice,
         nativeDispatch VkDeviceDispatch,

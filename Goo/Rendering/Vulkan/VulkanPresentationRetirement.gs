@@ -379,4 +379,12 @@ internal class VulkanPresentationRetirement {
         }
         throw InvalidOperationException("Vulkan retired generation queue is uninitialized")
     }
+
+    internal func ResetAfterDeviceLoss() {
+        presentationCount = 0
+        completedPresentationCount = 0
+        retiredGenerationCount = 0
+        nextPresentId = 1uL
+        newestGeneration = 0uL
+    }
 }

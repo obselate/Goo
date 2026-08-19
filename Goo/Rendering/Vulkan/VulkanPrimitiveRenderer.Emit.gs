@@ -178,6 +178,68 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         BindAndDraw(commandBuffer, solidPipeline, *void(&push))
     }
 
+    private func EmitShadow(
+        commandBuffer VkCommandBuffer,
+        extent VkExtent2D,
+        value ShadowRecord,
+        frame SceneFrame) {
+        ValidateBounds(value.Bounds)
+        ValidateRadius(value.RadiusTopLeft)
+        ValidateRadius(value.RadiusTopRight)
+        ValidateRadius(value.RadiusBottomRight)
+        ValidateRadius(value.RadiusBottomLeft)
+        ValidateFinite(value.OffsetX, "shadow offset x")
+        ValidateFinite(value.OffsetY, "shadow offset y")
+        ValidateFinite(value.Spread, "shadow spread")
+        ValidateFinite(value.Blur, "shadow blur")
+        if value.Blur < 0.0F {
+            throw ArgumentOutOfRangeException("shadow blur")
+        }
+        if value.Inset {
+            throw NotSupportedException("Vulkan primitive renderer does not support inset shadows")
+        }
+        if value.MaskId.IsValid {
+            throw NotSupportedException("Vulkan primitive renderer does not support masked shadows")
+        }
+        ValidateTransformIndex(frame, value.TransformIndex)
+        let transform = ResolveTransform(frame, value.TransformIndex)
+        if transform.B != 0.0F || transform.C != 0.0F {
+            throw NotSupportedException("Vulkan primitive renderer requires axis-aligned shadow transforms")
+        }
+        if value.Bounds.IsEmpty {
+            return
+        }
+        if value.Bounds.Width + value.Spread + value.Spread <= 0.0F
+            || value.Bounds.Height + value.Spread + value.Spread <= 0.0F {
+            return
+        }
+        let spread = value.Spread
+        let expansion = value.Blur + Max(spread, 0.0F)
+        let shadowBounds = ConservativeBounds{
+            X: value.Bounds.X + value.OffsetX - expansion,
+            Y: value.Bounds.Y + value.OffsetY - expansion,
+            Width: value.Bounds.Width + expansion + expansion,
+            Height: value.Bounds.Height + expansion + expansion,
+        }
+        if shadowBounds.IsEmpty {
+            return
+        }
+        var push = AnalyticSolidPushConstants{}
+        FillTransform(&push, shadowBounds, transform, extent)
+        push.radii_x = value.RadiusTopLeft
+        push.radii_y = value.RadiusTopRight
+        push.radii_z = value.RadiusBottomRight
+        push.radii_w = value.RadiusBottomLeft
+        push.params_x = spread
+        push.params_y = value.Blur
+        push.params_z = value.OffsetX
+        push.params_w = value.OffsetY
+        let packed = PackColor(value.Color, 1.0F)
+        push.packedColors_x = packed.Rgb
+        push.packedColors_w = packed.Alpha
+        BindAndDraw(commandBuffer, shadowPipeline, *void(&push))
+    }
+
     private func EmitBorder(
         commandBuffer VkCommandBuffer,
         extent VkExtent2D,
@@ -475,6 +537,16 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         ValidateFinite(value.GlyphMinY, "cached glyph min y")
         ValidateFinite(value.GlyphMaxX, "cached glyph max x")
         ValidateFinite(value.GlyphMaxY, "cached glyph max y")
+        ValidateFinite(value.EffectRadius, "cached glyph effect radius")
+        if value.EffectMode > 2u {
+            throw NotSupportedException("Vulkan text renderer supports only fill, shadow, and stroke effects")
+        }
+        if value.EffectRadius < 0.0F {
+            throw ArgumentOutOfRangeException("cached glyph effect radius")
+        }
+        if value.RenderMode == 3u && value.EffectMode != 0u {
+            throw NotSupportedException("Vulkan text effects are unsupported for COLR paint glyphs")
+        }
         if value.GlyphMinX >= value.GlyphMaxX || value.GlyphMinY >= value.GlyphMaxY {
             throw ArgumentOutOfRangeException("cached glyph extents")
         }
@@ -500,14 +572,14 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         push.transform_m33 = 1.0F
         push.viewport_x = width
         push.viewport_y = height
-        push.viewport_z = 0.0F
+        push.viewport_z = if value.EffectMode == 2u { value.EffectRadius } else { 0.0F }
         push.viewport_w = 0.0F
         push.glyphBounds_x = value.GlyphMinX
         push.glyphBounds_y = value.GlyphMinY
         push.glyphBounds_z = value.GlyphMaxX
         push.glyphBounds_w = value.GlyphMaxY
         push.glyphInput_x = value.AtlasTexelOffset
-        push.glyphInput_y = 0u
+        push.glyphInput_y = value.EffectMode
         push.glyphInput_z = 0u
         push.glyphInput_w = 0u
         let rgba = int32(value.Color)

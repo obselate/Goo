@@ -3,7 +3,9 @@
 Status: active. This file contains only current gaps, unresolved specifications, qualification work,
 and release gates.
 
-Current audited baseline: commit `95d172f` on branch `gaps-and-reductions`, 2026-08-17.
+Current audited baseline: branch `gaps-and-reductions`, 2026-08-19 checkpoint.
+The S11 text and S12 image Linux implementations are complete. S14 has one qualified analytic
+outer-shadow slice. Current feature work starts at S13.
 
 ## 1. One current source of truth
 
@@ -59,19 +61,19 @@ These are implementation boundaries, not remaining tasks.
 | Stage | Current state | Next gate |
 |---|---|---|
 | S07 product diagnostics | Partial, Linux runtime slice qualified | Wire the remaining exact Q10 facts, then pass the disabled-allocation and recovery gates |
-| S09R public primitive parity | Partial | Complete public behavior qualification and Linux/Windows gates for the supported primitive region |
-| S10R shared Vulkan resources | Partial, Linux pressure/object/budget and shared-text slices qualified | Complete common lifetime, pressure/LRU, pipeline/cache ownership, budget, and recovery qualification |
-| S11 text completion | Partial | Complete multi-atlas, eviction, font, editor, resource, and recovery corpus passes |
-| S12 image integration | Partial, provider path, owner-thread publication, and v1-v4/failure lifecycle qualified | Complete cache pressure/LRU, shared pipeline/cache ownership, recovery, and Windows qualification |
+| S09R public primitive parity | Partial, Linux public behavior and warm compiler/record gates qualified | Add the T02 async-readback visual gate in S14, then repeat on Windows |
+| S10R shared Vulkan resources | Complete for the Linux substrate used by current allocator/upload/image/text/shared-immutable owners | S11-S14 qualify owner-specific pressure, LRU, cache, and recovery; S19 repeats the substrate and lifecycle gates on Windows |
+| S11 text completion | Linux implementation and qualification complete | Exact pixels and blurred/COLR effects remain with S14; Windows repeats the gates in S19 |
 | S13 paths and compiled SVG | Missing | Paths, clips, hit testing, strokes, and compiled SVG pass |
-| S14 compositing, effects, readback, and AA | Missing | Effects and async readback pass and O16 selects one AA policy |
+| S14 compositing, effects, readback, and AA | Partial, first analytic outer-shadow Linux slice qualified | Complete effects and async readback, then let O16 select one AA policy |
 | S15 retained scene and damage | Missing | Dirty work is proportional to changed segments and sparse gates pass |
 | S16 shared runtime and window behavior | Partial, Linux resize/runtime slice qualified | Window audit closes, shared multi-window scheduling works, and recovery passes |
 | S17 remaining core mechanisms | Partial | Required protected text, accessibility, focus, and scroll mechanisms pass |
 | S19 release qualification | Missing | Both RIDs pass T01-T05 and every final acceptance gate |
 
-No stage fully closes. General recovery, remaining shared resources, Windows qualification, and the
-final T01-T05 gates remain open. No hard blocker currently prevents non-Windows implementation.
+No later stage fully closes end-to-end. S10R closes only the Linux substrate for the owners that exist
+before S11-S14; owner-specific resource work, Windows qualification, and the final T01-T05 gates remain
+open. No hard blocker currently prevents non-Windows implementation.
 Windows hardware qualification remains deferred until the Windows 11 VM exists. O16 remains a
 deliberate post-measurement decision.
 
@@ -81,7 +83,7 @@ deliberate post-measurement decision.
 S07 product diagnostics
   -> S09R public primitive parity
   -> S10R shared Vulkan resource and memory closure
-  -> S11 text completion and S12 image integration in parallel
+  -> S11 text completion and S12 image integration
   -> S13 paths and compiled SVG
   -> S14 compositing, effects, async readback, and AA selection
   -> S15 retained scene and damage
@@ -90,8 +92,12 @@ S07 product diagnostics
   -> S19 final Windows/Linux qualification
 ```
 
-S07 may land incrementally. S11 and S12 may run in parallel after shared renderer/resource contracts
-are stable. A later stage may start early only when it does not depend on an unresolved contract.
+S07 may land incrementally. S10R closes the Linux substrate before S11-S14: allocation, upload
+visibility, identity, descriptor publication, generation tagging, byte accounting, pressure admission,
+and fence-safe retirement for owners already present. S11 and S12 are Linux-complete. S13 and S14 own
+their future resource classes. Windows platform and lifecycle
+qualification remains in S19. A later stage may start early only when it does not depend on an unresolved
+contract.
 
 ## 5. Active stage specifications
 
@@ -105,21 +111,20 @@ Current state:
   Effects and offscreen timestamps remain unavailable until those passes exist.
 - Disabled diagnostics create no trace storage, validation callback/messenger, debug-utils dispatch,
   query pool, or timestamp commands. The Linux package smoke emits exactly zero bytes when disabled.
-- The current registered-font Linux JIT package smoke exited 0. Its normal final capture reported
-  `heapBudgetAvailable 1`, `heapBudgetSampleCurrent 0`, `heapBudget 56,243,946,496`,
-  `driverHeapUsage 31,227,904`, `vulkanObjectAllocationCount 617`,
-  `vulkanDeviceMemoryAllocationCount 4`, `vulkanObjectCount 0`, `vulkanDeviceMemoryBytes 0`,
+- The latest registered-font Linux JIT diagnostics smoke exited 0. Its final capture reported
+  `heapBudgetAvailable 1`, `heapBudgetSampleCurrent 0`, `heapBudget 57,928,942,592`,
+  `driverHeapUsage 26,443,776`, `vulkanObjectAllocationCount 597`,
+  `vulkanDeviceMemoryAllocationCount 3`, `vulkanObjectCount 0`, `vulkanDeviceMemoryBytes 0`,
   `cacheBytes 0`, `allocatorBytes 0`, `validationErrorCount 0`, `resultFailureCount 0`, and
-  `fatalCode 0`. Diagnostics-disabled stdout and stderr were both zero bytes.
-- The current package is `3,086,893` bytes with SHA-256
-  `f9a58c45725c002dfcc1cdca84951bafcf7322aaf771b46fade5bb9cae518d29`. Goo.dll is `1,338,368`
-  bytes with SHA-256 `b58ec0b7c6f8960a16a49247336e377c055f4d99a7b37bc3baa11cc0131f12b0`.
+  `fatalCode 0`.
+- That registered-font-qualified package is `3,264,796` bytes with SHA-256
+  `44bc9d28ad5d4744d22920a97addd73c1ba130607d8fe467301b1b64500a0e0a`. Goo.dll is `1,919,488`
+  bytes with SHA-256 `c0bbcbca178feb649641772826470e53acc66c60f928c0edcf940f9da3f21d64`.
   The qualified SDL payload is `1,504,752` bytes with SHA-256
   `943fb58b939ed726a4aab7dd1225c5f75fd3d690d124a30f893a1b29b9f2de4c`.
-- The current registered-font Linux NativeAOT smoke passed. Its executable is `3,810,056` bytes
-  with SHA-256 `eb4b157d240e42946243333f17c1cbe9c8b41321fbc575c5563568db8474891e`, its complete
-  output directory is `15,068,244` bytes, and its tar is `7,104,938` bytes with SHA-256
-  `6e418a2841e5a38d3e6c772623c1007951572b2a1a08ea73953e2cdebf9947e`.
+- The latest Linux NativeAOT text-controls smoke passed. Its executable is `4,418,544` bytes with
+  SHA-256 `a8f08dc645bd4ea88018063453ef511bd3757c729e2a63da92d16228f2707093`, and its complete
+  32-file output directory is `16,414,316` bytes.
 - The immediately preceding package was `3,081,321` bytes with SHA-256
   `26ba8b49db6c96cd0ce3f1f89d9c4df118fb50db73b2a10c07c861a6fa437ca2`. Its Goo.dll was
   `1,328,128` bytes with SHA-256 `d6eb2faa9a210454263da40eacb08247bcb73b87b209c4475ae0f69e5744129c`.
@@ -175,17 +180,26 @@ Current state:
 - Group opacity and advanced clips remain unsupported and are owned by S14.
 - Public `Image`, `Shape`, `TextEntry`, and `TextEditor` nodes remain outside this stage and are owned
   by S11-S14.
+- The focused `GOO_NATIVE_S09R_SMOKE=1` package-consumer gate now exercises the complete supported
+  public region on Linux through a real Wayland window. It covers boxes, radii, solid/dashed/dotted
+  per-edge borders, two- and four-stop gradients, nested transforms and rectangular clips, scrolling,
+  stacking, visibility, and leaf opacity. The latest fresh-package run closed with 108 draws, four
+  plan compiles, four command records, and zero fatal, validation, or unsupported-scene diagnostics.
+- A full public-field audit found no silently ignored S09R field. Unsupported surfaces are either
+  diagnosed or owned by S11-S14.
+- The production compiler warm-allocation gate and typed scene recording proof both allocate zero.
+  The compiler previously allocated 24 bytes per warm Tier0 call because the generated
+  `VulkanSceneCompileResult` constructor created an empty array before that field was overwritten.
+  Reusing the retained result fields removes that allocation without relying on JIT elimination.
+- Pixel-level public qualification still depends on the request-only async readback path owned by
+  S14. The current live gate proves public routing, lifecycle, geometry, and diagnostics, not exact
+  output pixels.
 - Windows qualification remains deferred with the Windows 11 VM.
 
 Work:
 
-1. Qualify the supported solid, dashed, and dotted border styles and explicitly classify any future
-   unsupported style before it enters the public contract.
-2. Qualify transform composition, stacking order, visibility, leaf opacity, scroll transforms,
-   and nested rectangular clips through the public compiler path.
-3. Route each remaining public paint field to S11-S14 or classify it as an accepted non-goal. Do not
-   silently ignore a public field.
-4. Repeat the Linux-qualified public-path and package qualification on Windows when the Windows 11
+1. Add the pixel-level T02 public-region gate after S14 provides product async readback.
+2. Repeat the Linux-qualified public-path and package qualification on Windows when the Windows 11
    VM exists.
 
 Exit:
@@ -204,13 +218,15 @@ Current state:
   image resources, text atlas, generation records, and fence retirement foundations.
 - Pooled noncoherent mappings track owner-relative written/read ranges and use atom-aligned placement
   and bounded flush/invalidate ranges.
-- These parts are not yet one qualified common resource contract across text, images, paths,
-  offscreen layers, shaders, and multiple windows. Superseded provider image versions now retain
-  provider/source identity per GPU entry, retire through existing last-use/upload fences while preserving
-  in-flight descriptors, and drop superseded logical registry records after retirement. Current cache
-  entries retain LRU behavior. Linux image pressure and LRU retirement are qualified, but the general
-  shared-resource pressure plateau, remaining shared pipeline/cache ownership, and complete generation
-  recovery remain gaps.
+- The Linux substrate is complete for the current allocator, upload, identity/registry, descriptor,
+  image, text-atlas, and existing shared-immutable owners. It covers memory admission, upload visibility,
+  generation tags, immutable publication, byte counters, pressure admission, and fence-safe retirement.
+  Superseded provider image versions retain provider/source identity per GPU entry, retire through existing
+  last-use/upload fences while preserving in-flight descriptors, and drop superseded logical registry
+  records after retirement. Current image cache entries retain LRU behavior.
+- Path and compiled-SVG resources, offscreen/effect/readback resources, and future shader/resource caches
+  are intentionally outside S10R and are owned by S13/S14. The completed Linux S11/S12 owner-specific
+  text and image contracts are recorded in `IMPLEMENTATION-HISTORY.md`.
 - Current normal registered-font JIT capture reported heap budget available `1`, current sample `0`,
   budget `56,243,946,496`, driver usage `31,227,904`, 617 Vulkan object allocations, 4 Vulkan device
   memory allocations, and zero live objects, device memory bytes, cache bytes, allocator bytes,
@@ -219,7 +235,9 @@ Current state:
   evidence.
 - Failed-idle terminal safety retains target and runtime resources and the exact `VkResult`, blocks
   new publication, leases, and submissions, and avoids unsafe destruction after a failed wait. Forced
-  failed-idle injection is Linux-qualified. Actual generation reconstruction remains open.
+  failed-idle injection is Linux-qualified. The strengthened focused Linux recovery gate is present in
+  the current uncommitted worktree and is the scoped current-owner recovery evidence; it is not a final
+  package or both-RID gate.
 - The text descriptor-set layout, three text shader modules, text pipeline layout, and two format-keyed
   text pipelines are process-shared. Mutable atlas state remains per-window. Dynamic
   `VK_EXT_memory_budget` is optional, uses a fixed 16-heap table, is enforced before native allocations,
@@ -228,69 +246,62 @@ Current state:
 
 Work:
 
-1. Consolidate internal contracts for allocation, registry identity, upload ranges, descriptor
-   publication, device generations, byte budgets, pressure, eviction, and fence-safe retirement.
-2. Honor memory type bits, alignment, dedicated-allocation requirements, `bufferImageGranularity`,
-   `nonCoherentAtomSize`, device allocation limits, and heap budgets on both required platforms. Linux
-   now uses optional `VK_EXT_memory_budget` across a fixed 16-heap table, enforces available budget before
-   native allocations, and publishes explicit null when unavailable. Windows qualification remains open.
+1. Keep the substrate contracts for current owners explicit: allocation, registry identity, upload
+   ranges, descriptor publication, device generations, byte counters, pressure admission, and
+   fence-safe retirement.
+2. Qualify Linux memory type bits, alignment, dedicated-allocation requirements, `bufferImageGranularity`,
+   `nonCoherentAtomSize`, device allocation limits, and heap budgets. Linux uses optional
+   `VK_EXT_memory_budget` across a fixed 16-heap table, enforces available budget before native
+   allocations, and publishes explicit null when unavailable. Windows repeats this qualification in S19.
 3. Qualify bounded atom-aligned mapped ranges on coherent and noncoherent memory with the exact
    written or read range.
-4. Publish a GPU resource or descriptor only after its upload has completed. Keep prior storage and
-   descriptor bindings immutable until every submission that can reference them has retired.
-5. Complete general resource pressure accounting and qualify the bounded LRU plateau across shared resources.
-   The Linux image-pressure slice is qualified at 259 evictions and 259 retirements, but the full shared
-   resource and Windows gate remains open.
-6. Complete process-shared ownership for remaining immutable device-level pipelines, samplers, descriptors,
-   and caches without moving per-window swapchain state out of S16 ownership. Linux now shares the text
-   descriptor-set layout, three text shader modules, text pipeline layout, and two format-keyed text
-   pipelines. Mutable atlas state remains per-window.
-7. Reconstruct resources from retained logical sources after device generation replacement and qualify
-   the recovery path. Preserve exact `VkResult` values and reject new leases and submission serials from
-   lost runtimes while completing terminal teardown and recovery.
-8. Keep warm unchanged-resource frames free of managed allocation, Vulkan object creation, pipeline
+4. Publish current image/text resources or descriptors only after upload completion. Keep prior storage
+   and descriptor bindings immutable until every submission that can reference them has retired.
+5. Preserve bounded current image/text-atlas counters and retirement behavior qualified by S11/S12.
+6. Preserve process-shared ownership for the existing immutable pipelines, samplers, descriptors, and
+   caches without moving per-window atlas or swapchain state out of its owner. Mutable atlas state remains
+   per-window.
+7. Use the strengthened Linux recovery gate to qualify current image/text rehydration after generation
+   replacement, exact `VkResult` preservation, stale-generation rejection, terminal teardown, and
+   post-recovery upload/publication. Future path/offscreen recovery belongs to S13/S14.
+8. Keep warm unchanged current-owner frames free of managed allocation, Vulkan object creation, pipeline
    creation, and device-memory allocation.
 
 Exit:
 
-- Text, image, path, offscreen, and shader resources use the same lifetime and accounting rules.
-- Upload visibility, descriptor publication, eviction, retirement, and device-loss reconstruction
-  pass T02-T04 with zero stale reference or overwrite.
+- Current Linux allocator/upload/image/text/shared-immutable owners use the substrate lifetime,
+  publication, accounting, and fence-retirement rules.
+- The strengthened Linux recovery gate records current image/text rehydration, new-generation
+  upload/publication, stale-reference rejection, exact result preservation, two-window recovery, and
+  terminal second-loss behavior without a fatal event.
 - Atom-aware mapped ranges pass validation on coherent and noncoherent memory.
-- Budget and lifetime counters return to the accepted post-warm bounds.
+- Current-owner budget and lifetime counters return to the accepted post-warm bounds. Owner-specific
+  path, offscreen, effect/readback, cache, and recovery gates are S11-S14 work; Windows repeats the
+  substrate and lifecycle gates in S19.
 
 ### S11. Complete the accepted HarfBuzz and hb-gpu text stack
 
 Current state:
 
-- Plain monochrome `Text` nodes render through the production Vulkan path.
-- HarfBuzz 14.3.1 and `hb-gpu` native payloads and SPIR-V are packaged for Linux x64 and Windows x64.
-- Initial shaping, line layout, bidi use, and a single text atlas exist. Deterministic declared
-  mixed installed-font fallback with merged metrics is implemented.
-- Unicode 16.0 is pinned through generated exact LineBreak property data with 2,898 ranges and
-  context data with 616 ranges. The stateful UAX #14 pair rules pass the official Unicode 16.0
-  LineBreakTest corpus with 16,672 cases and zero failures, including UTF-16 offsets, CRLF, and
-  mandatory-break semantics.
-- Extended grapheme segmentation is implemented in the internal G# `UnicodeGraphemes` service using
-  1,481 compact generated Unicode 16.0 ranges for Grapheme_Cluster_Break, InCB, and
-  Extended_Pictographic. The official GraphemeBreakTest corpus passes 1,093 cases with zero failures.
-  `TextGeometry` and `TextShaping` no longer depend on runtime `StringInfo` segmentation. The
-  generated grapheme source is 157,724 bytes with SHA-256
-  `68b417df53b79bd61cd73db80fd4cbac03d54577e8523b103c77df4aee09c50c`.
-- `TextGeometry.HitTest` uses an allocation-free O(log n) lower-bound search over X-sorted stops.
-- Public owned G# `FontSource` registration supports 64 MiB font bytes and 16 variation bounds,
-  face validation, registered-first deterministic selection, zero-copy registry resolution, cache
-  identity generations, and disposal lifetime. The registered primary and fallback Wayland JIT/AOT
-  smoke passed.
-- The product-linked versioned Vulkan text provider ABI is qualified by a focused Linux Release
-  WAE smoke. Shaping and glyph encoding return `CapacityExceeded` with the exact required size,
-  retry into caller-owned buffers, preserve sentinels, reuse warm workspaces, and return `Disposed`
-  after provider disposal. The smoke reported `shapeRequired=9 glyphRequired=2880 warmReuse=1 disposed=1`.
-- Rich text is rejected.
-- `TextEntry` and `TextEditor` are rejected by the scene compiler.
-- Full registered-font corpus, style, collection, and variation qualification remains open, as do
-  Scripts tables, editor geometry, color glyphs, multi-atlas residency, eviction, identity
-  reclamation, and device-loss reconstruction.
+- The Linux implementation is complete for the accepted text stack. Goo owns a trimmed private
+  HarfBuzz 14.3.1 plus `hb-gpu` runtime, `Unicode.Bidi` 0.3.18, and generated Unicode 16 line-break,
+  grapheme, Scripts, and ScriptExtensions data. Goo core has no runtime `StringInfo` dependency.
+- Registered `.ttf`, `.otf`, `.ttc`, and `.otc` fonts cover style, collection, variation, primary,
+  and fallback selection. The dictionary-owned font cache is bounded to 32 MiB and 64 entries while
+  active provider leases remain independently owned.
+- Passive and rich text, `TextEntry`, and multiline rich `TextEditor` render through Vulkan. The
+  product path covers CJK, RTL, combining marks, ligatures, wrapping, replacements, hidden spans,
+  caret and selection geometry, focus-follow scrolling, active IME composition, rich presentation
+  layers, decorations, sharp text shadows, and text stroke through 4 pixels.
+- Monochrome glyphs and required COLR/CPAL v0/v1 color glyphs use the same Vulkan text path.
+- Text residency uses a bounded eight-page LRU atlas set with stable identities, dynamic discovery,
+  upload-before-publication, fence-safe recycle and retirement, byte and live-object diagnostics,
+  and generation reconstruction after device loss. Managed per-page storage grows from a small
+  bounded initial allocation instead of eagerly allocating the full native page size.
+- The final Linux WAE, fresh-package, Khronos-validation, recovery, lifecycle, shader, release-bundle,
+  and NativeAOT qualification passed. The package is `3,264,796` bytes, the staged bundle is
+  `8,633,982` bytes across 33 files, and the NativeAOT executable is `4,418,544` bytes. Exact hashes
+  are recorded in S07 and `IMPLEMENTATION-HISTORY.md`.
 
 Locked direction:
 
@@ -300,92 +311,28 @@ Locked direction:
   text-engine handles.
 - Public Slug shader research is superseded evidence, not the active text implementation.
 
-Work:
+Remaining work and explicit limitations:
 
-1. Qualify the registered `.ttf`, `.otf`, `.ttc`, and `.otc` corpus across styles, collections, and
-   variation coordinates while preserving deterministic registered-font-first fallback and merged
-   metrics.
-2. Generate and pin Scripts and ScriptExtensions tables, then qualify their consumers.
-3. Complete editor geometry, caret location, hit testing, selection, and IME geometry.
-4. Complete versioned bounded atlas generations with dynamic additions, multi-atlas residency, byte
-   budgets, eviction, batching, identity reclamation, and fence-safe retirement.
-   Do not publish glyph references before their uploads complete. Do not overwrite prior atlas
-   storage until every frame-slot submission that can reference it has retired.
-5. Render passive rich text, decorations, text stroke, text shadows, selection, caret, placeholder,
-   `TextEntry`, and `TextEditor` through Vulkan.
-6. Complete monochrome and required COLR/CPAL v0/v1 paths. CBDT/CBLC, `sbix`, SVG fonts, and language
-   hyphenation remain deferred unless a required corpus case changes O02.
-7. Reconstruct every text resource after device generation replacement.
-
-Minimal E2E corpus:
-
-- One primary Latin registered font and one registered fallback font.
-- CJK, RTL, combining marks, ligatures, grapheme boundaries, and one required color glyph.
-- Rich spans, wrapping, trimming, alignment, decoration, stroke, and shadow.
-- Entry and multiline editor caret, selection, hit testing, IME geometry, and UTF-16 mapping.
-- Dynamic glyph discovery after multiple presented frames.
-- Atlas growth, eviction, close/reopen, and one device-loss reconstruction.
-
-Exit:
-
-- The same registered font bytes and fallback order pass on Windows and Linux.
-- No missing glyph, stale atlas, unbounded cache, steady allocation, or native lifetime failure occurs.
-- Text placement and visual output meet the final acceptance thresholds.
-- Source, license, reproducibility, provider ABI, NativeAOT, device-loss, package, lifecycle,
-  performance, allocation, and both-RID gates pass independently.
-
-### S12. Connect public images to Vulkan
-
-Current state:
-
-- Public `ImageSourceProvider`, `ImageSource`, and lease types exist.
-- The product window target and scene compiler wire provider-backed `Image` and background images
-  through decoded pixels, image resources, uploads, descriptors, sampling, and fit modes.
-- A fresh Linux Wayland package smoke passed direct `Image` and `BackgroundImage` v1 completion, a
-  monotonic v2 bump and reacquire, stale completion rejection, and exact lease release on close.
-- The same smoke advanced both providers to v3, failed them, pumped twice with no retry or reacquire at
-  the unchanged version, then advanced to v4 with exactly one release and reacquire, completion, and
-  release on close.
-- The fresh v1-v4 Wayland package smoke preserved the same provider/version/format CPU logical ID across
-  device generations, reclaimed older CPU identity records for strictly newer versions across formats,
-  rejected rollback, and never reused a logical ID.
-- The bounded weak provider-record table swept dead providers and reclaimed their CPU image identities
-  without numeric ID reuse. The v1-v4 packaged Wayland smoke passed twice.
-- Superseded provider image versions retain provider/source identity per GPU entry, retire through existing
-  last-use/upload fences while preserving in-flight descriptors, and drop superseded logical registry
-  records only after retirement. Current cache entries retain LRU behavior.
-- File decoding remains a stub and belongs in optional providers.
-- Decode may run off the UI thread, but provider completion and `ContentChanged` publication are
-  marshalled to the provider owner thread; the current async package smoke passed this contract.
-- General cache pressure/LRU plateau, shared pipeline/cache ownership, and device recovery remain
-  incomplete.
-
-Work:
-
-1. Key decoded pixels by provider identity and content version. Key Vulkan images by those fields plus
-   device generation and format. Keep sampler, fit, transform, opacity, and destination size outside
-   the image key.
-2. Keep sampler, fit, transform, opacity, destination size, and scene resource IDs outside the image
-   identity key while sharing immutable device-level image pipeline and sampler state.
-3. Bound decoded and GPU caches by bytes, retain current-entry LRU behavior, and qualify a pressure/eviction
-   plateau.
-4. Rehydrate images after device generation replacement and qualify device recovery.
-5. Keep raster file codecs in optional providers or packages. Do not add a mandatory Goo codec stack.
-
-Exit:
-
-- T02 covers provider images, background images, nearest and linear sampling, fit modes, async
-  completion, version changes, failure, and targeted invalidation.
-- Decode and upload do not block the UI thread.
-- Warm reuse allocates zero managed memory and cache use plateaus.
-- Close, reopen, eviction, and device recovery preserve lifetime correctness.
+1. Defer exact product post-recycle pixel comparison to the S14 request-only asynchronous Vulkan
+   readback path. S11 proves lifecycle, counters, bounded residency, and no leaked current atlas state.
+2. Defer blurred text shadows and COLR paint effects to S14. Sharp shadows are supported.
+3. Inline and block editor slots remain deferred until child clip lifetime is implemented. Rich text
+   presentation layers without child slots are supported.
+4. Text stroke is intentionally capped at 4 pixels. Reopen only with visual and performance evidence
+   for a different fixed product limit.
+5. CBDT/CBLC, `sbix`, SVG fonts, and language hyphenation remain outside the accepted corpus unless a
+   required product case reopens O02.
+6. Repeat the same package, provider, corpus, atlas, recovery, and NativeAOT gates on Windows in S19.
 
 ### S13. Implement arbitrary paths and compiled SVG assets
 
 Current state:
 
+- This stage consumes the S10R Linux substrate and owns path resource IDs, byte budgets, cache
+  accounting, fence-safe retirement, and device-loss reconstruction for path/SVG resources.
 - Public `VectorPath`, `PathBuilder`, and `Shape` APIs exist.
-- Shape hit testing is only a bounds check.
+- Shape hit testing uses retained normalized quadratic geometry with NonZero/EvenOdd containment,
+  but its current fixed eight-segment edge flattening is not yet the final path-quality contract.
 - The scene compiler marks `Shape` unsupported.
 - The production renderer throws for `PrebuiltPathMesh`.
 - No compiled SVG asset format or player exists.
@@ -427,9 +374,18 @@ Exit:
 
 Current state:
 
-- Layer composition, path meshes, shadows, and custom meshes throw in the production renderer.
-- Group opacity, rounded and arbitrary clips, outlines, box shadows, text effects, blend modes,
-  masks, and filters are not complete.
+- This stage consumes the S10R Linux substrate and owns offscreen/effect/readback resource pooling,
+  versioning, byte budgets, fence-safe retirement, and reconstruction.
+- The first production outer `BoxShadow` path is implemented for axis-aligned `Container` and
+  `Button` nodes with visible overflow, no `ClipPath`, finite geometry, signed spread, and
+  non-negative blur. It uses one analytic rounded-rectangle SDF quad and a process-shared,
+  format-keyed pipeline. Linux proof readback reports digest `9103897119602688643`, two draws, one
+  shadow, and zero recording allocation.
+- Its current distance fade is not yet CSS Gaussian parity. Inset and shape shadows plus blurred text
+  shadows remain unsupported, as do shadow interaction with rounded/arbitrary clips. Sharp text
+  shadows and text stroke through 4 pixels are implemented by S11.
+- Layer composition, unsupported path/custom meshes, group opacity, rounded and arbitrary clips,
+  outlines, COLR paint effects, blend modes, masks, and filters are not complete.
 - Offscreen readback exists only in proof infrastructure.
 - O16 has no selected product AA policy.
 - Shader support is required, but the exact public shader and effect API is not accepted in
@@ -439,7 +395,8 @@ Work:
 
 1. Implement rounded and arbitrary clips using analytic coverage or retained bounded masks.
 2. Isolate group opacity when required for correct composition.
-3. Implement outlines, box shadows, inset shadows, spread, blur, blend modes, masks, and bounded
+3. Qualify and refine the current outer-shadow blur against the Skia baseline. Implement outlines,
+   inset and shape shadows, blurred text shadows, COLR paint effects, blend modes, masks, and bounded
    offscreen layers.
 4. Pool, version, budget, retire, and reconstruct offscreen resources.
 5. Expand conservative bounds for every effect before culling and damage selection.
@@ -494,16 +451,15 @@ Exit:
 
 Current state:
 
-- A packaged persistent Linux Vulkan window opens and renders. The current registered-font package is
-  `3,086,893` bytes with SHA-256 `f9a58c45725c002dfcc1cdca84951bafcf7322aaf771b46fade5bb9cae518d29`;
-  Goo.dll is `1,338,368` bytes with SHA-256
-  `b58ec0b7c6f8960a16a49247336e377c055f4d99a7b37bc3baa11cc0131f12b0`.
-- The current registered-font Linux JIT smoke passed with normal final
-  `heapBudgetAvailable 1`, `heapBudgetSampleCurrent 0`, `heapBudget 56,243,946,496`,
-  `driverHeapUsage 31,227,904`, `vulkanObjectAllocationCount 617`,
-  `vulkanDeviceMemoryAllocationCount 4`, zero live objects, device memory bytes, cache bytes,
-  allocator bytes, validation errors, result failures, and fatal code. Diagnostics-disabled stdout and
-  stderr were both zero bytes. The resize path publishes logical and framebuffer metrics, invalidates
+- A packaged persistent Linux Vulkan window opens and renders. The latest registered-font-qualified package is
+  `3,264,796` bytes with SHA-256 `44bc9d28ad5d4744d22920a97addd73c1ba130607d8fe467301b1b64500a0e0a`;
+  Goo.dll is `1,919,488` bytes with SHA-256
+  `c0bbcbca178feb649641772826470e53acc66c60f928c0edcf940f9da3f21d64`.
+- The latest registered-font Linux JIT diagnostics smoke passed with normal final
+  `heapBudgetAvailable 1`, `heapBudgetSampleCurrent 0`, `heapBudget 57,928,942,592`,
+  `driverHeapUsage 26,443,776`, `vulkanObjectAllocationCount 597`,
+  `vulkanDeviceMemoryAllocationCount 3`, zero live objects, device memory bytes, cache bytes,
+  allocator bytes, validation errors, result failures, and fatal code. The resize path publishes logical and framebuffer metrics, invalidates
   viewport-driven Yoga, input, and accessibility bounds, resizes the Vulkan target, and schedules redraw
   for nonzero restored states.
 - Public `Minimized` to `Normal` passed after the resize, scroll, and image smoke. The minimize callback
@@ -511,14 +467,10 @@ Current state:
   scale, and a root `BorderBox` matching the logical viewport. A normal callback and zero framebuffer
   are compositor-dependent and are not required.
 - One process-shared Vulkan runtime owns instance, device, allocator, and device-level resources.
-  Per-window surface and swapchain state remains window-owned. The current registered-font Linux
-  NativeAOT smoke passed with an executable of `3,810,056` bytes and SHA-256
-  `eb4b157d240e42946243333f17c1cbe9c8b41321fbc575c5563568db8474891e`, a complete output directory
-  of `15,068,244` bytes, and a `7,104,938`-byte tar with SHA-256
-  `6e418a2841e5a38d3e6c772623c1007951572b2a1a08ea73953e2cdebf9947e`. Its final capture reported
-  budget available `1`, current sample `0`, budget `56,245,191,680`, driver usage `23,101,440`,
-  582 Vulkan object allocations, 3 Vulkan device memory allocations, and zero live objects, device
-  memory bytes, cache bytes, allocator bytes, validation errors, result failures, and fatal code.
+  Per-window surface and swapchain state remains window-owned. The current Linux NativeAOT
+  text-controls smoke passed with an executable of `4,418,544` bytes and SHA-256
+  `a8f08dc645bd4ea88018063453ef511bd3757c729e2a63da92d16228f2707093` and a complete 32-file
+  output directory of `16,414,316` bytes.
 - The pressure and three multiwindow passes used the immediately preceding package recorded in S07 and
   are not exact current-font package evidence. Exact `VkResult` values are preserved and lost runtimes
   reject new leases and submission serials. Cursor arbitration, independent presentation scheduling,
@@ -606,21 +558,18 @@ Exit:
 
 Current state:
 
-- The current registered-font Linux package is `3,086,893` bytes with SHA-256
-  `f9a58c45725c002dfcc1cdca84951bafcf7322aaf771b46fade5bb9cae518d29`; Goo.dll is `1,338,368`
-  bytes with SHA-256 `b58ec0b7c6f8960a16a49247336e377c055f4d99a7b37bc3baa11cc0131f12b0`. The
-  normal JIT smoke exited 0, and diagnostics-disabled stdout and stderr were both zero bytes.
-- The current registered-font NativeAOT executable is `3,810,056` bytes with SHA-256
-  `eb4b157d240e42946243333f17c1cbe9c8b41321fbc575c5563568db8474891e`; its complete output directory
-  is `15,068,244` bytes and its tar is `7,104,938` bytes with SHA-256
-  `6e418a2841e5a38d3e6c772623c1007951572b2a1a08ea73953e2cdebf9947e`. The final capture reported
-  budget available `1`, current sample `0`, budget `56,245,191,680`, driver usage `23,101,440`,
-  582 Vulkan object allocations, 3 Vulkan device memory allocations, and zero live objects, device
-  memory bytes, cache bytes, allocator bytes, validation errors, result failures, and fatal code.
+- S19 repeats the Linux substrate's memory, device-generation, publication, retirement, and warm-frame
+  gates on Windows and owns the cross-RID package and lifecycle qualification.
+- The latest registered-font-qualified Linux package is `3,264,796` bytes with SHA-256
+  `44bc9d28ad5d4744d22920a97addd73c1ba130607d8fe467301b1b64500a0e0a`; Goo.dll is `1,919,488`
+  bytes with SHA-256 `c0bbcbca178feb649641772826470e53acc66c60f928c0edcf940f9da3f21d64`.
+- The latest Linux NativeAOT text-controls executable is `4,418,544` bytes with SHA-256
+  `a8f08dc645bd4ea88018063453ef511bd3757c729e2a63da92d16228f2707093`; its complete 32-file output
+  directory is `16,414,316` bytes.
 - Pressure and three multiwindow passes used the immediately preceding package recorded in S07. They
   are not exact current-font package evidence. Pinned product shader generation/drift and SPIR-V
-  validation passed in this Linux wave. Final diagnostics/performance/Q10, recovery, and Windows gates
-  remain incomplete.
+  validation passed in this Linux wave. Final diagnostics/performance/Q10 and Windows gates remain
+  incomplete. Current-owner Linux device recovery is qualified by S11.
 - Windows runtime qualification is deferred.
 - The legacy broad test project references deleted Skia and helper surfaces.
 - README, changelog, generated API material, package metadata, and third-party notices still contain
@@ -746,7 +695,7 @@ This milestone includes only:
    loss, close, and leak-free shutdown.
 
 The milestone does not wait for compiled SVG, advanced effects, the final AA choice, retained-damage
-performance, color-font completion, AT-SPI, Windows qualification, or final T01-T05 release evidence.
+performance, AT-SPI, Windows qualification, or final T01-T05 release evidence.
 Those remain in the ledger and continue in parallel when they do not touch the immediate integration
 choke points.
 
@@ -760,12 +709,11 @@ Deferred milestone priority, from highest implementation value to lowest:
 | 4 | One final AA policy | Required for stable cross-platform visual quality without carrying multiple product paths | Select only after boxes, text, paths, clips, and effects can be measured |
 | 5 | Compiled SVG assets and retained animation | High-value asset workflow for icons and animation, but not required for basic Goo rendering | Implement after retained path rendering is stable |
 | 6 | Linux AT-SPI adapter | Important platform integration, while the neutral semantic tree and core input remain the first dependency | Implement after neutral semantics are requalified |
-| 7 | Color-font completion | Useful for emoji and color glyphs, but not required for the primary Goo UI workload | Implement after monochrome text, editor geometry, and atlas recovery are complete |
-| 8 | Final T01-T05 release qualification | Mandatory release closure, but it adds no missing product capability | Run last after both required platforms and every product path are complete |
+| 7 | Final T01-T05 release qualification | Mandatory release closure, but it adds no missing product capability | Run last after both required platforms and every product path are complete |
 
 Importance is not the same as executable order. The next runnable deferred sequence on the current
-Linux machine is compositing and effects, final AA evidence, retained damage, compiled SVG, AT-SPI,
-and color fonts. Windows moves to the front of active qualification as soon as the VM exists. T01-T05
+Linux machine is compositing and effects, final AA evidence, retained damage, compiled SVG, and
+AT-SPI. Windows moves to the front of active qualification as soon as the VM exists. T01-T05
 always remains the final gate.
 
 Immediate critical path:
@@ -799,7 +747,6 @@ Linux work runs in these exclusive lanes:
 | Lane | Exclusive implementation area | Current target |
 |---|---|---|
 | Text | `Rendering/Text`, `VulkanText*`, `VulkanTextAtlas*` | Close deterministic Unicode, font, atlas, editor, and color-glyph gaps |
-| Images | `Image*`, `VulkanImage*` | Close current-set ownership, cache pressure, eviction, and recovery |
 | Wayland WSI | `Platform/Sdl`, `VulkanSharedRuntime`, `VulkanWindowTarget*` | Close surface loss, scheduling, lifecycle, and device recovery |
 | Paths | `Shapes`, new `VulkanPath*`, path shaders and generators | Build retained geometry, hit testing, clips, and compiled SVG |
 | Effects | New offscreen, effect, readback, and effect-shader files | Build composition, blur, shadow, blend, and async readback before O16 |
@@ -815,8 +762,8 @@ Execution waves:
    and S16 Wayland WSI slices. The lead alone merges shared dispatch and owns builds.
 2. The lead runs the immediate Linux Wayland critical path above. Failures return only to the owning
    lane, so unrelated lanes keep moving.
-3. S12 image recovery, remaining S13 path rendering, and S14 offscreen/readback continue in exclusive
-   lanes while the Wayland milestone is qualified.
+3. S13 path rendering and S14 offscreen/readback continue in exclusive lanes while the Wayland
+   milestone is qualified.
 4. Integrate paths, effects, and text/editor primitives, then build S15 retention against the stable
    frame schema.
 5. Run one serialized Release build queue followed by one serialized real-Wayland queue for visual,

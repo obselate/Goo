@@ -134,6 +134,22 @@ internal data struct VulkanDiagnosticCounterSnapshot {
     var vulkanDeviceMemoryAllocationCount uint64
     var vulkanDeviceMemoryBytes uint64
     var cacheBytes uint64
+    var imageByteBudget uint64
+    var imageResidentBytes uint64
+    var imageLiveObjectCount uint64
+    var imagePeakResidentBytes uint64
+    var imagePeakLiveObjectCount uint64
+    var textAtlasCount uint64
+    var textAtlasByteBudget uint64
+    var textAtlasResidentBytes uint64
+    var textAtlasLiveObjectCount uint64
+    var textAtlasPeakCount uint64
+    var textAtlasPeakByteBudget uint64
+    var textAtlasPeakResidentBytes uint64
+    var textAtlasPeakLiveObjectCount uint64
+    var textAtlasRecordedUploadBytes uint64
+    var textAtlasEvictionCount uint64
+    var textAtlasRetirementCount uint64
     var imageEvictionCount uint64
     var imageRetirementCount uint64
     var allocatorBytes uint64
@@ -152,6 +168,14 @@ internal data struct VulkanDiagnosticCounterSnapshot {
     var validationErrorCount uint64
     var resultCount uint64
     var resultFailureCount uint64
+}
+
+internal data struct VulkanDiagnosticTextAtlasContribution {
+    var Id uint64
+    var AtlasCount uint64
+    var ByteBudget uint64
+    var ResidentBytes uint64
+    var LiveObjectCount uint64
 }
 
 internal data struct VulkanDiagnosticFatalSnapshot {

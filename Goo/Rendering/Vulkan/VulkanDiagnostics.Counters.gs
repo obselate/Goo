@@ -21,6 +21,22 @@ internal class VulkanDiagnosticCounters {
     private var vulkanDeviceMemoryAllocationCount uint64
     private var vulkanDeviceMemoryBytes uint64
     private var cacheBytes uint64
+    private var imageByteBudget uint64
+    private var imageResidentBytes uint64
+    private var imageLiveObjectCount uint64
+    private var imagePeakResidentBytes uint64
+    private var imagePeakLiveObjectCount uint64
+    private var textAtlasCount uint64
+    private var textAtlasByteBudget uint64
+    private var textAtlasResidentBytes uint64
+    private var textAtlasLiveObjectCount uint64
+    private var textAtlasPeakCount uint64
+    private var textAtlasPeakByteBudget uint64
+    private var textAtlasPeakResidentBytes uint64
+    private var textAtlasPeakLiveObjectCount uint64
+    private var textAtlasRecordedUploadBytes uint64
+    private var textAtlasEvictionCount uint64
+    private var textAtlasRetirementCount uint64
     private var imageEvictionCount uint64
     private var imageRetirementCount uint64
     private var allocatorBytes uint64
@@ -61,6 +77,22 @@ internal class VulkanDiagnosticCounters {
                 vulkanDeviceMemoryAllocationCount: Interlocked.Read(ref vulkanDeviceMemoryAllocationCount),
                 vulkanDeviceMemoryBytes: Interlocked.Read(ref vulkanDeviceMemoryBytes),
                 cacheBytes: Interlocked.Read(ref cacheBytes),
+                imageByteBudget: Interlocked.Read(ref imageByteBudget),
+                imageResidentBytes: Interlocked.Read(ref imageResidentBytes),
+                imageLiveObjectCount: Interlocked.Read(ref imageLiveObjectCount),
+                imagePeakResidentBytes: Interlocked.Read(ref imagePeakResidentBytes),
+                imagePeakLiveObjectCount: Interlocked.Read(ref imagePeakLiveObjectCount),
+                textAtlasCount: Interlocked.Read(ref textAtlasCount),
+                textAtlasByteBudget: Interlocked.Read(ref textAtlasByteBudget),
+                textAtlasResidentBytes: Interlocked.Read(ref textAtlasResidentBytes),
+                textAtlasLiveObjectCount: Interlocked.Read(ref textAtlasLiveObjectCount),
+                textAtlasPeakCount: Interlocked.Read(ref textAtlasPeakCount),
+                textAtlasPeakByteBudget: Interlocked.Read(ref textAtlasPeakByteBudget),
+                textAtlasPeakResidentBytes: Interlocked.Read(ref textAtlasPeakResidentBytes),
+                textAtlasPeakLiveObjectCount: Interlocked.Read(ref textAtlasPeakLiveObjectCount),
+                textAtlasRecordedUploadBytes: Interlocked.Read(ref textAtlasRecordedUploadBytes),
+                textAtlasEvictionCount: Interlocked.Read(ref textAtlasEvictionCount),
+                textAtlasRetirementCount: Interlocked.Read(ref textAtlasRetirementCount),
                 imageEvictionCount: Interlocked.Read(ref imageEvictionCount),
                 imageRetirementCount: Interlocked.Read(ref imageRetirementCount),
                 allocatorBytes: Interlocked.Read(ref allocatorBytes),
@@ -105,6 +137,80 @@ internal class VulkanDiagnosticCounters {
     internal func AddVulkanObjectAllocation(value uint64) { Interlocked.Add(ref vulkanObjectAllocationCount, value) }
     internal func AddVulkanDeviceMemoryAllocation(value uint64) { Interlocked.Add(ref vulkanDeviceMemoryAllocationCount, value) }
     internal func AddUploadBytes(value uint64) { Interlocked.Add(ref uploadBytes, value) }
+    internal func SetImageByteBudget(value uint64) {
+        Interlocked.Exchange(ref imageByteBudget, value)
+    }
+    internal func SetImageResidentBytes(value uint64) {
+        Interlocked.Exchange(ref imageResidentBytes, value)
+    }
+    internal func SetImageLiveObjectCount(value uint64) {
+        Interlocked.Exchange(ref imageLiveObjectCount, value)
+    }
+    internal func SetImagePeakResidentBytes(value uint64) {
+        while true {
+            let current = Interlocked.Read(ref imagePeakResidentBytes)
+            if value <= current || Interlocked.CompareExchange(ref imagePeakResidentBytes, value, current) == current {
+                return
+            }
+        }
+    }
+    internal func SetImagePeakLiveObjectCount(value uint64) {
+        while true {
+            let current = Interlocked.Read(ref imagePeakLiveObjectCount)
+            if value <= current || Interlocked.CompareExchange(ref imagePeakLiveObjectCount, value, current) == current {
+                return
+            }
+        }
+    }
+    internal func SetTextAtlasCount(value uint64) {
+        Interlocked.Exchange(ref textAtlasCount, value)
+    }
+    internal func SetTextAtlasByteBudget(value uint64) {
+        Interlocked.Exchange(ref textAtlasByteBudget, value)
+    }
+    internal func SetTextAtlasResidentBytes(value uint64) {
+        Interlocked.Exchange(ref textAtlasResidentBytes, value)
+    }
+    internal func SetTextAtlasLiveObjectCount(value uint64) {
+        Interlocked.Exchange(ref textAtlasLiveObjectCount, value)
+    }
+    internal func SetTextAtlasPeakCount(value uint64) {
+        while true {
+            let current = Interlocked.Read(ref textAtlasPeakCount)
+            if value <= current || Interlocked.CompareExchange(ref textAtlasPeakCount, value, current) == current {
+                return
+            }
+        }
+    }
+    internal func SetTextAtlasPeakByteBudget(value uint64) {
+        while true {
+            let current = Interlocked.Read(ref textAtlasPeakByteBudget)
+            if value <= current || Interlocked.CompareExchange(ref textAtlasPeakByteBudget, value, current) == current {
+                return
+            }
+        }
+    }
+    internal func SetTextAtlasPeakResidentBytes(value uint64) {
+        while true {
+            let current = Interlocked.Read(ref textAtlasPeakResidentBytes)
+            if value <= current || Interlocked.CompareExchange(ref textAtlasPeakResidentBytes, value, current) == current {
+                return
+            }
+        }
+    }
+    internal func SetTextAtlasPeakLiveObjectCount(value uint64) {
+        while true {
+            let current = Interlocked.Read(ref textAtlasPeakLiveObjectCount)
+            if value <= current || Interlocked.CompareExchange(ref textAtlasPeakLiveObjectCount, value, current) == current {
+                return
+            }
+        }
+    }
+    internal func AddTextAtlasRecordedUploadBytes(value uint64) {
+        Interlocked.Add(ref textAtlasRecordedUploadBytes, value)
+    }
+    internal func AddTextAtlasEviction(value uint64) { Interlocked.Add(ref textAtlasEvictionCount, value) }
+    internal func AddTextAtlasRetirement(value uint64) { Interlocked.Add(ref textAtlasRetirementCount, value) }
     internal func AddImageEviction(value uint64) { Interlocked.Add(ref imageEvictionCount, value) }
     internal func AddImageRetirement(value uint64) { Interlocked.Add(ref imageRetirementCount, value) }
     internal func AddDraw(value uint64) { Interlocked.Add(ref drawCount, value) }

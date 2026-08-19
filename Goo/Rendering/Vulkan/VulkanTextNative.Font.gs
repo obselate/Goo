@@ -29,6 +29,7 @@ internal unsafe sealed class VulkanTextFont : IDisposable, VulkanTextProvider {
     private var disposed bool
 
     public prop Metrics VulkanHarfBuzzMetrics { get { return metrics } }
+    internal prop ByteSize int64 { get { return int64(fontBytes.Length) } }
     internal prop FaceIndex uint32 { get { return faceIndex } }
     internal prop FaceCount uint32 { get { return faceCount } }
     public prop AbiVersion uint32 { get { return VulkanTextProviderAbi.Version } }
@@ -71,8 +72,7 @@ internal unsafe sealed class VulkanTextFont : IDisposable, VulkanTextProvider {
         if pixelHeight == 0u || pixelHeight > 33554431u {
             throw ArgumentOutOfRangeException("pixelHeight")
         }
-        fontBytes = [bytes.Length]uint8
-        Array.Copy(bytes, fontBytes, bytes.Length)
+        fontBytes = bytes
         faceIndex = selectedFaceIndex
         variations = CopyVariations(selectedVariations)
         try {

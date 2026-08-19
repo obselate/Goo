@@ -25,6 +25,9 @@ internal data struct VulkanTextReadbackResult {
     var BackgroundPixels uint32
     var OpaquePixels uint32
     var NonGrayPixels uint32
+    var RedDominantPixels uint32
+    var GreenDominantPixels uint32
+    var GrayInkPixels uint32
     var MinInkX uint32
     var MinInkY uint32
     var MaxInkX uint32
@@ -48,7 +51,8 @@ internal unsafe sealed class VulkanTextReadbackFixture : IDisposable {
         nativeDevice VkDevice,
         nativeDispatch VkDeviceDispatch,
         nativeAllocator VulkanMemoryAllocator,
-        maxTexelBufferElements uint32) {
+        maxTexelBufferElements uint32,
+        effects bool) {
         try {
             let fontPath = Path.Combine(AppContext.BaseDirectory, "VendSans-VariableFont_wght.ttf")
             if !File.Exists(fontPath) {
@@ -80,7 +84,7 @@ internal unsafe sealed class VulkanTextReadbackFixture : IDisposable {
                 VkDeviceSize(encoding.Bytes.Length), maxTexelBufferElements)
             QueueVulkanTextAtlasUpload(atlas!!, encoding.Bytes)
             frame = SceneFrame(1)
-            BuildFrame(frame!!)
+            BuildFrame(frame!!, effects)
         } catch (error Exception) {
             Dispose()
             throw error
@@ -145,7 +149,7 @@ internal unsafe sealed class VulkanTextReadbackFixture : IDisposable {
         }
     }
 
-    private func BuildFrame(target SceneFrame) {
+    private func BuildFrame(target SceneFrame, effects bool) {
         let extents = encoding.Extents
         let minX = float32(extents.XBearing)
         let minY = float32(extents.YBearing + extents.Height)
@@ -157,7 +161,10 @@ internal unsafe sealed class VulkanTextReadbackFixture : IDisposable {
             Width: maxX - minX,
             Height: maxY - minY,
         }
-        target.BeginChunk(0x5445585452454144uL, 1uL, bounds, true)
+        let chunkBounds = if effects {
+            ConservativeBounds{ X: 0.0F, Y: 0.0F, Width: 64.0F, Height: 64.0F }
+        } else { bounds }
+        target.BeginChunk(0x5445585452454144uL, 1uL, chunkBounds, true)
         let transformIndex = target.AddTransform(TransformRecord{
             A: 0.06F,
             B: 0.0F,
@@ -167,6 +174,52 @@ internal unsafe sealed class VulkanTextReadbackFixture : IDisposable {
             TY: 56.0F,
             ParentIndex: -1,
         })
+        if effects {
+            let shadowTransform = target.AddTransform(TransformRecord{
+                A: 0.06F,
+                B: 0.0F,
+                C: 0.0F,
+                D: -0.06F,
+                TX: 11.0F,
+                TY: 58.0F,
+                ParentIndex: -1,
+            })
+            let strokeRadius = 2.0F / 0.06F * 0.5F
+            target.AddCachedGlyphRun(CachedGlyphRunRefRecord{
+                Bounds: bounds,
+                GlyphRunId: ProofResource(SceneResourceKind.GlyphRun, 9601uL),
+                AtlasId: ProofResource(SceneResourceKind.Atlas, 9602uL),
+                GlyphId: glyphId,
+                AtlasTexelOffset: 0u,
+                AtlasTexelCount: uint32(encoding.Bytes.Length / 8),
+                GlyphMinX: minX,
+                GlyphMinY: minY,
+                GlyphMaxX: maxX,
+                GlyphMaxY: maxY,
+                Color: 0x00FF00FFu,
+                RenderMode: 2u,
+                EffectMode: 1u,
+                EffectRadius: 0.0F,
+                TransformIndex: shadowTransform,
+            })
+            target.AddCachedGlyphRun(CachedGlyphRunRefRecord{
+                Bounds: bounds.Inflate(2.0F),
+                GlyphRunId: ProofResource(SceneResourceKind.GlyphRun, 9601uL),
+                AtlasId: ProofResource(SceneResourceKind.Atlas, 9602uL),
+                GlyphId: glyphId,
+                AtlasTexelOffset: 0u,
+                AtlasTexelCount: uint32(encoding.Bytes.Length / 8),
+                GlyphMinX: minX - strokeRadius,
+                GlyphMinY: minY - strokeRadius,
+                GlyphMaxX: maxX + strokeRadius,
+                GlyphMaxY: maxY + strokeRadius,
+                Color: 0xFF0000FFu,
+                RenderMode: 2u,
+                EffectMode: 2u,
+                EffectRadius: strokeRadius,
+                TransformIndex: transformIndex,
+            })
+        }
         target.AddCachedGlyphRun(CachedGlyphRunRefRecord{
             Bounds: bounds,
             GlyphRunId: ProofResource(SceneResourceKind.GlyphRun, 9601uL),
@@ -207,6 +260,9 @@ internal unsafe func AnalyzeVulkanTextReadback(
     var backgroundPixels uint32 = 0u
     var opaquePixels uint32 = 0u
     var nonGrayPixels uint32 = 0u
+    var redDominantPixels uint32 = 0u
+    var greenDominantPixels uint32 = 0u
+    var grayInkPixels uint32 = 0u
     var minInkX uint32 = width
     var minInkY uint32 = height
     var maxInkX uint32 = 0u
@@ -230,6 +286,13 @@ internal unsafe func AnalyzeVulkanTextReadback(
             if red != green || green != blue {
                 nonGrayPixels++
             }
+            if red > green && red > blue {
+                redDominantPixels++
+            } else if green > red && green > blue {
+                greenDominantPixels++
+            } else if red == green && green == blue && red != 0u {
+                grayInkPixels++
+            }
             if red == 0u && green == 0u && blue == 0u && alpha == 255u {
                 backgroundPixels++
             }
@@ -250,6 +313,9 @@ internal unsafe func AnalyzeVulkanTextReadback(
         BackgroundPixels: backgroundPixels,
         OpaquePixels: opaquePixels,
         NonGrayPixels: nonGrayPixels,
+        RedDominantPixels: redDominantPixels,
+        GreenDominantPixels: greenDominantPixels,
+        GrayInkPixels: grayInkPixels,
         MinInkX: minInkX,
         MinInkY: minInkY,
         MaxInkX: maxInkX,
@@ -286,4 +352,20 @@ internal unsafe func VerifyVulkanTextReadback(
         return false
     }
     return true
+}
+
+internal func VerifyVulkanTextEffectReadback(result VulkanTextReadbackResult) bool {
+    if result.InkPixels <= VulkanTextReadbackContract.MinInkPixels
+        || result.NonGrayPixels == 0u
+        || result.RedDominantPixels == 0u
+        || result.GreenDominantPixels == 0u
+        || result.GrayInkPixels == 0u
+        || result.MinInkX > 8u
+        || result.MaxInkX < 46u
+        || result.MinInkY > 13u
+        || result.MaxInkY < 57u {
+        return false
+    }
+    return result.BackgroundPixels != 0u
+        && result.OpaquePixels == VulkanTextReadbackContract.Width * VulkanTextReadbackContract.Height
 }

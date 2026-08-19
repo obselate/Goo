@@ -13,10 +13,10 @@ Gsharp.NET.Sdk 0.4.1.
 - Release commit: `d670ac98c03e0b0f7c9ac965f5fa3914712f09de`.
 - [G# license](https://github.com/DavidObando/gsharp/blob/d670ac98c03e0b0f7c9ac965f5fa3914712f09de/LICENSE)
 
-## HarfBuzz and hb-gpu text proof
+## HarfBuzz and hb-gpu text runtime
 
-The non-shipping Vulkan proof carries private Linux and Windows native payloads
-built from the pinned HarfBuzz 14.3.1 upstream archive with `hb-gpu` enabled:
+Goo ships private Linux and Windows native payloads built from the pinned
+HarfBuzz 14.3.1 upstream archive with `hb-gpu` enabled:
 `libgoo-harfbuzz.so` and `libgoo-harfbuzz-gpu.so` on Linux, with
 `goo-harfbuzz.dll` and `goo-harfbuzz-gpu.dll` on Windows. They are private Goo
 artifacts, not system-library replacements or a runtime fallback.
@@ -38,15 +38,32 @@ artifacts, not system-library replacements or a runtime fallback.
   built from the pinned upstream archive above.
 - [HarfBuzz 14.3.1 license](https://github.com/harfbuzz/harfbuzz/blob/14.3.1/COPYING)
 
-The proof's deterministic color-font fixtures are copied from the same pinned
+The proof's deterministic color-font fixtures originate from the same pinned
 HarfBuzz test archive. `HarfBuzz-chromacheck-colr.ttf` is covered by the
 ChromaCheck MIT notice in `proofs/Goo.VulkanProof/Assets/Text/ChromaCheck-MIT.txt`.
-`HarfBuzz-adwaita-colrv1.ttf` is covered by the HarfBuzz test-font OFL notice
-in `proofs/Goo.VulkanProof/Assets/Text/HarfBuzz-test-fonts-COPYING.txt`.
+`HarfBuzz-adwaita-colrv1.ttf` is derived from the exact upstream fixture by
+changing only its CPAL table from version 0 to version 1 with palette type 1.
+It is covered by the HarfBuzz test-font OFL notice in
+`proofs/Goo.VulkanProof/Assets/Text/HarfBuzz-test-fonts-COPYING.txt`.
 The `HarfBuzz-TTC.ttc` collection fixture is covered by that same OFL 1.1
 notice. Its two-face source path, SHA-256, and license mapping are recorded in
 `proofs/Goo.VulkanProof/Assets/Text/HarfBuzz-TTC.provenance.json`. Each fixture
 has a SHA-256 and source record beside it.
+
+The CFF corpus fixtures `HarfBuzz-cff-f1.otf` and `HarfBuzz-cff-f2.otf` are
+copied from the pinned HarfBuzz AOTS shape corpus and carry its Apache License
+2.0 notice at `proofs/Goo.VulkanProof/Assets/Text/HarfBuzz-aots-COPYING.txt`.
+`HarfBuzz-cff.otc` is a deterministic two-face collection generated from those
+two exact inputs. The source paths, hashes, face order, and generation record
+are retained in the matching `HarfBuzz-cff-*.provenance.json` files.
+
+The registered-font corpus also carries three tiny CFF OpenType style fixtures
+from the pinned HarfBuzz API test corpus: `cv01.otf`, `cff1_seac.otf`, and
+`SourceHanSans-Regular.41,3041,4C2E.otf`. They are covered by the HarfBuzz test
+font SIL Open Font License 1.1 notice retained at
+`proofs/Goo.VulkanProof/Assets/Text/HarfBuzz-test-fonts-COPYING.txt`. Their
+source paths, fixture hashes, CFF format, and measured `U+0041` advance widths
+are recorded in the matching `HarfBuzz-cff-style-*.provenance.json` files.
 
 The hb-gpu GLSL inputs are the pinned HarfBuzz sources
 `src/hb-gpu-vertex.glsl`, `src/hb-gpu-fragment.glsl`,
@@ -71,51 +88,7 @@ version. `v3.2.1` is the Meta Yoga source and behavior baseline for that port.
 - Goo carries local performance patches. Those changes are Goo modifications,
   not an upstream Yoga.Net release.
 
-## SkiaSharp, HarfBuzzSharp, Skia, and HarfBuzz
-
-- SkiaSharp 4.151.1 and SkiaSharp.HarfBuzz 4.151.1: Copyright (c) 2015-2016
-  Xamarin, Inc. and Copyright (c) 2017-2018 Microsoft Corporation. License: MIT.
-- HarfBuzzSharp 14.2.1.2 and HarfBuzzSharp.NativeAssets.Linux 14.2.1.2: Copyright
-  (c) 2015-2016 Xamarin, Inc. and Copyright (c) 2017-2018 Microsoft Corporation.
-  License: MIT.
-- Skia m151: Copyright (c) 2011 Google Inc. All rights reserved. License: BSD
-  3-Clause.
-- HarfBuzz 14.2.1: Old MIT license.
-- [SkiaSharp 4.151.1 license](https://github.com/mono/SkiaSharp/blob/279f93f4ffa7f9fe4e9c0bc298bedc3c9e439764/LICENSE.md)
-- [HarfBuzzSharp 14.2.1.2 and native-assets license](https://github.com/mono/SkiaSharp/blob/fd1fdd5239f826514651a4ada5d7bb3dcec2fb43/LICENSE.md)
-- [Skia m151 license](https://github.com/google/skia/blob/chrome/m151/LICENSE)
-- [HarfBuzz 14.2.1 license](https://github.com/harfbuzz/harfbuzz/blob/14.2.1/COPYING)
-
-### Skia BSD 3-Clause license
-
-Copyright (c) 2011 Google Inc. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-* Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
-* Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
-* Neither the name of the copyright holder nor the names of its contributors
-  may be used to endorse or promote products derived from this software without
-  specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-### HarfBuzz Old MIT license
+## HarfBuzz Old MIT license
 
 HarfBuzz is licensed under the so-called "Old MIT" license. Details follow.
 For parts of HarfBuzz that are licensed under different licenses see individual

@@ -5,11 +5,13 @@ import System.Runtime.InteropServices
 
 internal unsafe partial class VulkanWindowTarget {
     private func Bootstrap() {
-        if !host.LoadVulkanLibrary() {
-            throw InvalidOperationException("SDL Vulkan loader initialization failed")
+        if !vulkanLoaded {
+            if !host.LoadVulkanLibrary() {
+                throw InvalidOperationException("SDL Vulkan loader initialization failed")
+            }
+            vulkanLoaded = true
+            getProcAddress = host.GetVulkanGetInstanceProcAddr()
         }
-        vulkanLoaded = true
-        getProcAddress = host.GetVulkanGetInstanceProcAddr()
         if getProcAddress == nint(0) {
             throw InvalidOperationException("SDL Vulkan global procedure lookup is unavailable")
         }
@@ -19,9 +21,11 @@ internal unsafe partial class VulkanWindowTarget {
             CreateSurface()
             ValidateSharedPresentationSupport()
         } else {
-            diagnostics = VulkanDiagnostics.Create(
-                Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1")
-            if diagnostics != nil {
+            if diagnostics == nil {
+                diagnostics = VulkanDiagnostics.Create(
+                    Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1")
+            }
+            if diagnostics != nil && objectAccounting == nil {
                 objectAccounting = VulkanObjectAccounting(nil)
                 sharedObjectAccounting = VulkanObjectAccounting(objectAccounting)
                 windowObjectAccounting = VulkanObjectAccounting(objectAccounting)
@@ -94,7 +98,10 @@ internal unsafe partial class VulkanWindowTarget {
     private func ApplySharedRuntime(shared VulkanSharedLease) {
         diagnostics = shared.Diagnostics
         objectAccounting = shared.ObjectAccounting
+        sharedObjectAccounting = nil
+        windowObjectAccounting = nil
         if let accounting = objectAccounting {
+            sharedObjectAccounting = VulkanObjectAccounting(accounting)
             windowObjectAccounting = VulkanObjectAccounting(accounting)
         }
         instance = shared.Instance
@@ -781,14 +788,44 @@ internal unsafe partial class VulkanWindowTarget {
         let getPhysicalDeviceProperties = instanceDispatch.vkGetPhysicalDeviceProperties
         getPhysicalDeviceProperties(physicalDevice, &physicalProperties)
         let maxAtlasBytes = uint64(physicalProperties.limits.maxTexelBufferElements) * 8uL
-        let atlasByteSize = maxAtlasBytes < 262144uL ? maxAtlasBytes : 262144uL
+        let atlasByteSize = ResolveTextAtlasByteSize(maxAtlasBytes)
         if atlasByteSize < 8192uL {
             throw InvalidOperationException("Vulkan text atlas capacity is too small")
         }
+        if atlasByteSize > uint64.MaxValue / 8uL {
+            throw OverflowException("Vulkan text atlas byte budget overflow")
+        }
+        let atlasByteBudget = atlasByteSize * 8uL
         textAtlas = VulkanTextAtlasSet(device, dispatch, memoryAllocator!!, atlasByteSize,
             physicalProperties.limits.maxTexelBufferElements,
-            activeRuntime.PrimitiveState.TextDescriptorSetLayout, windowObjectAccounting)
+            activeRuntime.PrimitiveState.TextDescriptorSetLayout, windowObjectAccounting,
+            diagnostics,
+            atlasByteBudget, activeRuntime.Generation)
         textScene = VulkanTextScene(textAtlas!!)
+        if let currentDiagnostics = diagnostics {
+            textAtlasDiagnosticsToken = currentDiagnostics.RegisterTextAtlasContribution()
+        }
+    }
+
+    private func ResolveTextAtlasByteSize(maxAtlasBytes uint64) uint64 {
+        var atlasByteSize = maxAtlasBytes < 262144uL ? maxAtlasBytes : 262144uL
+        if diagnostics == nil
+            || Environment.GetEnvironmentVariable("GOO_NATIVE_TEXT_ATLAS_SMOKE") != "1" {
+            return atlasByteSize
+        }
+        let overrideValue = Environment.GetEnvironmentVariable("GOO_VK_TEXT_ATLAS_BYTES")
+        if overrideValue != nil && overrideValue != "" {
+            try {
+                let requested = UInt64.Parse(overrideValue)
+                if requested >= 8192uL && requested <= 262144uL && requested <= maxAtlasBytes {
+                    let aligned = requested - (requested % 8uL)
+                    if aligned >= 8192uL {
+                        atlasByteSize = aligned
+                    }
+                }
+            } catch (error Exception) { }
+        }
+        return atlasByteSize
     }
 
     private func AcquireQueue() {

@@ -9,6 +9,7 @@ internal data struct VulkanTextAtlasStats {
     var BufferView VkBufferView
     var DescriptorSetLayout VkDescriptorSetLayout
     var DescriptorSet VkDescriptorSet
+    var LiveObjectCount uint64
     var UploadPending bool
     var UploadRecorded bool
     var UploadSubmitted bool
@@ -19,7 +20,7 @@ internal data struct VulkanTextAtlasStats {
     var UploadCommandBuffer VkCommandBuffer
 }
 
-internal unsafe class VulkanTextAtlas : IDisposable {
+internal unsafe partial class VulkanTextAtlas : IDisposable {
     private const AtlasTexelBytes VkDeviceSize = 8uL
     private const MaxAtlasBytes VkDeviceSize = 2147483647uL
 
@@ -44,6 +45,8 @@ internal unsafe class VulkanTextAtlas : IDisposable {
     private var uploaded bool
     private var uploadByteOffset VkDeviceSize
     private var uploadByteCount VkDeviceSize
+    private var uploadSequence uint64
+    private var completedUploadSequence uint64
     private var flushPrepared bool
     private var disposed bool
 
@@ -57,6 +60,8 @@ internal unsafe class VulkanTextAtlas : IDisposable {
     internal prop IsUploaded bool { get { return uploaded } }
     internal prop UploadByteOffset VkDeviceSize { get { return uploadByteOffset } }
     internal prop UploadByteCount VkDeviceSize { get { return uploadByteCount } }
+    internal prop UploadSequence uint64 { get { return uploadSequence } }
+    internal prop CompletedUploadSequence uint64 { get { return completedUploadSequence } }
     internal prop Stats VulkanTextAtlasStats {
         get {
             return VulkanTextAtlasStats{
@@ -66,6 +71,7 @@ internal unsafe class VulkanTextAtlas : IDisposable {
                 BufferView: atlasBufferView,
                 DescriptorSetLayout: descriptorSetLayout,
                 DescriptorSet: descriptorSet,
+                LiveObjectCount: LiveObjectCount(),
                 UploadPending: uploadPending,
                 UploadRecorded: uploadRecorded,
                 UploadSubmitted: uploadSubmitted,
@@ -133,6 +139,10 @@ internal unsafe class VulkanTextAtlas : IDisposable {
         if uploadPending {
             throw InvalidOperationException("Vulkan text atlas upload is already pending")
         }
+        if uploadSequence == uint64.MaxValue {
+            throw OverflowException("Vulkan text atlas upload sequence overflow")
+        }
+        uploadSequence = uploadSequence + 1uL
         let destination = *uint8(nint(stagingAllocation!!.mapped))
         var byteIndex int32 = 0
         let sourceOffset = int32(sourceByteOffset)
@@ -245,6 +255,7 @@ internal unsafe class VulkanTextAtlas : IDisposable {
         uploadByteCount = 0uL
         uploadCommandBuffer = nint(0)
         uploadFence = 0uL
+        completedUploadSequence = uploadSequence
         flushPrepared = false
         return true
     }
@@ -275,7 +286,7 @@ internal unsafe class VulkanTextAtlas : IDisposable {
         if commandBuffer == nint(0) || pipelineLayout == 0uL {
             throw ArgumentException("Text atlas descriptor binding arguments are invalid")
         }
-        if !uploaded && !uploadPending {
+        if !uploaded {
             throw InvalidOperationException("Vulkan text atlas upload is not ready for this command buffer")
         }
         if uploadPending && (!uploadRecorded
@@ -288,6 +299,16 @@ internal unsafe class VulkanTextAtlas : IDisposable {
         let bindDescriptorSets = dispatch.vkCmdBindDescriptorSets
         bindDescriptorSets(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS,
             pipelineLayout, 0u, 1u, &descriptorSet, 0u, nil)
+    }
+
+    private func LiveObjectCount() uint64 {
+        var count uint64 = 0uL
+        if atlasBuffer != 0uL { count = count + 1uL }
+        if atlasBufferView != 0uL { count = count + 1uL }
+        if descriptorPool != 0uL { count = count + 1uL }
+        if descriptorSet != 0uL { count = count + 1uL }
+        if stagingBuffer != 0uL { count = count + 1uL }
+        return count
     }
 
     public func Dispose() {
@@ -457,32 +478,37 @@ internal unsafe class VulkanTextAtlas : IDisposable {
 
     private func DestroyStagingBuffer() {
         if stagingBuffer != 0uL {
-            let destroyBuffer = dispatch.vkDestroyBuffer
-            destroyBuffer(device, stagingBuffer, nil)
-            if let accounting = objectAccounting {
-                accounting.Release()
-            }
+            let staleBuffer = stagingBuffer
             stagingBuffer = 0uL
+            let destroyBuffer = dispatch.vkDestroyBuffer
+            try { destroyBuffer(device, staleBuffer, nil) } catch (cleanup Exception) { }
+            if let accounting = objectAccounting {
+                try { accounting.Release() } catch (cleanup Exception) { }
+            }
         }
-        if stagingAllocation != nil {
-            allocator.Release(stagingAllocation!!)
+        if let allocation = stagingAllocation {
             stagingAllocation = nil
+            try { allocator.Release(allocation) } catch (cleanup Exception) { }
         }
     }
 
     private func DestroyDescriptorResources() {
         if descriptorPool != 0uL {
+            let stalePool = descriptorPool
+            let staleSet = descriptorSet
+            descriptorPool = 0uL
+            descriptorSet = 0uL
+            descriptorSetLayout = 0uL
             let destroyPool = dispatch.vkDestroyDescriptorPool
-            destroyPool(device, descriptorPool, nil)
-            if descriptorSet != 0uL {
+            try { destroyPool(device, stalePool, nil) } catch (cleanup Exception) { }
+            if staleSet != 0uL {
                 if let accounting = objectAccounting {
-                    accounting.Release()
+                    try { accounting.Release() } catch (cleanup Exception) { }
                 }
             }
             if let accounting = objectAccounting {
-                accounting.Release()
+                try { accounting.Release() } catch (cleanup Exception) { }
             }
-            descriptorPool = 0uL
         }
         descriptorSet = 0uL
         descriptorSetLayout = 0uL
@@ -490,27 +516,29 @@ internal unsafe class VulkanTextAtlas : IDisposable {
 
     private func DestroyBufferView() {
         if atlasBufferView != 0uL {
-            let destroyBufferView = dispatch.vkDestroyBufferView
-            destroyBufferView(device, atlasBufferView, nil)
-            if let accounting = objectAccounting {
-                accounting.Release()
-            }
+            let staleBufferView = atlasBufferView
             atlasBufferView = 0uL
+            let destroyBufferView = dispatch.vkDestroyBufferView
+            try { destroyBufferView(device, staleBufferView, nil) } catch (cleanup Exception) { }
+            if let accounting = objectAccounting {
+                try { accounting.Release() } catch (cleanup Exception) { }
+            }
         }
     }
 
     private func DestroyAtlasBuffer() {
         if atlasBuffer != 0uL {
-            let destroyBuffer = dispatch.vkDestroyBuffer
-            destroyBuffer(device, atlasBuffer, nil)
-            if let accounting = objectAccounting {
-                accounting.Release()
-            }
+            let staleBuffer = atlasBuffer
             atlasBuffer = 0uL
+            let destroyBuffer = dispatch.vkDestroyBuffer
+            try { destroyBuffer(device, staleBuffer, nil) } catch (cleanup Exception) { }
+            if let accounting = objectAccounting {
+                try { accounting.Release() } catch (cleanup Exception) { }
+            }
         }
-        if atlasAllocation != nil {
-            allocator.Release(atlasAllocation!!)
+        if let allocation = atlasAllocation {
             atlasAllocation = nil
+            try { allocator.Release(allocation) } catch (cleanup Exception) { }
         }
     }
 

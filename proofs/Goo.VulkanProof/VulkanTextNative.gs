@@ -276,8 +276,7 @@ internal unsafe sealed class VulkanTextFont : IDisposable {
         if pixelHeight == 0u || pixelHeight > 33554431u {
             throw ArgumentOutOfRangeException("pixelHeight")
         }
-        fontBytes = [bytes.Length]uint8
-        Array.Copy(bytes, fontBytes, bytes.Length)
+        fontBytes = bytes
         faceIndex = selectedFaceIndex
         variations = CopyVariations(selectedVariations)
         try {

@@ -41,6 +41,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     private var imageScene VulkanImageScene? = nil
     private var textAtlas VulkanTextAtlasSet? = nil
     private var textScene VulkanTextScene? = nil
+    private var textAtlasDiagnosticsToken uint64
     private var instance VkInstance = nint(0)
     private var instanceDispatch VkInstanceDispatch = VkInstanceDispatch{}
     private var getProcAddress nint = nint(0)
@@ -96,7 +97,13 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
 
     internal prop NeedsRender bool {
         get {
+            if let activeRuntime = runtime {
+                if activeRuntime.DeviceLost {
+                    return true
+                }
+            }
             return textRedrawPending || imageRedrawPending
+                || forceFullRedraw
                 || (recreatePending && framebufferWidth > 0 && framebufferHeight > 0)
         }
     }
@@ -123,6 +130,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
                 uint64(framebufferWidth),
                 uint64(framebufferHeight))
             CaptureDiagnosticWsi()
+            VulkanWindowTarget.RegisterLiveTarget(this)
         } catch (error Exception) {
             CaptureDiagnosticFatal(-1, VulkanDiagnosticEventIds.RuntimeStart)
             try { Dispose() } catch (cleanup Exception) { }
@@ -134,13 +142,21 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         if frameFailed {
             throw InvalidOperationException("Vulkan window target cannot continue after a failed frame")
         }
-        if disposed || frameBegun || framebufferWidth <= 0 || framebufferHeight <= 0 {
+        if disposed || frameBegun {
             return
         }
         if let activeRuntime = runtime {
-            if activeRuntime.DeviceLost || activeRuntime.Terminal {
+            if activeRuntime.DeviceLost {
+                if !VulkanWindowTarget.RecoverDeviceLoss(VkConstants.VK_ERROR_DEVICE_LOST) {
+                    frameFailed = true
+                    throw InvalidOperationException("Vulkan device recovery failed")
+                }
+            } else if activeRuntime.DeviceLost || activeRuntime.Terminal {
                 return
             }
+        }
+        if framebufferWidth <= 0 || framebufferHeight <= 0 {
+            return
         }
         activeFrameId = nextFrameId + 1uL
         nextFrameId = activeFrameId
@@ -173,6 +189,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
             ResolveDiagnosticTimestamp(selectedSlot, nextFrameSlot)
             if let atlas = textAtlas {
                 atlas.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
+                textScene?.PublishCompletedUploads()
             }
             if let resources = imageResources {
                 resources.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
@@ -272,6 +289,15 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
                         out imageUploadBytes,
                         out imageUploadBarriers)
                     RecordDiagnosticBarrierCount(imageUploadBarriers)
+                    if imageUploadBytes > 0uL {
+                        RecordDiagnosticEvent(
+                            VulkanDiagnosticEventIds.ResourceUpload,
+                            VulkanDiagnosticCategories.Image,
+                            0uL,
+                            0,
+                            uint64(imageUploadBytes),
+                            resources.Generation)
+                    }
                     uploadBytes = uploadBytes + uint64(imageUploadBytes)
                 }
             }
@@ -411,7 +437,17 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
                     resources.Generation)
             }
             let queueSubmit = dispatch.vkQueueSubmit2
-            let submitResult = queueSubmit(queue, 1u, &submitInfo, slot.SubmissionFence)
+            let submitResult = if VulkanSharedRuntime.TakeTestGraphicsSubmissionFailure() {
+                let syntheticDrain = activeRuntime.WaitDeviceIdleResult()
+                RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, syntheticDrain)
+                if syntheticDrain == VkConstants.VK_SUCCESS {
+                    VkConstants.VK_ERROR_DEVICE_LOST
+                } else {
+                    syntheticDrain
+                }
+            } else {
+                queueSubmit(queue, 1u, &submitInfo, slot.SubmissionFence)
+            }
             RecordDiagnosticResult(VulkanDiagnosticEventIds.Submit, submitResult)
             let markedSubmit = slot.MarkSubmitted(submitResult, globalSubmissionSerial)
             if markedSubmit != VkConstants.VK_SUCCESS {
@@ -519,7 +555,10 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
                 }
                 try { AbortUnsubmittedTextUpload() } catch (cleanup Exception) { }
                 try { AbortUnsubmittedImageUploads() } catch (cleanup Exception) { }
-                frameFailed = true
+                frameFailed = !recoveryPending
+            }
+            if submissionAccepted && !recoveryPending {
+                forceFullRedraw = false
             }
             CaptureDiagnosticResources()
             CloseDiagnosticFrame(submissionAccepted)
@@ -558,7 +597,15 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         if disposed {
             return
         }
+        let lostRuntime = runtime
         disposed = true
+        VulkanWindowTarget.UnregisterLiveTarget(this)
+        if let activeRuntime = lostRuntime {
+            if activeRuntime.DeviceLost && VulkanWindowTarget.LiveTargetCount() > 0 {
+                AbandonAfterDeviceLossForClose()
+                return
+            }
+        }
         if let scene = imageScene {
             try { scene.Dispose() } catch (cleanup Exception) { }
         }
@@ -572,6 +619,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         let deviceIdleCompleted = device == nint(0) || idleResult == VkConstants.VK_SUCCESS
         CaptureDiagnosticValidationBoundary()
         if !deviceIdleCompleted {
+            RemoveTextAtlasDiagnosticContribution()
             if let activeRuntime = runtime {
                 activeRuntime.MarkTeardownFailed(idleResult)
             } else {
@@ -611,6 +659,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
             textAtlas = nil
         }
         textScene = nil
+        RemoveTextAtlasDiagnosticContribution()
         textRedrawPending = false
         imageScene = nil
         imageRedrawPending = false
@@ -680,6 +729,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
             var releasedLastLease = false
             try { releasedLastLease = activeRuntime.ReleaseAfterIdle() } catch (cleanup Exception) { }
             if !releasedLastLease && activeRuntime.Terminal {
+                RemoveTextAtlasDiagnosticContribution()
                 RecordDiagnosticResult(
                     VulkanDiagnosticEventIds.PresentWait,
                     activeRuntime.TerminalIdleResult)
@@ -705,6 +755,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         if !timestampPoolDestroyed {
             AbandonDiagnosticTimestampPool()
         }
+        RemoveTextAtlasDiagnosticContribution()
         instance = nint(0)
         device = nint(0)
         CaptureDiagnosticResources()
@@ -776,6 +827,9 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         }
         if result == VkConstants.VK_ERROR_DEVICE_LOST {
             runtime?.MarkDeviceLost()
+            recoveryPending = true
+            forceFullRedraw = true
+            return
         }
         CaptureDiagnosticFatal(int32(result), eventId)
         throw InvalidOperationException("Vulkan frame operation failed: " + result.ToString())

@@ -13,10 +13,13 @@ internal class EntryShapeState {
   internal prop Spacing float32 { get; init; }
   internal prop Direction int32 { get; init; }
   internal prop Shape ShapedText? { get; init; }
+  internal var Placeholder string
+  internal var PlaceholderShape ShapedText?
 
   internal init() {
     Content = ""
     FontFamily = ""
+    Placeholder = ""
   }
 }
 
@@ -43,6 +46,7 @@ internal class TextMetrics {
         }
         shape.Dispose()
       }
+      cached.PlaceholderShape?.Dispose()
       n.EntryShape = nil
     }
     let shaped = Shape(n, n.Buffer)
@@ -55,6 +59,26 @@ internal class TextMetrics {
       shaped.PrepareGeometry()
     }
     return shaped
+  }
+
+  internal func PlaceholderShape(n Node) ShapedText? {
+    if n.Placeholder == "" {
+      if let cached = n.EntryShape {
+        cached.PlaceholderShape?.Dispose()
+        cached.PlaceholderShape = nil
+        cached.Placeholder = ""
+      }
+      return nil
+    }
+    BufferShape(n)
+    guard let cached = n.EntryShape else { return nil }
+    if cached.PlaceholderShape == nil || cached.Placeholder != n.Placeholder {
+      cached.PlaceholderShape?.Dispose()
+      cached.PlaceholderShape = Shape(n, n.Placeholder)
+      cached.Placeholder = n.Placeholder
+      if n.HasElementHandle { cached.PlaceholderShape!!.PrepareGeometry() }
+    }
+    return cached.PlaceholderShape
   }
 
   internal func CachedBufferShape(n Node) ShapedText? {

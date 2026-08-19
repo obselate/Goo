@@ -53,12 +53,18 @@ internal class UnicodeScripts {
         let end = if clusterIndex + 1 < starts.Length { starts[clusterIndex + 1] } else { textLength }
         let scalarStart = scalarIndex
         var script uint32 = 0u
+        var inheritedOnly bool = true
         var pairValue int32 = -1
         while scalarIndex < scalars.Count && scalars[scalarIndex].Start < end {
           let scalar = scalars[scalarIndex]
           if script == 0u && !IsImplicit(scalar.Script) { script = scalar.Script }
+          if scalar.Script == UnicodeScriptsData.CommonTag { inheritedOnly = false }
           if pairValue < 0 && PairFor(scalar.Value) >= 0 { pairValue = scalar.Value }
           scalarIndex++
+        }
+        if script == 0u {
+          script = if inheritedOnly { UnicodeScriptsData.InheritedTag }
+            else { UnicodeScriptsData.CommonTag }
         }
         clusters.Add(UnicodeScriptCluster(start, end, scalarStart, scalarIndex, script, pairValue))
         clusterIndex++
@@ -220,7 +226,8 @@ internal class UnicodeScripts {
     }
 
     private func IsImplicit(script uint32) bool {
-      return script == UnicodeScriptsData.CommonTag || script == UnicodeScriptsData.InheritedTag
+      return script == 0u || script == UnicodeScriptsData.CommonTag
+        || script == UnicodeScriptsData.InheritedTag
     }
 
     private func IsOpeningPair(value int32) bool {

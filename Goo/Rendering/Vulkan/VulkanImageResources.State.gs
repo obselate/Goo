@@ -288,6 +288,7 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         }
         liveCount = 0
         residentBytes = 0uL
+        ClearDiagnosticImageState()
     }
 
     private func ClearCurrentReferences() {

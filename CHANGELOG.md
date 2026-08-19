@@ -2,41 +2,32 @@
 
 ## Unreleased
 
-### Added
-
-- Added an opt-in `Window.Renderer` raster backend for NativeAOT, diagnostics,
-  and tools that need to avoid GPU-driver context overhead. GPU remains the
-  default. Raster requires Wayland. It paints a 16-bit linear CPU surface and
-  presents through three shared-memory buffers without creating OpenGL or EGL
-  contexts or an SDL renderer. It is opaque, compositor paced, and cannot be
-  combined with `Window.Transparent`.
-
 ### Changed
 
-- The build toolchain now targets the pinned G# 0.4.1 release SDK. Nullable
-  safe casts use explicit flow binding, and split
-  partial types now resolve their dependencies from each declaring file.
-- Completed image leases now initialize directly and use nullable temporary
-  arrays so the 0.4.1 array zero value does not add hot-path allocations.
-- Window painting retains up to 64 gradient shaders by content and bounds.
-  Image decoding uses two fixed queue workers instead of one task per request.
-- Raster Wayland damage uses `wl_surface.damage` for protocol versions 1-3 and
-  `wl_surface.damage_buffer` for version 4 and later.
+- Goo core now targets the pinned G# 0.4.1 SDK and uses direct Vulkan 1.3
+  rendering through the SDL3 Wayland host. Yoga remains the layout engine, and
+  Goo-owned production code remains G#.
+- The text path now uses the private HarfBuzz 14.3.1/hb-gpu payload and generated
+  Unicode data for shaping, fallback, segmentation, line breaking, and text
+  geometry.
+- S09R-S11 Linux work now covers typed primitives, transforms and clips,
+  gradients and borders, retained image and text resources, registered-font
+  fallback, editor and IME geometry, color text, multi-atlas residency and
+  eviction, and device-generation recovery.
 
 ### Verification
 
-- The Goo Release build, package build, external package consumer, and native
-  open-pump-close smoke pass on the pinned G# 0.4.1 SDK.
-- The `TestDebug` fixture build passes after removing the old cross-part
-  interop qualification workaround.
-- Release coverage opens, pumps, resizes, presents, reuses, and reopens raster
-  windows, and rejects transparency. Lanes pass 428 core, 38 performance, 32
-  native, and 498 total.
-- Three Release probe runs measured median conversion at 2.091 ms for 1920x1080
-  and 8.268 ms for 3840x2160, down from 3.683 ms and 12.361 ms, with zero
-  managed allocation. The targets retain 39.6 MiB and 158.2 MiB. Direct Skia
-  conversion measured 27.430 ms and 109.909 ms. Headless core raster paint
-  allocates 88 B per operation.
+- Current Linux x64 native Wayland qualification passes the fresh-package
+  window, resize, resource, text, provider-ABI, atlas, and recovery smoke
+  lanes with warnings treated as errors.
+- Focused Vulkan proof lanes cover text shaping, color glyphs, sharp text
+  effects, shader assets, and warm-path allocation checks.
+
+### Deferred
+
+- Windows runtime qualification remains pending.
+- Inline and block editor slots, blurred text shadows, COLR effects, and
+  product-level asynchronous pixel readback remain deferred to later stages.
 
 ## 0.2.0 - 2026-08-07
 

@@ -101,7 +101,7 @@
         },
         {
           "path": "proofs/Goo.VulkanProof/Shaders/hb_gpu_draw.frag.wrapper.glsl",
-          "sha256": "8cf9e65daa7b4a149e84cc7d4777008f13e7633ba5d8ef326b0dd1cd7dcfdce7"
+          "sha256": "a5fd76f4d996c41999ff93c6668fcaa4e3b4de7ee0029f00cd57cb0dccf04c3b"
         }
       ]
     },
@@ -188,6 +188,19 @@
       ]
     },
     {
+      "id": "analytic_shadow_fragment",
+      "stage": "fragment",
+      "source": "analytic_shadow.frag.glsl",
+      "output": "analytic_shadow.frag.spv",
+      "entryPoint": "main",
+      "sourceSha256": "77612b567ad21466eb904e7462ea5e7e643d85043f5e7ccf6b3696e7b40a81a6",
+      "outputSha256": "87e5087848831b75c327db4bb4f8e894f7c55dbc967a5716e136dd3402f91814",
+      "outputBytes": 4212,
+      "capabilities": [
+        1
+      ]
+    },
+    {
       "id": "analytic_border_fragment",
       "stage": "fragment",
       "source": "analytic_border.frag.glsl",
@@ -260,9 +273,9 @@
       "output": "hb_gpu_draw.frag.spv",
       "entryPoint": "main",
       "assembly": "hb_gpu_draw_fragment",
-      "sourceSha256": "37528bab3427eb0514f3659c5a0fb26ffa7f448f7b52e6fcecf0fb44a745d4f9",
-      "outputSha256": "0bfd33458e3d9433b337bcfd2fecd9c89e0b94090068c53db5ddbb2bd53cca9a",
-      "outputBytes": 43984,
+      "sourceSha256": "3bcb2f817f64f35479f7e7f71be0b81333a63d12f7ef5b3c5b73dce83cafd0dd",
+      "outputSha256": "18cfa5bc9a58b34989cd4bc7c9ce57b8d55ab267d84fa9952e5fbc2fc77e5460",
+      "outputBytes": 87228,
       "capabilities": [
         1,
         46
@@ -429,6 +442,110 @@
         },
         {
           "shader": "analytic_solid_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "rgb11-11-10-alpha10-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "AnalyticSolidPushConstants.Generated.gs",
+        "typeName": "AnalyticSolidPushConstants",
+        "sha256": "4294eeac6b658f42dfff8aa1bd6fb793c5ce8bcda30985d45e9d0585a531ff0d",
+        "bytes": 1616
+      }
+    },
+    {
+      "id": "analytic_shadow",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 128,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 0,
+      "descriptors": [],
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_shadow_fragment",
           "stage": "fragment",
           "entryPoint": "main",
           "inputs": [

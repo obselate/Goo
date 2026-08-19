@@ -10,9 +10,9 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/obselate/goo?style=flat-square&amp;labelColor=090B10&amp;color=6CBC5F" alt="MIT license"></a>
 </p>
 
-Goo is a retained UI framework with a small, direct core. Applications describe
-fresh UI trees in ordinary G#. Goo retains runtime state, rebuilds dirty `Cell`
-boundaries, lays out with Yoga, and renders with Skia.
+Goo is a retained UI framework with a small, direct G# core. Applications
+describe fresh UI trees in ordinary G#. Goo retains runtime state, rebuilds dirty
+`Cell` boundaries, lays out with Yoga, and renders directly through Vulkan 1.3.
 
 Applications keep full control over their visual identity.
 
@@ -53,9 +53,9 @@ dotnet build Goo/Goo.gsproj --configuration Release
 
 Update an existing source checkout with `git pull --ff-only`.
 
-The first release supports `linux-x64` on glibc 2.35 or newer. It requires a
-native Wayland session and the system Fontconfig runtime (`libfontconfig1` on
-Ubuntu). X11 and XWayland backends are outside the 0.1 release.
+The current Linux qualification target is `linux-x64` on glibc 2.35 or newer in
+a native Wayland session. Windows runtime qualification is pending. Other
+platforms and display backends are not currently qualified.
 
 ## Documentation
 
@@ -79,7 +79,7 @@ The package includes `Goo.xml` for editor documentation.
 
 ## Build a component
 
-```csharp
+```gsharp
 package App
 
 import Goo
@@ -128,7 +128,7 @@ change.
 
 ## What Goo optimizes for
 
-- **Primitives** Layout, text, images, vector paths, input, motion, editing,
+- **Primitives** Layout, text, images, input, motion, editing,
   accessibility, and windows form a public surface for application-level
   composition.
 - **G# Best practices** Components use classes, functions, loops, typed values, and
@@ -141,8 +141,9 @@ reusable packages. The core provides base primitives for creating applications v
 
 ## Credits
 
-Goo uses Skia through SkiaSharp for drawing and text. 
-Layout uses Meta Yoga through the vendored Yoga.Net port. 
+Goo renders directly through Vulkan 1.3. Text shaping and glyph paint use the
+private HarfBuzz 14.3.1/hb-gpu path. SDL3 provides the Wayland host integration.
+Layout uses Meta Yoga through the vendored Yoga.Net port.
 
 See the [third-party notices](THIRD-PARTY-NOTICES.md)
 for versions and license terms.

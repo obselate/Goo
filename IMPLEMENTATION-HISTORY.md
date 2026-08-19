@@ -18,10 +18,74 @@ the direct Vulkan-only/G#-only product cutover at `711fc39`, and initial product
 Add post-reduction completed-stage records in this section, above the divider. Do not edit or append
 to the frozen snapshot below.
 
-No complete post-reduction stage has completed yet. The following Linux-only subgates are recorded
-without closing their owning stages.
+No post-reduction stage has completed across both required RIDs. S10R's scoped Linux substrate and the
+S11 text and S12 image Linux implementations are complete. Windows and final release gates remain open.
+
+### 2026-08-19 S12 Linux image completion
+
+- Provider-backed direct and background images now use owner-thread completion, monotonic content
+  versions, stale-completion rejection, terminal failure at a fixed version, targeted invalidation, and
+  exact lease release. The v1-v4 package lifecycle, weak provider sweep, logical ID stability, rollback
+  rejection, fit modes, and asynchronous publication gates pass.
+- Providers own decoded immutable premultiplied RGBA pixels. Goo retains active leases and does not add
+  a duplicate decoded-image cache. File codecs and runtime path decoding remain optional providers.
+  Product image sampling is fixed linear. Sampler choice stays outside the public API and image identity.
+- The process-shared Vulkan image owner keys resources by provider, source, version, format, and device
+  generation. It shares immutable pipeline and sampler state, bounds GPU residency at 64 MiB, preserves
+  current references, evicts by LRU, retires through upload and last-use fences, and reconstructs after
+  device generation replacement.
+- The fresh isolated-package Wayland pressure gate reported a 67,108,864-byte budget, 62,914,580 peak
+  resident bytes, 551 peak image-subsystem objects, six evictions, six retirements, and zero resident
+  bytes and live image objects after close.
+- The focused Linux recovery gate reported a 16-byte image reupload into generation 2 after injected
+  device loss, a 16-byte resident peak, 519 peak image-subsystem objects, and zero image residency and
+  live objects after close. It also preserved the existing text, surface-loss, terminal failed-idle, and
+  second-open rejection checks.
+- Warm sampled-image proof recording remains allocation-free and the retained nearest/linear proof
+  digests remain `2726448270383127845` and `10848324327350558369`. Nearest sampling is internal proof
+  capability, not a public product mode. Windows repeats provider, pressure, recovery, package, and
+  lifecycle qualification in S19.
+
+### 2026-08-19 S11 Linux text completion
+
+- The accepted private HarfBuzz 14.3.1 and hb-gpu stack is implemented and qualified on Linux. It
+  includes registered TrueType, CFF OpenType, TTC, and OTC fonts; style, variation, collection, and
+  fallback selection; Unicode 16 segmentation and scripts; bidi; passive and rich text; entry/editor
+  behavior; caret, selection, scrolling, and IME geometry; COLR/CPAL v0/v1; sharp shadows; and text
+  stroke through 4 pixels. Goo core contains no C# and no runtime `StringInfo` dependency.
+- Text residency uses a bounded eight-page LRU atlas set with stable identities, upload-before-
+  publication, fence-safe recycle and retirement, aggregate process diagnostics, and device-generation
+  reconstruction. The 8 KiB pressure lane reported eight pages, 65,536 resident bytes, 40 live atlas
+  objects, 97,704 recorded upload bytes, six evictions, six retirements, 136 draws, and clean close.
+- The focused provider ABI reported `shapeRequired=9`, `glyphRequired=2880`, warm workspace reuse, and
+  disposed rejection. The text-controls lane passed CJK, RTL, combining, ligatures, wrapping, rich
+  presentation, selection, composition, caret follow, window reopen, 807 draws, and clean close.
+- Khronos validation passed the registered-font package lane and two-window failed-idle recovery with
+  zero validation errors, result failures, or fatal records. Recovery reported one surface and device
+  recovery, 124,664 atlas upload bytes, 180 draws, ten presents, restored text and geometry, and terminal
+  second-open rejection. The synthetic submission-loss hook drains the real healthy device only in the
+  test path. Product device-loss cleanup follows ordered child, device, messenger, and instance
+  destruction.
+- The final package is `3,264,796` bytes with SHA-256
+  `44bc9d28ad5d4744d22920a97addd73c1ba130607d8fe467301b1b64500a0e0a`. Goo.dll is `1,919,488`
+  bytes with SHA-256 `c0bbcbca178feb649641772826470e53acc66c60f928c0edcf940f9da3f21d64`.
+  The 33-file staged Linux bundle is `8,633,982` bytes. The validation-active NativeAOT text-controls
+  executable is `4,418,544` bytes with SHA-256
+  `a8f08dc645bd4ea88018063453ef511bd3757c729e2a63da92d16228f2707093`; its 32-file output is
+  `16,414,316` bytes.
+- Exact post-recycle pixels, blurred text shadows, and COLR paint effects remain with S14. Inline and
+  block editor slots wait for child clip lifetime. The 4-pixel stroke limit is fixed until evidence
+  reopens it. CBDT/CBLC, sbix, SVG fonts, and hyphenation remain outside the accepted corpus. Windows
+  repeats the package, corpus, atlas, recovery, and NativeAOT gates in S19.
 
 ### 2026-08-18 Linux qualification subgates
+
+- S10R's Linux substrate is complete for the current allocator, upload, identity/registry, descriptor,
+  image, text-atlas, and existing shared-immutable owners. The scope covers memory admission, upload
+  visibility, generation tags, immutable publication, byte counters, pressure admission, and fence-safe
+  retirement. Future text/image cache and atlas policy remains with S11/S12; path, compiled-SVG,
+  offscreen/effect/readback, and other future-owner recovery remains with S13/S14. Windows repeats the
+  substrate and lifecycle qualification in S19.
 
 - The current package is `3,086,893` bytes with SHA-256
   `f9a58c45725c002dfcc1cdca84951bafcf7322aaf771b46fade5bb9cae518d29`. Goo.dll is `1,338,368`
@@ -56,10 +120,12 @@ without closing their owning stages.
   `VK_EXT_memory_budget` is optional, uses a fixed 16-heap table, is enforced before native allocations,
   and publishes explicit null when unavailable. This behavior is Linux-qualified.
 - Failed-idle terminal safety now retains target and runtime resources and the exact `VkResult`, blocks
-  new publication, leases, and submissions, and avoids unsafe destruction after a failed wait. Forced
-  failed-idle injection and actual generation reconstruction remain unqualified and open. Exact `VkResult`
-  values remain preserved, and lost runtimes reject
-  new leases and submission serials.
+  new publication, leases, and submissions, and avoids unsafe destruction after a failed wait. The current
+  uncommitted Linux `Goo.FailedIdleSmoke` gate uses a live text and image cell across two windows, injects
+  surface loss, graphics-submission failure, and failed device idle, then checks ordered recovery,
+  upload, and present diagnostics, `VK_ERROR_DEVICE_LOST`, and terminal second-open rejection. This is
+  current uncommitted Linux evidence only, not final package/release or Windows qualification. Exact
+  `VkResult` values remain preserved, and lost runtimes reject new leases and submission serials.
 - S11 now has deterministic declared mixed installed-font fallback with merged metrics, generated
   exact Unicode 16.0 LineBreak data with 2,898 ranges and context data with 616 ranges, and
   stateful UAX #14 pair rules that pass the official Unicode 16.0 LineBreakTest corpus with 16,672
@@ -80,7 +146,15 @@ without closing their owning stages.
   `shapeRequired=9 glyphRequired=2880 warmReuse=1 disposed=1`. Full registered-font corpus/style/
   collection/variation qualification, Scripts, editor, color, multi-atlas/eviction/recovery remain
   open.
-- No stage fully closes. General recovery, remaining shared resources, Windows qualification, and final
+- The S09R Linux-supported public region is qualified through a fresh-package Wayland smoke. It
+  covered boxes, radii, all three accepted border styles, two- and four-stop gradients, nested
+  transforms and rectangular clips, scroll-once geometry, stacking, visibility, and leaf opacity.
+  The final run reported 108 draws, four plan compiles, four command records, and zero fatal,
+  validation, or unsupported-scene diagnostics. The production compiler and typed recording gates
+  both reported zero warm allocation. Exact pixels remain deferred to S14 async readback, and the
+  Windows repeat remains deferred to the Windows 11 VM.
+- The S10R Linux substrate scope is complete for current owners. S11-S14 still own text/image/path/
+  offscreen-specific pressure, LRU, cache, and recovery qualification; Windows qualification and final
   T01-T05 gates remain open.
 
 ---

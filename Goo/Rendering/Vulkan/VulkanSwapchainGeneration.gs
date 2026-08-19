@@ -2,7 +2,7 @@ package Goo
 
 import System
 
-internal unsafe class VulkanSwapchainGeneration : IDisposable {
+internal unsafe partial class VulkanSwapchainGeneration : IDisposable {
     private let device VkDevice
     private let dispatch VkDeviceDispatch
     private let surface VkSurfaceKHR

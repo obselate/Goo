@@ -5,36 +5,60 @@ import System
 internal data struct VulkanTextAtlasSetStats {
     var AtlasCount int32
     var ByteSize VkDeviceSize
+    var ByteBudget VkDeviceSize
+    var ResidentByteSize VkDeviceSize
+    var MaxAtlasCount int32
     var LiveObjectCount uint64
     var UploadPending bool
     var UploadRecorded bool
     var UploadSubmitted bool
     var UploadByteCount VkDeviceSize
+    var EvictionCount uint64
+    var RetirementCount uint64
 }
 
-internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
+internal unsafe sealed partial class VulkanTextAtlasSet : IDisposable {
     private const MaxAtlasCount int32 = 8
     private let device VkDevice
     private let dispatch VkDeviceDispatch
     private let allocator VulkanMemoryAllocator
     private let atlasByteSize VkDeviceSize
+    private let byteBudget VkDeviceSize
+    private let generation uint64
     private let maxTexelBufferElements uint32
     private let descriptorSetLayout VkDescriptorSetLayout
     private let objectAccounting VulkanObjectAccounting?
+    private let diagnostics VulkanDiagnostics?
     private let atlases []VulkanTextAtlas?
     private let identities []ResourceId
     private let lastUseSerial []uint64
+    private let lastTouch []uint64
     private let active []bool
     private var atlasCount int32
     private var currentAtlasIndex int32
     private var nextLogicalId uint64 = 1uL
     private var nextVersion uint64 = 1uL
+    private var nextTouch uint64 = 1uL
+    private var residentByteSize VkDeviceSize
+    private var uploadByteCount VkDeviceSize
     private var publishedVersion uint64
+    private var evictionCount uint64
+    private var retirementCount uint64
     private var disposed bool
 
     internal prop AtlasSlotCapacity int32 { get { return atlases.Length } }
     internal prop AtlasCount int32 { get { return atlasCount } }
     internal prop CurrentAtlasIndex int32 { get { return currentAtlasIndex } }
+    internal prop ByteBudget VkDeviceSize { get { return byteBudget } }
+    internal prop ResidentByteSize VkDeviceSize { get { return residentByteSize } }
+    internal prop Generation uint64 { get { return generation } }
+    internal prop CanCreateAtlas bool {
+        get {
+            return atlasCount < atlases.Length
+                && residentByteSize <= byteBudget
+                && atlasByteSize <= byteBudget - residentByteSize
+        }
+    }
     internal prop PublishedVersion uint64 { get { return publishedVersion } }
     internal prop DescriptorSetLayout VkDescriptorSetLayout {
         get { return descriptorSetLayout }
@@ -46,30 +70,37 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
             var uploadPending bool = false
             var uploadRecorded bool = false
             var uploadSubmitted bool = false
-            var uploadByteCount VkDeviceSize = 0uL
             var index int32 = 0
             while index < atlases.Length {
                 if active[index] {
                     let stats = AtlasAt(index).Stats
+                    if stats.ByteSize > uint64.MaxValue - byteSize {
+                        throw OverflowException("Vulkan text atlas byte size overflow")
+                    }
+                    if stats.LiveObjectCount > uint64.MaxValue - liveObjectCount {
+                        throw OverflowException("Vulkan text atlas object count overflow")
+                    }
                     byteSize = byteSize + stats.ByteSize
-                    if stats.Buffer != 0uL { liveObjectCount++ }
-                    if stats.BufferView != 0uL { liveObjectCount++ }
-                    if stats.DescriptorSet != 0uL { liveObjectCount++ }
+                    liveObjectCount = liveObjectCount + stats.LiveObjectCount
                     uploadPending = uploadPending || stats.UploadPending
                     uploadRecorded = uploadRecorded || stats.UploadRecorded
                     uploadSubmitted = uploadSubmitted || stats.UploadSubmitted
-                    uploadByteCount = uploadByteCount + stats.UploadByteCount
                 }
                 index++
             }
             return VulkanTextAtlasSetStats{
                 AtlasCount: atlasCount,
                 ByteSize: byteSize,
+                ByteBudget: byteBudget,
+                ResidentByteSize: residentByteSize,
+                MaxAtlasCount: atlases.Length,
                 LiveObjectCount: liveObjectCount,
                 UploadPending: uploadPending,
                 UploadRecorded: uploadRecorded,
                 UploadSubmitted: uploadSubmitted,
                 UploadByteCount: uploadByteCount,
+                EvictionCount: evictionCount,
+                RetirementCount: retirementCount,
             }
         }
     }
@@ -81,11 +112,15 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
         nativeAtlasByteSize VkDeviceSize,
         nativeMaxTexelBufferElements uint32,
         nativeDescriptorSetLayout VkDescriptorSetLayout,
-        nativeObjectAccounting VulkanObjectAccounting?) {
+        nativeObjectAccounting VulkanObjectAccounting?,
+        nativeDiagnostics VulkanDiagnostics?,
+        nativeByteBudget VkDeviceSize,
+        nativeGeneration uint64) {
         if nativeDevice == nint(0) {
             throw ArgumentException("Vulkan device is null", "nativeDevice")
         }
-        if nativeAtlasByteSize == 0uL || nativeMaxTexelBufferElements == 0u {
+        if nativeAtlasByteSize == 0uL || nativeMaxTexelBufferElements == 0u
+            || nativeByteBudget < nativeAtlasByteSize || nativeGeneration == 0uL {
             throw ArgumentOutOfRangeException("nativeAtlasByteSize")
         }
         if nativeDescriptorSetLayout == 0uL {
@@ -95,12 +130,16 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
         dispatch = nativeDispatch
         allocator = nativeAllocator
         objectAccounting = nativeObjectAccounting
+        diagnostics = nativeDiagnostics
         atlasByteSize = nativeAtlasByteSize
+        byteBudget = nativeByteBudget
+        generation = nativeGeneration
         maxTexelBufferElements = nativeMaxTexelBufferElements
         descriptorSetLayout = nativeDescriptorSetLayout
         atlases = [MaxAtlasCount]VulkanTextAtlas?
         identities = [MaxAtlasCount]ResourceId
         lastUseSerial = [MaxAtlasCount]uint64
+        lastTouch = [MaxAtlasCount]uint64
         active = [MaxAtlasCount]bool
         currentAtlasIndex = -1
         CreateAtlas()
@@ -135,7 +174,7 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
 
     internal func CreateAtlas() int32 {
         EnsureOpen()
-        if atlasCount >= atlases.Length {
+        if !CanCreateAtlas {
             throw InvalidOperationException("Vulkan text atlas capacity is exhausted")
         }
         var index int32 = 0
@@ -145,14 +184,33 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
         if index >= atlases.Length {
             throw InvalidOperationException("Vulkan text atlas capacity is exhausted")
         }
+        let touch = TouchValue()
         let identity = NextIdentity()
         let created = VulkanTextAtlas(device, dispatch, allocator, atlasByteSize,
             maxTexelBufferElements, descriptorSetLayout, objectAccounting)
         atlases[index] = created
         identities[index] = identity
         lastUseSerial[index] = 0uL
+        lastTouch[index] = touch
         active[index] = true
+        if atlasCount == Int32.MaxValue {
+            active[index] = false
+            identities[index] = ResourceId{}
+            lastUseSerial[index] = 0uL
+            lastTouch[index] = 0uL
+            created.Dispose()
+            throw OverflowException("Vulkan text atlas count overflow")
+        }
+        if residentByteSize > byteBudget - atlasByteSize {
+            active[index] = false
+            identities[index] = ResourceId{}
+            lastUseSerial[index] = 0uL
+            lastTouch[index] = 0uL
+            created.Dispose()
+            throw OverflowException("Vulkan text atlas resident byte size overflow")
+        }
         atlasCount = atlasCount + 1
+        residentByteSize = residentByteSize + atlasByteSize
         currentAtlasIndex = index
         return index
     }
@@ -163,16 +221,16 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
             throw ArgumentException("protectedSlots")
         }
         var candidate int32 = -1
-        var candidateSerial uint64 = uint64.MaxValue
-        var index int32 = 1
+        var candidateTouch uint64 = uint64.MaxValue
+        var index int32 = 0
         while index < atlases.Length {
-            if active[index] && !protectedSlots[index]
+            if active[index] && index != currentAtlasIndex && !protectedSlots[index]
                 && lastUseSerial[index] <= completedSerial {
                 let stats = atlases[index]!!.Stats
                 if !stats.UploadPending && !stats.UploadRecorded && !stats.UploadSubmitted
-                    && lastUseSerial[index] < candidateSerial {
+                    && lastTouch[index] < candidateTouch {
                     candidate = index
-                    candidateSerial = lastUseSerial[index]
+                    candidateTouch = lastTouch[index]
                 }
             }
             index = index + 1
@@ -182,7 +240,8 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
 
     internal func RecycleAtlas(index int32, completedSerial uint64) ResourceId {
         EnsureOpen()
-        if index <= 0 || index >= atlases.Length || !active[index] {
+        if index < 0 || index >= atlases.Length || !active[index]
+            || index == currentAtlasIndex {
             throw ArgumentOutOfRangeException("index")
         }
         if lastUseSerial[index] > completedSerial {
@@ -193,19 +252,41 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
         if oldStats.UploadPending || oldStats.UploadRecorded || oldStats.UploadSubmitted {
             throw InvalidOperationException("Vulkan text atlas has pending work")
         }
-        let identity = NextIdentity()
-        let replacement = VulkanTextAtlas(device, dispatch, allocator, atlasByteSize,
-            maxTexelBufferElements, descriptorSetLayout, objectAccounting)
+        if evictionCount == uint64.MaxValue || retirementCount == uint64.MaxValue {
+            throw OverflowException("Vulkan text atlas lifecycle counter overflow")
+        }
+        let touch = TouchValue()
+        let identity = NextReplacementIdentity(identities[index])
+        oldAtlas.Dispose()
+        atlases[index] = nil
+        active[index] = false
         try {
-            oldAtlas.Dispose()
+            let replacement = VulkanTextAtlas(device, dispatch, allocator, atlasByteSize,
+                maxTexelBufferElements, descriptorSetLayout, objectAccounting)
+            atlases[index] = replacement
         } catch (error Exception) {
-            try { replacement.Dispose() } catch (cleanup Exception) { }
+            identities[index] = ResourceId{}
+            lastUseSerial[index] = 0uL
+            lastTouch[index] = 0uL
+            if atlasCount <= 0 || residentByteSize < atlasByteSize {
+                throw InvalidOperationException("Vulkan text atlas accounting underflow")
+            }
+            atlasCount = atlasCount - 1
+            residentByteSize = residentByteSize - atlasByteSize
+            currentAtlasIndex = FindCurrentIndex()
             throw error
         }
-        atlases[index] = replacement
         identities[index] = identity
         lastUseSerial[index] = 0uL
+        lastTouch[index] = touch
+        active[index] = true
         currentAtlasIndex = index
+        evictionCount = evictionCount + 1uL
+        retirementCount = retirementCount + 1uL
+        if let currentDiagnostics = diagnostics {
+            currentDiagnostics.AddTextAtlasEviction(1uL)
+            currentDiagnostics.AddTextAtlasRetirement(1uL)
+        }
         return identity
     }
 
@@ -261,7 +342,20 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
             let stats = atlas.Stats
             if stats.UploadPending && !stats.UploadRecorded {
                 atlas.RecordUpload(commandBuffer)
+                if stats.UploadByteCount > uint64.MaxValue - recordedBytes {
+                    throw OverflowException("Vulkan text atlas recorded byte count overflow")
+                }
+                if uploadByteCount > uint64.MaxValue - stats.UploadByteCount {
+                    throw OverflowException("Vulkan text atlas upload byte counter overflow")
+                }
+                if recordedBarriers == Int32.MaxValue || recorded == Int32.MaxValue {
+                    throw OverflowException("Vulkan text atlas upload count overflow")
+                }
                 recordedBytes = recordedBytes + stats.UploadByteCount
+                uploadByteCount = uploadByteCount + stats.UploadByteCount
+                if let currentDiagnostics = diagnostics {
+                    currentDiagnostics.AddTextAtlasRecordedUploadBytes(uint64(stats.UploadByteCount))
+                }
                 recordedBarriers = recordedBarriers + 1
                 recorded = recorded + 1
             }
@@ -306,9 +400,7 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
                 if submissionSerial > lastUseSerial[index] {
                     lastUseSerial[index] = submissionSerial
                 }
-                if identities[index].Version > publishedVersion {
-                    publishedVersion = identities[index].Version
-                }
+                lastTouch[index] = TouchValue()
             }
             index++
         }
@@ -326,6 +418,7 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
         if submissionSerial > lastUseSerial[index] {
             lastUseSerial[index] = submissionSerial
         }
+        lastTouch[index] = TouchValue()
     }
 
     internal func Collect(completedSerial uint64) bool {
@@ -333,8 +426,14 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
         var collected bool = false
         var index int32 = 0
         while index < atlases.Length {
-            if active[index] && AtlasAt(index).Collect(completedSerial) {
-                collected = true
+            if active[index] {
+                let atlas = AtlasAt(index)
+                if atlas.Collect(completedSerial) {
+                    if identities[index].Version > publishedVersion {
+                        publishedVersion = identities[index].Version
+                    }
+                    collected = true
+                }
             }
             index++
         }
@@ -389,10 +488,12 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
             active[index] = false
             identities[index] = ResourceId{}
             lastUseSerial[index] = 0uL
+            lastTouch[index] = 0uL
             index++
         }
         atlasCount = 0
         currentAtlasIndex = -1
+        residentByteSize = 0uL
     }
 
     public func Dispose() {
@@ -414,10 +515,13 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
             active[index] = false
             identities[index] = ResourceId{}
             lastUseSerial[index] = 0uL
+            lastTouch[index] = 0uL
             index++
         }
         atlasCount = 0
         currentAtlasIndex = -1
+        residentByteSize = 0uL
+        publishedVersion = 0uL
     }
 
     deinit {
@@ -445,5 +549,41 @@ internal unsafe sealed class VulkanTextAtlasSet : IDisposable {
         nextLogicalId = nextLogicalId + 1uL
         nextVersion = nextVersion + 1uL
         return identity
+    }
+
+    private func NextReplacementIdentity(previous ResourceId) ResourceId {
+        if !previous.IsValid || previous.Kind != SceneResourceKind.Atlas {
+            throw ArgumentException("previous")
+        }
+        if nextVersion == uint64.MaxValue {
+            throw OverflowException("Vulkan text atlas identity overflow")
+        }
+        let identity = ResourceId{
+            Kind: SceneResourceKind.Atlas,
+            LogicalId: previous.LogicalId,
+            Version: nextVersion,
+        }
+        nextVersion = nextVersion + 1uL
+        return identity
+    }
+
+    private func TouchValue() uint64 {
+        if nextTouch == uint64.MaxValue {
+            throw OverflowException("Vulkan text atlas LRU counter overflow")
+        }
+        let value = nextTouch
+        nextTouch = nextTouch + 1uL
+        return value
+    }
+
+    private func FindCurrentIndex() int32 {
+        var index int32 = 0
+        while index < atlases.Length {
+            if active[index] {
+                return index
+            }
+            index = index + 1
+        }
+        return -1
     }
 }

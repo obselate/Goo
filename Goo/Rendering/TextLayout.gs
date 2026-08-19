@@ -2,7 +2,6 @@ package Goo
 
 import System
 import System.Collections.Generic
-import System.Globalization
 import System.Runtime.CompilerServices
 import Facebook.Yoga
 
@@ -209,6 +208,7 @@ internal class TextLayouts {
       PassiveTextPresentations.Remove(n)
       if let entryShape = n.EntryShape {
         entryShape.Shape?.Dispose()
+        entryShape.PlaceholderShape?.Dispose()
         n.EntryShape = nil
       }
       if n.Kind == NodeKind.Editor {
@@ -448,7 +448,7 @@ internal class TextLayouts {
         return false
       }
       whole.Shape?.Dispose()
-      let elements = StringInfo.ParseCombiningCharacters(text)
+      let elements = UnicodeGraphemes.Starts(text)
       var cursor int32 = 0
       while cursor < elements.Length {
         var next = cursor + 1

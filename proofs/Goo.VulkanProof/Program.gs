@@ -406,6 +406,7 @@ unsafe func Main() int32 {
     var engineNameStorage nint = nint(0)
     var swapchainExtensionStorage nint = nint(0)
     var maintenanceExtensionStorage nint = nint(0)
+    var memoryBudgetExtensionStorage nint = nint(0)
     var surfaceMaintenanceExtensionStorage nint = nint(0)
     var surfaceCapabilities2ExtensionStorage nint = nint(0)
     var destroyInstanceAddress nint = nint(0)
@@ -444,11 +445,13 @@ unsafe func Main() int32 {
     var frameSlot1 VulkanFrameSlot? = nil
     var presentationRetirement VulkanPresentationRetirement? = nil
     let sceneReadbackRequested = Environment.GetEnvironmentVariable("GOO_VK_SCENE_READBACK") == "1"
+    let shadowReadbackRequested = Environment.GetEnvironmentVariable("GOO_VK_SHADOW_READBACK") == "1"
     let imageReadbackRequested = Environment.GetEnvironmentVariable("GOO_VK_IMAGE_READBACK") == "1"
     let textReadbackRequested = Environment.GetEnvironmentVariable("GOO_VK_TEXT_READBACK") == "1"
+    let textEffectReadbackRequested = Environment.GetEnvironmentVariable("GOO_VK_TEXT_EFFECT_READBACK") == "1"
     let textPaintReadbackRequested = Environment.GetEnvironmentVariable("GOO_VK_TEXT_PAINT_READBACK") == "1"
-    var readbackRequested = sceneReadbackRequested || imageReadbackRequested || textReadbackRequested
-        || textPaintReadbackRequested
+    var readbackRequested = sceneReadbackRequested || shadowReadbackRequested || imageReadbackRequested || textReadbackRequested
+        || textEffectReadbackRequested || textPaintReadbackRequested
         || Environment.GetEnvironmentVariable("GOO_VK_READBACK") == "1"
     var readbackMemoryProperties = VkPhysicalDeviceMemoryProperties{}
     var readbackAllocator VulkanMemoryAllocator? = nil
@@ -822,6 +825,7 @@ unsafe func Main() int32 {
         var selectedPresentMode VkPresentModeKHR = VkConstants.VK_PRESENT_MODE_FIFO_KHR
         var selectedDeviceExtensionCount uint32 = 0u
         var selectedSwapchainMaintenance = false
+        var selectedMemoryBudgetSupported = false
         var physicalIndex uint32 = 0u
         while physicalIndex < physicalDeviceCount && selectedPhysicalDevice == nint(0) {
             let physicalDevice = physicalDevices[physicalIndex]
@@ -840,6 +844,7 @@ unsafe func Main() int32 {
             var hasPresentationQueue = false
             var queueFamilyCount uint32 = 0u
             var candidateDeviceExtensionCount uint32 = 0u
+            var candidateMemoryBudgetSupported = false
             if candidateQualified {
                 queueFamilyProperties(physicalDevice, &queueFamilyCount, nil)
                 if queueFamilyCount > 0u {
@@ -881,6 +886,7 @@ unsafe func Main() int32 {
                     } else {
                         var hasSwapchainExtension = false
                         var hasSwapchainMaintenanceExtension = false
+                        var hasMemoryBudgetExtension = false
                         var extensionIndex uint32 = 0u
                         while extensionIndex < deviceExtensionCount {
                             if ExtensionNameEquals(&deviceExtensions[extensionIndex], VkConstants.VK_KHR_SWAPCHAIN_EXTENSION_NAME) {
@@ -889,8 +895,12 @@ unsafe func Main() int32 {
                             if ExtensionNameEquals(&deviceExtensions[extensionIndex], VkConstants.VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME) {
                                 hasSwapchainMaintenanceExtension = true
                             }
+                            if ExtensionNameEquals(&deviceExtensions[extensionIndex], VkConstants.VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) {
+                                hasMemoryBudgetExtension = true
+                            }
                             extensionIndex++
                         }
+                        candidateMemoryBudgetSupported = hasMemoryBudgetExtension
                         candidateQualified = hasSwapchainExtension && hasSwapchainMaintenanceExtension
                         if candidateQualified {
                             var supportedFeatures2 = VkPhysicalDeviceFeatures2{}
@@ -979,6 +989,7 @@ unsafe func Main() int32 {
                 selectedPresentMode = candidatePresentMode
                 selectedDeviceExtensionCount = candidateDeviceExtensionCount
                 selectedSwapchainMaintenance = true
+                selectedMemoryBudgetSupported = candidateMemoryBudgetSupported
             }
             physicalIndex++
         }
@@ -1010,8 +1021,16 @@ unsafe func Main() int32 {
                 throw InvalidOperationException("vkGetPhysicalDeviceMemoryProperties is unavailable")
             }
             instanceDispatch.vkGetPhysicalDeviceMemoryProperties = getMemoryPropertiesNullable!!
-            let readbackUsesBlending = sceneReadbackRequested || imageReadbackRequested
-                || textReadbackRequested || textPaintReadbackRequested
+            if selectedMemoryBudgetSupported {
+                let getMemoryProperties2Address = LoadGlobalProc(getProcAddress, instance, "vkGetPhysicalDeviceMemoryProperties2")
+                let getMemoryProperties2Nullable = getMemoryProperties2Address as (unmanaged[Cdecl] (VkPhysicalDevice, *VkPhysicalDeviceMemoryProperties2) -> void)?
+                if getMemoryProperties2Nullable == nil {
+                    throw InvalidOperationException("vkGetPhysicalDeviceMemoryProperties2 is unavailable")
+                }
+                instanceDispatch.vkGetPhysicalDeviceMemoryProperties2 = getMemoryProperties2Nullable!!
+            }
+            let readbackUsesBlending = sceneReadbackRequested || shadowReadbackRequested || imageReadbackRequested
+                || textReadbackRequested || textEffectReadbackRequested || textPaintReadbackRequested
             let readbackFormat = if readbackUsesBlending {
                 VkConstants.VK_FORMAT_R8G8B8A8_SRGB
             } else {
@@ -1100,16 +1119,22 @@ unsafe func Main() int32 {
             diagnostics.CaptureExtension(2u, swapchainExtensionName)
             diagnostics.CaptureExtension(2u, maintenanceExtensionName)
         }
-        let deviceExtensionPointers *VulkanExtensionNamePointer = stackalloc [2]VulkanExtensionNamePointer
+        let deviceExtensionPointers *VulkanExtensionNamePointer = stackalloc [3]VulkanExtensionNamePointer
         deviceExtensionPointers[0].value = swapchainExtensionName
         deviceExtensionPointers[1].value = maintenanceExtensionName
+        var deviceExtensionCount uint32 = 2u
+        if selectedMemoryBudgetSupported {
+            memoryBudgetExtensionStorage = Marshal.StringToCoTaskMemUTF8(VkConstants.VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)
+            deviceExtensionPointers[2].value = *int8(memoryBudgetExtensionStorage)
+            deviceExtensionCount = 3u
+        }
 
         var deviceCreateInfo = VkDeviceCreateInfo{}
         deviceCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO
         deviceCreateInfo.pNext = *void(&enabledFeatures2)
         deviceCreateInfo.queueCreateInfoCount = 1u
         deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo
-        deviceCreateInfo.enabledExtensionCount = 2u
+        deviceCreateInfo.enabledExtensionCount = deviceExtensionCount
         deviceCreateInfo.ppEnabledExtensionNames = &deviceExtensionPointers[0].value
         let createDevice = instanceDispatch.vkCreateDevice
         if TrackResult(diagnostics, 30uL, createDevice(selectedPhysicalDevice, &deviceCreateInfo, nil, &device)) != VkConstants.VK_SUCCESS || device == nint(0) {
@@ -1327,7 +1352,8 @@ unsafe func Main() int32 {
             let invalidateMappedMemoryRangesNullable = invalidateMappedMemoryRangesAddress as (unmanaged[Cdecl] (VkDevice, uint32, *VkMappedMemoryRange) -> VkResult)?
             if invalidateMappedMemoryRangesNullable == nil { throw InvalidOperationException("vkInvalidateMappedMemoryRanges is unavailable") }
             deviceDispatch.vkInvalidateMappedMemoryRanges = invalidateMappedMemoryRangesNullable!!
-            if imageReadbackRequested || textReadbackRequested || textPaintReadbackRequested {
+            if imageReadbackRequested || textReadbackRequested || textEffectReadbackRequested
+                || textPaintReadbackRequested {
                 let flushMappedMemoryRangesAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkFlushMappedMemoryRanges")
                 let flushMappedMemoryRangesNullable = flushMappedMemoryRangesAddress as (unmanaged[Cdecl] (VkDevice, uint32, *VkMappedMemoryRange) -> VkResult)?
                 if flushMappedMemoryRangesNullable == nil { throw InvalidOperationException("vkFlushMappedMemoryRanges is unavailable") }
@@ -2152,7 +2178,8 @@ unsafe func Main() int32 {
             presentInfo.pSwapchains = &swapchain
             presentInfo.pImageIndices = &imageIndex
             presentAttemptCount = presentAttemptCount + 1uL
-            let measureScenePresent = sceneReadbackRequested && diagnostics != nil && frameNumber == 0uL
+            let measureScenePresent = (sceneReadbackRequested || shadowReadbackRequested)
+                && diagnostics != nil && frameNumber == 0uL
             let presentStartTicks int64 = if measureScenePresent {
                 Stopwatch.GetTimestamp()
             } else {
@@ -2294,20 +2321,30 @@ unsafe func Main() int32 {
             throw InvalidOperationException("Vulkan swapchain presentation completion failed")
         }
         if readbackRequested {
+            let readbackBudget = VulkanMemoryBudgetState(
+                selectedPhysicalDevice,
+                instanceDispatch,
+                readbackMemoryProperties.memoryHeapCount,
+                selectedMemoryBudgetSupported)
             let readbackAllocatorValue = VulkanMemoryAllocator(
                 device,
                 deviceDispatch,
                 readbackMemoryProperties,
-                selectedPhysicalDeviceProperties.limits.maxMemoryAllocationCount)
+                selectedPhysicalDeviceProperties.limits.maxMemoryAllocationCount,
+                selectedPhysicalDeviceProperties.limits.nonCoherentAtomSize,
+                selectedPhysicalDeviceProperties.limits.bufferImageGranularity,
+                readbackBudget)
             readbackAllocator = readbackAllocatorValue
             var offscreenExtent = VkExtent2D{}
             offscreenExtent.width = 64u
             offscreenExtent.height = 64u
-            let sceneOffscreenRequested = sceneReadbackRequested || imageReadbackRequested
-                || textReadbackRequested || textPaintReadbackRequested
-            if textReadbackRequested || textPaintReadbackRequested {
-                if sceneReadbackRequested || imageReadbackRequested
-                    || (textReadbackRequested && textPaintReadbackRequested) {
+            let sceneOffscreenRequested = sceneReadbackRequested || shadowReadbackRequested || imageReadbackRequested
+                || textReadbackRequested || textEffectReadbackRequested || textPaintReadbackRequested
+            if textReadbackRequested || textEffectReadbackRequested || textPaintReadbackRequested {
+                if sceneReadbackRequested || shadowReadbackRequested || imageReadbackRequested
+                    || (textReadbackRequested && textEffectReadbackRequested)
+                    || (textReadbackRequested && textPaintReadbackRequested)
+                    || (textEffectReadbackRequested && textPaintReadbackRequested) {
                     throw InvalidOperationException("Vulkan text readback modes cannot be combined with another scene readback mode")
                 }
             }
@@ -2316,7 +2353,17 @@ unsafe func Main() int32 {
                     device,
                     deviceDispatch,
                     readbackAllocatorValue,
-                    selectedPhysicalDeviceProperties.limits.maxTexelBufferElements)
+                    selectedPhysicalDeviceProperties.limits.maxTexelBufferElements,
+                    false)
+                textFixture = textFixtureValue
+                sceneFrame = textFixtureValue.Frame
+            } else if textEffectReadbackRequested {
+                let textFixtureValue = VulkanTextReadbackFixture(
+                    device,
+                    deviceDispatch,
+                    readbackAllocatorValue,
+                    selectedPhysicalDeviceProperties.limits.maxTexelBufferElements,
+                    true)
                 textFixture = textFixtureValue
                 sceneFrame = textFixtureValue.Frame
             } else if textPaintReadbackRequested {
@@ -2341,7 +2388,16 @@ unsafe func Main() int32 {
                     if sceneFrame!!.DrawRefCount != 1 || sceneFrame!!.CachedImageCount != 1 {
                         throw InvalidOperationException("Vulkan image scene plan is invalid")
                     }
-                } else if !textReadbackRequested && !textPaintReadbackRequested {
+                } else if shadowReadbackRequested {
+                    sceneFrame = SceneFrame(4)
+                    BuildShadowPixelScene(sceneFrame!!, 1uL)
+                    sceneDigest = ShadowPixelSceneSemanticDigest(sceneFrame!!)
+                    if ShadowPixelSceneContract.ExpectedDigest != 0uL
+                        && sceneDigest != ShadowPixelSceneContract.ExpectedDigest {
+                        throw InvalidOperationException("Vulkan shadow scene semantic digest does not match the fixed contract")
+                    }
+                } else if !textReadbackRequested && !textEffectReadbackRequested
+                    && !textPaintReadbackRequested {
                     sceneFrame = SceneFrame(16)
                     BuildPixelScene(sceneFrame!!, 1uL)
                     sceneDigest = PixelSceneSemanticDigest(sceneFrame!!)
@@ -2740,6 +2796,17 @@ unsafe func Main() int32 {
                     nil,
                     0uL,
                     textFixture!!.Atlas)
+            } else if textEffectReadbackRequested {
+                VulkanOffscreenTarget(
+                    device,
+                    deviceDispatch,
+                    readbackAllocatorValue,
+                    offscreenExtent,
+                    offscreenMode,
+                    offscreenFormat,
+                    nil,
+                    0uL,
+                    textFixture!!.Atlas)
             } else if textPaintReadbackRequested {
                 VulkanOffscreenTarget(
                     device,
@@ -2800,7 +2867,8 @@ unsafe func Main() int32 {
                     sceneClearColor.float32.values[0] = 0.0F
                     sceneClearColor.float32.values[1] = 0.0F
                     sceneClearColor.float32.values[2] = if imageReadbackRequested
-                        || textReadbackRequested || textPaintReadbackRequested { 0.0F } else { 1.0F }
+                        || textReadbackRequested || textEffectReadbackRequested
+                        || textPaintReadbackRequested { 0.0F } else { 1.0F }
                     sceneClearColor.float32.values[3] = if imageReadbackRequested { 0.0F } else { 1.0F }
                     offscreenTargetValue.RecordScene(offscreenCommandBuffer, sceneFrame!!, sceneClearColor)
                 } else {
@@ -2813,8 +2881,8 @@ unsafe func Main() int32 {
                 if TrackResult(diagnostics, 47uL, endCommandBuffer(offscreenCommandBuffer)) != VkConstants.VK_SUCCESS {
                     throw InvalidOperationException("vkEndCommandBuffer failed for offscreen readback")
                 }
-                if textReadbackRequested || textPaintReadbackRequested {
-                    let flushResult = if textReadbackRequested {
+                if textReadbackRequested || textEffectReadbackRequested || textPaintReadbackRequested {
+                    let flushResult = if textReadbackRequested || textEffectReadbackRequested {
                         TrackResult(diagnostics, 49uL, textFixture!!.FlushBeforeSubmit())
                     } else {
                         TrackResult(diagnostics, 49uL, textPaintFixture!!.FlushBeforeSubmit())
@@ -2842,7 +2910,7 @@ unsafe func Main() int32 {
                     }
                 }
                 offscreenTargetValue.AbortPrepared()
-                if textReadbackRequested && textFixture != nil {
+                if (textReadbackRequested || textEffectReadbackRequested) && textFixture != nil {
                     let atlasStats = textFixture!!.Atlas.Stats
                     if atlasStats.UploadPending && !atlasStats.UploadSubmitted {
                         textFixture!!.AbortUpload(offscreenCommandBuffer)
@@ -2886,7 +2954,7 @@ unsafe func Main() int32 {
             if trackedOffscreenSubmitResult != VkConstants.VK_SUCCESS {
                 throw InvalidOperationException("vkQueueSubmit2 failed for offscreen readback")
             }
-            if textReadbackRequested {
+            if textReadbackRequested || textEffectReadbackRequested {
                 textFixture!!.MarkSubmitted(offscreenCommandBuffer, uint64(offscreenTargetValue.CompletionFence))
             } else if textPaintReadbackRequested {
                 textPaintFixture!!.MarkSubmitted(offscreenCommandBuffer, uint64(offscreenTargetValue.CompletionFence))
@@ -2907,7 +2975,7 @@ unsafe func Main() int32 {
                 }
                 throw InvalidOperationException("Vulkan offscreen readback did not complete")
             }
-            if textReadbackRequested {
+            if textReadbackRequested || textEffectReadbackRequested {
                 let atlasStats = textFixture!!.Atlas.Stats
                 if !atlasStats.UploadSubmitted || !textFixture!!.Collect(atlasStats.UploadFence) {
                     throw InvalidOperationException("Vulkan text atlas upload did not collect")
@@ -2961,6 +3029,16 @@ unsafe func Main() int32 {
                 if !VerifyVulkanTextReadback(readbackBytes, offscreenExtent.width, offscreenExtent.height, textReadback) {
                     throw InvalidOperationException("Vulkan text readback ink or background pixels are invalid")
                 }
+            } else if textEffectReadbackRequested {
+                if offscreenTargetValue.LastRecordAllocatedBytes != 0L {
+                    throw InvalidOperationException("Vulkan text effect recording allocated managed bytes")
+                }
+                let textEffectReadback = AnalyzeVulkanTextReadback(readbackBytes,
+                    offscreenExtent.width, offscreenExtent.height)
+                Console.WriteLine("Text effect readback: digest=${textEffectReadback.Digest} ink=${textEffectReadback.InkPixels} background=${textEffectReadback.BackgroundPixels} bounds=${textEffectReadback.MinInkX},${textEffectReadback.MinInkY}-${textEffectReadback.MaxInkX},${textEffectReadback.MaxInkY} opaque=${textEffectReadback.OpaquePixels} nongray=${textEffectReadback.NonGrayPixels} red=${textEffectReadback.RedDominantPixels} green=${textEffectReadback.GreenDominantPixels} gray=${textEffectReadback.GrayInkPixels} allocated=${offscreenTargetValue.LastRecordAllocatedBytes}")
+                if !VerifyVulkanTextEffectReadback(textEffectReadback) {
+                    throw InvalidOperationException("Vulkan text effect readback pixels are invalid")
+                }
             } else if textPaintReadbackRequested {
                 if offscreenTargetValue.LastRecordAllocatedBytes != 0L {
                     throw InvalidOperationException("Vulkan COLR paint recording allocated managed bytes")
@@ -2986,6 +3064,14 @@ unsafe func Main() int32 {
                     throw InvalidOperationException("Vulkan sampled image readback digest changed")
                 }
                 Console.WriteLine("Image readback: digest=${imageDigest} allocated=${offscreenTargetValue.LastRecordAllocatedBytes}")
+            } else if shadowReadbackRequested {
+                if offscreenTargetValue.LastRecordAllocatedBytes != 0L {
+                    throw InvalidOperationException("Vulkan shadow recording allocated managed bytes")
+                }
+                if !VerifyShadowPixelSceneReadback(readbackBytes, offscreenExtent.width, offscreenExtent.height) {
+                    throw InvalidOperationException("Vulkan shadow scene readback pixels are invalid")
+                }
+                Console.WriteLine("Shadow scene readback: digest=${sceneDigest} draws=${sceneFrame!!.DrawRefCount} shadows=${sceneFrame!!.ShadowCount} allocated=${offscreenTargetValue.LastRecordAllocatedBytes}")
             } else if sceneReadbackRequested {
                 if offscreenTargetValue.LastRecordAllocatedBytes != 0L {
                     throw InvalidOperationException("Vulkan scene primitive recording allocated managed bytes")
@@ -3741,6 +3827,15 @@ unsafe func Main() int32 {
             Console.Error.WriteLine("Vulkan cleanup maintenance extension string failed: " + error.ToString())
         }
         maintenanceExtensionStorage = nint(0)
+
+        try {
+            if memoryBudgetExtensionStorage != nint(0) {
+                Marshal.FreeCoTaskMem(memoryBudgetExtensionStorage)
+            }
+        } catch (error Exception) {
+            Console.Error.WriteLine("Vulkan cleanup memory budget extension string failed: " + error.ToString())
+        }
+        memoryBudgetExtensionStorage = nint(0)
 
         try {
             if surfaceMaintenanceExtensionStorage != nint(0) {

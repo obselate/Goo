@@ -86,10 +86,6 @@ internal partial class VulkanSceneCompiler {
             RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BlendMode,
                 VulkanSceneUnsupportedPrimitive.Blend)
         }
-        if boxShadowCount(node.BoxShadows) != 0 {
-            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BoxShadows,
-                VulkanSceneUnsupportedPrimitive.BoxShadow)
-        }
         if node.HasOutlineState {
             let width = node.OutlineWidth
             if width.HasMagnitude {
@@ -106,28 +102,29 @@ internal partial class VulkanSceneCompiler {
                     VulkanSceneUnsupportedPrimitive.Outline)
             }
         }
-        if node.HasTextShadowState {
+        if node.HasTextShadowState && HasBlurredTextShadow(node.TextShadows) {
             RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
                 VulkanSceneUnsupportedPrimitive.TextShadow)
         }
         if node.HasTextStrokeState {
             let width = node.TextStrokeWidth
-            if width.HasMagnitude {
+            if width.HasMagnitude
+                && (width.Unit != LengthUnit.Px
+                    || width.Px > VulkanTextScene.MaximumStrokeWidth)
+                && !transparent(node.TextStrokeColor) {
                 RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextStrokeWidth,
                     VulkanSceneUnsupportedPrimitive.TextStroke)
             }
-            if !transparent(node.TextStrokeColor) {
-                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextStrokeColor,
-                    VulkanSceneUnsupportedPrimitive.TextStroke)
-            }
         }
-        if node.TextDecoration != TextDecoration.None {
+        if node.Kind != NodeKind.Text
+            && node.Kind != NodeKind.Entry
+            && node.Kind != NodeKind.Editor
+            && node.TextDecoration != TextDecoration.None {
             RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextDecoration,
                 VulkanSceneUnsupportedPrimitive.Text)
         }
         if node.Kind == NodeKind.Text && PassiveTextPresentations.Read(node) != nil {
-            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextStyleRanges,
-                VulkanSceneUnsupportedPrimitive.Text)
+            RecordUnsupportedRichTextFields(node)
         }
         if node.BorderStyle != BorderStyle.Solid
             && node.BorderStyle != BorderStyle.Dashed
@@ -198,57 +195,169 @@ internal partial class VulkanSceneCompiler {
                 }
             }
             case NodeKind.Entry {
-                if node.Buffer != "" {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EntryValue,
-                        VulkanSceneUnsupportedPrimitive.TextEntry)
-                }
-                if node.Placeholder != "" {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EntryPlaceholder,
-                        VulkanSceneUnsupportedPrimitive.TextEntry)
-                }
-                if !node.SelectionColor.Equals(defaultSelectionColor()) {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EntrySelectionColor,
-                        VulkanSceneUnsupportedPrimitive.TextEntry)
-                }
             }
             case NodeKind.Editor {
                 if let state = node.EditorState {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorDocument,
-                        VulkanSceneUnsupportedPrimitive.TextEditor)
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorController,
-                        VulkanSceneUnsupportedPrimitive.TextEditor)
-                    if state.LayerCount != 0 {
-                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorLayers,
+                    if EditorHasSlots(state) {
+                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorSlots,
                             VulkanSceneUnsupportedPrimitive.TextEditor)
                     }
-                }
-                if node.EditorReadOnly {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorReadOnly,
-                        VulkanSceneUnsupportedPrimitive.TextEditor)
-                }
-                if node.Placeholder != "" {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorPlaceholder,
-                        VulkanSceneUnsupportedPrimitive.TextEditor)
-                }
-                if !node.SelectionColor.Equals(defaultSelectionColor()) {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorSelectionColor,
-                        VulkanSceneUnsupportedPrimitive.TextEditor)
-                }
-                if !node.EditorCaretColor.Equals(Color.White) {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorCaretColor,
-                        VulkanSceneUnsupportedPrimitive.TextEditor)
-                }
-                if !transparent(node.EditorCurrentLineColor) {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorCurrentLineColor,
-                        VulkanSceneUnsupportedPrimitive.TextEditor)
-                }
-                if node.EditorOverscanLines != 3 {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorOverscanLines,
-                        VulkanSceneUnsupportedPrimitive.TextEditor)
+                    RecordUnsupportedEditorTextFields(node)
                 }
             }
             case _ { }
         }
+    }
+
+    private func RecordUnsupportedRichTextFields(node Node) {
+        let layout = TextLayouts.For(node, TextLayouts.ContentWidth(node))
+        guard let rich = layout.Rich else { return }
+        var shadows = node.HasTextShadowState && HasBlurredTextShadow(node.TextShadows)
+        var stroke = node.TextStrokeWidth.Px > VulkanTextScene.MaximumStrokeWidth
+            && !transparent(node.TextStrokeColor)
+        for line in rich.Lines {
+            for run in line.Runs {
+                let style = run.Style
+                if !stroke && style.StrokeWidth > VulkanTextScene.MaximumStrokeWidth
+                    && !transparent(style.StrokeColor) {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextStrokeWidth,
+                        VulkanSceneUnsupportedPrimitive.TextStroke)
+                    stroke = true
+                }
+                if !shadows && HasBlurredTextShadow(style.Shadows) {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
+                        VulkanSceneUnsupportedPrimitive.TextShadow)
+                    shadows = true
+                }
+            }
+        }
+    }
+
+    private func RecordUnsupportedEditorTextFields(node Node) {
+        let layout = TextEditorLayouts.For(node, TextLayouts.ContentWidth(node),
+            TextLayouts.ContentHeight(node))
+        var shadows = node.HasTextShadowState && HasBlurredTextShadow(node.TextShadows)
+        var stroke = node.TextStrokeWidth.Px > VulkanTextScene.MaximumStrokeWidth
+            && !transparent(node.TextStrokeColor)
+        for line in layout.Lines {
+            for run in line.Runs {
+                let style = run.Style
+                if !stroke && style.StrokeWidth > VulkanTextScene.MaximumStrokeWidth
+                    && !transparent(style.StrokeColor) {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextStrokeWidth,
+                        VulkanSceneUnsupportedPrimitive.TextStroke)
+                    stroke = true
+                }
+                if !shadows && HasBlurredTextShadow(style.Shadows) {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
+                        VulkanSceneUnsupportedPrimitive.TextShadow)
+                    shadows = true
+                }
+            }
+        }
+    }
+
+    private func HasBlurredTextShadow(shadows BoxShadowStack?) bool {
+        var index int32 = 0
+        let count = textShadowCount(shadows)
+        while index < count {
+            if textShadowAt(shadows, index).Blur.Px > 0.0F {
+                return true
+            }
+            index = index + 1
+        }
+        return false
+    }
+
+    private func HasSharpTextShadow(shadows BoxShadowStack?) bool {
+        var index int32 = 0
+        let count = textShadowCount(shadows)
+        while index < count {
+            let shadow = textShadowAt(shadows, index)
+            if shadow.Color.A > 0.0F && shadow.Blur.Px <= 0.0F {
+                return true
+            }
+            index = index + 1
+        }
+        return false
+    }
+
+    private func RecordColorEffectsSkipped(node Node) {
+        var shadow = false
+        var stroke = false
+        if node.HasTextShadowState && HasSharpTextShadow(node.TextShadows) {
+            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
+                VulkanSceneUnsupportedPrimitive.TextShadow)
+            shadow = true
+        }
+        if node.HasTextStrokeState && node.TextStrokeWidth.Unit == LengthUnit.Px
+            && node.TextStrokeWidth.Px > 0.0F && !transparent(node.TextStrokeColor) {
+            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextStrokeWidth,
+                VulkanSceneUnsupportedPrimitive.TextStroke)
+            stroke = true
+        }
+        if node.Kind == NodeKind.Text {
+            let layout = TextLayouts.For(node, TextLayouts.ContentWidth(node))
+            if let rich = layout.Rich {
+                for line in rich.Lines {
+                    for run in line.Runs {
+                        let style = run.Style
+                        if !shadow && HasSharpTextShadow(style.Shadows) {
+                            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
+                                VulkanSceneUnsupportedPrimitive.TextShadow)
+                            shadow = true
+                        }
+                        if !stroke && style.StrokeWidth > 0.0F && !transparent(style.StrokeColor) {
+                            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextStrokeWidth,
+                                VulkanSceneUnsupportedPrimitive.TextStroke)
+                            stroke = true
+                        }
+                    }
+                }
+            }
+        } else if node.Kind == NodeKind.Editor {
+            let layout = TextEditorLayouts.For(node, TextLayouts.ContentWidth(node),
+                TextLayouts.ContentHeight(node))
+            for line in layout.Lines {
+                for run in line.Runs {
+                    let style = run.Style
+                    if !shadow && HasSharpTextShadow(style.Shadows) {
+                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
+                            VulkanSceneUnsupportedPrimitive.TextShadow)
+                        shadow = true
+                    }
+                    if !stroke && style.StrokeWidth > 0.0F && !transparent(style.StrokeColor) {
+                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextStrokeWidth,
+                            VulkanSceneUnsupportedPrimitive.TextStroke)
+                        stroke = true
+                    }
+                }
+            }
+        }
+    }
+
+    private func TextEntrySupported(node Node) bool {
+        return textScene != nil
+    }
+
+    private func TextEditorSupported(node Node) bool {
+        guard let state = node.EditorState else { return false }
+        return textScene != nil && !EditorHasSlots(state)
+    }
+
+    private func EditorHasSlots(state TextEditorRenderState) bool {
+        var layerIndex int32 = 0
+        while layerIndex < state.LayerCount {
+            let layer = state.Layer(layerIndex)
+            for projection in layer.ReadProjections() {
+                if projection.Kind == TextProjectionKind.InlineSlot
+                    || projection.Kind == TextProjectionKind.BlockSlot {
+                    return true
+                }
+            }
+            layerIndex = layerIndex + 1
+        }
+        return false
     }
 
     private func HasBorderWidth(node Node, bounds ConservativeBounds) bool {
@@ -262,7 +371,10 @@ internal partial class VulkanSceneCompiler {
         node Node,
         bounds ConservativeBounds,
         opacity float32,
-        transformIndex int32) {
+        transformIndex int32,
+        axisAligned bool,
+        clipDepth int32) {
+        PaintBoxShadows(node, bounds, opacity, transformIndex, axisAligned)
         if let gradient = node.BackgroundGradient {
             PaintGradient(node, gradient, bounds, opacity, transformIndex)
         } else {
@@ -291,13 +403,225 @@ internal partial class VulkanSceneCompiler {
         PaintBorder(node, bounds, opacity, transformIndex)
         if node.Kind == NodeKind.Text {
             if let renderer = textScene {
-                if !renderer.Emit(frame, node, opacity, transformIndex) {
+                let emitted = renderer.Emit(frame, node, opacity, transformIndex)
+                if renderer.ConsumeColorEffectSkipped() {
+                    RecordColorEffectsSkipped(node)
+                }
+                if renderer.ConsumeColorGlyphFallback() {
+                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.Content,
+                        VulkanSceneUnsupportedPrimitive.Text)
+                }
+                if !emitted {
                     MarkUnsupported(node, VulkanSceneUnsupportedKind.Text,
                         VulkanSceneUnsupportedField.Content,
                         VulkanSceneUnsupportedPrimitive.Text)
                     unsupportedNodeCount = unsupportedNodeCount + 1
                 }
             }
+        }
+        if node.Kind == NodeKind.Entry {
+            if let renderer = textScene {
+                if TextEntrySupported(node)
+                    && TextClipSupported(node, axisAligned, clipDepth) {
+                    let emitted = renderer.EmitEntry(frame, node, opacity, transformIndex)
+                    if renderer.ConsumeColorEffectSkipped() {
+                        RecordColorEffectsSkipped(node)
+                    }
+                    if renderer.ConsumeColorGlyphFallback() {
+                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.Content,
+                            VulkanSceneUnsupportedPrimitive.TextEntry)
+                    }
+                    if !emitted {
+                        MarkUnsupported(node, VulkanSceneUnsupportedKind.Entry,
+                            VulkanSceneUnsupportedField.Content,
+                            VulkanSceneUnsupportedPrimitive.TextEntry)
+                        unsupportedNodeCount = unsupportedNodeCount + 1
+                    }
+                }
+            }
+        }
+        if node.Kind == NodeKind.Editor {
+            if let renderer = textScene {
+                if TextEditorSupported(node)
+                    && TextClipSupported(node, axisAligned, clipDepth) {
+                    let emitted = renderer.EmitEditor(frame, node, opacity, transformIndex)
+                    if renderer.ConsumeColorEffectSkipped() {
+                        RecordColorEffectsSkipped(node)
+                    }
+                    if renderer.ConsumeColorGlyphFallback() {
+                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.Content,
+                            VulkanSceneUnsupportedPrimitive.TextEditor)
+                    }
+                    if !emitted {
+                        MarkUnsupported(node, VulkanSceneUnsupportedKind.Editor,
+                            VulkanSceneUnsupportedField.Content,
+                            VulkanSceneUnsupportedPrimitive.TextEditor)
+                        unsupportedNodeCount = unsupportedNodeCount + 1
+                    }
+                }
+            }
+        }
+    }
+
+    private func TextClipSupported(node Node, axisAligned bool, clipDepth int32) bool {
+        var supported = true
+        var marked = false
+        if !axisAligned {
+            MarkTextClipUnsupported(node, VulkanSceneUnsupportedPrimitive.RectClipNonAxisAligned)
+            marked = true
+            supported = false
+        }
+        if clipDepth >= MaxRectClipDepth {
+            if marked {
+                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.Content,
+                    VulkanSceneUnsupportedPrimitive.RectClipDepth)
+            } else {
+                MarkTextClipUnsupported(node, VulkanSceneUnsupportedPrimitive.RectClipDepth)
+            }
+            supported = false
+        }
+        return supported
+    }
+
+    private func MarkTextClipUnsupported(
+        node Node,
+        primitive VulkanSceneUnsupportedPrimitive) {
+        if node.Kind == NodeKind.Entry {
+            MarkUnsupported(node, VulkanSceneUnsupportedKind.Entry,
+                VulkanSceneUnsupportedField.Content, primitive)
+            unsupportedNodeCount = unsupportedNodeCount + 1
+        } else if node.Kind == NodeKind.Editor {
+            MarkUnsupported(node, VulkanSceneUnsupportedKind.Editor,
+                VulkanSceneUnsupportedField.Content, primitive)
+            unsupportedNodeCount = unsupportedNodeCount + 1
+        }
+    }
+
+    private func PaintBoxShadows(
+        node Node,
+        bounds ConservativeBounds,
+        opacity float32,
+        transformIndex int32,
+        axisAligned bool) {
+        let count = boxShadowCount(node.BoxShadows)
+        if count == 0 {
+            return
+        }
+        let supportedOwner = node.Kind == NodeKind.Container || node.Kind == NodeKind.Button
+        let supportedContext = supportedOwner
+            && axisAligned
+            && !node.HasClipPath
+            && node.OverflowX == Overflow.Visible
+            && node.OverflowY == Overflow.Visible
+        var index = count - 1
+        while index >= 0 {
+            let shadow = boxShadowAt(node.BoxShadows, index)
+            let validGeometry = Finite(shadow.OffsetX.Value)
+                && Finite(shadow.OffsetY.Value)
+                && Finite(shadow.Blur.Value)
+                && Finite(shadow.Spread.Value)
+                && shadow.Blur.Value >= 0.0F
+            if !supportedOwner || !supportedContext || shadow.Inset || !validGeometry {
+                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BoxShadows,
+                    VulkanSceneUnsupportedPrimitive.BoxShadow)
+            } else if shadow.Color.A > 0.0F && !bounds.IsEmpty {
+                frame.AddShadow(ShadowRecord{
+                    Bounds: bounds,
+                    RadiusTopLeft: Radius(node.BorderTopLeftRadius, node.BorderRadius, bounds),
+                    RadiusTopRight: Radius(node.BorderTopRightRadius, node.BorderRadius, bounds),
+                    RadiusBottomRight: Radius(node.BorderBottomRightRadius, node.BorderRadius, bounds),
+                    RadiusBottomLeft: Radius(node.BorderBottomLeftRadius, node.BorderRadius, bounds),
+                    OffsetX: shadow.OffsetX.Px,
+                    OffsetY: shadow.OffsetY.Px,
+                    Spread: shadow.Spread.Px,
+                    Blur: shadow.Blur.Px,
+                    Color: EffectiveColor(shadow.Color, opacity),
+                    MaskId: ResourceId{},
+                    Inset: false,
+                    TransformIndex: transformIndex,
+                })
+            }
+            index = index - 1
+        }
+    }
+
+    private func ExpandedChunkBounds(
+        node Node,
+        bounds ConservativeBounds,
+        eligible bool) ConservativeBounds {
+        let count = boxShadowCount(node.BoxShadows)
+        if bounds.IsEmpty {
+            return bounds
+        }
+        var result = bounds
+        if eligible {
+            var index int32 = 0
+            while index < count {
+                let shadow = boxShadowAt(node.BoxShadows, index)
+                if !shadow.Inset && shadow.Color.A > 0.0F
+                    && Finite(shadow.OffsetX.Value)
+                    && Finite(shadow.OffsetY.Value)
+                    && Finite(shadow.Blur.Value)
+                    && Finite(shadow.Spread.Value)
+                    && shadow.Blur.Value >= 0.0F {
+                    let spread = shadow.Spread.Px > 0.0F ? shadow.Spread.Px : 0.0F
+                    let extent = shadow.Blur.Px + spread
+                    let candidate = ConservativeBounds{
+                        X: bounds.X + shadow.OffsetX.Px - extent,
+                        Y: bounds.Y + shadow.OffsetY.Px - extent,
+                        Width: bounds.Width + extent + extent,
+                        Height: bounds.Height + extent + extent,
+                    }
+                    result = UnionBounds(result, candidate)
+                }
+                index = index + 1
+            }
+        }
+        if node.Kind == NodeKind.Text {
+            let pad = TextEffectChunkPad(node)
+            if pad > 0.0F { result = result.Inflate(pad) }
+        }
+        return result
+    }
+
+    private func TextEffectChunkPad(node Node) float32 {
+        var result = textPaintPad(node.TextStrokeWidth.Px, node.TextShadows)
+        let layout = TextLayouts.For(node, TextLayouts.ContentWidth(node))
+        if let rich = layout.Rich {
+            for line in rich.Lines {
+                if line.PaintPad > result { result = line.PaintPad }
+            }
+        }
+        return result
+    }
+
+    private func ShadowContextSupported(node Node) bool {
+        if node.Kind != NodeKind.Container && node.Kind != NodeKind.Button {
+            return false
+        }
+        if node.HasClipPath
+            || node.OverflowX != Overflow.Visible
+            || node.OverflowY != Overflow.Visible {
+            return false
+        }
+        if !node.HasVisualTransform {
+            return true
+        }
+        let matrix = TransformGeometry.Matrix(node)
+        return Finite(matrix.B) && Finite(matrix.C)
+            && matrix.B == 0.0F && matrix.C == 0.0F
+    }
+
+    private func UnionBounds(left ConservativeBounds, right ConservativeBounds) ConservativeBounds {
+        let x = left.X < right.X ? left.X : right.X
+        let y = left.Y < right.Y ? left.Y : right.Y
+        let rightEdge = left.Right > right.Right ? left.Right : right.Right
+        let bottomEdge = left.Bottom > right.Bottom ? left.Bottom : right.Bottom
+        return ConservativeBounds{
+            X: x,
+            Y: y,
+            Width: rightEdge - x,
+            Height: bottomEdge - y,
         }
     }
 

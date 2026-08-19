@@ -2,7 +2,7 @@ package Goo
 
 import System
 
-internal unsafe class VulkanFrameSlot : IDisposable {
+internal unsafe partial class VulkanFrameSlot : IDisposable {
     private let device VkDevice
     private let dispatch VkDeviceDispatch
     private let commandBuffer VkCommandBuffer

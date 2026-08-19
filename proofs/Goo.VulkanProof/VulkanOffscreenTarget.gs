@@ -383,7 +383,7 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
         if status != VkConstants.VK_SUCCESS {
             return status
         }
-        let invalidateResult = allocator.InvalidateAfterFence(stagingAllocation!!)
+        let invalidateResult = allocator.InvalidateAfterFence(stagingAllocation!!, 0uL, byteSize)
         if invalidateResult != VkConstants.VK_SUCCESS {
             return invalidateResult
         }

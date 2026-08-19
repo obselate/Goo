@@ -2,6 +2,7 @@ package GooPackageSmoke
 
 import System
 import System.IO
+import System.Text
 import System.Threading
 import Goo
 
@@ -101,6 +102,13 @@ class SmokeCell : Cell {
           Width: 224,
           Height: 48,
           BorderRadius: 12,
+          BoxShadow: BoxShadow{
+            OffsetX: 3,
+            OffsetY: 4,
+            Blur: 6,
+            Spread: 1,
+            Color: Color.Rgba(0, 0, 0, 160),
+          },
           BackgroundGradient: LinearGradient(90.0, []GradientStop{
             GradientStop{ Offset: 0.0, Color: Color.Rgb(24, 68, 132) },
             GradientStop{ Offset: 0.3, Color: Color.Rgb(46, 126, 196) },
@@ -227,7 +235,493 @@ class SmokeCell : Cell {
   }
 }
 
-class RegisteredFontSmokeCell : Cell {
+class S09RSmokeCell : Cell {
+  shared {
+    let Root ElementHandle = ElementHandle{}
+    let SolidBox ElementHandle = ElementHandle{}
+    let RoundedBox ElementHandle = ElementHandle{}
+    let SolidBorderBox ElementHandle = ElementHandle{}
+    let DashedBorderBox ElementHandle = ElementHandle{}
+    let DottedBorderBox ElementHandle = ElementHandle{}
+    let LinearGradientBox ElementHandle = ElementHandle{}
+    let RadialGradientBox ElementHandle = ElementHandle{}
+    let TransformOuter ElementHandle = ElementHandle{}
+    let TransformInner ElementHandle = ElementHandle{}
+    let ScrollViewport ElementHandle = ElementHandle{}
+    let ClipOuter ElementHandle = ElementHandle{}
+    let ClipInner ElementHandle = ElementHandle{}
+    let ScrollLeaf ElementHandle = ElementHandle{}
+    let HiddenLeaf ElementHandle = ElementHandle{}
+    let OpacityLeaf ElementHandle = ElementHandle{}
+    let BackStack ElementHandle = ElementHandle{}
+    let FrontStack ElementHandle = ElementHandle{}
+  }
+
+  override func Build() Blob {
+    return Container{
+      Width: Length.Percent(100),
+      Height: Length.Percent(100),
+      Handle: S09RSmokeCell.Root,
+      Position: PositionType.Relative,
+      BackgroundColor: Color.Rgb(12, 20, 32),
+      Children: {
+        Container{
+          Position: PositionType.Absolute,
+          Left: 10,
+          Top: 10,
+          Width: 74,
+          Height: 38,
+          Handle: S09RSmokeCell.SolidBox,
+          BackgroundColor: Color.Rgb(42, 112, 188),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 94,
+          Top: 10,
+          Width: 74,
+          Height: 38,
+          Handle: S09RSmokeCell.RoundedBox,
+          BorderRadius: 12,
+          BackgroundColor: Color.Rgb(82, 176, 112),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 178,
+          Top: 10,
+          Width: 74,
+          Height: 38,
+          Handle: S09RSmokeCell.SolidBorderBox,
+          BorderStyle: BorderStyle.Solid,
+          BorderTopWidth: 2,
+          BorderRightWidth: 3,
+          BorderBottomWidth: 4,
+          BorderLeftWidth: 5,
+          BorderTopColor: Color.Rgb(232, 96, 72),
+          BorderRightColor: Color.Rgb(96, 224, 128),
+          BorderBottomColor: Color.Rgb(72, 144, 232),
+          BorderLeftColor: Color.Rgb(224, 184, 72),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 262,
+          Top: 10,
+          Width: 60,
+          Height: 38,
+          Handle: S09RSmokeCell.DashedBorderBox,
+          BorderStyle: BorderStyle.Dashed,
+          BorderTopWidth: 3,
+          BorderRightWidth: 3,
+          BorderBottomWidth: 3,
+          BorderLeftWidth: 3,
+          BorderTopColor: Color.Rgb(232, 96, 72),
+          BorderRightColor: Color.Rgb(96, 224, 128),
+          BorderBottomColor: Color.Rgb(72, 144, 232),
+          BorderLeftColor: Color.Rgb(224, 184, 72),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 332,
+          Top: 10,
+          Width: 60,
+          Height: 38,
+          Handle: S09RSmokeCell.DottedBorderBox,
+          BorderStyle: BorderStyle.Dotted,
+          BorderTopWidth: 3,
+          BorderRightWidth: 3,
+          BorderBottomWidth: 3,
+          BorderLeftWidth: 3,
+          BorderTopColor: Color.Rgb(232, 96, 72),
+          BorderRightColor: Color.Rgb(96, 224, 128),
+          BorderBottomColor: Color.Rgb(72, 144, 232),
+          BorderLeftColor: Color.Rgb(224, 184, 72),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 10,
+          Top: 60,
+          Width: 120,
+          Height: 52,
+          Handle: S09RSmokeCell.LinearGradientBox,
+          BackgroundGradient: LinearGradient(90.0, []GradientStop{
+            GradientStop{ Offset: 0.0, Color: Color.Rgb(24, 68, 132) },
+            GradientStop{ Offset: 0.33, Color: Color.Rgb(46, 126, 196) },
+            GradientStop{ Offset: 0.66, Color: Color.Rgb(88, 172, 210) },
+            GradientStop{ Offset: 1.0, Color: Color.Rgb(38, 92, 152) },
+          }),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 140,
+          Top: 60,
+          Width: 120,
+          Height: 52,
+          Handle: S09RSmokeCell.RadialGradientBox,
+          BackgroundGradient: RadialGradient(0.5, 0.5, 0.5, []GradientStop{
+            GradientStop{ Offset: 0.0, Color: Color.Rgb(232, 178, 78) },
+            GradientStop{ Offset: 1.0, Color: Color.Rgb(128, 54, 92) },
+          }),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 270,
+          Top: 60,
+          Width: 80,
+          Height: 60,
+          Handle: S09RSmokeCell.TransformOuter,
+          Transform: PanelTransform{ TranslateX: 4, TranslateY: 2 },
+          BackgroundColor: Color.Rgb(24, 42, 72),
+          Children: {
+            Container{
+              Width: 52,
+              Height: 36,
+              Handle: S09RSmokeCell.TransformInner,
+              Transform: PanelTransform{ TranslateX: 6, TranslateY: 5 },
+              BackgroundColor: Color.Rgb(52, 116, 188),
+              Children: {
+                Container{
+                  Width: 24,
+                  Height: 20,
+                  BackgroundColor: Color.Rgb(196, 224, 88),
+                },
+              },
+            },
+          },
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 10,
+          Top: 136,
+          Width: 92,
+          Height: 54,
+          Handle: S09RSmokeCell.ScrollViewport,
+          Overflow: Overflow.Scroll,
+          BackgroundColor: Color.Rgb(18, 32, 52),
+          Children: {
+            Container{
+              Width: 180,
+              Height: 46,
+              Handle: S09RSmokeCell.ClipOuter,
+              Overflow: Overflow.Hidden,
+              BackgroundColor: Color.Rgb(24, 48, 72),
+              Children: {
+                Container{
+                  Width: 164,
+                  Height: 38,
+                  Handle: S09RSmokeCell.ClipInner,
+                  Overflow: Overflow.Hidden,
+                  BackgroundColor: Color.Rgb(32, 64, 88),
+                  Children: {
+                    Container{
+                      Width: 28,
+                      Height: 24,
+                      Handle: S09RSmokeCell.ScrollLeaf,
+                      BackgroundColor: Color.Rgb(52, 196, 112),
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 116,
+          Top: 146,
+          Width: 24,
+          Height: 24,
+          Handle: S09RSmokeCell.HiddenLeaf,
+          Visibility: Visibility.Hidden,
+          BackgroundColor: Color.Rgb(220, 48, 48),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 148,
+          Top: 146,
+          Width: 24,
+          Height: 24,
+          Handle: S09RSmokeCell.OpacityLeaf,
+          Opacity: 0.5,
+          BackgroundColor: Color.Rgb(232, 196, 48),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 204,
+          Top: 144,
+          Width: 44,
+          Height: 44,
+          Handle: S09RSmokeCell.BackStack,
+          ZIndex: -1,
+          BackgroundColor: Color.Rgb(36, 76, 208),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 204,
+          Top: 144,
+          Width: 44,
+          Height: 44,
+          Handle: S09RSmokeCell.FrontStack,
+          ZIndex: 1,
+          BackgroundColor: Color.Rgb(220, 48, 48),
+        },
+      },
+    }
+  }
+}
+
+class RegisteredFontCorpusSmokeCell : Cell {
+  shared {
+    let Root ElementHandle = ElementHandle{}
+    let Cff ElementHandle = ElementHandle{}
+    let StyleRegular ElementHandle = ElementHandle{}
+    let StyleBold ElementHandle = ElementHandle{}
+    let StyleItalic ElementHandle = ElementHandle{}
+    let StyleBoldItalic ElementHandle = ElementHandle{}
+    let VariableRegular ElementHandle = ElementHandle{}
+    let VariableBold ElementHandle = ElementHandle{}
+    let Fallback ElementHandle = ElementHandle{}
+  }
+
+  override func Build() Blob {
+    return Container{
+      Width: Length.Percent(100),
+      Height: Length.Percent(100),
+      Padding: 8,
+      Gap: 3,
+      AlignItems: AlignItems.FlexStart,
+      Handle: RegisteredFontCorpusSmokeCell.Root,
+      BackgroundColor: Color.Rgb(12, 20, 32),
+      Children: {
+        Text{
+          Content: "A a registered fallback",
+          FontFamily: "GooSmokePrimary,GooSmokeFallback",
+          FontSize: 18,
+          Color: Color.White,
+        },
+        Text{
+          Content: "!",
+          FontFamily: "GooSmokeCff",
+          FontSize: 18,
+          Handle: RegisteredFontCorpusSmokeCell.Cff,
+          Color: Color.White,
+        },
+        Text{
+          Content: "Aa",
+          FontFamily: "GooSmokeCffSecond",
+          FontSize: 18,
+          Color: Color.White,
+        },
+        Text{
+          Content: "A",
+          FontFamily: "GooSmokeStyle",
+          FontSize: 18,
+          FontWeight: 400,
+          Handle: RegisteredFontCorpusSmokeCell.StyleRegular,
+          Color: Color.White,
+        },
+        Text{
+          Content: "A",
+          FontFamily: "GooSmokeStyle",
+          FontSize: 18,
+          FontWeight: 700,
+          Handle: RegisteredFontCorpusSmokeCell.StyleBold,
+          Color: Color.White,
+        },
+        Text{
+          Content: "A",
+          FontFamily: "GooSmokeStyle",
+          FontSize: 18,
+          FontStyle: FontStyle.Italic,
+          Handle: RegisteredFontCorpusSmokeCell.StyleItalic,
+          Color: Color.White,
+        },
+        Text{
+          Content: "A",
+          FontFamily: "GooSmokeStyle",
+          FontSize: 18,
+          FontWeight: 700,
+          FontStyle: FontStyle.Italic,
+          Handle: RegisteredFontCorpusSmokeCell.StyleBoldItalic,
+          Color: Color.White,
+        },
+        Text{
+          Content: ".",
+          FontFamily: "GooSmokeTtc",
+          FontSize: 18,
+          FontWeight: 400,
+          Color: Color.White,
+        },
+        Text{
+          Content: ".",
+          FontFamily: "GooSmokeTtc",
+          FontSize: 18,
+          FontWeight: 700,
+          Color: Color.White,
+        },
+        Text{
+          Content: "A",
+          FontFamily: "GooSmokeOtc",
+          FontSize: 18,
+          FontWeight: 400,
+          Color: Color.White,
+        },
+        Text{
+          Content: "A",
+          FontFamily: "GooSmokeOtc",
+          FontSize: 18,
+          FontWeight: 700,
+          Color: Color.White,
+        },
+        Text{
+          Content: "A",
+          FontFamily: "GooSmokeVariable",
+          FontSize: 18,
+          FontWeight: 400,
+          Handle: RegisteredFontCorpusSmokeCell.VariableRegular,
+          Color: Color.White,
+        },
+        Text{
+          Content: "A",
+          FontFamily: "GooSmokeVariable",
+          FontSize: 18,
+          FontWeight: 700,
+          Handle: RegisteredFontCorpusSmokeCell.VariableBold,
+          Color: Color.White,
+        },
+        Text{
+          Content: "!",
+          FontFamily: "GooSmokeTtc,GooSmokeCff",
+          FontSize: 18,
+          Handle: RegisteredFontCorpusSmokeCell.Fallback,
+          Color: Color.White,
+        },
+      },
+    }
+  }
+}
+
+class TextControlsSmokeCell : Cell {
+  shared {
+    let Root ElementHandle = ElementHandle{}
+    let Entry ElementHandle = ElementHandle{}
+    let Editor ElementHandle = ElementHandle{}
+    let Rich ElementHandle = ElementHandle{}
+  }
+
+  private let document TextDocument
+  private let controller TextEditorController
+  private let presentation TextPresentationLayer
+  private let richContent string
+
+  init(nativeDocument TextDocument, nativeController TextEditorController) {
+    document = nativeDocument
+    controller = nativeController
+    presentation = TextPresentationLayer(document)
+    richContent = "Rich \u3041\u4c2e שלום cafe\u0301 ffi office wraps across the passive text box"
+    let source = document.GetText()
+    let replacementStart = source.IndexOf("projection")
+    let hiddenStart = source.IndexOf("secret")
+    if replacementStart < 0 || hiddenStart < 0 {
+      throw InvalidOperationException("Text controls smoke corpus is missing its projections")
+    }
+    presentation.SetStyle("line-style", TextRange{ Start: 0, Length: 3 }, Style{
+      Color: Color.Rgb(252, 190, 72),
+      FontWeight: 700,
+      TextDecoration: TextDecoration.Underline,
+    })
+    presentation.SetStyle("cjk-style", TextRange{ Start: 4, Length: 2 }, Style{
+      FontFamily: "GooSmokeCjk",
+      Color: Color.Rgb(108, 224, 196),
+      FontWeight: 700,
+      TextStrokeWidth: 2,
+      TextStrokeColor: Color.Rgb(56, 112, 176),
+      TextShadow: TextShadow{
+        OffsetX: 1,
+        OffsetY: 1,
+        Blur: 0,
+        Color: Color.Rgba(0, 0, 0, 160),
+      },
+    })
+    presentation.SetReplacement("line-replacement",
+      TextRange{ Start: replacementStart, Length: "projection".Length }, "rendered")
+    presentation.SetHiddenRange("line-hidden",
+      TextRange{ Start: hiddenStart, Length: "secret".Length })
+  }
+
+  internal func DisposePresentation() {
+    presentation.Dispose()
+  }
+
+  override func Build() Blob {
+    return Container{
+      Width: Length.Percent(100),
+      Height: Length.Percent(100),
+      Handle: TextControlsSmokeCell.Root,
+      Padding: 12,
+      Gap: 10,
+      BackgroundColor: Color.Rgb(12, 20, 32),
+      Children: {
+        TextEntry{
+          Width: 296,
+          Height: 32,
+          Handle: TextControlsSmokeCell.Entry,
+          Value: "focused entry",
+          BackgroundColor: Color.Rgb(28, 42, 62),
+          Color: Color.White,
+          FontSize: 16,
+          TextDecoration: TextDecoration.Underline,
+        },
+        TextEditor(document, controller, []TextPresentationLayer{ presentation }){
+          Width = 296,
+          Height = 120,
+          Handle = TextControlsSmokeCell.Editor,
+          BackgroundColor = Color.Rgb(20, 32, 50),
+          Color = Color.Rgb(224, 232, 244),
+          FontSize = 16,
+          TextDecoration = TextDecoration.LineThrough,
+        },
+        Text{
+          Content: richContent,
+          Width: 296,
+          Height: 72,
+          Handle: TextControlsSmokeCell.Rich,
+          Color: Color.Rgb(224, 232, 244),
+          FontSize: 16,
+          TextWrap: TextWrap.Wrap,
+          TextStrokeWidth: 2,
+          TextStrokeColor: Color.Rgb(56, 112, 176),
+          TextShadow: TextShadow{
+            OffsetX: 1,
+            OffsetY: 1,
+            Blur: 0,
+            Color: Color.Rgba(0, 0, 0, 160),
+          },
+          TextDecoration: TextDecoration.LineThrough,
+          StyleRanges: []TextStyleRange{
+            TextStyleRange{
+              Range: TextRange{ Start: 0, Length: 4 },
+              Style: Style{
+                Color: Color.Rgb(252, 190, 72),
+                FontSize: 22,
+                FontWeight: 700,
+                TextDecoration: TextDecoration.Underline,
+              },
+            },
+            TextStyleRange{
+              Range: TextRange{ Start: 5, Length: 2 },
+              Style: Style{
+                FontFamily: "GooSmokeCjk",
+                Color: Color.Rgb(108, 224, 196),
+                FontWeight: 700,
+              },
+            },
+          },
+        },
+      },
+    }
+  }
+}
+
+class TextReopenSmokeCell : Cell {
   shared {
     let Root ElementHandle = ElementHandle{}
   }
@@ -236,15 +730,511 @@ class RegisteredFontSmokeCell : Cell {
     return Container{
       Width: Length.Percent(100),
       Height: Length.Percent(100),
-      Handle: RegisteredFontSmokeCell.Root,
+      Padding: 12,
+      BackgroundColor: Color.Rgb(12, 20, 32),
       Children: {
         Text{
-          Content: "A a",
-          FontFamily: "GooSmokePrimary,GooSmokeFallback",
-          FontSize: 28,
+          Content: "Goo reopened text",
+          Handle: TextReopenSmokeCell.Root,
+          FontSize: 18,
           Color: Color.White,
         },
       },
+    }
+  }
+}
+
+class TextAtlasSmokeCell : Cell {
+  shared {
+    let Root ElementHandle = ElementHandle{}
+  }
+
+  private let content string
+  private var phase State[int32]
+
+  init(nativeContent string) {
+    content = nativeContent
+    phase = Track(0)
+  }
+
+  internal func SetPhase(value int32) {
+    phase.Value = value
+  }
+
+  override func Build() Blob {
+    return Container{
+      Width: Length.Percent(100),
+      Height: Length.Percent(100),
+      Handle: TextAtlasSmokeCell.Root,
+      Padding: 8,
+      BackgroundColor: Color.Rgb(12, 20, 32),
+      Children: {
+        Text{
+          Content: content,
+          FontSize: 18,
+          Color: Color.White,
+          StyleRanges: AtlasStyleRanges(phase.Value),
+        },
+      },
+    }
+  }
+}
+
+func AtlasFontFamily(group int32, index int32) string {
+  return "GooAtlas" + group.ToString() + "_" + index.ToString()
+}
+
+func AtlasStyleRanges(group int32) []TextStyleRange {
+  let length int32 = 1
+  return []TextStyleRange{
+    TextStyleRange{ Range: TextRange{ Start: 0, Length: length }, Style: Style{ FontFamily: AtlasFontFamily(group, 0) } },
+    TextStyleRange{ Range: TextRange{ Start: length, Length: length }, Style: Style{ FontFamily: AtlasFontFamily(group, 1) } },
+    TextStyleRange{ Range: TextRange{ Start: length * 2, Length: length }, Style: Style{ FontFamily: AtlasFontFamily(group, 2) } },
+    TextStyleRange{ Range: TextRange{ Start: length * 3, Length: length }, Style: Style{ FontFamily: AtlasFontFamily(group, 3) } },
+  }
+}
+
+func BuildAtlasCorpus() string {
+  let builder = StringBuilder()
+  var codepoint int32 = 65
+  while codepoint < 65 + 4 {
+    builder.Append(Char.ConvertFromUtf32(codepoint))
+    codepoint = codepoint + 1
+  }
+  return builder.ToString()
+}
+
+func DiagnosticCounterValue(diagnostics string, name string) uint64 {
+  let marker = "\"" + name + "\":"
+  let start = diagnostics.IndexOf(marker)
+  if start < 0 { return 0uL }
+  var index = start + marker.Length
+  var value uint64
+  var digits int32
+  while index < diagnostics.Length {
+    let current = diagnostics[index]
+    if current < '0' || current > '9' { break }
+    let digit = uint64(int32(current) - int32('0'))
+    if value > (uint64.MaxValue - digit) / 10uL {
+      throw OverflowException("diagnostic counter overflow")
+    }
+    value = value * 10uL + digit
+    digits = digits + 1
+    index = index + 1
+  }
+  return digits == 0 ? 0uL : value
+}
+
+func RunS09RSmoke() {
+  if Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") != "1" {
+    throw InvalidOperationException("GOO_VK_DIAGNOSTICS=1 is required")
+  }
+  let root = S09RSmokeCell{}
+  let capturedError = StringWriter()
+  let originalError = Console.Error
+  var window Window? = nil
+  Console.SetError(capturedError)
+  try {
+    let opened = Window{
+      Title: "Goo S09R public smoke",
+      Width: 400,
+      Height: 220,
+      VSync: false,
+      Root: root,
+    }
+    window = opened
+    opened.Open()
+    opened.Pump(0.0)
+    if !opened.IsOpen || !S09RSmokeCell.Root.IsMounted
+      || !S09RSmokeCell.ScrollViewport.IsMounted
+      || !S09RSmokeCell.ScrollLeaf.IsMounted {
+      throw InvalidOperationException("S09R smoke did not mount its public handles")
+    }
+    var pumps int32
+    while pumps < 8 {
+      opened.Pump(0.016)
+      pumps = pumps + 1
+    }
+    if !opened.IsOpen
+      || S09RSmokeCell.Root.BorderBox.Width <= 0.0
+      || S09RSmokeCell.Root.BorderBox.Height <= 0.0
+      || S09RSmokeCell.SolidBox.BorderBox.Width <= 0.0
+      || S09RSmokeCell.RoundedBox.BorderBox.Height <= 0.0
+      || S09RSmokeCell.SolidBorderBox.BorderBox.Width <= 0.0
+      || S09RSmokeCell.DashedBorderBox.BorderBox.Height <= 0.0
+      || S09RSmokeCell.DottedBorderBox.BorderBox.Width <= 0.0
+      || S09RSmokeCell.LinearGradientBox.BorderBox.Height <= 0.0
+      || S09RSmokeCell.RadialGradientBox.BorderBox.Width <= 0.0
+      || S09RSmokeCell.TransformOuter.BorderBox.Width <= 0.0
+      || S09RSmokeCell.TransformInner.BorderBox.Height <= 0.0
+      || S09RSmokeCell.ScrollViewport.BorderBox.Width <= 0.0
+      || S09RSmokeCell.ClipOuter.BorderBox.Height <= 0.0
+      || S09RSmokeCell.ClipInner.BorderBox.Width <= 0.0
+      || S09RSmokeCell.ScrollLeaf.BorderBox.Height <= 0.0
+      || S09RSmokeCell.OpacityLeaf.BorderBox.Width <= 0.0
+      || S09RSmokeCell.BackStack.BorderBox.Height <= 0.0
+      || S09RSmokeCell.FrontStack.BorderBox.Width <= 0.0 {
+      throw InvalidOperationException("S09R smoke did not settle positive public geometry")
+    }
+    let beforeOffset = S09RSmokeCell.ScrollViewport.ScrollOffset.X
+    let before = S09RSmokeCell.ScrollLeaf.BorderBox
+    if !S09RSmokeCell.ScrollViewport.ScrollTo(24.0, 0.0) {
+      throw InvalidOperationException("S09R smoke public scroll failed")
+    }
+    opened.Pump(0.05)
+    let afterOffset = S09RSmokeCell.ScrollViewport.ScrollOffset.X
+    let after = S09RSmokeCell.ScrollLeaf.BorderBox
+    let offsetShift = afterOffset - beforeOffset
+    let borderShift = before.X - after.X
+    if afterOffset <= beforeOffset
+      || after.Y != before.Y
+      || after.Width != before.Width
+      || after.Height != before.Height
+      || Math.Abs(borderShift - offsetShift) > 0.01 {
+      throw InvalidOperationException("S09R smoke public scroll was not applied once")
+    }
+    opened.RequestClose()
+    opened.Pump(0.0)
+    if opened.IsOpen {
+      throw InvalidOperationException("S09R smoke window did not close")
+    }
+    let diagnostics = capturedError.ToString()
+    let validationErrors = DiagnosticCounterValue(diagnostics, "validationErrorCount")
+    let resultFailures = DiagnosticCounterValue(diagnostics, "resultFailureCount")
+    if diagnostics.Contains("\"kind\":\"fatal\"")
+      || diagnostics.Contains("\"event\":325")
+      || validationErrors != 0uL || resultFailures != 0uL {
+      throw InvalidOperationException("S09R smoke emitted Vulkan diagnostics errors")
+    }
+    let drawCount = DiagnosticCounterValue(diagnostics, "drawCount")
+    let planCompileCount = DiagnosticCounterValue(diagnostics, "planCompileCount")
+    let recordCount = DiagnosticCounterValue(diagnostics, "recordCount")
+    if drawCount <= 0 || planCompileCount <= 0 || recordCount <= 0 {
+      throw InvalidOperationException("S09R smoke did not record draw, plan, and record work")
+    }
+    Console.SetError(originalError)
+    Console.WriteLine("s09r: mounted=1 scroll=1 drawCount=" + drawCount.ToString()
+      + " planCompileCount=" + planCompileCount.ToString()
+      + " recordCount=" + recordCount.ToString() + " close=1")
+  } finally {
+    Console.SetError(originalError)
+    if let active = window {
+      if active.IsOpen {
+        active.RequestClose()
+        active.Pump(0.0)
+      }
+    }
+  }
+}
+
+func RunTextControlsSmoke() {
+  if Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") != "1" {
+    throw InvalidOperationException("GOO_VK_DIAGNOSTICS=1 is required")
+  }
+  let document = TextDocument(
+    "CJK \u3041\u4c2e\n"
+      + "RTL שלום مرحبا بالعالم\n"
+      + "Combining cafe\u0301 e\u0301 and ligature ffi office\n"
+      + "Wrapping projection hidden secret line with enough words to wrap across the editor viewport\n"
+      + "offscreen tail alpha beta gamma delta epsilon zeta eta theta\n"
+      + "final caret line for recovery and focus follow")
+  let controller = TextEditorController(document)
+  let root = TextControlsSmokeCell(document, controller)
+  let cjkPath = Path.Combine(AppContext.BaseDirectory, "HarfBuzz-cff-style-italic.otf")
+  if !File.Exists(cjkPath) {
+    throw FileNotFoundException("Text controls smoke CJK font asset is missing")
+  }
+  let cjkFont = FontSource("GooSmokeCjk", 400, false, File.ReadAllBytes(cjkPath))
+  cjkFont.Register()
+  let capturedError = StringWriter()
+  let originalError = Console.Error
+  var window Window? = nil
+  var secondWindow Window? = nil
+  Console.SetError(capturedError)
+  try {
+    let opened = Window{
+      Title: "Goo text controls smoke",
+      Width: 336,
+      Height: 320,
+      VSync: false,
+      Root: root,
+    }
+    window = opened
+    opened.Open()
+    opened.Pump(0.0)
+    if !opened.IsOpen || !TextControlsSmokeCell.Root.IsMounted
+      || !TextControlsSmokeCell.Entry.IsMounted || !TextControlsSmokeCell.Editor.IsMounted
+      || !TextControlsSmokeCell.Rich.IsMounted {
+      throw InvalidOperationException("Text controls smoke did not mount its controls")
+    }
+    controller.Focus()
+    if !controller.IsFocused {
+      throw InvalidOperationException("Text controls smoke controller did not retain focus")
+    }
+    controller.Selection = TextSelection{
+      Anchor: TextPosition{ Offset: 0, Affinity: TextAffinity.Upstream },
+      Active: TextPosition{ Offset: 3, Affinity: TextAffinity.Downstream },
+    }
+    var selectionRects = [16]ElementRect
+    var selectionDestination = selectionRects.AsSpan()
+    var selectionRequired int32
+    let selectionGeometry = TextControlsSmokeCell.Editor.TryCopyTextRangeRects(
+      TextRange{ Start: 0, Length: 3 }, TextCoordinateSpace.Content,
+      selectionDestination, out selectionRequired)
+    var selectedCaret ElementRect
+    let selectedCaretGeometry = TextControlsSmokeCell.Editor.TryGetTextCaretRect(
+      TextPosition{ Offset: 3, Affinity: TextAffinity.Downstream },
+      TextCoordinateSpace.Content, out selectedCaret)
+    var richCaret ElementRect
+    let richGeometry = TextControlsSmokeCell.Rich.TryGetTextCaretRect(
+      TextPosition{ Offset: 0, Affinity: TextAffinity.Downstream },
+      TextCoordinateSpace.Content, out richCaret)
+    if !selectionGeometry || selectionRequired <= 0 || !selectedCaretGeometry
+      || selectedCaret.Height <= 0.0 || !richGeometry || richCaret.Height <= 0.0 {
+      throw InvalidOperationException("Text controls smoke public text geometry is unavailable")
+    }
+
+    let endPosition = TextPosition{ Offset: document.Length,
+      Affinity: TextAffinity.Downstream }
+    controller.Selection = TextSelection{ Anchor: endPosition, Active: endPosition }
+    opened.Pump(0.016)
+    var endCaret ElementRect
+    let endCaretGeometry = TextControlsSmokeCell.Editor.TryGetTextCaretRect(
+      endPosition, TextCoordinateSpace.Content, out endCaret)
+    if controller.ScrollTargetY <= 0.0 || !endCaretGeometry || endCaret.Height <= 0.0 {
+      throw InvalidOperationException("Text controls smoke did not follow its offscreen active caret")
+    }
+    if !controller.BeginComposition() || !controller.UpdateComposition("compose", 2, 3) {
+      throw InvalidOperationException("Text controls smoke could not activate composition")
+    }
+    let composition = controller.Composition
+    if composition == nil {
+      throw InvalidOperationException("Text controls smoke lost composition before pump")
+    }
+    let activeComposition = composition!!
+    if activeComposition.SelectionStart != 2 || activeComposition.SelectionLength != 3
+      || activeComposition.Text != "compose" {
+      throw InvalidOperationException("Text controls smoke lost composition selection")
+    }
+    var pumps int32
+    while pumps < 12 {
+      opened.Pump(0.016)
+      pumps = pumps + 1
+    }
+    var compositionCaret ElementRect
+    let compositionCaretGeometry = TextControlsSmokeCell.Editor.TryGetTextCaretRect(
+      endPosition, TextCoordinateSpace.Content, out compositionCaret)
+    if !opened.IsOpen || controller.Composition == nil || !compositionCaretGeometry
+      || compositionCaret.Height <= 0.0
+      || TextControlsSmokeCell.Entry.BorderBox.Width <= 0.0
+      || TextControlsSmokeCell.Editor.BorderBox.Width <= 0.0
+      || TextControlsSmokeCell.Editor.BorderBox.Height <= 0.0 {
+      throw InvalidOperationException("Text controls smoke did not settle control geometry entry="
+        + TextControlsSmokeCell.Entry.BorderBox.Width.ToString() + "x"
+        + TextControlsSmokeCell.Entry.BorderBox.Height.ToString() + " editor="
+        + TextControlsSmokeCell.Editor.BorderBox.Width.ToString() + "x"
+        + TextControlsSmokeCell.Editor.BorderBox.Height.ToString() + " composition="
+        + (controller.Composition != nil).ToString())
+    }
+    opened.RequestClose()
+    opened.Pump(0.0)
+    if opened.IsOpen {
+      throw InvalidOperationException("Text controls smoke window did not close")
+    }
+
+    let secondRoot = TextReopenSmokeCell{}
+    let reopened = Window{
+      Title: "Goo text controls reopen smoke",
+      Width: 240,
+      Height: 96,
+      VSync: false,
+      Root: secondRoot,
+    }
+    secondWindow = reopened
+    reopened.Open()
+    reopened.Pump(0.0)
+    if !reopened.IsOpen || !TextReopenSmokeCell.Root.IsMounted
+      || TextReopenSmokeCell.Root.BorderBox.Width <= 0.0
+      || TextReopenSmokeCell.Root.BorderBox.Height <= 0.0 {
+      throw InvalidOperationException("Text controls smoke did not reopen a simple text window")
+    }
+    var reopenedCaret ElementRect
+    if !TextReopenSmokeCell.Root.TryGetTextCaretRect(
+      TextPosition{ Offset: 0, Affinity: TextAffinity.Downstream },
+      TextCoordinateSpace.Content, out reopenedCaret) || reopenedCaret.Height <= 0.0 {
+      throw InvalidOperationException("Text controls smoke reopen text geometry is unavailable")
+    }
+    reopened.RequestClose()
+    reopened.Pump(0.0)
+    if reopened.IsOpen {
+      throw InvalidOperationException("Text controls smoke reopen window did not close")
+    }
+
+    let diagnostics = capturedError.ToString()
+    let drawCount = DiagnosticCounterValue(diagnostics, "drawCount")
+    let validationErrors = DiagnosticCounterValue(diagnostics, "validationErrorCount")
+    let resultFailures = DiagnosticCounterValue(diagnostics, "resultFailureCount")
+    if diagnostics.Contains("\"kind\":\"fatal\"")
+      || diagnostics.Contains("\"event\":325")
+      || diagnostics.Contains("EditorComposition")
+      || diagnostics.Contains("EditorLayers")
+      || diagnostics.Contains("TextShadows")
+      || diagnostics.Contains("TextStrokeWidth")
+      || diagnostics.Contains("TextShadow")
+      || diagnostics.Contains("TextStroke")
+      || validationErrors != 0uL || resultFailures != 0uL {
+      throw InvalidOperationException("Text controls smoke emitted Vulkan diagnostics errors")
+    }
+    if drawCount <= 1 {
+      throw InvalidOperationException("Text controls smoke did not record text draw work")
+    }
+    Console.SetError(originalError)
+    Console.WriteLine("text-controls: mounted=1 focused=1 pumps=" + pumps.ToString()
+      + " selection=1 composition=1 caretFollow=1 reopen=1 drawCount="
+      + drawCount.ToString() + " close=1")
+  } finally {
+    Console.SetError(originalError)
+    if let active = window {
+      if active.IsOpen {
+        active.RequestClose()
+        active.Pump(0.0)
+      }
+    }
+    if let active = secondWindow {
+      if active.IsOpen {
+        active.RequestClose()
+        active.Pump(0.0)
+      }
+    }
+    controller.Dispose()
+    root.DisposePresentation()
+    cjkFont.Dispose()
+  }
+}
+
+func RunTextAtlasSmoke() {
+  if Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") != "1"
+    || Environment.GetEnvironmentVariable("GOO_VK_TEXT_ATLAS_BYTES") != "8192" {
+    throw InvalidOperationException("GOO_VK_DIAGNOSTICS=1 and GOO_VK_TEXT_ATLAS_BYTES=8192 are required")
+  }
+  let fontPath = Path.Combine(AppContext.BaseDirectory, "VendSans-VariableFont_wght.ttf")
+  if !File.Exists(fontPath) {
+    throw FileNotFoundException("Text atlas smoke font asset is missing")
+  }
+  let fontBytes = File.ReadAllBytes(fontPath)
+  let fonts = [36]FontSource?
+  var fontIndex int32 = 0
+  try {
+    while fontIndex < fonts.Length {
+      let group = fontIndex / 4
+      let index = fontIndex % 4
+      let font = FontSource(AtlasFontFamily(group, index), 400, false, fontBytes)
+      font.Register()
+      fonts[fontIndex] = font
+      fontIndex = fontIndex + 1
+    }
+    let root = TextAtlasSmokeCell(BuildAtlasCorpus())
+    let capturedError = StringWriter()
+    let originalError = Console.Error
+    var window Window? = nil
+    Console.SetError(capturedError)
+    try {
+      let opened = Window{
+        Title: "Goo text atlas smoke",
+        Width: 640,
+        Height: 420,
+        VSync: false,
+        Root: root,
+      }
+      window = opened
+      opened.Open()
+      opened.Pump(0.0)
+      if !opened.IsOpen || !TextAtlasSmokeCell.Root.IsMounted {
+        throw InvalidOperationException("Text atlas smoke did not mount its root")
+      }
+      var pumps int32 = 0
+      while pumps < 24 {
+        opened.Pump(0.016)
+        pumps = pumps + 1
+      }
+      var phase int32 = 0
+      while phase < 9 {
+        root.SetPhase(phase)
+        pumps = 0
+        while pumps < 24 {
+          opened.Pump(0.016)
+          pumps = pumps + 1
+        }
+        phase = phase + 1
+      }
+      if !opened.IsOpen || TextAtlasSmokeCell.Root.BorderBox.Width <= 0.0
+        || TextAtlasSmokeCell.Root.BorderBox.Height <= 0.0 {
+        throw InvalidOperationException("Text atlas smoke did not render after atlas reuse")
+      }
+      opened.RequestClose()
+      opened.Pump(0.0)
+      if opened.IsOpen {
+        throw InvalidOperationException("Text atlas smoke window did not close")
+      }
+      let diagnostics = capturedError.ToString()
+      if diagnostics.Contains("\"kind\":\"fatal\"")
+        || diagnostics.Contains("\"event\":325") {
+        throw InvalidOperationException("Text atlas smoke emitted Vulkan diagnostics errors")
+      }
+      let atlasCount = DiagnosticCounterValue(diagnostics, "textAtlasPeakCount")
+      let budget = DiagnosticCounterValue(diagnostics, "textAtlasPeakByteBudget")
+      let resident = DiagnosticCounterValue(diagnostics, "textAtlasPeakResidentBytes")
+      let liveObjects = DiagnosticCounterValue(diagnostics, "textAtlasPeakLiveObjectCount")
+      let currentAtlasCount = DiagnosticCounterValue(diagnostics, "textAtlasCount")
+      let currentResident = DiagnosticCounterValue(diagnostics, "textAtlasResidentBytes")
+      let currentLiveObjects = DiagnosticCounterValue(diagnostics, "textAtlasLiveObjectCount")
+      let currentVulkanObjects = DiagnosticCounterValue(diagnostics, "vulkanObjectCount")
+      let currentDeviceMemory = DiagnosticCounterValue(diagnostics, "vulkanDeviceMemoryBytes")
+      let uploadBytes = DiagnosticCounterValue(diagnostics, "textAtlasRecordedUploadBytes")
+      let evictionCount = DiagnosticCounterValue(diagnostics, "textAtlasEvictionCount")
+      let retirementCount = DiagnosticCounterValue(diagnostics, "textAtlasRetirementCount")
+      let validationErrors = DiagnosticCounterValue(diagnostics, "validationErrorCount")
+      let resultFailures = DiagnosticCounterValue(diagnostics, "resultFailureCount")
+      let drawCount = DiagnosticCounterValue(diagnostics, "drawCount")
+      if atlasCount < 3 || budget != 65536 || resident != budget || liveObjects <= 0
+        || currentAtlasCount != 0 || currentResident != 0uL || currentLiveObjects != 0uL
+        || currentVulkanObjects != 0uL || currentDeviceMemory != 0uL
+        || uploadBytes <= 0 || evictionCount <= 0 || retirementCount <= 0
+        || validationErrors != 0 || resultFailures != 0 || drawCount <= 0 {
+        throw InvalidOperationException("Text atlas smoke did not qualify atlas growth and reuse: atlasCount="
+          + atlasCount.ToString() + " budget=" + budget.ToString() + " resident=" + resident.ToString()
+          + " liveObjects=" + liveObjects.ToString() + " uploadBytes=" + uploadBytes.ToString()
+          + " currentAtlasCount=" + currentAtlasCount.ToString()
+          + " currentResident=" + currentResident.ToString()
+          + " currentLiveObjects=" + currentLiveObjects.ToString()
+          + " currentVulkanObjects=" + currentVulkanObjects.ToString()
+          + " currentDeviceMemory=" + currentDeviceMemory.ToString()
+          + " evictionCount=" + evictionCount.ToString() + " retirementCount=" + retirementCount.ToString()
+          + " validationErrors=" + validationErrors.ToString() + " resultFailures="
+          + resultFailures.ToString() + " drawCount=" + drawCount.ToString())
+      }
+      Console.SetError(originalError)
+      Console.WriteLine("text-atlas: atlasCount=" + atlasCount.ToString()
+        + " budget=" + budget.ToString() + " resident=" + resident.ToString()
+        + " liveObjects=" + liveObjects.ToString() + " uploadBytes=" + uploadBytes.ToString()
+        + " evictionCount=" + evictionCount.ToString() + " retirementCount="
+        + retirementCount.ToString() + " drawCount=" + drawCount.ToString() + " close=1")
+    } finally {
+      Console.SetError(originalError)
+      if let active = window {
+        if active.IsOpen {
+          active.RequestClose()
+          active.Pump(0.0)
+        }
+      }
+    }
+  } finally {
+    var disposeIndex int32 = 0
+    while disposeIndex < fonts.Length {
+      if let font = fonts[disposeIndex] {
+        font.Dispose()
+      }
+      disposeIndex = disposeIndex + 1
     }
   }
 }
@@ -406,15 +1396,8 @@ func PumpPressureSwap(window Window, root SmokeCell,
 
 func RunImagePressureSmoke(window Window, root SmokeCell, initial PressureImageProvider) {
   var current = initial
-  var index int32 = 1
-  while index < 257 {
-    let next = CreatePressureImage(1, 1, uint8(index % 251))
-    PumpPressureSwap(window, root, current, next)
-    current = next
-    index = index + 1
-  }
-  index = 0
-  while index < 17 {
+  var index int32 = 0
+  while index < 20 {
     let next = CreatePressureImage(1024, 1024, uint8(index % 251))
     PumpPressureSwap(window, root, current, next)
     current = next
@@ -434,41 +1417,179 @@ func RunImagePressureSmoke(window Window, root SmokeCell, initial PressureImageP
 func RunRegisteredFontSmoke() {
   let primaryPath = Path.Combine(AppContext.BaseDirectory, "HarfBuzz-adwaita-colrv1.ttf")
   let fallbackPath = Path.Combine(AppContext.BaseDirectory, "VendSans-VariableFont_wght.ttf")
-  if !File.Exists(primaryPath) || !File.Exists(fallbackPath) {
+  let ttcPath = Path.Combine(AppContext.BaseDirectory, "HarfBuzz-TTC.ttc")
+  let cffFace0Path = Path.Combine(AppContext.BaseDirectory, "HarfBuzz-cff-f1.otf")
+  let cffFace1Path = Path.Combine(AppContext.BaseDirectory, "HarfBuzz-cff-f2.otf")
+  let otcPath = Path.Combine(AppContext.BaseDirectory, "HarfBuzz-cff.otc")
+  let styleRegularPath = Path.Combine(AppContext.BaseDirectory, "HarfBuzz-cff-style-regular.otf")
+  let styleBoldPath = Path.Combine(AppContext.BaseDirectory, "HarfBuzz-cff-style-bold.otf")
+  let styleItalicPath = Path.Combine(AppContext.BaseDirectory, "HarfBuzz-cff-style-italic.otf")
+  if !File.Exists(primaryPath) || !File.Exists(fallbackPath) || !File.Exists(ttcPath)
+    || !File.Exists(cffFace0Path) || !File.Exists(cffFace1Path) || !File.Exists(otcPath)
+    || !File.Exists(styleRegularPath) || !File.Exists(styleBoldPath) || !File.Exists(styleItalicPath) {
     throw FileNotFoundException("Registered font smoke assets are missing")
   }
   let primaryBytes = File.ReadAllBytes(primaryPath)
   let fallbackBytes = File.ReadAllBytes(fallbackPath)
+  let ttcBytes = File.ReadAllBytes(ttcPath)
+  let cffFace0Bytes = File.ReadAllBytes(cffFace0Path)
+  let cffFace1Bytes = File.ReadAllBytes(cffFace1Path)
+  let otcBytes = File.ReadAllBytes(otcPath)
+  let invalidTtcBytes = File.ReadAllBytes(ttcPath)
+  let invalidOtcBytes = File.ReadAllBytes(otcPath)
+  let styleRegularBytes = File.ReadAllBytes(styleRegularPath)
+  let styleBoldBytes = File.ReadAllBytes(styleBoldPath)
+  let styleItalicBytes = File.ReadAllBytes(styleItalicPath)
   let primary = FontSource("GooSmokePrimary", 400, false, primaryBytes)
   let fallback = FontSource("GooSmokeFallback", 400, false, fallbackBytes)
+  let cff = FontSource("GooSmokeCff", 400, false, cffFace0Bytes)
+  let cffSecond = FontSource("GooSmokeCffSecond", 400, false, cffFace1Bytes)
+  let styleRegular = FontSource("GooSmokeStyle", 400, false, styleRegularBytes)
+  let styleBold = FontSource("GooSmokeStyle", 700, false, styleBoldBytes)
+  let styleItalic = FontSource("GooSmokeStyle", 400, true, styleItalicBytes)
+  let styleBoldItalic = FontSource("GooSmokeStyle", 700, true, cffFace1Bytes)
+  let ttcFace0 = FontSource("GooSmokeTtc", 400, false, ttcBytes, 0u, []FontVariation{})
+  let ttcFace1 = FontSource("GooSmokeTtc", 700, false, ttcBytes, 1u, []FontVariation{})
+  let otcFace0 = FontSource("GooSmokeOtc", 400, false, otcBytes, 0u, []FontVariation{})
+  let otcFace1 = FontSource("GooSmokeOtc", 700, false, otcBytes, 1u, []FontVariation{})
+  let variableRegular = FontSource("GooSmokeVariable", 400, false, fallbackBytes, 0u,
+    []FontVariation{ FontVariation("wght", 400.0F) })
+  let variableBold = FontSource("GooSmokeVariable", 700, false, fallbackBytes, 0u,
+    []FontVariation{ FontVariation("wght", 700.0F) })
   primaryBytes[0] = 0u
   fallbackBytes[0] = 0u
+  ttcBytes[0] = 0u
+  cffFace0Bytes[0] = 0u
+  cffFace1Bytes[0] = 0u
+  otcBytes[0] = 0u
+  styleRegularBytes[0] = 0u
+  styleBoldBytes[0] = 0u
+  styleItalicBytes[0] = 0u
+  if cff.Family != "GooSmokeCff" || cff.Weight != 400 || cff.Italic
+    || ttcFace1.FaceIndex != 1u || otcFace1.FaceIndex != 1u {
+    throw InvalidOperationException("Registered font smoke did not retain public source metadata")
+  }
+  let regularVariations = variableRegular.Variations
+  let boldVariations = variableBold.Variations
+  if regularVariations.Length != 1 || boldVariations.Length != 1
+    || regularVariations[0].Tag != "wght" || boldVariations[0].Tag != "wght"
+    || regularVariations[0].Value != 400.0F || boldVariations[0].Value != 700.0F {
+    throw InvalidOperationException("Registered font smoke did not retain variation coordinates")
+  }
   try {
     primary.Register()
     fallback.Register()
-    if !primary.IsRegistered || !fallback.IsRegistered {
-      throw InvalidOperationException("Registered font smoke did not register both sources")
+    cff.Register()
+    cffSecond.Register()
+    styleRegular.Register()
+    styleBold.Register()
+    styleItalic.Register()
+    styleBoldItalic.Register()
+    ttcFace0.Register()
+    ttcFace1.Register()
+    otcFace0.Register()
+    otcFace1.Register()
+    variableRegular.Register()
+    variableBold.Register()
+    if !primary.IsRegistered || !fallback.IsRegistered || !cff.IsRegistered
+      || !cffSecond.IsRegistered
+      || !styleRegular.IsRegistered || !styleBold.IsRegistered || !styleItalic.IsRegistered
+      || !styleBoldItalic.IsRegistered || !ttcFace0.IsRegistered || !ttcFace1.IsRegistered
+      || !otcFace0.IsRegistered || !otcFace1.IsRegistered
+      || !variableRegular.IsRegistered || !variableBold.IsRegistered {
+      throw InvalidOperationException("Registered font smoke did not register the corpus")
     }
-    let root = RegisteredFontSmokeCell{}
+    let duplicate = FontSource("GooSmokeStyle", 700, false, cffFace0Bytes)
+    var duplicateRejected bool
+    try {
+      duplicate.Register()
+    } catch (error InvalidOperationException) {
+      duplicateRejected = true
+    }
+    duplicate.Dispose()
+    if !duplicateRejected {
+      throw InvalidOperationException("Registered font smoke accepted a duplicate style")
+    }
+    let invalidTtc = FontSource("GooSmokeInvalidTtc", 400, false, invalidTtcBytes, 2u,
+      []FontVariation{})
+    var invalidTtcRejected bool
+    try {
+      invalidTtc.Register()
+    } catch (error ArgumentOutOfRangeException) {
+      invalidTtcRejected = true
+    }
+    invalidTtc.Dispose()
+    let invalidOtc = FontSource("GooSmokeInvalidOtc", 400, false, invalidOtcBytes, 2u,
+      []FontVariation{})
+    var invalidOtcRejected bool
+    try {
+      invalidOtc.Register()
+    } catch (error ArgumentOutOfRangeException) {
+      invalidOtcRejected = true
+    }
+    invalidOtc.Dispose()
+    if !invalidTtcRejected || !invalidOtcRejected {
+      throw InvalidOperationException("Registered font smoke accepted an invalid face index")
+    }
+    let root = RegisteredFontCorpusSmokeCell{}
     let window = Window{
-      Title: "Goo registered font smoke",
-      Width: 240,
-      Height: 80,
+      Title: "Goo registered font corpus smoke",
+      Width: 640,
+      Height: 420,
       VSync: false,
       Root: root,
     }
     window.Open()
     window.Pump(0.0)
-    if !window.IsOpen || !RegisteredFontSmokeCell.Root.IsMounted
-      || RegisteredFontSmokeCell.Root.BorderBox.Width <= 0.0
-      || RegisteredFontSmokeCell.Root.BorderBox.Height <= 0.0 {
-      throw InvalidOperationException("Registered font smoke did not render its root")
+    var pumps int32
+    while pumps < 8 {
+      window.Pump(0.016)
+      pumps = pumps + 1
+    }
+    if !window.IsOpen || !RegisteredFontCorpusSmokeCell.Root.IsMounted
+      || RegisteredFontCorpusSmokeCell.Cff.BorderBox.Width <= 0.0
+      || RegisteredFontCorpusSmokeCell.StyleRegular.BorderBox.Width <= 0.0
+      || RegisteredFontCorpusSmokeCell.StyleBold.BorderBox.Width <= 0.0
+      || RegisteredFontCorpusSmokeCell.StyleItalic.BorderBox.Width <= 0.0
+      || RegisteredFontCorpusSmokeCell.StyleBoldItalic.BorderBox.Width <= 0.0
+      || RegisteredFontCorpusSmokeCell.StyleRegular.BorderBox.Width
+        == RegisteredFontCorpusSmokeCell.StyleBold.BorderBox.Width
+      || RegisteredFontCorpusSmokeCell.StyleRegular.BorderBox.Width
+        == RegisteredFontCorpusSmokeCell.StyleItalic.BorderBox.Width
+      || RegisteredFontCorpusSmokeCell.StyleRegular.BorderBox.Width
+        == RegisteredFontCorpusSmokeCell.StyleBoldItalic.BorderBox.Width
+      || RegisteredFontCorpusSmokeCell.StyleBold.BorderBox.Width
+        == RegisteredFontCorpusSmokeCell.StyleItalic.BorderBox.Width
+      || RegisteredFontCorpusSmokeCell.StyleBold.BorderBox.Width
+        == RegisteredFontCorpusSmokeCell.StyleBoldItalic.BorderBox.Width
+      || RegisteredFontCorpusSmokeCell.StyleItalic.BorderBox.Width
+        == RegisteredFontCorpusSmokeCell.StyleBoldItalic.BorderBox.Width
+      || RegisteredFontCorpusSmokeCell.VariableRegular.BorderBox.Width <= 0.0
+      || RegisteredFontCorpusSmokeCell.VariableBold.BorderBox.Width <= 0.0
+      || RegisteredFontCorpusSmokeCell.VariableRegular.BorderBox.Width
+        == RegisteredFontCorpusSmokeCell.VariableBold.BorderBox.Width
+      || RegisteredFontCorpusSmokeCell.Fallback.BorderBox.Width <= 0.0
+      || RegisteredFontCorpusSmokeCell.Fallback.BorderBox.Width
+        != RegisteredFontCorpusSmokeCell.Cff.BorderBox.Width {
+      throw InvalidOperationException("Registered font smoke did not render the corpus matrix")
     }
     primary.Dispose()
     fallback.Dispose()
+    cff.Dispose()
+    cffSecond.Dispose()
+    styleRegular.Dispose()
+    styleBold.Dispose()
+    styleItalic.Dispose()
+    styleBoldItalic.Dispose()
+    ttcFace0.Dispose()
+    ttcFace1.Dispose()
+    otcFace0.Dispose()
+    otcFace1.Dispose()
+    variableRegular.Dispose()
+    variableBold.Dispose()
     window.Pump(0.0)
     if !window.IsOpen {
-      throw InvalidOperationException("Registered font smoke lost its retained font lease")
+      throw InvalidOperationException("Registered font smoke lost its retained corpus leases")
     }
     window.RequestClose()
     window.Pump(0.0)
@@ -478,11 +1599,35 @@ func RunRegisteredFontSmoke() {
   } finally {
     fallback.Dispose()
     primary.Dispose()
+    cff.Dispose()
+    cffSecond.Dispose()
+    styleRegular.Dispose()
+    styleBold.Dispose()
+    styleItalic.Dispose()
+    styleBoldItalic.Dispose()
+    ttcFace0.Dispose()
+    ttcFace1.Dispose()
+    otcFace0.Dispose()
+    otcFace1.Dispose()
+    variableRegular.Dispose()
+    variableBold.Dispose()
   }
 }
 
 func Main() {
   Window.ConfigureApplication("Goo package smoke", "0.1.0", "io.github.obselate.goo.smoke")
+  if Environment.GetEnvironmentVariable("GOO_NATIVE_S09R_SMOKE") == "1" {
+    RunS09RSmoke()
+    return
+  }
+  if Environment.GetEnvironmentVariable("GOO_NATIVE_TEXT_CONTROLS_SMOKE") == "1" {
+    RunTextControlsSmoke()
+    return
+  }
+  if Environment.GetEnvironmentVariable("GOO_NATIVE_TEXT_ATLAS_SMOKE") == "1" {
+    RunTextAtlasSmoke()
+    return
+  }
   if Environment.GetEnvironmentVariable("GOO_REGISTERED_FONT_SMOKE") == "1" {
     RunRegisteredFontSmoke()
     return
@@ -613,13 +1758,59 @@ func Main() {
   }
 
   if pressureSmoke {
-    let initial = pressureInitial!!
-    window.Open()
-    window.Pump(0.0)
-    if !window.IsOpen || initial.AcquireCount == 0 {
-      throw InvalidOperationException("Native image pressure smoke did not mount its initial lease")
+    if Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") != "1" {
+      throw InvalidOperationException("GOO_VK_DIAGNOSTICS=1 is required")
     }
-    RunImagePressureSmoke(window, smokeRoot, initial)
+    let initial = pressureInitial!!
+    let capturedError = StringWriter()
+    let originalError = Console.Error
+    Console.SetError(capturedError)
+    try {
+      window.Open()
+      window.Pump(0.0)
+      if !window.IsOpen || initial.AcquireCount == 0 {
+        throw InvalidOperationException("Native image pressure smoke did not mount its initial lease")
+      }
+      RunImagePressureSmoke(window, smokeRoot, initial)
+      let diagnostics = capturedError.ToString()
+      let imageBudget = DiagnosticCounterValue(diagnostics, "imageByteBudget")
+      let imageResident = DiagnosticCounterValue(diagnostics, "imageResidentBytes")
+      let imageLiveObjects = DiagnosticCounterValue(diagnostics, "imageLiveObjectCount")
+      let imagePeakResident = DiagnosticCounterValue(diagnostics, "imagePeakResidentBytes")
+      let imagePeakLiveObjects = DiagnosticCounterValue(diagnostics, "imagePeakLiveObjectCount")
+      let imageEvictionCount = DiagnosticCounterValue(diagnostics, "imageEvictionCount")
+      let imageRetirementCount = DiagnosticCounterValue(diagnostics, "imageRetirementCount")
+      if diagnostics.Contains("\"kind\":\"fatal\"")
+        || diagnostics.Contains("\"event\":325") {
+        throw InvalidOperationException("Native image pressure smoke emitted Vulkan diagnostics errors")
+      }
+      if imageBudget != 67108864uL || imagePeakResident == 0uL
+        || imagePeakResident > imageBudget
+        || imagePeakLiveObjects == 0uL || imageEvictionCount == 0uL
+        || imageRetirementCount == 0uL || imageResident != 0uL
+        || imageLiveObjects != 0uL {
+        throw InvalidOperationException("Native image pressure smoke did not qualify GPU image pressure: budget="
+          + imageBudget.ToString() + " resident=" + imageResident.ToString()
+          + " liveObjects=" + imageLiveObjects.ToString() + " peakResident="
+          + imagePeakResident.ToString() + " peakLiveObjects=" + imagePeakLiveObjects.ToString()
+          + " evictionCount=" + imageEvictionCount.ToString() + " retirementCount="
+          + imageRetirementCount.ToString())
+      }
+      Console.SetError(originalError)
+      Console.WriteLine("image-pressure: budget=" + imageBudget.ToString()
+        + " peakResident=" + imagePeakResident.ToString()
+        + " peakLiveObjects=" + imagePeakLiveObjects.ToString()
+        + " evictionCount=" + imageEvictionCount.ToString()
+        + " retirementCount=" + imageRetirementCount.ToString()
+        + " residentAfterClose=" + imageResident.ToString()
+        + " liveObjectsAfterClose=" + imageLiveObjects.ToString() + " close=1")
+    } finally {
+      Console.SetError(originalError)
+      if window.IsOpen {
+        window.RequestClose()
+        window.Pump(0.0)
+      }
+    }
     return
   } else if Environment.GetEnvironmentVariable("GOO_NATIVE_PLAYGROUND") == "1" {
     window.Run()

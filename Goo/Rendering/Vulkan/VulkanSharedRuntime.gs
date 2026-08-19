@@ -58,16 +58,26 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     shared {
         private var current VulkanSharedRuntime?
         private var generationSeed uint64
+        private var logicalImageIdentityRegistry VulkanImageIdentityRegistry?
         private var terminalFailure bool
         private var terminalFailureResult VkResult = VkConstants.VK_SUCCESS
         private var testFailNextDeviceIdle int32
+        private var testFailNextGraphicsSubmission int32
 
         internal func FailNextDeviceIdleForTest() {
             Interlocked.Exchange(ref testFailNextDeviceIdle, 1)
         }
 
+        internal func FailNextGraphicsSubmissionForTest() {
+            Interlocked.Exchange(ref testFailNextGraphicsSubmission, 1)
+        }
+
         private func TakeTestDeviceIdleFailure() bool {
             return Interlocked.Exchange(ref testFailNextDeviceIdle, 0) != 0
+        }
+
+        internal func TakeTestGraphicsSubmissionFailure() bool {
+            return Interlocked.Exchange(ref testFailNextGraphicsSubmission, 0) != 0
         }
 
         internal func TryAcquire() VulkanSharedLease? {
@@ -126,6 +136,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
             var imageResources VulkanImageResources? = nil
             var primitiveState VulkanSharedPrimitiveState? = nil
             var imageIdentityRegistry VulkanImageIdentityRegistry? = nil
+            var createdImageIdentityRegistry bool = false
             try {
                 let createdBudget = VulkanMemoryBudgetState(
                     nativePhysicalDevice,
@@ -163,8 +174,15 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
                     generationSeed,
                     nativeSharedObjectAccounting)
                 primitiveState = createdPrimitiveState
-                let createdImageIdentityRegistry = VulkanImageIdentityRegistry(ImageIdentityCapacity)
-                imageIdentityRegistry = createdImageIdentityRegistry
+                let identityRegistry = if let retained = logicalImageIdentityRegistry {
+                    retained
+                } else {
+                    let created = VulkanImageIdentityRegistry(ImageIdentityCapacity)
+                    logicalImageIdentityRegistry = created
+                    createdImageIdentityRegistry = true
+                    created
+                }
+                imageIdentityRegistry = identityRegistry
                 let owner = VulkanSharedRuntime(
                     nativeInstance,
                     nativeInstanceDispatch,
@@ -182,7 +200,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
                     createdAllocator,
                     createdImageResources,
                     createdPrimitiveState,
-                    createdImageIdentityRegistry,
+                    identityRegistry,
                     nativeDiagnostics,
                     nativeDebugUtilsEnabled,
                     nativeValidation,
@@ -197,8 +215,11 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
                 current = owner
                 return lease
             } catch (error Exception) {
-                if let createdImageIdentityRegistry = imageIdentityRegistry {
-                    try { createdImageIdentityRegistry.Dispose() } catch (cleanup Exception) { }
+                if createdImageIdentityRegistry {
+                    if let createdIdentityRegistry = imageIdentityRegistry {
+                        try { createdIdentityRegistry.Dispose() } catch (cleanup Exception) { }
+                    }
+                    logicalImageIdentityRegistry = nil
                 }
                 if let createdPrimitiveState = primitiveState {
                     try { createdPrimitiveState.Dispose() } catch (cleanup Exception) { }
@@ -216,6 +237,24 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
         internal func MarkGlobalTerminalFailure(result VkResult) {
             terminalFailure = true
             terminalFailureResult = result
+            if current == nil {
+                DisposeRetainedLogicalImageIdentityRegistry()
+            }
+        }
+
+        private func DisposeRetainedLogicalImageIdentityRegistry() {
+            let retained = logicalImageIdentityRegistry
+            logicalImageIdentityRegistry = nil
+            if let registry = retained {
+                try { registry.Dispose() } catch (cleanup Exception) { }
+            }
+        }
+
+        internal func DiscardAfterDeviceLoss() {
+            if let owner = current {
+                owner.DisposeAfterDeviceLoss()
+                current = nil
+            }
         }
     }
 
@@ -385,6 +424,16 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
         return ReleaseLeaseCore(true)
     }
 
+    internal func AbandonLeaseAfterDeviceLoss() {
+        if disposed {
+            return
+        }
+        if references <= 0 {
+            throw InvalidOperationException("Vulkan shared runtime lease count is invalid")
+        }
+        references = references - 1
+    }
+
     internal func MarkDeviceLost() {
         if !disposed {
             deviceLost = true
@@ -399,6 +448,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
         terminalIdleResult = result
         terminalFailure = true
         terminalFailureResult = result
+        VulkanSharedRuntime.DisposeRetainedLogicalImageIdentityRegistry()
         if result == VkConstants.VK_ERROR_DEVICE_LOST {
             deviceLost = true
         }
@@ -451,6 +501,45 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
         try { imageResources.Collect(uint64.MaxValue) } catch (cleanup Exception) { }
         try { imageResources.Dispose() } catch (cleanup Exception) { }
         try { imageIdentityRegistry.Dispose() } catch (cleanup Exception) { }
+        if Object.ReferenceEquals(logicalImageIdentityRegistry, imageIdentityRegistry) {
+            logicalImageIdentityRegistry = nil
+        }
+        try { memoryAllocator.Dispose() } catch (cleanup Exception) { }
+        if device != nint(0) && deviceDestroyAvailable {
+            let destroyDevice = dispatch.vkDestroyDevice
+            destroyDevice(device, nil)
+            if let accounting = sharedObjectAccounting {
+                accounting.Release()
+            }
+        }
+        if validationMessengerCreated && instance != nint(0)
+            && instanceDispatch.vkDestroyDebugUtilsMessengerEXT != nil {
+            let destroyMessenger = instanceDispatch.vkDestroyDebugUtilsMessengerEXT
+            destroyMessenger(instance, validationMessenger, nil)
+            if let accounting = sharedObjectAccounting {
+                accounting.Release()
+            }
+        }
+        if instance != nint(0) && instanceDestroyAvailable {
+            let destroyInstance = instanceDispatch.vkDestroyInstance
+            destroyInstance(instance, nil)
+            if let accounting = sharedObjectAccounting {
+                accounting.Release()
+            }
+        }
+        if let currentValidation = validation {
+            currentValidation.KeepAlive()
+        }
+    }
+
+    internal func DisposeAfterDeviceLoss() {
+        if disposed {
+            return
+        }
+        disposed = true
+        references = 0
+        try { primitiveState.Dispose() } catch (cleanup Exception) { }
+        try { imageResources.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
         try { memoryAllocator.Dispose() } catch (cleanup Exception) { }
         if device != nint(0) && deviceDestroyAvailable {
             let destroyDevice = dispatch.vkDestroyDevice
@@ -561,6 +650,14 @@ internal unsafe sealed class VulkanSharedLease : IDisposable {
 
     internal func ReleaseAfterIdle() bool {
         return ReleaseCore(true)
+    }
+
+    internal func AbandonAfterDeviceLoss() {
+        if disposed {
+            return
+        }
+        disposed = true
+        owner.AbandonLeaseAfterDeviceLoss()
     }
 
     public func Dispose() {

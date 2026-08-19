@@ -31,6 +31,7 @@ internal unsafe class VulkanMemoryBlock {
 internal unsafe class VulkanMemoryAllocation {
     var memory VkDeviceMemory
     var size VkDeviceSize
+    var placementSpan VkDeviceSize
     var offset VkDeviceSize
     var memoryTypeIndex uint32
     var heapIndex uint32
@@ -49,6 +50,7 @@ internal unsafe class VulkanMemoryAllocation {
 internal data struct VulkanMemoryPlacement {
     var block VulkanMemoryBlock?
     var offset VkDeviceSize
+    var span VkDeviceSize
     var newBlock bool
 }
 
@@ -67,6 +69,84 @@ internal data struct VulkanMemoryCounters {
     var residentAllocations uint64
 }
 
+internal unsafe sealed class VulkanMemoryBudgetState {
+    private const MaximumHeapCount int32 = 16
+    private let physicalDevice VkPhysicalDevice
+    private let instanceDispatch VkInstanceDispatch
+    private let heapCount uint32
+    private let extensionAvailable bool
+    private let heapBudgets []VkDeviceSize
+    private let heapUsages []VkDeviceSize
+    private var available bool
+
+    internal prop Available bool { get { return available } }
+
+    internal init(nativePhysicalDevice VkPhysicalDevice, nativeInstanceDispatch VkInstanceDispatch,
+        nativeHeapCount uint32, nativeExtensionAvailable bool) {
+        if nativePhysicalDevice == nint(0) {
+            throw ArgumentException("nativePhysicalDevice")
+        }
+        if nativeHeapCount == 0u || nativeHeapCount > uint32(MaximumHeapCount) {
+            throw ArgumentOutOfRangeException("nativeHeapCount")
+        }
+        physicalDevice = nativePhysicalDevice
+        instanceDispatch = nativeInstanceDispatch
+        heapCount = nativeHeapCount
+        extensionAvailable = nativeExtensionAvailable
+        heapBudgets = [MaximumHeapCount]VkDeviceSize
+        heapUsages = [MaximumHeapCount]VkDeviceSize
+        available = false
+    }
+
+    internal func Refresh() {
+        var index int32 = 0
+        while index < MaximumHeapCount {
+            heapBudgets[index] = 0uL
+            heapUsages[index] = 0uL
+            index = index + 1
+        }
+        if !extensionAvailable {
+            available = false
+            return
+        }
+        var budgetProperties = VkPhysicalDeviceMemoryBudgetPropertiesEXT{
+            sType: VkConstants.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT,
+            pNext: nil,
+        }
+        var properties = VkPhysicalDeviceMemoryProperties2{
+            sType: VkConstants.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2,
+            pNext: *void(&budgetProperties),
+            memoryProperties: VkPhysicalDeviceMemoryProperties{},
+        }
+        let getProperties = instanceDispatch.vkGetPhysicalDeviceMemoryProperties2
+        getProperties(physicalDevice, &properties)
+        let budgetPointer *VkDeviceSize = budgetProperties.heapBudget
+        let usagePointer *VkDeviceSize = budgetProperties.heapUsage
+        index = 0
+        while index < int32(heapCount) {
+            heapBudgets[index] = budgetPointer[index]
+            heapUsages[index] = usagePointer[index]
+            index = index + 1
+        }
+        available = true
+    }
+
+    internal func CanAllocate(heapIndex uint32, blockSize VkDeviceSize) bool {
+        if !available {
+            return true
+        }
+        if heapIndex >= heapCount {
+            return false
+        }
+        let usage = heapUsages[int32(heapIndex)]
+        let budget = heapBudgets[int32(heapIndex)]
+        if usage > budget {
+            return false
+        }
+        return blockSize <= budget - usage
+    }
+}
+
 internal unsafe class VulkanMemoryAllocator : IDisposable {
     private const MaxTrackedAllocations uint64 = 1048576uL
     private const InitialActiveCapacity int32 = 32
@@ -80,6 +160,8 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
     private let deviceDispatch VkDeviceDispatch
     private let memoryProperties VkPhysicalDeviceMemoryProperties
     private let maxAllocationCount uint64
+    private let nonCoherentAtomSize VkDeviceSize
+    private let budget VulkanMemoryBudgetState
     private let heapResidentBytes []VkDeviceSize
     private var activeAllocations []VulkanMemoryAllocation?
     private var blocks []VulkanMemoryBlock?
@@ -101,7 +183,10 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
     internal prop ResidentAllocationCount uint64 { get { return residentAllocations } }
 
     internal init(nativeDevice VkDevice, nativeDispatch VkDeviceDispatch,
-        physicalProperties VkPhysicalDeviceMemoryProperties, allocationLimit uint32) {
+        physicalProperties VkPhysicalDeviceMemoryProperties, allocationLimit uint32,
+        physicalNonCoherentAtomSize VkDeviceSize,
+        physicalBufferImageGranularity VkDeviceSize,
+        nativeBudget VulkanMemoryBudgetState) {
         if physicalProperties.memoryTypeCount == 0u || physicalProperties.memoryTypeCount > VkConstants.VK_MAX_MEMORY_TYPES {
             throw ArgumentOutOfRangeException("memoryTypeCount")
         }
@@ -111,9 +196,20 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
         if allocationLimit == 0u {
             throw ArgumentOutOfRangeException("maxAllocationCount")
         }
+        if physicalNonCoherentAtomSize == 0uL {
+            throw ArgumentOutOfRangeException("nonCoherentAtomSize")
+        }
+        if physicalBufferImageGranularity == 0uL {
+            throw ArgumentOutOfRangeException("bufferImageGranularity")
+        }
+        if nativeBudget == nil {
+            throw ArgumentNullException("nativeBudget")
+        }
         this.device = nativeDevice
         this.deviceDispatch = nativeDispatch
         this.memoryProperties = physicalProperties
+        this.nonCoherentAtomSize = physicalNonCoherentAtomSize
+        budget = nativeBudget
         let requestedMaximum = uint64(allocationLimit)
         if requestedMaximum > MaxTrackedAllocations {
             this.maxAllocationCount = MaxTrackedAllocations
@@ -260,8 +356,10 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
         allocation.mapped = nil
     }
 
-    internal func InvalidateAfterFence(allocation VulkanMemoryAllocation) VkResult {
+    internal func InvalidateAfterFence(allocation VulkanMemoryAllocation,
+        relativeOffset VkDeviceSize, byteCount VkDeviceSize) VkResult {
         EnsureUsable(allocation)
+        ValidateMappedRangeArguments(allocation, relativeOffset, byteCount)
         if allocation.hostCoherent {
             return VkConstants.VK_SUCCESS
         }
@@ -271,20 +369,15 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
         if allocation.mapped == nil {
             throw InvalidOperationException("Vulkan memory must be mapped before invalidation")
         }
-        let block = allocation.block!!
-        var mappedRange = VkMappedMemoryRange{
-            sType: VkConstants.VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            pNext: nil,
-            memory: block.memory,
-            offset: 0uL,
-            size: VkConstants.VK_WHOLE_SIZE,
-        }
+        var mappedRange = CreateMappedRange(allocation, relativeOffset, byteCount)
         let invalidateMappedMemoryRanges = deviceDispatch.vkInvalidateMappedMemoryRanges
         return invalidateMappedMemoryRanges(device, 1u, &mappedRange)
     }
 
-    internal func FlushBeforeSubmit(allocation VulkanMemoryAllocation) VkResult {
+    internal func FlushBeforeSubmit(allocation VulkanMemoryAllocation,
+        relativeOffset VkDeviceSize, byteCount VkDeviceSize) VkResult {
         EnsureUsable(allocation)
+        ValidateMappedRangeArguments(allocation, relativeOffset, byteCount)
         if allocation.hostCoherent {
             return VkConstants.VK_SUCCESS
         }
@@ -294,16 +387,56 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
         if allocation.mapped == nil {
             throw InvalidOperationException("Vulkan memory must be mapped before flushing")
         }
+        var mappedRange = CreateMappedRange(allocation, relativeOffset, byteCount)
+        let flushMappedMemoryRanges = deviceDispatch.vkFlushMappedMemoryRanges
+        return flushMappedMemoryRanges(device, 1u, &mappedRange)
+    }
+
+    private func ValidateMappedRangeArguments(allocation VulkanMemoryAllocation,
+        relativeOffset VkDeviceSize, byteCount VkDeviceSize) {
+        if byteCount == 0uL || relativeOffset > allocation.size
+            || byteCount > allocation.size - relativeOffset {
+            throw ArgumentOutOfRangeException("mapped range")
+        }
         let block = allocation.block!!
-        var mappedRange = VkMappedMemoryRange{
+        if allocation.offset > block.size
+            || allocation.placementSpan == 0uL
+            || allocation.placementSpan > block.size - allocation.offset {
+            throw InvalidOperationException("Vulkan memory allocation placement is invalid")
+        }
+        if allocation.offset > uint64.MaxValue - relativeOffset {
+            throw OverflowException("Vulkan mapped range offset overflow")
+        }
+        let absoluteOffset = allocation.offset + relativeOffset
+        if absoluteOffset > uint64.MaxValue - byteCount {
+            throw OverflowException("Vulkan mapped range size overflow")
+        }
+    }
+
+    private func CreateMappedRange(allocation VulkanMemoryAllocation,
+        relativeOffset VkDeviceSize, byteCount VkDeviceSize) VkMappedMemoryRange {
+        let block = allocation.block!!
+        let absoluteOffset = allocation.offset + relativeOffset
+        let requestedEnd = absoluteOffset + byteCount
+        let alignedStart = absoluteOffset - (absoluteOffset % nonCoherentAtomSize)
+        let alignedEnd = AlignUp(requestedEnd, nonCoherentAtomSize)
+        let placementEnd = allocation.offset + allocation.placementSpan
+        let backingEnd = block.size
+        let rangeEnd = if alignedEnd < placementEnd {
+            if alignedEnd < backingEnd { alignedEnd } else { backingEnd }
+        } else {
+            if placementEnd < backingEnd { placementEnd } else { backingEnd }
+        }
+        if rangeEnd <= alignedStart {
+            throw InvalidOperationException("Vulkan mapped range is empty")
+        }
+        return VkMappedMemoryRange{
             sType: VkConstants.VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
             pNext: nil,
             memory: block.memory,
-            offset: 0uL,
-            size: VkConstants.VK_WHOLE_SIZE,
+            offset: alignedStart,
+            size: rangeEnd - alignedStart,
         }
-        let flushMappedMemoryRanges = deviceDispatch.vkFlushMappedMemoryRanges
-        return flushMappedMemoryRanges(device, 1u, &mappedRange)
     }
 
     internal func Retire(allocation VulkanMemoryAllocation) {
@@ -483,56 +616,71 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
     private func AcquirePlacement(requirements VkMemoryRequirements,
         selection VulkanMemoryTypeSelection, resourceClass VulkanMemoryResourceClass,
         dedicated bool, dedicatedImage VkImage, dedicatedBuffer VkBuffer) VulkanMemoryPlacement {
+        let placementAlignment = PlacementAlignment(requirements.alignment, selection.propertyFlags)
+        let placementSpan = if dedicated {
+            requirements.size
+        } else {
+            PlacementSpan(requirements.size, selection.propertyFlags)
+        }
         if dedicated {
             let block = CreateBlock(requirements.size, selection, resourceClass, true,
                 dedicatedImage, dedicatedBuffer)
-            return VulkanMemoryPlacement{ block: block, offset: 0uL, newBlock: true }
+            return VulkanMemoryPlacement{ block: block, offset: 0uL, span: placementSpan, newBlock: true }
         }
         var blockIndex int32 = 0
         var offset VkDeviceSize = 0uL
         while blockIndex < blockCount {
             if let block = blocks[blockIndex] {
-                if block.memoryTypeIndex == selection.memoryTypeIndex
-                    && block.resourceClass == resourceClass
-                    && !block.dedicated
-                    && TryFindOffset(block, requirements.size, requirements.alignment, ref offset) {
-                    return VulkanMemoryPlacement{ block: block, offset: offset, newBlock: false }
+                if CanSharePooledBlock(block, selection, resourceClass)
+                    && TryFindOffset(block, placementSpan, placementAlignment, ref offset) {
+                    return VulkanMemoryPlacement{ block: block, offset: offset, span: placementSpan, newBlock: false }
                 }
             }
             blockIndex = blockIndex + 1
         }
-        let blockSize = BlockSize(requirements, resourceClass, selection.heapIndex)
+        let blockSize = BlockSize(requirements, resourceClass, selection.heapIndex, selection.propertyFlags)
         let newBlock = CreateBlock(blockSize, selection, resourceClass, false,
             dedicatedImage, dedicatedBuffer)
-        if !TryFindOffset(newBlock, requirements.size, requirements.alignment, ref offset) {
+        if !TryFindOffset(newBlock, placementSpan, placementAlignment, ref offset) {
             RemoveBlock(newBlock)
             throw InvalidOperationException("Vulkan memory block cannot satisfy requirements")
         }
-        return VulkanMemoryPlacement{ block: newBlock, offset: offset, newBlock: true }
+        return VulkanMemoryPlacement{ block: newBlock, offset: offset, span: placementSpan, newBlock: true }
+    }
+
+    private func CanSharePooledBlock(block VulkanMemoryBlock,
+        selection VulkanMemoryTypeSelection, resourceClass VulkanMemoryResourceClass) bool {
+        return !block.dedicated
+            && block.memoryTypeIndex == selection.memoryTypeIndex
+            && block.resourceClass == resourceClass
     }
 
     private func BlockSize(requirements VkMemoryRequirements,
-        resourceClass VulkanMemoryResourceClass, heapIndex uint32) VkDeviceSize {
+        resourceClass VulkanMemoryResourceClass, heapIndex uint32,
+        propertyFlags VkMemoryPropertyFlags) VkDeviceSize {
         let baseSize = if resourceClass == VulkanMemoryResourceClass.Image {
             ImageBlockSize
         } else {
             BufferBlockSize
         }
-        let padding = requirements.alignment - 1uL
-        if requirements.size > uint64.MaxValue - padding {
+        let placementAlignment = PlacementAlignment(requirements.alignment, propertyFlags)
+        let placementSpan = PlacementSpan(requirements.size, propertyFlags)
+        let alignedBaseSize = AlignUp(baseSize, placementAlignment)
+        let padding = placementAlignment - 1uL
+        if placementSpan > uint64.MaxValue - padding {
             throw OverflowException("Vulkan memory block size overflow")
         }
-        let minimumSize = requirements.size + padding
+        let minimumSize = placementSpan + padding
         let heap = MemoryHeap(memoryProperties, heapIndex)
         let current = heapResidentBytes[int32(heapIndex)]
         if current > heap.size {
             throw InvalidOperationException("Vulkan memory heap capacity exceeded")
         }
         let remaining = heap.size - current
-        if minimumSize > remaining || remaining < baseSize {
+        if minimumSize > remaining || remaining < alignedBaseSize {
             return minimumSize
         }
-        return baseSize
+        return alignedBaseSize
     }
 
     private func CreateBlock(blockSize VkDeviceSize, selection VulkanMemoryTypeSelection,
@@ -615,7 +763,10 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
                 if let allocation = activeAllocations[allocationIndex] {
                     if allocation.state != VulkanMemoryAllocationState.Empty
                         && allocation.block != nil && allocation.block!! == block {
-                        let allocationEnd = allocation.offset + allocation.size
+                        if allocation.offset > uint64.MaxValue - allocation.placementSpan {
+                            throw OverflowException("Vulkan memory allocation placement overflow")
+                        }
+                        let allocationEnd = allocation.offset + allocation.placementSpan
                         if allocation.offset < aligned && allocationEnd > aligned {
                             overlapping = true
                             if allocationEnd > overlapEnd {
@@ -652,6 +803,7 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
         let block = placement.block!!
         allocation.memory = block.memory
         allocation.size = requirements.size
+        allocation.placementSpan = placement.span
         allocation.offset = placement.offset
         allocation.memoryTypeIndex = selection.memoryTypeIndex
         allocation.heapIndex = selection.heapIndex
@@ -790,6 +942,10 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
         if heapIndex >= memoryProperties.memoryHeapCount {
             throw InvalidOperationException("Vulkan memory allocation references an invalid heap")
         }
+        budget.Refresh()
+        if !budget.CanAllocate(heapIndex, blockSize) {
+            throw InvalidOperationException("Vulkan memory heap budget exceeded")
+        }
         let heap = MemoryHeap(memoryProperties, heapIndex)
         let current = heapResidentBytes[int32(heapIndex)]
         if blockSize > heap.size || current > heap.size - blockSize {
@@ -816,6 +972,7 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
     private func ResetAllocation(allocation VulkanMemoryAllocation) {
         allocation.memory = 0uL
         allocation.size = 0uL
+        allocation.placementSpan = 0uL
         allocation.offset = 0uL
         allocation.memoryTypeIndex = 0u
         allocation.heapIndex = 0u
@@ -843,6 +1000,43 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
             remaining = remaining >> 1
         }
         return count
+    }
+
+    private func PlacementAlignment(requirementAlignment VkDeviceSize,
+        propertyFlags VkMemoryPropertyFlags) VkDeviceSize {
+        if IsNonCoherentHostVisible(propertyFlags)
+            && requirementAlignment < nonCoherentAtomSize {
+            return nonCoherentAtomSize
+        }
+        return requirementAlignment
+    }
+
+    private func PlacementSpan(size VkDeviceSize,
+        propertyFlags VkMemoryPropertyFlags) VkDeviceSize {
+        if IsNonCoherentHostVisible(propertyFlags) {
+            return AlignUp(size, nonCoherentAtomSize)
+        }
+        return size
+    }
+
+    private func IsNonCoherentHostVisible(propertyFlags VkMemoryPropertyFlags) bool {
+        return (propertyFlags & uint32(VkConstants.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) != 0u
+            && (propertyFlags & uint32(VkConstants.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) == 0u
+    }
+
+    private func AlignUp(value VkDeviceSize, alignment VkDeviceSize) VkDeviceSize {
+        if alignment == 0uL {
+            throw ArgumentOutOfRangeException("alignment")
+        }
+        let remainder = value % alignment
+        if remainder == 0uL {
+            return value
+        }
+        let padding = alignment - remainder
+        if value > uint64.MaxValue - padding {
+            throw OverflowException("Vulkan memory alignment overflow")
+        }
+        return value + padding
     }
 
     private func MemoryType(properties VkPhysicalDeviceMemoryProperties, index uint32) VkMemoryType {

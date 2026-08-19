@@ -18,6 +18,13 @@ internal class TextEditorInputFixtures {
 
       driver.Char("X")
       if document.GetText() != "Xab" { return false }
+      driver.Input.QueueComposition("a\u0301", 1, 0)
+      driver.Drain()
+      if controller.Composition == nil || controller.Composition!!.Text != "a\u0301"
+        || controller.Composition!!.SelectionStart != 0
+        || controller.Composition!!.SelectionLength != 0 {
+        return false
+      }
       driver.Input.QueueComposition("yz", -1, -1)
       driver.Drain()
       if document.GetText() != "Xab" || controller.Composition == nil

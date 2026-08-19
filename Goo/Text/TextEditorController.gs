@@ -2,7 +2,6 @@ package Goo
 
 import System
 import System.Collections.Generic
-import System.Globalization
 
 /// Selects a semantic text-editor operation.
 public enum TextCommandKind {
@@ -879,7 +878,7 @@ public class TextEditorController : IDisposable {
 
   private func overwriteRange(text string) TextRange {
     var end = selection.Active.Offset
-    let starts = StringInfo.ParseCombiningCharacters(text)
+    let starts = UnicodeGraphemes.Starts(text)
     for i in 0 ... starts.Length {
       end = nextDocumentElement(end)
     }
@@ -942,7 +941,7 @@ public class TextEditorController : IDisposable {
     let text = document.GetText(lineRange)
     let local = offset - lineRange.Start
     var count int32 = 0
-    for start in StringInfo.ParseCombiningCharacters(text) {
+    for start in UnicodeGraphemes.Starts(text) {
       if start >= local { break }
       count++
     }
@@ -951,7 +950,7 @@ public class TextEditorController : IDisposable {
 
   private func offsetAtColumn(line int32, column float64) int32 {
     let lineRange = document.GetLineRange(line)
-    let starts = StringInfo.ParseCombiningCharacters(document.GetText(lineRange))
+    let starts = UnicodeGraphemes.Starts(document.GetText(lineRange))
     let index = int32(column)
     if index <= 0 || starts.Length == 0 { return lineRange.Start }
     if index >= starts.Length { return lineRange.Start + lineRange.Length }
@@ -960,7 +959,7 @@ public class TextEditorController : IDisposable {
 
   private func graphemeBoundary(text string, offset int32) bool {
     if offset == 0 || offset == text.Length { return true }
-    for start in StringInfo.ParseCombiningCharacters(text) {
+    for start in UnicodeGraphemes.Starts(text) {
       if start == offset { return true }
       if start > offset { return false }
     }
@@ -983,7 +982,7 @@ public class TextEditorController : IDisposable {
 
   private func previousElement(text string, offset int32) int32 {
     var prior int32 = 0
-    for start in StringInfo.ParseCombiningCharacters(text) {
+    for start in UnicodeGraphemes.Starts(text) {
       if start >= offset { break }
       prior = start
     }
@@ -991,7 +990,7 @@ public class TextEditorController : IDisposable {
   }
 
   private func nextElement(text string, offset int32) int32 {
-    for start in StringInfo.ParseCombiningCharacters(text) {
+    for start in UnicodeGraphemes.Starts(text) {
       if start > offset { return start }
     }
     return text.Length
@@ -1051,7 +1050,7 @@ public class TextEditorController : IDisposable {
   }
 
   private func previousWordInText(text string, offset int32) int32 {
-    let starts = StringInfo.ParseCombiningCharacters(text)
+    let starts = UnicodeGraphemes.Starts(text)
     var i = starts.Length
     while i > 0 && starts[i - 1] >= offset { i-- }
     while i > 0 && !wordAt(text, starts[i - 1]) { i-- }
@@ -1060,7 +1059,7 @@ public class TextEditorController : IDisposable {
   }
 
   private func nextWordInText(text string, offset int32) int32 {
-    let starts = StringInfo.ParseCombiningCharacters(text)
+    let starts = UnicodeGraphemes.Starts(text)
     var i int32 = 0
     while i < starts.Length && starts[i] < offset { i++ }
     while i < starts.Length && !wordAt(text, starts[i]) { i++ }

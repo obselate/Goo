@@ -103,20 +103,20 @@ internal unsafe partial class VulkanImageResources : IDisposable {
     private func DestroyImage(index int32, entry VulkanImageResourceEntry) {
         if entry.ImageView != 0uL {
             let destroyView = dispatch.vkDestroyImageView
-            destroyView(device, entry.ImageView, nil)
+            try { destroyView(device, entry.ImageView, nil) } catch (cleanup Exception) { }
             if let accounting = objectAccounting {
-                accounting.Release()
+                try { accounting.Release() } catch (cleanup Exception) { }
             }
         }
         if entry.Image != 0uL {
             let destroyImage = dispatch.vkDestroyImage
-            destroyImage(device, entry.Image, nil)
+            try { destroyImage(device, entry.Image, nil) } catch (cleanup Exception) { }
             if let accounting = objectAccounting {
-                accounting.Release()
+                try { accounting.Release() } catch (cleanup Exception) { }
             }
         }
-        if entry.Allocation != nil {
-            allocator.Release(entry.Allocation!!)
+        if let allocation = entry.Allocation {
+            try { allocator.Release(allocation) } catch (cleanup Exception) { }
         }
     }
 
@@ -124,7 +124,8 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         var index int32 = 0
         while index < entries.Length {
             let entry = entries[index]
-            if entry.State != VulkanImageResourceState.Empty {
+            if entry.State != VulkanImageResourceState.Empty
+                || entry.ImageView != 0uL || entry.Image != 0uL || entry.Allocation != nil {
                 DestroyImage(index, entry)
                 entries[index] = VulkanImageResourceEntry{}
             }
@@ -137,44 +138,49 @@ internal unsafe partial class VulkanImageResources : IDisposable {
 
     private func DestroyGeneration() {
         if nearestSampler != 0uL {
-            let destroySampler = dispatch.vkDestroySampler
-            destroySampler(device, nearestSampler, nil)
-            if let accounting = objectAccounting {
-                accounting.Release()
-            }
+            let staleSampler = nearestSampler
             nearestSampler = 0uL
+            let destroySampler = dispatch.vkDestroySampler
+            try { destroySampler(device, staleSampler, nil) } catch (cleanup Exception) { }
+            if let accounting = objectAccounting {
+                try { accounting.Release() } catch (cleanup Exception) { }
+            }
         }
         if linearSampler != 0uL {
-            let destroySampler = dispatch.vkDestroySampler
-            destroySampler(device, linearSampler, nil)
-            if let accounting = objectAccounting {
-                accounting.Release()
-            }
+            let staleSampler = linearSampler
             linearSampler = 0uL
+            let destroySampler = dispatch.vkDestroySampler
+            try { destroySampler(device, staleSampler, nil) } catch (cleanup Exception) { }
+            if let accounting = objectAccounting {
+                try { accounting.Release() } catch (cleanup Exception) { }
+            }
         }
         if descriptorPool != 0uL {
+            let stalePool = descriptorPool
+            let staleSetCount = trackedDescriptorSetCount
+            descriptorPool = 0uL
+            trackedDescriptorSetCount = 0
             let destroyPool = dispatch.vkDestroyDescriptorPool
-            destroyPool(device, descriptorPool, nil)
+            try { destroyPool(device, stalePool, nil) } catch (cleanup Exception) { }
             var descriptorIndex int32 = 0
-            while descriptorIndex < trackedDescriptorSetCount {
+            while descriptorIndex < staleSetCount {
                 if let accounting = objectAccounting {
-                    accounting.Release()
+                    try { accounting.Release() } catch (cleanup Exception) { }
                 }
                 descriptorIndex = descriptorIndex + 1
             }
-            trackedDescriptorSetCount = 0
             if let accounting = objectAccounting {
-                accounting.Release()
+                try { accounting.Release() } catch (cleanup Exception) { }
             }
-            descriptorPool = 0uL
         }
         if descriptorSetLayout != 0uL {
-            let destroyLayout = dispatch.vkDestroyDescriptorSetLayout
-            destroyLayout(device, descriptorSetLayout, nil)
-            if let accounting = objectAccounting {
-                accounting.Release()
-            }
+            let staleLayout = descriptorSetLayout
             descriptorSetLayout = 0uL
+            let destroyLayout = dispatch.vkDestroyDescriptorSetLayout
+            try { destroyLayout(device, staleLayout, nil) } catch (cleanup Exception) { }
+            if let accounting = objectAccounting {
+                try { accounting.Release() } catch (cleanup Exception) { }
+            }
         }
         var index int32 = 0
         while index < descriptorSets.Length {
@@ -186,16 +192,17 @@ internal unsafe partial class VulkanImageResources : IDisposable {
 
     private func DestroyStagingBuffer() {
         if stagingBuffer != 0uL {
-            let destroyBuffer = dispatch.vkDestroyBuffer
-            destroyBuffer(device, stagingBuffer, nil)
-            if let accounting = objectAccounting {
-                accounting.Release()
-            }
+            let staleBuffer = stagingBuffer
             stagingBuffer = 0uL
+            let destroyBuffer = dispatch.vkDestroyBuffer
+            try { destroyBuffer(device, staleBuffer, nil) } catch (cleanup Exception) { }
+            if let accounting = objectAccounting {
+                try { accounting.Release() } catch (cleanup Exception) { }
+            }
         }
-        if stagingAllocation != nil {
-            allocator.Release(stagingAllocation!!)
+        if let allocation = stagingAllocation {
             stagingAllocation = nil
+            try { allocator.Release(allocation) } catch (cleanup Exception) { }
         }
     }
 

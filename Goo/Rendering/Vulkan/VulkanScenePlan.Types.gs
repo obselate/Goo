@@ -189,6 +189,8 @@ internal struct CachedGlyphRunRefRecord {
     internal var GlyphMaxY float32
     internal var Color uint32
     internal var RenderMode uint32
+    internal var EffectMode uint32
+    internal var EffectRadius float32
     internal var TransformIndex int32
 }
 

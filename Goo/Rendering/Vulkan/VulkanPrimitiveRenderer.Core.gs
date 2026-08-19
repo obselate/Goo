@@ -27,6 +27,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     private let linearChannels []float32
     private var pipelineLayout VkPipelineLayout
     private var solidPipeline VkPipeline
+    private var shadowPipeline VkPipeline
     private var borderPipeline VkPipeline
     private var linearPipeline VkPipeline
     private var radialPipeline VkPipeline
@@ -87,6 +88,11 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
             || sharedState.Generation != expectedGeneration {
             throw ArgumentOutOfRangeException("expectedGeneration")
         }
+        if let suppliedAtlases = nativeTextAtlases {
+            if suppliedAtlases.Generation != expectedGeneration {
+                throw ArgumentOutOfRangeException("expectedGeneration")
+            }
+        }
         let pipelines = sharedState.PipelinesFor(colorFormat)
         this.device = nativeDevice
         this.dispatch = nativeDispatch
@@ -98,6 +104,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         objectAccounting = nativeObjectAccounting
         pipelineLayout = pipelines.PipelineLayout
         solidPipeline = pipelines.SolidPipeline
+        shadowPipeline = pipelines.ShadowPipeline
         borderPipeline = pipelines.BorderPipeline
         linearPipeline = pipelines.LinearPipeline
         radialPipeline = pipelines.RadialPipeline
@@ -291,7 +298,9 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
                     throw NotSupportedException("Vulkan primitive renderer does not support path meshes")
                 }
                 case SceneDrawKind.Shadow {
-                    throw NotSupportedException("Vulkan primitive renderer does not support shadows")
+                    RequireRecordIndex(reference.Index, frame.ShadowCount, "shadow index")
+                    let value = frame.Shadows[reference.Index]
+                    EmitShadow(commandBuffer, extent, value, frame)
                 }
                 case SceneDrawKind.CustomMesh {
                     throw NotSupportedException("Vulkan primitive renderer does not support custom meshes")

@@ -105,25 +105,23 @@ internal partial class VulkanSceneCompiler {
             CompileNode(node, -1, -1, 1.0F, true, 0)
         }
 
-        lastResult = VulkanSceneCompileResult{
-            FrameVersion: frameVersion,
-            RootOwnerId: rootOwnerId,
-            ChunkCount: frame.ChunkCount,
-            DrawCount: frame.DrawRefCount,
-            VisibleNodeCount: visibleNodeCount,
-            EmittedNodeCount: emittedNodeCount,
-            UnsupportedNodeCount: unsupportedNodeCount,
-            UnsupportedPrimitiveCount: unsupportedPrimitiveCount,
-            SkippedNodeCount: skippedNodeCount,
-            ScrollNodeCount: scrollNodeCount,
-            ClipCount: clipCount,
-            TransformCount: transformCount,
-            UnsupportedMask: unsupportedMask,
-            UnsupportedDetails: unsupportedDetails,
-            UnsupportedDetailCount: unsupportedDetailCount,
-            UnsupportedDetailDropped: unsupportedDetailDropped,
-            BackgroundDrawn: backgroundDrawn,
-        }
+        lastResult.FrameVersion = frameVersion
+        lastResult.RootOwnerId = rootOwnerId
+        lastResult.ChunkCount = frame.ChunkCount
+        lastResult.DrawCount = frame.DrawRefCount
+        lastResult.VisibleNodeCount = visibleNodeCount
+        lastResult.EmittedNodeCount = emittedNodeCount
+        lastResult.UnsupportedNodeCount = unsupportedNodeCount
+        lastResult.UnsupportedPrimitiveCount = unsupportedPrimitiveCount
+        lastResult.SkippedNodeCount = skippedNodeCount
+        lastResult.ScrollNodeCount = scrollNodeCount
+        lastResult.ClipCount = clipCount
+        lastResult.TransformCount = transformCount
+        lastResult.UnsupportedMask = unsupportedMask
+        lastResult.UnsupportedDetails = unsupportedDetails
+        lastResult.UnsupportedDetailCount = unsupportedDetailCount
+        lastResult.UnsupportedDetailDropped = unsupportedDetailDropped
+        lastResult.BackgroundDrawn = backgroundDrawn
         return lastResult
     }
 
@@ -150,6 +148,8 @@ internal partial class VulkanSceneCompiler {
             scrollNodeCount = scrollNodeCount + 1
         }
         let bounds = NodeBounds(node)
+        let shadowEligible = parentAxisAligned && ShadowContextSupported(node)
+        let chunkBounds = ExpandedChunkBounds(node, bounds, shadowEligible)
         MarkUnsupportedNode(node)
         RecordUnsupportedFields(node, bounds)
         if node.Children.Count != 0 && (parentOpacity < 1.0F || opacity < 1.0F) {
@@ -158,7 +158,7 @@ internal partial class VulkanSceneCompiler {
                 VulkanSceneUnsupportedPrimitive.GroupOpacity)
         }
 
-        frame.BeginChunk(ownerId, frameVersion, bounds, true)
+        frame.BeginChunk(ownerId, frameVersion, chunkBounds, true)
         let transform = AddNodeTransform(node, parentTransformIndex)
         transformCount = frame.TransformCount
         let axisAligned = parentAxisAligned && transform.AxisAligned
@@ -213,7 +213,7 @@ internal partial class VulkanSceneCompiler {
                     VulkanSceneUnsupportedPrimitive.RectClipMixedAxis)
             }
         }
-        PaintNode(node, bounds, opacity, transform.Index)
+        PaintNode(node, bounds, opacity, transform.Index, axisAligned, childClipDepth)
         frame.EndChunk()
         emittedNodeCount = emittedNodeCount + 1
 
@@ -284,16 +284,22 @@ internal partial class VulkanSceneCompiler {
                 unsupportedNodeCount = unsupportedNodeCount + 1
             }
             case NodeKind.Entry {
-                MarkUnsupported(node, VulkanSceneUnsupportedKind.Entry,
-                    VulkanSceneUnsupportedField.None,
-                    VulkanSceneUnsupportedPrimitive.TextEntry)
-                unsupportedNodeCount = unsupportedNodeCount + 1
+                if !TextEntrySupported(node) {
+                    MarkUnsupported(node, VulkanSceneUnsupportedKind.Entry,
+                        VulkanSceneUnsupportedField.None,
+                        VulkanSceneUnsupportedPrimitive.TextEntry)
+                    unsupportedNodeCount = unsupportedNodeCount + 1
+                }
             }
             case NodeKind.Editor {
-                MarkUnsupported(node, VulkanSceneUnsupportedKind.Editor,
-                    VulkanSceneUnsupportedField.None,
-                    VulkanSceneUnsupportedPrimitive.TextEditor)
-                unsupportedNodeCount = unsupportedNodeCount + 1
+                if let _ = node.EditorState {
+                    if !TextEditorSupported(node) {
+                        MarkUnsupported(node, VulkanSceneUnsupportedKind.Editor,
+                            VulkanSceneUnsupportedField.None,
+                            VulkanSceneUnsupportedPrimitive.TextEditor)
+                        unsupportedNodeCount = unsupportedNodeCount + 1
+                    }
+                }
             }
             case _ { }
         }

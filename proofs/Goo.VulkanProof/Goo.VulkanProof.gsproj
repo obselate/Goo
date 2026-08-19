@@ -13,6 +13,7 @@
     <Content Include="Generated/Shaders/solid_quad.frag.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="Generated/Shaders/analytic.vert.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="Generated/Shaders/analytic_solid.frag.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Generated/Shaders/analytic_shadow.frag.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="Generated/Shaders/analytic_border.frag.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="Generated/Shaders/analytic_linear4.frag.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="Generated/Shaders/analytic_radial4.frag.spv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />

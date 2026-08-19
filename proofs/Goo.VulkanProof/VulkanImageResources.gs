@@ -425,11 +425,24 @@ internal unsafe class VulkanImageResources : IDisposable {
         if stagingAllocation == nil {
             return VkConstants.VK_SUCCESS
         }
-        let result = allocator.FlushBeforeSubmit(stagingAllocation!!)
-        if result == VkConstants.VK_SUCCESS {
-            flushPrepared = true
+        var flushed bool = false
+        var index int32 = 0
+        while index < entries.Length {
+            let entry = entries[index]
+            if entry.State == VulkanImageResourceState.UploadPending
+                && entry.Upload.Succeeded && !entry.UploadSubmitted {
+                let result = allocator.FlushBeforeSubmit(stagingAllocation!!,
+                    entry.Upload.Offset, entry.Upload.Size)
+                if result != VkConstants.VK_SUCCESS {
+                    flushPrepared = false
+                    return result
+                }
+                flushed = true
+            }
+            index = index + 1
         }
-        return result
+        flushPrepared = flushed
+        return VkConstants.VK_SUCCESS
     }
 
     internal func AbortUploads(commandBuffer VkCommandBuffer, expectedGeneration uint64) int32 {

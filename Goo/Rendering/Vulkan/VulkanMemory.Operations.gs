@@ -106,9 +106,7 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
         var offset VkDeviceSize = 0uL
         while blockIndex < blockCount {
             if let block = blocks[blockIndex] {
-                if block.memoryTypeIndex == selection.memoryTypeIndex
-                    && block.resourceClass == resourceClass
-                    && !block.dedicated
+                if CanSharePooledBlock(block, selection, resourceClass)
                     && TryFindOffset(block, placementSpan, placementAlignment, ref offset) {
                     return VulkanMemoryPlacement{ block: block, offset: offset, span: placementSpan, newBlock: false }
                 }
@@ -123,6 +121,13 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
             throw InvalidOperationException("Vulkan memory block cannot satisfy requirements")
         }
         return VulkanMemoryPlacement{ block: newBlock, offset: offset, span: placementSpan, newBlock: true }
+    }
+
+    private func CanSharePooledBlock(block VulkanMemoryBlock,
+        selection VulkanMemoryTypeSelection, resourceClass VulkanMemoryResourceClass) bool {
+        return !block.dedicated
+            && block.memoryTypeIndex == selection.memoryTypeIndex
+            && block.resourceClass == resourceClass
     }
 
     private func BlockSize(requirements VkMemoryRequirements,
