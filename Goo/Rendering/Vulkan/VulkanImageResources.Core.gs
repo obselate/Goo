@@ -3,6 +3,22 @@ package Goo
 import System
 
 internal unsafe partial class VulkanImageResources : IDisposable {
+    internal prop HasUnsubmittedRecordedUpload bool {
+        get {
+            var index int32 = 0
+            while index < entries.Length {
+                let entry = entries[index]
+                if entry.State == VulkanImageResourceState.UploadPending
+                    && entry.Upload.Succeeded && entry.UploadRecorded
+                    && !entry.UploadSubmitted {
+                    return true
+                }
+                index++
+            }
+            return false
+        }
+    }
+
     private const MaxCapacity int32 = 1048576
     private const MaxStagingBytes VkDeviceSize = 4294967295uL
 
@@ -23,6 +39,7 @@ internal unsafe partial class VulkanImageResources : IDisposable {
     private let diagnostics VulkanDiagnostics?
     private let objectAccounting VulkanObjectAccounting?
     private let stagingByteCapacity VkDeviceSize
+    private let stagingGate object
     private var stagingBuffer VkBuffer
     private var stagingAllocation VulkanMemoryAllocation? = nil
     private var descriptorPool VkDescriptorPool
@@ -112,6 +129,7 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         capacity = imageCapacity
         residentByteBudget = maximumResidentBytes
         stagingByteCapacity = stagingBytes
+        stagingGate = Object()
         entries = [imageCapacity]VulkanImageResourceEntry
         logicalRecords = [logicalResourceCapacity]VulkanLogicalResource
         descriptorCapacity = imageCapacity + imageCapacity
@@ -130,7 +148,6 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         flushPrepared = false
         try {
             CreateGeneration()
-            CreateStagingBuffer()
         } catch (error Exception) {
             DestroyGeneration()
             DestroyStagingBuffer()

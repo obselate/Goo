@@ -42,6 +42,14 @@ internal class VulkanDiagnosticEventIds {
         const GpuTimestamp uint64 = 324uL
         const SceneUnsupported uint64 = 325uL
         const SceneUnsupportedDropped uint64 = 326uL
+        const LayerPass uint64 = 327uL
+        const LayerComposite uint64 = 328uL
+        const LayerCreate uint64 = 329uL
+        const LayerReuse uint64 = 330uL
+        const LayerEvict uint64 = 331uL
+        const LayerPressure uint64 = 332uL
+        const LayerFailure uint64 = 333uL
+        const LayerCommandReuse uint64 = 334uL
         const VulkanResult uint64 = 400uL
         const ValidationMessage uint64 = 401uL
         const FatalSnapshot uint64 = 402uL
@@ -150,6 +158,62 @@ internal data struct VulkanDiagnosticCounterSnapshot {
     var textAtlasRecordedUploadBytes uint64
     var textAtlasEvictionCount uint64
     var textAtlasRetirementCount uint64
+    var pathAtlasByteBudget uint64
+    var pathAtlasResidentWords uint64
+    var pathAtlasFreeWords uint64
+    var pathAtlasPathCount uint64
+    var pathAtlasActiveReferenceCount uint64
+    var pathAtlasLiveObjectCount uint64
+    var pathAtlasEvictionCount uint64
+    var pathAtlasRetiredWords uint64
+    var pathAtlasReuseCount uint64
+    var pathAtlasPressureEventCount uint64
+    var pathAtlasPressureFailureCount uint64
+    var clipMaskAtlasByteBudget uint64
+    var clipMaskAtlasResidentBytes uint64
+    var clipMaskAtlasRegionCount uint64
+    var clipMaskAtlasFreePlacementCount uint64
+    var clipMaskAtlasActiveLayerCount uint64
+    var clipMaskAtlasMaximumLayerCount uint64
+    var clipMaskAtlasRetiredGenerationCount uint64
+    var clipMaskAtlasEvictionCount uint64
+    var clipMaskAtlasPressureEventCount uint64
+    var clipMaskAtlasPressureFailureCount uint64
+    var clipFrameWrittenBytes uint64
+    var clipFrameSkippedBytes uint64
+    var clipFrameMappedWrites uint64
+    var clipFrameFlushes uint64
+    var clipFrameRetainedReuse uint64
+    var clipFrameSlotIndex uint64
+    var clipFrameDrawCount uint64
+    var clipFrameMaskCount uint64
+    var clipFrameChainCount uint64
+    var clipFrameLayerCount uint64
+    var clipFrameByteCount uint64
+    var clipFrameCapacity uint64
+    var clipFrameBufferGeneration uint64
+    var clipFrameLastUseSerial uint64
+    var clipFrameRetentionEligible uint32
+    var clipFrameRetained uint32
+    var clipFrameRetentionValid uint32
+    var textFrameWrittenBytes uint64
+    var textFrameSkippedBytes uint64
+    var textFrameDirtySegmentCount uint64
+    var textFrameUploadRangeCount uint64
+    var textFrameFullUploadCount uint64
+    var textFrameMappedWrites uint64
+    var textFrameFlushes uint64
+    var textFrameRetainedReuse uint64
+    var textFrameSlotIndex uint64
+    var textFrameSegmentCount uint64
+    var textFrameRunCount uint64
+    var textFrameRecordCount uint64
+    var textFrameByteCount uint64
+    var textFrameCapacity uint64
+    var textFrameBufferGeneration uint64
+    var textFrameTopologyKey uint64
+    var textFrameLastUseSerial uint64
+    var textFramePrepared uint32
     var imageEvictionCount uint64
     var imageRetirementCount uint64
     var allocatorBytes uint64
@@ -168,6 +232,18 @@ internal data struct VulkanDiagnosticCounterSnapshot {
     var validationErrorCount uint64
     var resultCount uint64
     var resultFailureCount uint64
+    var layerPoolByteBudget uint64
+    var layerPoolResidentBytes uint64
+    var layerPoolTargetCount uint64
+    var layerPoolLeasedCount uint64
+    var layerPoolCreateCount uint64
+    var layerPoolReuseCount uint64
+    var layerPoolEvictionCount uint64
+    var layerPoolPressureEventCount uint64
+    var layerPoolPressureFailureCount uint64
+    var layerPoolFailureCount uint64
+    var layerPoolPassCount uint64
+    var layerPoolCompositeCount uint64
 }
 
 internal data struct VulkanDiagnosticTextAtlasContribution {

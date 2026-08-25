@@ -1,18 +1,12 @@
-#version 450 core
-
-layout(push_constant) uniform PushConstants {
-    vec4 rect;
-    vec4 transform0;
-    vec4 transform1;
-    vec4 widths;
-    vec4 params;
-    vec4 radii;
-    uvec4 packedColors;
-    uvec4 packedColorsExtra;
-} pc;
+#include "primitive_record.glsl"
 
 layout(location = 0) in vec2 uv;
+layout(location = 3) flat in uint gooPrimitiveRecordOrdinal;
 layout(location = 0) out vec4 outColor;
+
+#include "clip_chain.glsl"
+
+#define pc gooPrimitiveBuffer.records[gooPrimitiveRecordOrdinal]
 
 vec4 unpackColor(uint packedRgb, uint packedAlpha, uint alphaIndex)
 {
@@ -42,10 +36,10 @@ vec4 edgeColor(uint edge)
 
 float edgeWidth(uint edge, vec2 size)
 {
-    float top = min(max(pc.widths.x, 0.0), size.y);
-    float right = min(max(pc.widths.y, 0.0), size.x);
-    float bottom = min(max(pc.widths.z, 0.0), max(size.y - top, 0.0));
-    float left = min(max(pc.widths.w, 0.0), max(size.x - right, 0.0));
+    float top = min(max(pc.radii.x, 0.0), size.y);
+    float right = min(max(pc.radii.y, 0.0), size.x);
+    float bottom = min(max(pc.radii.z, 0.0), max(size.y - top, 0.0));
+    float left = min(max(pc.radii.w, 0.0), max(size.x - right, 0.0));
     if (edge == 0u)
     {
         return top;
@@ -63,10 +57,10 @@ float edgeWidth(uint edge, vec2 size)
 
 uint selectedEdge(vec2 point, vec2 size)
 {
-    float top = min(max(pc.widths.x, 0.0), size.y);
-    float right = min(max(pc.widths.y, 0.0), size.x);
-    float bottom = min(max(pc.widths.z, 0.0), max(size.y - top, 0.0));
-    float left = min(max(pc.widths.w, 0.0), max(size.x - right, 0.0));
+    float top = min(max(pc.radii.x, 0.0), size.y);
+    float right = min(max(pc.radii.y, 0.0), size.x);
+    float bottom = min(max(pc.radii.z, 0.0), max(size.y - top, 0.0));
+    float left = min(max(pc.radii.w, 0.0), max(size.x - right, 0.0));
     if (top > 0.0 && point.y < top)
     {
         return 0u;
@@ -232,10 +226,10 @@ float roundedRectDistance(vec2 point, vec2 size, vec4 cornerRadii)
 
 uint roundedEdge(vec2 point, vec2 size)
 {
-    float top = min(max(pc.widths.x, 0.0), size.y);
-    float right = min(max(pc.widths.y, 0.0), size.x);
-    float bottom = min(max(pc.widths.z, 0.0), max(size.y - top, 0.0));
-    float left = min(max(pc.widths.w, 0.0), max(size.x - right, 0.0));
+    float top = min(max(pc.radii.x, 0.0), size.y);
+    float right = min(max(pc.radii.y, 0.0), size.x);
+    float bottom = min(max(pc.radii.z, 0.0), max(size.y - top, 0.0));
+    float left = min(max(pc.radii.w, 0.0), max(size.x - right, 0.0));
     float best = 1000000.0;
     uint edge = 4u;
     float distance = point.y;
@@ -268,17 +262,18 @@ void main()
 {
     vec2 size = pc.rect.zw;
     vec2 point = uv * size;
-    if (max(max(pc.radii.x, pc.radii.y), max(pc.radii.z, pc.radii.w)) <= 0.0)
+    if (max(max(pc.stopPositions.x, pc.stopPositions.y), max(pc.stopPositions.z, pc.stopPositions.w)) <= 0.0)
     {
         renderRectangular(point, size);
+        outColor *= gooClipCoverage();
         return;
     }
 
-    vec4 outerRadii = normalizeRadii(size, pc.radii);
-    float top = min(max(pc.widths.x, 0.0), size.y);
-    float right = min(max(pc.widths.y, 0.0), size.x);
-    float bottom = min(max(pc.widths.z, 0.0), max(size.y - top, 0.0));
-    float left = min(max(pc.widths.w, 0.0), max(size.x - right, 0.0));
+    vec4 outerRadii = normalizeRadii(size, pc.stopPositions);
+    float top = min(max(pc.radii.x, 0.0), size.y);
+    float right = min(max(pc.radii.y, 0.0), size.x);
+    float bottom = min(max(pc.radii.z, 0.0), max(size.y - top, 0.0));
+    float left = min(max(pc.radii.w, 0.0), max(size.x - right, 0.0));
     float outerDistance = roundedRectDistance(point, size, outerRadii);
     float outerAa = max(fwidth(outerDistance), 0.0001);
     float outerCoverage = 1.0 - smoothstep(0.0, outerAa, outerDistance);
@@ -299,6 +294,7 @@ void main()
     if (edge == 4u)
     {
         outColor = vec4(0.0);
+        outColor *= gooClipCoverage();
         return;
     }
     float patternCoverage = 1.0;
@@ -328,5 +324,5 @@ void main()
         float dotAa = max(max(fwidth(axial), fwidth(transverse)), 0.0001);
         patternCoverage = 1.0 - smoothstep(dotRadius - dotAa, dotRadius + dotAa, dotDistance);
     }
-    outColor = edgeColor(edge) * coverage * patternCoverage;
+    outColor = edgeColor(edge) * coverage * patternCoverage * gooClipCoverage();
 }

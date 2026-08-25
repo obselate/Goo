@@ -68,12 +68,12 @@ Yoga.Net.
 
 | Consumer class | Included scope and constraint |
 |---|---|
-| Current repository | `Goo`, `Goo.InternalTextInterop`, package smoke, contracts, probes, tools, and vendored Yoga |
-| Excluded compile input | `tests/Goo.Tests/Infrastructure/InteropFixtureAssemblyInfo.cs`, explicitly removed by the test project |
+| Current repository | `Goo`, package smoke, focused contracts and behavior, probes, tools, and vendored Yoga |
+| Excluded compile input | None |
 | Exact external project references | `../goo-projects` applications, components, benchmarks, probes, tests, and tools plus `../psone-research/gootools/OddTool` |
 | Exact package consumer | `../gex`, currently pinned to NuGet `Goo` 0.2.0 |
 | External reference evidence | `../Hivemind-Goo` and `../uproar95`. Use them only for requirements, workloads, behavior, and API reachability evidence. Do not modify them |
-| Locked compatibility surface | `tests/Goo.Tests/Contracts/PublicApi.approved.txt`, including `WindowRenderer.Gpu` and `WindowRenderer.Raster` |
+| Locked compatibility surface | `tests/Goo.ApiContractTests/PublicApi.approved.txt` |
 | Known renderer selection | `../goo-projects/apps/Goo.Workbench` explicitly selects `WindowRenderer.Raster` |
 | Unknown consumers | Any package or source consumer not present on this machine. No public API removal is allowed until its reachability is established |
 

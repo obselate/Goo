@@ -4,35 +4,30 @@ import System
 
 internal unsafe partial class VulkanImageResources : IDisposable {
     private func RecordUpload(commandBuffer VkCommandBuffer, entry VulkanImageResourceEntry) {
-        var subresourceRange = VkImageSubresourceRange{}
-        subresourceRange.aspectMask = uint32(VkConstants.VK_IMAGE_ASPECT_COLOR_BIT)
-        subresourceRange.levelCount = 1u
-        subresourceRange.layerCount = 1u
-        var before = VkImageMemoryBarrier2{}
-        before.sType = VkConstants.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2
+        let subresourceRange = VulkanTransitions.ColorSubresourceRange()
+        var srcStageMask VkPipelineStageFlags2
+        var srcAccessMask VkAccessFlags2
         if entry.ImageLayout == VkConstants.VK_IMAGE_LAYOUT_UNDEFINED {
-            before.srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
-            before.srcAccessMask = VkConstants.VK_ACCESS_2_NONE
+            srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
+            srcAccessMask = VkConstants.VK_ACCESS_2_NONE
         } else if entry.ImageLayout == VkConstants.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL {
-            before.srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
-            before.srcAccessMask = VkConstants.VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
+            srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
+            srcAccessMask = VkConstants.VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
         } else {
             throw InvalidOperationException("Vulkan image has an unsupported layout")
         }
-        before.dstStageMask = VkConstants.VK_PIPELINE_STAGE_2_COPY_BIT
-        before.dstAccessMask = VkConstants.VK_ACCESS_2_TRANSFER_WRITE_BIT
-        before.oldLayout = entry.ImageLayout
-        before.newLayout = VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-        before.srcQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
-        before.dstQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
-        before.image = entry.Image
-        before.subresourceRange = subresourceRange
-        var firstDependency = VkDependencyInfo{}
-        firstDependency.sType = VkConstants.VK_STRUCTURE_TYPE_DEPENDENCY_INFO
-        firstDependency.imageMemoryBarrierCount = 1u
-        firstDependency.pImageMemoryBarriers = &before
         let pipelineBarrier = dispatch.vkCmdPipelineBarrier2
-        pipelineBarrier(commandBuffer, &firstDependency)
+        VulkanTransitions.RecordImage(
+            commandBuffer,
+            pipelineBarrier,
+            entry.Image,
+            subresourceRange,
+            entry.ImageLayout,
+            VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            srcStageMask,
+            srcAccessMask,
+            VkConstants.VK_PIPELINE_STAGE_2_COPY_BIT,
+            VkConstants.VK_ACCESS_2_TRANSFER_WRITE_BIT)
 
         var copy = VkBufferImageCopy{}
         copy.bufferOffset = entry.Upload.Offset
@@ -50,23 +45,17 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         copyBufferToImage(commandBuffer, stagingBuffer, entry.Image,
             VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy)
 
-        var after = VkImageMemoryBarrier2{}
-        after.sType = VkConstants.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2
-        after.srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_COPY_BIT
-        after.srcAccessMask = VkConstants.VK_ACCESS_2_TRANSFER_WRITE_BIT
-        after.dstStageMask = VkConstants.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
-        after.dstAccessMask = VkConstants.VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
-        after.oldLayout = VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-        after.newLayout = VkConstants.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-        after.srcQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
-        after.dstQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
-        after.image = entry.Image
-        after.subresourceRange = subresourceRange
-        var secondDependency = VkDependencyInfo{}
-        secondDependency.sType = VkConstants.VK_STRUCTURE_TYPE_DEPENDENCY_INFO
-        secondDependency.imageMemoryBarrierCount = 1u
-        secondDependency.pImageMemoryBarriers = &after
-        pipelineBarrier(commandBuffer, &secondDependency)
+        VulkanTransitions.RecordImage(
+            commandBuffer,
+            pipelineBarrier,
+            entry.Image,
+            subresourceRange,
+            VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VkConstants.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VkConstants.VK_PIPELINE_STAGE_2_COPY_BIT,
+            VkConstants.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VkConstants.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+            VkConstants.VK_ACCESS_2_SHADER_SAMPLED_READ_BIT)
     }
 
     private func Lookup(

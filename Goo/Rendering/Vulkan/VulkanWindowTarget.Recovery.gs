@@ -1,179 +1,52 @@
 package Goo
 
 internal unsafe partial class VulkanWindowTarget {
-    private const LiveTargetCapacity int32 = 8
     private var forceFullRedraw bool
     private var recoveryPending bool
 
-    shared {
-        private var liveTargets ([]VulkanWindowTarget?)? = nil
-        private var liveTargetCount int32
-        private var recoveryInProgress bool
+    internal func RecoveryRuntime() VulkanSharedLease? {
+        return runtime
+    }
 
-        internal func RegisterLiveTarget(target VulkanWindowTarget) {
-            if target == nil {
-                throw ArgumentNullException("target")
-            }
-            if liveTargets == nil {
-                liveTargets = [LiveTargetCapacity]VulkanWindowTarget?
-            }
-            var storage = liveTargets!!
-            var index int32 = 0
-            while index < liveTargetCount {
-                if storage[index] == target {
-                    return
-                }
-                index++
-            }
-            if liveTargetCount >= storage.Length {
-                if storage.Length <= 0 || storage.Length > Int32.MaxValue / 2 {
-                    throw InvalidOperationException("Vulkan live target capacity overflow")
-                }
-                let expanded = [storage.Length * 2]VulkanWindowTarget?
-                var copyIndex int32 = 0
-                while copyIndex < liveTargetCount {
-                    expanded[copyIndex] = storage[copyIndex]
-                    copyIndex = copyIndex + 1
-                }
-                liveTargets = expanded
-                storage = expanded
-            }
-            storage[liveTargetCount] = target
-            liveTargetCount = liveTargetCount + 1
-        }
-
-        internal func UnregisterLiveTarget(target VulkanWindowTarget) {
-            guard let storage = liveTargets else {
-                return
-            }
-            var index int32 = 0
-            while index < liveTargetCount {
-                if storage[index] == target {
-                    var readIndex = index + 1
-                    while readIndex < liveTargetCount {
-                        storage[readIndex - 1] = storage[readIndex]
-                        readIndex = readIndex + 1
-                    }
-                    liveTargetCount = liveTargetCount - 1
-                    storage[liveTargetCount] = nil
-                    return
-                }
-                index++
-            }
-        }
-
-        internal func LiveTargetCount() int32 {
-            return liveTargetCount
-        }
-
-        internal func RecoverDeviceLoss(result VkResult) bool {
-            if recoveryInProgress {
-                VulkanSharedRuntime.MarkGlobalTerminalFailure(result)
-                return false
-            }
-            guard let storage = liveTargets else {
-                VulkanSharedRuntime.MarkGlobalTerminalFailure(result)
-                return false
-            }
-            if liveTargetCount == 0 {
-                VulkanSharedRuntime.MarkGlobalTerminalFailure(result)
-                return false
-            }
-            var leader VulkanWindowTarget? = nil
-            var index int32 = 0
-            while index < liveTargetCount {
-                if let target = storage[index] {
-                    leader = target
-                    break
-                }
-                index++
-            }
-            guard let first = leader else {
-                VulkanSharedRuntime.MarkGlobalTerminalFailure(result)
-                return false
-            }
-            recoveryInProgress = true
-            try {
-                guard let oldRuntime = first.runtime else {
-                    throw InvalidOperationException("Vulkan shared runtime is unavailable during recovery")
-                }
-                oldRuntime.MarkDeviceLost()
-                index = 0
-                while index < liveTargetCount {
-                    if let target = storage[index] {
-                        target.AbandonForDeviceRecovery()
-                    }
-                    index++
-                }
-                VulkanSharedRuntime.DiscardAfterDeviceLoss()
-                first.RebuildAfterDeviceRecovery()
-                index = 0
-                while index < liveTargetCount {
-                    if let target = storage[index] {
-                        if target != first {
-                            target.RebuildAfterDeviceRecovery()
-                        }
-                    }
-                    index++
-                }
-                index = 0
-                while index < liveTargetCount {
-                    if let target = storage[index] {
-                        target.FinishDeviceRecovery()
-                    }
-                    index++
-                }
-                if let currentDiagnostics = first.diagnostics {
-                    currentDiagnostics.AddDeviceRecovery(1uL)
-                }
-                let newGeneration = if let currentRuntime = first.runtime {
-                    currentRuntime.Generation
-                } else {
-                    0uL
-                }
-                first.RecordDiagnosticEvent(
-                    VulkanDiagnosticEventIds.RuntimeDeviceLost,
-                    VulkanDiagnosticCategories.Recovery,
-                    1uL,
-                    int32(result),
-                    oldRuntime.Generation,
-                    0uL)
-                first.RecordDiagnosticEvent(
-                    VulkanDiagnosticEventIds.RuntimeRecovery,
-                    VulkanDiagnosticCategories.Recovery,
-                    0uL,
-                    0,
-                    newGeneration,
-                    liveTargetCount > 1 ? uint64(liveTargetCount) : 1uL)
-                recoveryInProgress = false
-                return true
-            } catch (error Exception) {
-                first.CaptureDiagnosticFatal(
-                    int32(result), VulkanDiagnosticEventIds.RuntimeRecovery)
-                index = 0
-                while index < liveTargetCount {
-                    if let target = storage[index] {
-                        target.CleanupFailedDeviceRecovery()
-                    }
-                    index++
-                }
-                try { VulkanSharedRuntime.DiscardAfterDeviceLoss() } catch (cleanup Exception) { }
-                recoveryInProgress = false
-                VulkanSharedRuntime.MarkGlobalTerminalFailure(result)
-                index = 0
-                while index < liveTargetCount {
-                    if let target = storage[index] {
-                        target.MarkRecoveryTerminal()
-                    }
-                    index++
-                }
-                return false
-            }
+    internal func ServiceRecoveryQueueCompletion() {
+        if queueStage == QueueStageSubmit {
+            PollQueueCompletion()
         }
     }
 
-    private func AbandonForDeviceRecovery() {
+    internal func RecordDeviceRecovery(result VkResult, oldGeneration uint64,
+        targetCount int32) {
+        if let currentDiagnostics = diagnostics {
+            currentDiagnostics.AddDeviceRecovery(1uL)
+        }
+        let newGeneration = if let currentRuntime = runtime {
+            currentRuntime.Generation
+        } else {
+            0uL
+        }
+        RecordDiagnosticEvent(
+            VulkanDiagnosticEventIds.RuntimeDeviceLost,
+            VulkanDiagnosticCategories.Recovery,
+            1uL,
+            int32(result),
+            oldGeneration,
+            0uL)
+        RecordDiagnosticEvent(
+            VulkanDiagnosticEventIds.RuntimeRecovery,
+            VulkanDiagnosticCategories.Recovery,
+            0uL,
+            0,
+            newGeneration,
+            targetCount > 1 ? uint64(targetCount) : 1uL)
+    }
+
+    internal func RecordDeviceRecoveryFailure(result VkResult) {
+        CaptureDiagnosticFatal(int32(result), VulkanDiagnosticEventIds.RuntimeRecovery)
+    }
+
+    internal func AbandonForDeviceRecovery() {
         let staleLease = runtime
+        AbandonReadbackAfterDeviceLoss()
         PrepareForDeviceRecovery()
         runtime = nil
         if let lease = staleLease {
@@ -181,8 +54,9 @@ internal unsafe partial class VulkanWindowTarget {
         }
     }
 
-    private func CleanupFailedDeviceRecovery() {
+    internal func CleanupFailedDeviceRecovery() {
         let staleLease = runtime
+        AbandonReadbackAfterDeviceLoss()
         if staleLease == nil {
             CleanupUnpublishedBootstrap()
         }
@@ -263,6 +137,7 @@ internal unsafe partial class VulkanWindowTarget {
 
     private func AbandonAfterDeviceLossForClose() {
         let staleLease = runtime
+        AbandonReadbackAfterDeviceLoss()
         try { PrepareForDeviceRecovery() } catch (cleanup Exception) { }
         runtime = nil
         if let lease = staleLease {
@@ -275,11 +150,23 @@ internal unsafe partial class VulkanWindowTarget {
     }
 
     private func PrepareForDeviceRecovery() {
+        InvalidateLastPresentedImageState()
         frameFailed = false
         recoveryPending = true
+        queueMailbox = nil
+        queueStage = QueueStageIdle
+        pendingGlobalSubmissionSerial = 0uL
+        pendingSubmitStart = 0uL
+        pendingPresentStart = 0uL
+        pendingPresentFence = 0uL
         let staleImageScene = imageScene
         imageScene = nil
         if let scene = staleImageScene {
+            try { scene.Dispose() } catch (cleanup Exception) { }
+        }
+        let stalePathScene = pathScene
+        pathScene = nil
+        if let scene = stalePathScene {
             try { scene.Dispose() } catch (cleanup Exception) { }
         }
         textScene = nil
@@ -289,10 +176,21 @@ internal unsafe partial class VulkanWindowTarget {
         if let atlas = staleTextAtlas {
             try { atlas.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
         }
+        if let atlas = clipMaskAtlas {
+            try { atlas.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
+            clipMaskAtlasAbandoned = true
+        }
         let staleRenderer = primitiveRenderer
         primitiveRenderer = nil
         if let renderer = staleRenderer {
-            try { renderer.Dispose() } catch (cleanup Exception) { }
+            try { renderer.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
+        }
+        clipMaskFrameStats = VulkanClipMaskFrameStats{}
+        clipMaskFrameTotals = VulkanClipMaskFrameTotals{}
+        let staleLayerPool = layerPool
+        layerPool = nil
+        if let pool = staleLayerPool {
+            try { pool.AbandonAfterDeviceLoss() } catch (cleanup Exception) { }
         }
         let staleTimestampState = timestampState
         timestampState = nil
@@ -306,16 +204,7 @@ internal unsafe partial class VulkanWindowTarget {
         try { if let current = staleGeneration { current.DisposeAfterDeviceLoss() } } catch (cleanup Exception) { }
         try { DisposeRetiredSwapchainsAfterDeviceLoss() } catch (cleanup Exception) { }
         presentationRetirement.ResetAfterDeviceLoss()
-        let staleFrameSlot0 = frameSlot0
-        frameSlot0 = nil
-        if let slot = staleFrameSlot0 {
-            try { slot.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
-        }
-        let staleFrameSlot1 = frameSlot1
-        frameSlot1 = nil
-        if let slot = staleFrameSlot1 {
-            try { slot.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
-        }
+        frameSlots.DisposeAfterDeviceLoss()
         let staleDevice = device
         let staleCommandPool = commandPool
         let staleCommandBufferCount = commandBufferObjectCount
@@ -339,6 +228,7 @@ internal unsafe partial class VulkanWindowTarget {
         runtime = nil
         memoryAllocator = nil
         imageResources = nil
+        pathResources = nil
         instance = nint(0)
         instanceDispatch = VkInstanceDispatch{}
         instanceMaintenanceVariant = VulkanSwapchainMaintenanceVariant.None
@@ -365,12 +255,13 @@ internal unsafe partial class VulkanWindowTarget {
         frameBegun = false
         renderingBegun = false
         frameRendered = false
+        clipMaskFrameStarted = false
+        clipMaskFramePrepared = false
         activeFrameSlot = nil
         activeFrameSlotIndex = 0u
         activeImageIndex = 0u
         activeImageLayout = VkConstants.VK_IMAGE_LAYOUT_UNDEFINED
         activeFrameId = 0uL
-        nextFrameSlot = 0u
         recreatePending = true
         surfaceLost = false
         forceFullRedraw = true
@@ -390,10 +281,31 @@ internal unsafe partial class VulkanWindowTarget {
         }
     }
 
-    private func RebuildAfterDeviceRecovery() {
+    internal func RebuildAfterDeviceRecovery() {
         Bootstrap()
         sceneCompiler.SetTextScene(textScene)
         sceneCompiler.SetImageScene(imageScene)
+        sceneCompiler.SetPathScene(pathScene)
+        if clipMaskAtlasAbandoned {
+            guard let atlas = clipMaskAtlas else {
+                throw InvalidOperationException("Vulkan clip mask atlas was lost during recovery")
+            }
+            guard let allocator = memoryAllocator else {
+                throw InvalidOperationException("Vulkan memory allocator is unavailable during recovery")
+            }
+            guard let activeRuntime = runtime else {
+                throw InvalidOperationException("Vulkan shared runtime is unavailable during recovery")
+            }
+            atlas.Rebuild(
+                device,
+                dispatch,
+                allocator,
+                clipMaskFormatSupport,
+                windowObjectAccounting,
+                activeRuntime.Generation)
+            clipMaskAtlasAbandoned = false
+            clipMaskRedrawPending = true
+        }
         let width = if requestedWidth > 0 { requestedWidth } else { framebufferWidth }
         let height = if requestedHeight > 0 { requestedHeight } else { framebufferHeight }
         if width > 0 && height > 0 {
@@ -406,42 +318,23 @@ internal unsafe partial class VulkanWindowTarget {
         forceFullRedraw = true
     }
 
-    private func FinishDeviceRecovery() {
+    internal func FinishDeviceRecovery() {
         frameFailed = false
         recoveryPending = false
         forceFullRedraw = true
     }
 
-    private func MarkRecoveryTerminal() {
+    internal func MarkRecoveryTerminal() {
         frameFailed = true
         recoveryPending = false
         runtime = nil
     }
 
     private func DisposeRetiredSwapchainsAfterDeviceLoss() {
-        guard let storage = retiredSwapchains else {
-            return
-        }
-        let staleInstance = instance
-        let staleCount = retiredSwapchainCount
-        retiredSwapchainCount = 0
-        var index int32 = 0
-        while index < staleCount {
-            if let retired = storage[index] {
-                storage[index] = nil
-                try { retired.Generation.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
-                if retired.DestroySurface && retired.Surface != 0uL && staleInstance != nint(0) {
-                    try { host.DestroyVulkanSurface(staleInstance, retired.Surface) } catch (cleanup Exception) { }
-                    if let accounting = windowObjectAccounting {
-                        try { accounting.Release() } catch (cleanup Exception) { }
-                    }
-                }
-            }
-            index++
-        }
+        retiredSwapchains.DisposeAfterDeviceLoss()
     }
 
     internal prop RecoveryInProgress bool {
-        get { return VulkanWindowTarget.recoveryInProgress }
+        get { return VulkanDeviceRecoveryCoordinator.InProgress }
     }
 }

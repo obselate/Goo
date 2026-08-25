@@ -15,6 +15,7 @@ public open class Cell {
   internal var disposed bool
   internal var anims List[MotionParticle]?
   internal var motionPump MotionPump?
+  internal var retainedMotionInvalidation Action[ReconcileEffects]?
   internal var mountedNode Node?
   internal var mountedOwner Cell?
   internal var mountGeneration int64
@@ -177,6 +178,7 @@ public open class Cell {
       }
       disposed = true
       motionPump = nil
+      retainedMotionInvalidation = nil
       rebuildSubmission = nil
       mountedNode = nil
       mountedOwner = nil
@@ -296,6 +298,43 @@ public open class Cell {
     }
     if let child = directChild {
       child.BindPump(pump)
+    }
+  }
+
+  internal func OwnMotionParticle(p MotionParticle) {
+    if anims == nil {
+      anims = List[MotionParticle]()
+    }
+    anims!!.Add(p)
+    if !disposed {
+      if let pump = motionPump {
+        p.Bind(pump)
+      }
+    }
+  }
+
+  internal func ReleaseMotionParticle(p MotionParticle) {
+    guard let list = anims else { return }
+    var index int32 = 0
+    while index < list.Count {
+      if list[index] == p {
+        list.RemoveAt(index)
+        return
+      }
+      index++
+    }
+  }
+
+  internal func SetRetainedMotionInvalidation(h Action[ReconcileEffects]?) {
+    retainedMotionInvalidation = h
+  }
+
+  internal func InvalidateRetainedMotion(e ReconcileEffects) {
+    if disposed {
+      return
+    }
+    if let hook = retainedMotionInvalidation {
+      hook(e)
     }
   }
 

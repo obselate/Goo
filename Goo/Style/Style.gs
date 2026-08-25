@@ -56,6 +56,9 @@ public open class Style {
   internal func pushImageSource(f StyleField, value ImageSourceProvider?) {
     addEntry(StyleEntry{ Field: f, Payload: value })
   }
+  internal func pushShaderEffect(f StyleField, value ShaderEffect?) {
+    addEntry(StyleEntry{ Field: f, Payload: value })
+  }
 
   internal func pushTransform(value PanelTransform) {
     pushLength(StyleField.TransformTranslateX, value.TranslateX)
@@ -193,6 +196,9 @@ public open class Style {
   }
   /// Sets how ClipPath maps into the element border box. The default is Fill.
   public prop ClipPathFit ShapeFit { init { pushEnumOrdinal(StyleField.ClipPathFit, int32(value)) } }
+  public prop ClipPathFillRule FillRule {
+    init { pushEnumOrdinal(StyleField.ClipPathFillRule, int32(value)) }
+  }
   /// Sets the radius of all border corners.
   public prop BorderRadius Length { init { pushCheckedLength(StyleField.BorderRadius, value, "BorderRadius", false, false, false) } }
   /// Sets the top-left border radius.
@@ -259,6 +265,9 @@ public open class Style {
   public prop Opacity float64 { init { pushScalar(StyleField.Opacity, normalizeOpacity(value)) } }
   /// Sets how this element and its descendants composite with the backdrop.
   public prop BlendMode BlendMode { init { pushEnumOrdinal(StyleField.BlendMode, int32(value)) } }
+  public prop ShaderEffect ShaderEffect? {
+    init { pushShaderEffect(StyleField.ShaderEffect, value) }
+  }
   /// Sets a layout-neutral 2D transform for this element and its descendants.
   /// Components interpolate only when their length units match.
   public prop Transform PanelTransform { init { pushTransform(value) } }

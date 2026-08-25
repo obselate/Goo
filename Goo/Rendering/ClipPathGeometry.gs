@@ -19,7 +19,7 @@ internal class ClipPathGeometry {
       }
       let localX = (x - mapping.TranslateX) / mapping.ScaleX
       let localY = (y - mapping.TranslateY) / mapping.ScaleY
-      return PathGeometry.For(clip.Path).Contains(localX, localY, FillRule.NonZero)
+      return PathGeometry.For(clip.Path).Contains(localX, localY, clip.FillRule)
     }
 
     internal func Dispose(n Node) { }

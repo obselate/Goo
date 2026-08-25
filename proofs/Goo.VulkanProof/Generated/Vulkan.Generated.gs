@@ -1309,6 +1309,15 @@ unsafe struct VkGraphicsPipelineCreateInfo {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkImageCopy {
+    var srcSubresource VkImageSubresourceLayers
+    var srcOffset VkOffset3D
+    var dstSubresource VkImageSubresourceLayers
+    var dstOffset VkOffset3D
+    var extent VkExtent3D
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkImageCreateInfo {
     var sType VkStructureType
     var pNext *void
@@ -2309,6 +2318,7 @@ unsafe struct VkDeviceDispatch {
     var vkCmdCopyImageToBuffer unmanaged[Cdecl] (VkCommandBuffer, VkImage, VkImageLayout, VkBuffer, uint32, *VkBufferImageCopy) -> void
     var vkCmdCopyBuffer unmanaged[Cdecl] (VkCommandBuffer, VkBuffer, VkBuffer, uint32, *VkBufferCopy) -> void
     var vkCmdCopyBufferToImage unmanaged[Cdecl] (VkCommandBuffer, VkBuffer, VkImage, VkImageLayout, uint32, *VkBufferImageCopy) -> void
+    var vkCmdCopyImage unmanaged[Cdecl] (VkCommandBuffer, VkImage, VkImageLayout, VkImage, VkImageLayout, uint32, *VkImageCopy) -> void
     var vkCreateBufferView unmanaged[Cdecl] (VkDevice, *VkBufferViewCreateInfo, *VkAllocationCallbacks, *VkBufferView) -> VkResult
     var vkDestroyBufferView unmanaged[Cdecl] (VkDevice, VkBufferView, *VkAllocationCallbacks) -> void
     var vkCreateSampler unmanaged[Cdecl] (VkDevice, *VkSamplerCreateInfo, *VkAllocationCallbacks, *VkSampler) -> VkResult

@@ -102,7 +102,7 @@ Queues an idempotent close request. This is safe from any thread.
 
 ### `Run`
 
-Opens the window and processes frames until it closes.
+Opens the window and processes frames until all open Goo windows close.
 
 ### `SetClipboardText(string)`
 
@@ -156,10 +156,6 @@ Gets or sets the callback that receives each physical key press.
 
 Gets or sets the callback that receives each window state change.
 
-### `Renderer`
-
-Gets or sets the renderer used the next time the window opens. GPU is the default. Raster requires Wayland, avoids GPU contexts, and cannot be combined with Transparent.
-
 ### `Resizable`
 
 Gets or sets whether the user can resize the window.
@@ -186,7 +182,7 @@ Gets or sets next-open per-pixel alpha. An open window is unchanged. Transparenc
 
 ### `VSync`
 
-Gets or sets GPU vertical synchronization. Raster presentation is compositor paced.
+Gets or sets per-window GPU presentation synchronization. True selects FIFO. False prefers Immediate, then Mailbox, then FIFO. Window.Run applies internal display-rate pacing for either value.
 
 ### `Width`
 
@@ -231,19 +227,6 @@ Gets the reported logical height.
 ### `LogicalWidth`
 
 Gets the reported logical width.
-
-## `WindowRenderer`
-
-Source:
-
-- [`Window.gs`](../../Goo/Window/Window.gs)
-
-Selects the native rendering backend used by a window.
-
-### Values
-
-- `Gpu`
-- `Raster`
 
 ## `WindowState`
 

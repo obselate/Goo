@@ -1,8 +1,8 @@
 # Goo Gaps and Reductions Plan
 
 Status: accepted architecture and decision register. This file does not track current implementation
-progress. `IMPLEMENTATION-PLAN.md` is the single active status and remaining-work tracker. O16 remains
-a later measured AA decision.
+progress. `IMPLEMENTATION-PLAN.md` is the single active status and remaining-work tracker. O16 accepts
+one fixed analytic-coverage AA policy; final T02 and Windows qualification remain release gates.
 
 Date: 2026-08-17
 
@@ -54,13 +54,13 @@ benchmarks, development tools, external packages, and large vendored dependencie
 
 All immediate Q&A decisions are accepted. O02 locks the text stack below. O03 selects a Goo-owned or
 freely redistributable implementation direction for arbitrary vector paths, subject to the recorded
-implementation gates. O15 is outside Goo core.
-O16 remains a later proof decision because its AA method needs Vulkan measurements.
+implementation gates. O15 is outside Goo core. For S14, O16 is accepted; final T02 and Windows
+qualification remain S19 release gates.
 
 | ID | Decision | Status | Accepted direction or remaining scope |
 |---|---|---|---|
 | O01 | Skia transition and removal gate | Accepted | Remove Skia with the first direct Vulkan implementation. No live oracle, Ganesh Vulkan, fallback, or hybrid |
-| O02 | Text and font stack | Accepted | Use runtime `.ttf`/`.otf`/`.ttc`/`.otc` inputs with a trimmed vendored HarfBuzz 14.3.1 core plus `hb-gpu` behind a stable Goo-internal provider ABI. Use .NET 10 `StringInfo` graphemes initially, `Unicode.Bidi` 0.3.18 with a pinned Unicode 16 profile, and generated G# UAX #14, UAX #29, Scripts, and ScriptExtensions tables. Goo owns itemization, registered-font-first fallback, layout, wrapping, editing, caret, selection, hit testing, and IME. Vulkan consumes `hb-gpu` encoded monochrome and COLR/CPAL v0/v1 glyph resources through Goo-owned pipelines. Exact parity requires identical registered font bytes and fallback order; system catalog discovery is optional best effort. Defer CBDT/CBLC, `sbix`, SVG fonts, and language hyphenation. Do not use FreeType, ICU, ClearType, platform text rasterizers, or a CPU text raster path. Text AA remains O16. The stack must pass source, license, ABI, resource, corpus, visual-quality, performance, allocation, lifecycle, package, and Windows/Linux gates |
+| O02 | Text and font stack | Accepted | Use runtime `.ttf`/`.otf`/`.ttc`/`.otc` inputs with a trimmed vendored HarfBuzz 14.3.1 core plus `hb-gpu` behind a stable Goo-internal provider ABI. Use .NET 10 `StringInfo` graphemes initially, `Unicode.Bidi` 0.3.18 with a pinned Unicode 16 profile, and generated G# UAX #14, UAX #29, Scripts, and ScriptExtensions tables. Goo owns itemization, registered-font-first fallback, layout, wrapping, editing, caret, selection, hit testing, and IME. Vulkan consumes `hb-gpu` encoded monochrome and COLR/CPAL v0/v1 glyph resources through Goo-owned pipelines. Exact parity requires identical registered font bytes and fallback order; system catalog discovery is optional best effort. Defer CBDT/CBLC, `sbix`, SVG fonts, and language hyphenation. Do not use FreeType, ICU, ClearType, platform text rasterizers, or a CPU text raster path. Text AA uses the fixed analytic-coverage policy accepted by O16. The stack must pass source, license, ABI, resource, corpus, visual-quality, performance, allocation, lifecycle, package, and Windows/Linux gates |
 | O03 | Path geometry and hit testing | Accepted | Use a Goo-owned or freely redistributable curve, band, fill, stroke, and Vulkan implementation. Goo owns curve conversion, CPU hit testing, clipping, paint composition, caching, and lifetime |
 | O04 | Image codecs and SVG ownership | Accepted | Optional codec providers plus build-time compiled SVG assets. No required runtime SVG parser |
 | S12-I01 | Versioned stable `ImageSourceProvider` contract | Accepted | Nonzero monotonic `uint64` versions, immutable per-version results, version-snapshot leases, owner-thread notifications, targeted invalidation, and cache identities independent of sampling and layout |
@@ -75,23 +75,36 @@ O16 remains a later proof decision because its AA method needs Vulkan measuremen
 | O13 | Core versus composed control boundary | Accepted | Controls use public primitives directly or live in a separate G# library. They do not enter core |
 | O14 | When Goo core dependencies can be removed | Accepted | Remove each dependency after its final Goo-core consumer is replaced and relevant Windows and Linux gates pass. Skia follows O01 |
 | O15 | Hivemind cutover coverage | Out of scope | Application migration and release staging are not Goo core decisions |
-| O16 | MSAA and antialiasing strategy | Later | Compare AA methods in the Vulkan proof, then ship one fixed cross-platform policy without runtime modes or automatic strategy switching |
+| O16 | MSAA and antialiasing strategy | Accepted | Ship one fixed analytic-coverage policy shared by Windows and Linux. All product targets and pipelines remain single-sample; no MSAA, runtime AA modes, per-window settings, fallback chain, or automatic strategy switching |
 
-## 3. Current evidence that constrains the plan
+### S14 and S20 accepted effect boundary
 
-These are observed facts. They do not select the future renderer.
+S14 uses the existing typed declarative Style effect surface as its public contract. Goo-owned Vulkan
+shaders, pipelines, artifacts, and handles are internal and closed; raw runtime shader source and
+unrestricted Vulkan capabilities are not part of the public surface. Under S20, precompiled fragment
+SPIR-V ShaderEffect support is complete and Linux-qualified via Style.ShaderEffect, using the bounded
+layer compositor, fixed ABI descriptor/push contracts, and a bounded pipeline cache. General masks and
+higher-level filters remain explicitly deferred to a separate planned path with their own API, safety,
+resource, validation, performance, lifecycle, and package decisions. They are not rejected, are not
+consumer-dependent omissions, and are not an S14 or S20 blocker. O16 is accepted; final T02 and Windows
+qualification remain S19 release gates.
+
+## 3. Plan-entry evidence that constrains the accepted decisions
+
+These are observed plan-entry facts. Later implementation does not rewrite the evidence that selected
+the architecture, but current-status wording is explicit where the cutover has already completed.
 
 | ID | Current evidence |
 |---|---|
-| E01 | Goo currently uses Skia Ganesh OpenGL through SDL3, with a separate raster diagnostic path |
+| E01 | At plan entry Goo used Skia Ganesh OpenGL through SDL3, with a separate raster diagnostic path. The accepted cutover later removed both product paths |
 | E02 | The current renderer sleeps without demand. The problem is work after a dirty frame is accepted, not continuous idle repaint |
 | E03 | The rejected Skia FBO damage experiment reduced some paint work but lost on total frame time and flush cost. That result applies to that mechanism, not every possible Vulkan retention design |
 | E04 | Current GPUI can replay clean CPU scene ranges, but its GPU renderers still clear and replay a full dirty frame |
 | E05 | GPUI uses different renderer and text stacks by platform. It is not evidence that Goo should copy that split |
-| E06 | Older requirements requested 8x MSAA with fallback, while the current renderer has no active MSAA. O16 now requires proof measurements followed by one fixed cross-platform AA policy without runtime fallback |
+| E06 | Older requirements requested 8x MSAA with fallback. O16 supersedes that request with one fixed analytic-coverage policy: all product targets and pipelines remain single-sample, with no MSAA or runtime fallback |
 | E07 | Historical source and size estimates are planning evidence only. They are not approved budgets |
 | E08 | Vulkan provides the GPU substrate. It does not provide a canvas, paths, font services, codecs, filters, a scene, invalidation, or cache policy |
-| E09 | Current production Skia reach is 24 files, 44 unique `SK*` symbols, 534 references, and 6,480 lines in files with direct Skia use |
+| E09 | Pre-cutover production Skia reach was 24 files, 44 unique `SK*` symbols, 534 references, and 6,480 lines in files with direct Skia use |
 | E10 | Goo can retain Yoga, `Unicode.Bidi` 0.3.18, its text and editing state, the public `VectorPath` source model, and the `ImageSourceProvider` pixel boundary |
 | E11 | The highest-risk Skia losses are text and color emoji, path expansion and algebra, group opacity and advanced blends, masks and shadows, and color-space parity |
 | E12 | Removing Skia can remove its raw native package asset, but replacement font, path, codec, and allocation dependencies reduce the net size gain |
@@ -132,7 +145,7 @@ x64. System font catalog discovery is optional best effort and is not an exact-p
 The initial glyph set is monochrome analytical outlines plus COLR/CPAL v0/v1. CBDT/CBLC, `sbix`, SVG
 fonts, and language-specific hyphenation are deferred. FreeType, ICU, DirectWrite, Fontconfig,
 ClearType, platform text rasterizers, and CPU text rasterization are not allowed. Text antialiasing
-remains the O16 measured policy decision. The locked provider ABI must use caller-owned buffers and
+uses the fixed analytic-coverage policy accepted by O16. The locked provider ABI must use caller-owned buffers and
 workspaces, stable versioned results, and no public text-engine handles. It must reconstruct encoded
 glyph data, SPIR-V resources, descriptors, and dependent draw ranges from registered font bytes and
 logical text state after device loss.
@@ -178,7 +191,7 @@ Remaining text proof gates, not completed features:
 - Device-loss reconstruction of text resources and dependent draw ranges.
 - Windows runtime execution and runtime lifecycle validation.
 - Final color-policy details beyond the current CPAL conversion and format gates.
-- O16 fixed cross-platform antialiasing policy and measurement.
+- Final T02 and Windows qualification of the accepted O16 analytic-coverage policy.
 
 ## 4. Work sequence
 
@@ -477,8 +490,8 @@ fallback order on Windows x64 and Linux x64. System font catalog discovery is op
 is not an exact-parity input.
 
 Initial glyph support is monochrome analytical outlines plus COLR/CPAL v0/v1. CBDT/CBLC, `sbix`, SVG
-fonts, and language-specific hyphenation are deferred. Text antialiasing remains the O16 measured
-policy decision. The locked provider ABI must use caller-owned buffers and workspaces, stable versioned
+fonts, and language-specific hyphenation are deferred. Text antialiasing uses the fixed analytic-coverage
+policy accepted by O16. The locked provider ABI must use caller-owned buffers and workspaces, stable versioned
 results, explicit status values, and no public text-engine handles. Reconstruct encoded glyph data,
 SPIR-V resources, descriptors, and dependent draw ranges from registered font bytes and logical text
 state after device loss.
@@ -667,6 +680,19 @@ initial renderer. Retain only offscreen surfaces already required by visual effe
 versions and byte bounds. Do not add a general automatic subtree-to-texture cache without later
 evidence.
 
+The current Linux S15 checkpoint implements narrow exact CPU retention for strict solid and rounded
+leaf boxes, eligible child-bearing own boxes, and transparent square solid per-edge border leaves.
+Each cache stores logical values only and appends them into the active reusable frame. Border validity
+is exact across bounds, four widths, four zero radii, four packed colors, style, and transform index.
+One retained border scene draw can expand to four primitive records. All unsupported state keeps the
+generic compiler and full-damage fallback. This checkpoint does not close S15, Q10, Windows, general
+resource retention, or recovery qualification.
+
+The recovered 4,900-cell text StocksGrid control confirms the need for text retention. Retained text
+work exists, but current wave evidence is diagnostic and does not constitute a Q10 qualification or S15
+closeout. General retained resource, text and glyph resource retention, viewport-aware scene reduction,
+and stable text GPU-range work remain open.
+
 Reopen O07 if the accepted path loses on total frame time, hitches, memory, power proxy, or visual
 correctness on the required Windows and Linux workloads after reasonable damage coalescing and
 dependency optimization. The rejected Ganesh damage-clipping result does not select this Vulkan
@@ -710,14 +736,30 @@ clean, minimized, blocked, resizing, or failed window must not force another win
 render. The runtime can move submission to a dedicated render thread later without changing this
 ownership model, but the initial implementation does not require that thread.
 
+Window scheduling is one process-wide fair deadline scheduler. It tracks a high-resolution fractional
+next-frame deadline for each window, waits only for the earliest deadline, and services due windows
+fairly without independent per-window sleep loops. The cadence is derived from the display currently
+associated with that window, supports different and fractional refresh rates, and resets when the
+display association or mode changes. Actual presentation feedback is preferred when available; the
+display's nominal refresh rate is the fallback. Clean or idle, minimized, occluded, unavailable-
+swapchain, or GPU-blocked windows render no frame and do not delay siblings.
+
+`Window.VSync` is public and per-window. `VSync=true` requires FIFO presentation. `VSync=false`
+remains display-rate paced by the internal scheduler and selects Immediate, then Mailbox, then FIFO
+when those modes are available. FIFO_RELAXED is not selected. Presentation mode and internal frame
+pacing are separate policies. An internal uncapped seam is permitted only for benchmarks. Manual
+`Pump` and `PumpScheduled` remain caller-paced seams and do not become independent scheduler loops.
+
 Resize and `VK_ERROR_OUT_OF_DATE_KHR` recreate only the affected swapchain. Coalesce rapid resize to
 the newest extent. A zero-sized minimized window stops acquiring and presenting until it has a valid
 extent. `VK_ERROR_SURFACE_LOST_KHR` recreates only that window's SDL surface and swapchain. Closing a
 window retires only its presentation resources.
 
 Do not call `vkDeviceWaitIdle` for normal resize, close, or surface recovery. Retire old swapchains
-and presentation resources after safe completion. Use `VK_EXT_swapchain_maintenance1` present fences
-when available. Otherwise, use acquired-image presentation history and deferred retirement.
+and presentation resources after safe completion. Require a negotiated KHR or EXT
+`surface_maintenance1` and `swapchain_maintenance1` pair with present fences during physical-device
+selection. The acquired-image-only no-fence retirement fallback is not safe and is not part of the
+product path.
 
 Device loss is process-wide. Stop all submissions, advance a GPU generation, discard handles from
 the failed generation, re-enumerate physical devices against every live surface, create one new
@@ -799,9 +841,9 @@ Qualify Windows x64 and Linux Wayland x64 on one integrated and one discrete GPU
 software Vulkan implementation only for deterministic CI and headless capture.
 
 There is no weighted score, platform averaging, Skia fallback, or CPU-renderer fallback. Any failed
-hard gate blocks adoption or returns the specific tradeoff to Q&A. O16 can approve better AA and
-replace its edge reference captures. It cannot weaken geometry, color, performance, or
-cross-platform parity gates.
+hard gate blocks adoption or returns the specific tradeoff to Q&A. Final T02 or Windows measurements
+may reopen O16 only on a measured failure of the accepted AA policy. O16 cannot weaken geometry, color,
+performance, or cross-platform parity gates.
 
 ### O11. Window persistence ownership
 
@@ -845,16 +887,17 @@ HarfBuzz 14.3.1 plus `hb-gpu` payload, generated Unicode tables, shader-to-SPIR-
 provider have no remaining replacement gaps and pass both RID gates. The superseded evidence named in
 Q2 remains historical only. No hidden text fallback is permitted.
 
-### O16. Antialiasing selection constraint
+### O16. Accepted antialiasing policy
 
-Open constraint: the Vulkan proof can implement competing AA methods only for measurement. Goo will
-then select and ship one fixed policy shared by Windows and Linux. Comparison-only paths do not enter
-the product renderer. Do not expose runtime AA modes, per-window AA settings, or automatic strategy
-switching.
+Accepted answer: Goo ships one fixed analytic-coverage antialiasing policy shared by Windows and Linux.
+All product Vulkan targets and pipelines remain single-sampled. Do not add MSAA, runtime AA modes,
+per-window AA settings, fallback chains, or automatic strategy switching.
 
-The selected policy must meet the required visual quality, frame-time, memory, and hardware-support
-gates. The exact method and sample count remain open until that evidence exists.
+The layered MSAA4 proof retained analytic shader coverage, increased the measured GPU median from
+`10,528 ns` to `14,176 ns` (`+34.65%`), added two resources, and used a nominal `65,536 B`
+intermediate attachment. It therefore rejects layered MSAA as the product direction; it is not a
+pure-MSAA replacement-quality comparison. The comparison code was ephemeral and deleted.
 
-Later review after the Vulkan proof:
-
-- The unresolved Vulkan MSAA and antialiasing strategy.
+This supersedes the older Skia/OpenGL 8x-MSAA request and fallback direction. Final T02 visual,
+performance, and memory gates and later Windows qualification remain required release evidence and do
+not claim Windows is verified. They may reopen O16 only on a measured failure of the accepted policy.

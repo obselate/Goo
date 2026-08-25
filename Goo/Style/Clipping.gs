@@ -25,6 +25,11 @@ internal class ClipPaths {
       return ShapeFit.Fill
     }
 
+    internal func FillRule(n Node) FillRule {
+      if let value = state(n) { return value.FillRule }
+      return n.ClipPathFillRule
+    }
+
     internal func SetPath(n Node, path VectorPath) {
       if let value = state(n) {
         value.Path = path
@@ -39,7 +44,7 @@ internal class ClipPaths {
         return
       }
       n.HasClipPath = true
-      add(n, ClipPathValue{ Path: path, Fit: ShapeFit.Fill })
+      add(n, ClipPathValue{ Path: path, Fit: ShapeFit.Fill, FillRule: n.ClipPathFillRule })
     }
 
     internal func SetFit(n Node, fit ShapeFit) {
@@ -54,6 +59,19 @@ internal class ClipPaths {
       add(n, ClipPathValue{ Fit: fit })
     }
 
+    internal func SetFillRule(n Node, fillRule FillRule) {
+      n.ClipPathFillRule = fillRule
+      if let value = state(n) {
+        value.FillRule = fillRule
+        prune(n, value)
+        return
+      }
+      if fillRule == FillRule.NonZero {
+        return
+      }
+      add(n, ClipPathValue{ FillRule: fillRule })
+    }
+
     private func state(n Node) ClipPathValue? {
       guard let table = values else { return nil }
       if table.TryGetValue(n, out var value) { return value }
@@ -66,7 +84,8 @@ internal class ClipPaths {
     }
 
     private func prune(n Node, value ClipPathValue) {
-      if value.Path.CommandCount != 0 || value.Fit != ShapeFit.Fill {
+      if value.Path.CommandCount != 0 || value.Fit != ShapeFit.Fill
+        || value.FillRule != FillRule.NonZero {
         return
       }
       values?.Remove(n)
@@ -79,9 +98,11 @@ internal class ClipPaths {
 internal class ClipPathValue {
   internal var Path VectorPath
   internal var Fit ShapeFit
+  internal var FillRule FillRule
 
   internal init() {
     Path = VectorPath.Empty
     Fit = ShapeFit.Fill
+    FillRule = FillRule.NonZero
   }
 }

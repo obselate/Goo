@@ -642,6 +642,31 @@ internal unsafe partial class VulkanDiagnostics {
         if !EnterWriter() { return }
         try { counters.SetTextAtlasPeakLiveObjectCount(value) } finally { ExitWriter() }
     }
+    internal func SetPathAtlasStats(stats VulkanPathResourcesStats, liveObjectCount uint64) {
+        if !EnterWriter() { return }
+        try { counters.SetPathAtlasStats(stats, liveObjectCount) } finally { ExitWriter() }
+    }
+    internal func SetClipMaskAtlasStats(stats VulkanClipMaskAtlasStats) {
+        if !EnterWriter() { return }
+        try { counters.SetClipMaskAtlasStats(stats) } finally { ExitWriter() }
+    }
+    internal func ClearClipMaskAtlasCurrentState() {
+        if !EnterWriter() { return }
+        try { counters.ClearClipMaskAtlasCurrentState() } finally { ExitWriter() }
+    }
+    internal func SetClipMaskFrameStats(stats VulkanClipMaskFrameStats,
+        totals VulkanClipMaskFrameTotals) {
+        if !EnterWriter() { return }
+        try { counters.SetClipMaskFrameStats(stats, totals) } finally { ExitWriter() }
+    }
+    internal func SetTextFrameStats(stats VulkanTextFrameStats) {
+        if !EnterWriter() { return }
+        try { counters.SetTextFrameStats(stats) } finally { ExitWriter() }
+    }
+    internal func ClearPathAtlasCurrentState() {
+        if !EnterWriter() { return }
+        try { counters.ClearPathAtlasCurrentState() } finally { ExitWriter() }
+    }
     internal func AddTextAtlasRecordedUploadBytes(value uint64) {
         if !EnterWriter() { return }
         try { counters.AddTextAtlasRecordedUploadBytes(value) } finally { ExitWriter() }
@@ -796,6 +821,52 @@ internal unsafe partial class VulkanDiagnostics {
     internal func AddDeviceRecovery(value uint64) {
         if !EnterWriter() { return }
         try { counters.AddDeviceRecovery(value) } finally { ExitWriter() }
+    }
+    internal func SetLayerPoolStats(byteBudget uint64, residentBytes uint64,
+        targetCount uint64, leasedCount uint64) {
+        if !EnterWriter() { return }
+        try {
+            counters.SetLayerPoolByteBudget(byteBudget)
+            counters.SetLayerPoolResidentBytes(residentBytes)
+            counters.SetLayerPoolTargetCount(targetCount)
+            counters.SetLayerPoolLeasedCount(leasedCount)
+        } finally { ExitWriter() }
+    }
+    internal func AddLayerPoolCreate(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.AddLayerPoolCreate(value) } finally { ExitWriter() }
+    }
+    internal func AddLayerPoolReuse(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.AddLayerPoolReuse(value) } finally { ExitWriter() }
+    }
+    internal func AddLayerPoolCommandReuse(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.AddLayerPoolCommandReuse(value) } finally { ExitWriter() }
+    }
+    internal func AddLayerPoolEviction(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.AddLayerPoolEviction(value) } finally { ExitWriter() }
+    }
+    internal func AddLayerPoolPressure(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.AddLayerPoolPressure(value) } finally { ExitWriter() }
+    }
+    internal func AddLayerPoolPressureFailure(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.AddLayerPoolPressureFailure(value) } finally { ExitWriter() }
+    }
+    internal func AddLayerPoolFailure(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.AddLayerPoolFailure(value) } finally { ExitWriter() }
+    }
+    internal func AddLayerPoolPass(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.AddLayerPoolPass(value) } finally { ExitWriter() }
+    }
+    internal func AddLayerPoolComposite(value uint64) {
+        if !EnterWriter() { return }
+        try { counters.AddLayerPoolComposite(value) } finally { ExitWriter() }
     }
     internal func SetManagedAllocatedBytes(value uint64) {
         if !EnterWriter() { return }

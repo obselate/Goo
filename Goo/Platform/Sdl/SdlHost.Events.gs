@@ -8,9 +8,14 @@ import Hexa.NET.SDL3
 
 internal unsafe partial class SdlHost {
   private func Dispatch(nativeEvent SDLEvent) {
+    pendingEvents = true
     let eventType = SDLEventType(nativeEvent.Type)
     if eventType == SDLEventType.Quit || eventType == SDLEventType.Terminating {
       RequestClose()
+      return
+    }
+    if eventType >= SDLEventType.DisplayFirst && eventType <= SDLEventType.DisplayLast {
+      RefreshDisplayPacingForDisplay(nativeEvent.Display.DisplayID)
       return
     }
     if eventType >= SDLEventType.WindowFirst && eventType <= SDLEventType.WindowLast {
@@ -226,17 +231,23 @@ internal unsafe partial class SdlHost {
       RaiseMetrics()
     } else if eventType == SDLEventType.WindowDisplayChanged ||
         eventType == SDLEventType.WindowDisplayScaleChanged {
+      RefreshDisplayPacing(true)
       RefreshMetrics()
       RaiseMetrics()
     } else if eventType == SDLEventType.WindowMinimized {
       StateChanged?.Invoke(SdlHostState.Minimized)
     } else if eventType == SDLEventType.WindowMaximized {
       StateChanged?.Invoke(SdlHostState.Maximized)
+    } else if eventType == SDLEventType.WindowShown {
+      RefreshDisplayPacing(true)
     } else if eventType == SDLEventType.WindowRestored {
+      RefreshDisplayPacing(true)
       StateChanged?.Invoke(SdlHostState.Normal)
     } else if eventType == SDLEventType.WindowEnterFullscreen {
+      RefreshDisplayPacing(true)
       StateChanged?.Invoke(SdlHostState.Fullscreen)
     } else if eventType == SDLEventType.WindowLeaveFullscreen {
+      RefreshDisplayPacing(true)
       StateChanged?.Invoke(SdlHostState.Normal)
     } else if eventType == SDLEventType.WindowFocusGained {
       FocusChanged?.Invoke(true)
@@ -246,6 +257,7 @@ internal unsafe partial class SdlHost {
     } else if eventType == SDLEventType.WindowCloseRequested {
       RequestClose()
     } else if eventType == SDLEventType.WindowExposed {
+      RefreshDisplayPacing(true)
       Exposed?.Invoke()
     }
   }

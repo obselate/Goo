@@ -17,10 +17,7 @@ internal unsafe sealed class VulkanImageScene : IDisposable {
     private let identities VulkanImageIdentityRegistry
     private let imageResources VulkanImageResources
     private let generation uint64
-    private let committedCurrentIds []ResourceId
-    private let pendingCurrentIds []ResourceId
-    private var committedCurrentCount int32
-    private var pendingCurrentCount int32
+    private let currentReferences VulkanCurrentResourceSet
     private var referencesCommitted bool
     private var redrawRequired bool
     private var disposed bool
@@ -48,15 +45,15 @@ internal unsafe sealed class VulkanImageScene : IDisposable {
         identities = nativeIdentities
         imageResources = nativeImageResources
         generation = nativeGeneration
-        committedCurrentIds = [CurrentReferenceCapacity]ResourceId
-        pendingCurrentIds = [CurrentReferenceCapacity]ResourceId
+        currentReferences = VulkanCurrentResourceSet(
+            CurrentReferenceCapacity, CurrentReferenceCapacity)
     }
 
     internal func BeginCompile() {
         if disposed {
             return
         }
-        pendingCurrentCount = 0
+        currentReferences.Begin()
         referencesCommitted = false
         redrawRequired = false
     }
@@ -159,30 +156,20 @@ internal unsafe sealed class VulkanImageScene : IDisposable {
         }
         disposed = true
         var index int32 = 0
-        while index < committedCurrentCount {
-            imageResources.ReleaseCurrentReference(committedCurrentIds[index], generation)
+        while index < currentReferences.CurrentCount {
+            imageResources.ReleaseCurrentReference(currentReferences.CurrentAt(index), generation)
             index++
         }
-        committedCurrentCount = 0
-        pendingCurrentCount = 0
+        currentReferences.Reset()
         referencesCommitted = true
     }
 
     private func EnsurePendingReferenceCapacity(id ResourceId) {
-        if Contains(pendingCurrentIds, pendingCurrentCount, id) {
-            return
-        }
-        if pendingCurrentCount >= CurrentReferenceCapacity {
-            throw InvalidOperationException("Vulkan image current reference capacity reached")
-        }
+        currentReferences.EnsureCanAdd(id)
     }
 
     private func AddPendingReference(id ResourceId) {
-        if Contains(pendingCurrentIds, pendingCurrentCount, id) {
-            return
-        }
-        pendingCurrentIds[pendingCurrentCount] = id
-        pendingCurrentCount++
+        currentReferences.Add(id)
     }
 
     private func CommitCurrentReferences() {
@@ -190,38 +177,24 @@ internal unsafe sealed class VulkanImageScene : IDisposable {
             return
         }
         var index int32 = 0
-        while index < committedCurrentCount {
-            let id = committedCurrentIds[index]
-            if !Contains(pendingCurrentIds, pendingCurrentCount, id) {
+        while index < currentReferences.CurrentCount {
+            let id = currentReferences.CurrentAt(index)
+            if !currentReferences.PendingContains(id) {
                 imageResources.ReleaseCurrentReference(id, generation)
             }
             index++
         }
         index = 0
-        while index < pendingCurrentCount {
-            let id = pendingCurrentIds[index]
-            if !Contains(committedCurrentIds, committedCurrentCount, id)
+        while index < currentReferences.PendingCount {
+            let id = currentReferences.PendingAt(index)
+            if !currentReferences.CurrentContains(id)
                 && !imageResources.AddCurrentReference(id, generation) {
                 throw InvalidOperationException("Vulkan image current reference is not registered")
             }
-            committedCurrentIds[index] = id
             index++
         }
-        committedCurrentCount = pendingCurrentCount
+        currentReferences.Commit()
         referencesCommitted = true
-    }
-
-    private func Contains(values []ResourceId, count int32, id ResourceId) bool {
-        var index int32 = 0
-        while index < count {
-            let current = values[index]
-            if current.Kind == id.Kind && current.LogicalId == id.LogicalId
-                && current.Version == id.Version {
-                return true
-            }
-            index++
-        }
-        return false
     }
 
     private func Fit(

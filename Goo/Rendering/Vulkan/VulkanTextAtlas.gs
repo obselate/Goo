@@ -187,23 +187,16 @@ internal unsafe partial class VulkanTextAtlas : IDisposable {
         let copyBuffer = dispatch.vkCmdCopyBuffer
         copyBuffer(commandBuffer, stagingBuffer, atlasBuffer, 1u, &copy)
 
-        var barrier = VkBufferMemoryBarrier2{}
-        barrier.sType = VkConstants.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2
-        barrier.srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_TRANSFER_BIT
-        barrier.srcAccessMask = VkConstants.VK_ACCESS_2_TRANSFER_WRITE_BIT
-        barrier.dstStageMask = VkConstants.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
-        barrier.dstAccessMask = VkConstants.VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
-        barrier.srcQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
-        barrier.dstQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
-        barrier.buffer = atlasBuffer
-        barrier.offset = uploadByteOffset
-        barrier.size = uploadByteCount
-        var dependency = VkDependencyInfo{}
-        dependency.sType = VkConstants.VK_STRUCTURE_TYPE_DEPENDENCY_INFO
-        dependency.bufferMemoryBarrierCount = 1u
-        dependency.pBufferMemoryBarriers = &barrier
-        let pipelineBarrier = dispatch.vkCmdPipelineBarrier2
-        pipelineBarrier(commandBuffer, &dependency)
+        VulkanTransitions.RecordBuffer(
+            commandBuffer,
+            dispatch.vkCmdPipelineBarrier2,
+            atlasBuffer,
+            uploadByteOffset,
+            uploadByteCount,
+            VkConstants.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            VkConstants.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VkConstants.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+            VkConstants.VK_ACCESS_2_SHADER_SAMPLED_READ_BIT)
         uploadCommandBuffer = commandBuffer
         uploadRecorded = true
     }
@@ -333,29 +326,17 @@ internal unsafe partial class VulkanTextAtlas : IDisposable {
     }
 
     private func CreateAtlasBuffer() {
-        var bufferInfo = VkBufferCreateInfo{}
-        bufferInfo.sType = VkConstants.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
-        bufferInfo.size = byteSize
-        bufferInfo.usage = uint32(VkConstants.VK_BUFFER_USAGE_TRANSFER_DST_BIT)
-            | uint32(VkConstants.VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)
-        bufferInfo.sharingMode = VkConstants.VK_SHARING_MODE_EXCLUSIVE
-        let createBuffer = dispatch.vkCreateBuffer
-        if createBuffer(device, &bufferInfo, nil, &atlasBuffer) != VkConstants.VK_SUCCESS
-            || atlasBuffer == 0uL {
-            throw InvalidOperationException("vkCreateBuffer failed for text atlas")
-        }
-        try {
-            if let accounting = objectAccounting {
-                accounting.Allocate()
-            }
-        } catch (error Exception) {
-            let destroyBuffer = dispatch.vkDestroyBuffer
-            destroyBuffer(device, atlasBuffer, nil)
-            atlasBuffer = 0uL
-            throw error
-        }
-        atlasAllocation = allocator.AllocateBuffer(atlasBuffer,
-            uint32(VkConstants.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), 0u)
+        let creation = VulkanBufferFactory.Create(
+            device,
+            dispatch,
+            allocator,
+            objectAccounting,
+            byteSize,
+            uint32(VkConstants.VK_BUFFER_USAGE_TRANSFER_DST_BIT)
+                | uint32(VkConstants.VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT),
+            VulkanMemoryPolicy.DeviceLocalRequired)
+        atlasBuffer = creation.Buffer
+        atlasAllocation = creation.Allocation
     }
 
     private func CreateBufferView() {
@@ -389,91 +370,35 @@ internal unsafe partial class VulkanTextAtlas : IDisposable {
         var poolSize = VkDescriptorPoolSize{}
         poolSize._type = VkConstants.VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
         poolSize.descriptorCount = 1u
-        var poolInfo = VkDescriptorPoolCreateInfo{}
-        poolInfo.sType = VkConstants.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
-        poolInfo.maxSets = 1u
-        poolInfo.poolSizeCount = 1u
-        poolInfo.pPoolSizes = &poolSize
-        let createPool = dispatch.vkCreateDescriptorPool
-        if createPool(device, &poolInfo, nil, &descriptorPool) != VkConstants.VK_SUCCESS
-            || descriptorPool == 0uL {
-            throw InvalidOperationException("vkCreateDescriptorPool failed for text atlas")
-        }
-        try {
-            if let accounting = objectAccounting {
-                accounting.Allocate()
-            }
-        } catch (error Exception) {
-            let destroyPool = dispatch.vkDestroyDescriptorPool
-            destroyPool(device, descriptorPool, nil)
-            descriptorPool = 0uL
-            throw error
-        }
-
-        var allocateInfo = VkDescriptorSetAllocateInfo{}
-        allocateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO
-        allocateInfo.descriptorPool = descriptorPool
-        allocateInfo.descriptorSetCount = 1u
-        allocateInfo.pSetLayouts = &descriptorSetLayout
-        let allocateSets = dispatch.vkAllocateDescriptorSets
-        if allocateSets(device, &allocateInfo, &descriptorSet) != VkConstants.VK_SUCCESS
-            || descriptorSet == 0uL {
-            throw InvalidOperationException("vkAllocateDescriptorSets failed for text atlas")
-        }
-        try {
-            if let accounting = objectAccounting {
-                accounting.Allocate()
-            }
-        } catch (error Exception) {
-            let destroyPool = dispatch.vkDestroyDescriptorPool
-            destroyPool(device, descriptorPool, nil)
-            if let accounting = objectAccounting {
-                accounting.Release()
-            }
-            descriptorPool = 0uL
-            descriptorSet = 0uL
-            throw error
-        }
-
-        var write = VkWriteDescriptorSet{}
-        write.sType = VkConstants.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
-        write.dstSet = descriptorSet
-        write.dstBinding = 0u
-        write.descriptorCount = 1u
-        write.descriptorType = VkConstants.VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
-        write.pTexelBufferView = &atlasBufferView
-        let updateDescriptors = dispatch.vkUpdateDescriptorSets
-        updateDescriptors(device, 1u, &write, 0u, nil)
+        let creation = VulkanDescriptorFactory.CreatePoolAndAllocate(
+            device,
+            dispatch,
+            objectAccounting,
+            &poolSize,
+            1u,
+            &descriptorSetLayout,
+            1u,
+            &descriptorSet)
+        descriptorPool = creation.Pool
+        VulkanDescriptorFactory.WriteUniformTexelBuffer(
+            device,
+            dispatch,
+            descriptorSet,
+            0u,
+            atlasBufferView)
     }
 
     private func CreateStagingBuffer() {
-        var bufferInfo = VkBufferCreateInfo{}
-        bufferInfo.sType = VkConstants.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
-        bufferInfo.size = byteSize
-        bufferInfo.usage = uint32(VkConstants.VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-        bufferInfo.sharingMode = VkConstants.VK_SHARING_MODE_EXCLUSIVE
-        let createBuffer = dispatch.vkCreateBuffer
-        if createBuffer(device, &bufferInfo, nil, &stagingBuffer) != VkConstants.VK_SUCCESS
-            || stagingBuffer == 0uL {
-            throw InvalidOperationException("vkCreateBuffer failed for text atlas staging")
-        }
-        try {
-            if let accounting = objectAccounting {
-                accounting.Allocate()
-            }
-        } catch (error Exception) {
-            let destroyBuffer = dispatch.vkDestroyBuffer
-            destroyBuffer(device, stagingBuffer, nil)
-            stagingBuffer = 0uL
-            throw error
-        }
-        stagingAllocation = allocator.AllocateBuffer(stagingBuffer,
-            uint32(VkConstants.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-            uint32(VkConstants.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-                | uint32(VkConstants.VK_MEMORY_PROPERTY_HOST_CACHED_BIT))
-        if allocator.Map(stagingAllocation!!) != VkConstants.VK_SUCCESS {
-            throw InvalidOperationException("vkMapMemory failed for text atlas staging")
-        }
+        let creation = VulkanBufferFactory.CreateMapped(
+            device,
+            dispatch,
+            allocator,
+            objectAccounting,
+            byteSize,
+            uint32(VkConstants.VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+            VulkanMemoryPolicy.HostVisibleCoherentCached)
+        stagingBuffer = creation.Buffer
+        stagingAllocation = creation.Allocation
     }
 
     private func DestroyStagingBuffer() {

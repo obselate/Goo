@@ -23,6 +23,8 @@ internal class TextShaping {
     private const ShapingWorkspaceRetainedCapacity int32 = 4096
     @ThreadStatic
     private var shapingWorkspace VulkanTextShapingWorkspace?
+    @ThreadStatic
+    private var textAnalysisScratch UnicodeTextAnalysisScratch?
 
     internal func Metrics(families string, size float32, weight int32, italic bool)
       TextFontMetrics {
@@ -183,10 +185,12 @@ internal class TextShaping {
       let text = paragraph.Substring(lineStart, lineLength)
       let primary = ResolveCachedPrimary(families, weight, italic)
       let metrics = MetricsFor(primary.Provider.Metrics, size)
+      let scratchOwner = AnalysisScratch()
+      let scratch = scratchOwner.Rent(paragraph.Length)
       var ascent = metrics.Ascent
       var descent = metrics.Descent
       let runs = List[ShapedRun]()
-      let fallbackCandidates = List[TypefaceLease]()
+      let fallbackCandidates = scratch.BeginFallbackCandidates()
       var cursor = 0.0F
       var extra = 0.0F
       var hasCluster = false
@@ -197,7 +201,7 @@ internal class TextShaping {
           return ShapedText(text, runs, 0.0F, ascent, descent, rightToLeft)
         }
 
-        let scriptRuns = UnicodeScripts.Resolve(paragraph)
+        let scriptRuns = UnicodeScripts.Resolve(paragraph, scratch)
         let resolution = if let value = paragraphResolution { value } else {
           ResolveBidi(paragraph, direction)
         }
@@ -205,7 +209,7 @@ internal class TextShaping {
           appendDirectionalRange(paragraph, lineStart, lineLength, lineStart, direction == 2,
             families, weight, italic, size, letterSpacing, primary, fallbackCandidates,
             runs, ref cursor, ref extra, ref ascent, ref descent, ref hasCluster, ref priorCluster,
-            scriptRuns)
+            scratch, scriptRuns)
           return ShapedText(text, runs, cursor + extra, ascent, descent,
             direction == 2)
         }
@@ -229,7 +233,7 @@ internal class TextShaping {
           appendDirectionalRange(paragraph, visualRun.Start, visualRun.Length, lineStart, rtl,
             families, weight, italic, size, letterSpacing, primary, fallbackCandidates,
             runs, ref cursor, ref extra, ref ascent, ref descent, ref hasCluster, ref priorCluster,
-            scriptRuns)
+            scratch, scriptRuns)
         }
         return ShapedText(text, runs, cursor + extra, ascent, descent,
           rightToLeft)
@@ -237,8 +241,14 @@ internal class TextShaping {
         for run in runs { run.Dispose() }
         throw error
       } finally {
-        for candidate in fallbackCandidates { candidate.Dispose() }
+        var candidateIndex int32 = 0
+        while candidateIndex < fallbackCandidates.Count {
+          fallbackCandidates[candidateIndex].Dispose()
+          candidateIndex++
+        }
+        fallbackCandidates.Clear()
         primary.Dispose()
+        scratchOwner.Return(scratch)
       }
     }
 
@@ -247,58 +257,56 @@ internal class TextShaping {
       letterSpacing float32, primary TypefaceLease, fallbackCandidates List[TypefaceLease],
       runs List[ShapedRun], ref cursor float32, ref extra float32, ref ascent float32,
       ref descent float32, ref hasCluster bool, ref priorCluster uint32,
-      scriptRuns []UnicodeScriptRun) {
-      let localScriptRuns = SliceScriptRuns(scriptRuns, rangeStart, rangeLength)
+      scratch UnicodeTextAnalysisScratchScope, scriptRuns List[UnicodeScriptRun]) {
+      let rangeEnd = rangeStart + rangeLength
       if rtl {
-        var scriptIndex = localScriptRuns.Length
+        var scriptIndex = scriptRuns.Count
         while scriptIndex > 0 {
           scriptIndex--
-          appendScriptRange(paragraph, rangeStart, lineStart, rtl, families, weight, italic,
-            size, letterSpacing, primary, fallbackCandidates, runs, ref cursor, ref extra,
-            ref ascent, ref descent, ref hasCluster, ref priorCluster,
-            localScriptRuns[scriptIndex])
+          let scriptRun = scriptRuns[scriptIndex]
+          let scriptEnd = scriptRun.Start + scriptRun.Length
+          let start = if scriptRun.Start < rangeStart { rangeStart } else { scriptRun.Start }
+          let end = if scriptEnd > rangeEnd { rangeEnd } else { scriptEnd }
+          if end > start {
+            appendScriptRange(paragraph, start, end - start, lineStart, rtl, families, weight,
+              italic, size, letterSpacing, primary, fallbackCandidates, runs, ref cursor,
+              ref extra, ref ascent, ref descent, ref hasCluster, ref priorCluster, scratch,
+              scriptRun.Script)
+          }
         }
       } else {
-        for scriptRun in localScriptRuns {
-          appendScriptRange(paragraph, rangeStart, lineStart, rtl, families, weight, italic,
-            size, letterSpacing, primary, fallbackCandidates, runs, ref cursor, ref extra,
-            ref ascent, ref descent, ref hasCluster, ref priorCluster, scriptRun)
+        var scriptIndex int32 = 0
+        while scriptIndex < scriptRuns.Count {
+          let scriptRun = scriptRuns[scriptIndex]
+          let scriptEnd = scriptRun.Start + scriptRun.Length
+          let start = if scriptRun.Start < rangeStart { rangeStart } else { scriptRun.Start }
+          let end = if scriptEnd > rangeEnd { rangeEnd } else { scriptEnd }
+          if end > start {
+            appendScriptRange(paragraph, start, end - start, lineStart, rtl, families, weight,
+              italic, size, letterSpacing, primary, fallbackCandidates, runs, ref cursor,
+              ref extra, ref ascent, ref descent, ref hasCluster, ref priorCluster, scratch,
+              scriptRun.Script)
+          }
+          scriptIndex++
         }
       }
     }
 
-    private func SliceScriptRuns(source []UnicodeScriptRun, rangeStart int32,
-      rangeLength int32) []UnicodeScriptRun {
-      let rangeEnd = rangeStart + rangeLength
-      let result = List[UnicodeScriptRun]()
-      for run in source {
-        let runEnd = run.Start + run.Length
-        if runEnd <= rangeStart || run.Start >= rangeEnd { continue }
-        let start = if run.Start < rangeStart { rangeStart } else { run.Start }
-        let end = if runEnd > rangeEnd { rangeEnd } else { runEnd }
-        if end > start {
-          result.Add(UnicodeScriptRun(start - rangeStart, end - start, run.Script))
-        }
-      }
-      return result.ToArray()
-    }
-
-    private func appendScriptRange(paragraph string, rangeStart int32, lineStart int32,
-      rtl bool, families string, weight int32, italic bool, size float32,
+    private func appendScriptRange(paragraph string, textStart int32, textLength int32,
+      lineStart int32, rtl bool, families string, weight int32, italic bool, size float32,
       letterSpacing float32, primary TypefaceLease, fallbackCandidates List[TypefaceLease],
       runs List[ShapedRun], ref cursor float32, ref extra float32, ref ascent float32,
       ref descent float32, ref hasCluster bool, ref priorCluster uint32,
-      scriptRun UnicodeScriptRun) {
-      let text = paragraph.Substring(rangeStart + scriptRun.Start, scriptRun.Length)
-      let absoluteStart = rangeStart + scriptRun.Start
+      scratch UnicodeTextAnalysisScratchScope, script uint32) {
+      let text = paragraph.Substring(textStart, textLength)
       let direction = if rtl { 5u } else { 4u }
-      let shaped = ShapeProvider(text, primary.Provider, direction, scriptRun.Script)
+      let shaped = ShapeProvider(text, primary.Provider, direction, script)
       let count = shaped.Count
       let workspace = shaped.Workspace
       if !HasMissingGlyphs(workspace.GlyphBuffer, count) {
-        appendGlyphRange(text, absoluteStart, lineStart, rtl, size, letterSpacing, primary,
+        appendGlyphRange(text, textStart, lineStart, rtl, size, letterSpacing, primary,
           workspace.GlyphBuffer, count, runs, ref cursor, ref extra, ref ascent, ref descent,
-          ref hasCluster, ref priorCluster)
+          ref hasCluster, ref priorCluster, scratch)
         return
       }
 
@@ -308,25 +316,27 @@ internal class TextShaping {
       }
       let primaryGlyphs = [count]VulkanTextGlyph
       if count != 0 { Array.Copy(workspace.GlyphBuffer, primaryGlyphs, count) }
-      let boundaries = UnicodeGraphemes.Starts(text)
-      let missing = [boundaries.Length]bool
+      let graphemeScalars = scratch.BeginGraphemeScalars(text.Length)
+      let boundaries = UnicodeGraphemes.Starts(text, graphemeScalars,
+        scratch.BeginFallbackStarts(text.Length))
+      let missing = [boundaries.Count]bool
       for glyph in primaryGlyphs {
         if glyph.GlyphId == 0u {
           markMissingClusterSpan(primaryGlyphs, int32(glyph.Cluster), text.Length, boundaries,
             missing)
         }
       }
-      let selected = [boundaries.Length]int32
+      let selected = [boundaries.Count]int32
       var i int32 = 0
-      while i < boundaries.Length {
+      while i < boundaries.Count {
         if missing[i] {
           let start = boundaries[i]
-          let end = if i + 1 < boundaries.Length { boundaries[i + 1] } else { text.Length }
+          let end = if i + 1 < boundaries.Count { boundaries[i + 1] } else { text.Length }
           let clusterText = text.Substring(start, end - start)
           var candidate int32 = 1
           while candidate < fallbackCandidates.Count {
             let candidateShaped = ShapeProvider(clusterText,
-              fallbackCandidates[candidate].Provider, direction, scriptRun.Script)
+              fallbackCandidates[candidate].Provider, direction, script)
             let candidateCount = candidateShaped.Count
             let candidateWorkspace = candidateShaped.Workspace
             if HasUsableGlyphs(candidateWorkspace.GlyphBuffer, candidateCount) {
@@ -340,29 +350,29 @@ internal class TextShaping {
       }
 
       if rtl {
-        var endIndex = boundaries.Length
+        var endIndex = boundaries.Count
         while endIndex > 0 {
           let selection = selected[endIndex - 1]
           var startIndex = endIndex - 1
           while startIndex > 0 && selected[startIndex - 1] == selection { startIndex-- }
-          appendFallbackGroup(text, absoluteStart, lineStart, rtl, boundaries[startIndex],
-            if endIndex < boundaries.Length { boundaries[endIndex] } else { text.Length },
-            size, letterSpacing, fallbackCandidates[selection], direction, scriptRun.Script,
-            runs,
-            ref cursor, ref extra, ref ascent, ref descent, ref hasCluster, ref priorCluster)
+          appendFallbackGroup(text, textStart, lineStart, rtl, boundaries[startIndex],
+            if endIndex < boundaries.Count { boundaries[endIndex] } else { text.Length },
+            size, letterSpacing, fallbackCandidates[selection], direction, script, runs,
+            ref cursor, ref extra, ref ascent, ref descent, ref hasCluster, ref priorCluster,
+            scratch)
           endIndex = startIndex
         }
       } else {
         var startIndex int32 = 0
-        while startIndex < boundaries.Length {
+        while startIndex < boundaries.Count {
           let selection = selected[startIndex]
           var endIndex = startIndex + 1
-          while endIndex < boundaries.Length && selected[endIndex] == selection { endIndex++ }
-          appendFallbackGroup(text, absoluteStart, lineStart, rtl, boundaries[startIndex],
-            if endIndex < boundaries.Length { boundaries[endIndex] } else { text.Length },
-            size, letterSpacing, fallbackCandidates[selection], direction, scriptRun.Script,
-            runs,
-            ref cursor, ref extra, ref ascent, ref descent, ref hasCluster, ref priorCluster)
+          while endIndex < boundaries.Count && selected[endIndex] == selection { endIndex++ }
+          appendFallbackGroup(text, textStart, lineStart, rtl, boundaries[startIndex],
+            if endIndex < boundaries.Count { boundaries[endIndex] } else { text.Length },
+            size, letterSpacing, fallbackCandidates[selection], direction, script, runs,
+            ref cursor, ref extra, ref ascent, ref descent, ref hasCluster, ref priorCluster,
+            scratch)
           startIndex = endIndex
         }
       }
@@ -370,26 +380,29 @@ internal class TextShaping {
 
     private func appendFallbackGroup(text string, rangeStart int32, lineStart int32, rtl bool,
       groupStart int32, groupEnd int32, size float32, letterSpacing float32,
-      selected TypefaceLease, direction uint32, script uint32, runs List[ShapedRun], ref cursor float32,
-      ref extra float32, ref ascent float32, ref descent float32, ref hasCluster bool,
-      ref priorCluster uint32) {
+      selected TypefaceLease, direction uint32, script uint32, runs List[ShapedRun],
+      ref cursor float32, ref extra float32, ref ascent float32, ref descent float32,
+      ref hasCluster bool, ref priorCluster uint32, scratch UnicodeTextAnalysisScratchScope) {
       let groupText = text.Substring(groupStart, groupEnd - groupStart)
       let shaped = ShapeProvider(groupText, selected.Provider, direction, script)
       let count = shaped.Count
       let workspace = shaped.Workspace
       appendGlyphRange(groupText, rangeStart + groupStart, lineStart, rtl, size, letterSpacing,
         selected, workspace.GlyphBuffer, count, runs, ref cursor, ref extra, ref ascent,
-        ref descent, ref hasCluster, ref priorCluster)
+        ref descent, ref hasCluster, ref priorCluster, scratch)
     }
 
     private func appendGlyphRange(text string, rangeStart int32, lineStart int32, rtl bool,
       size float32, letterSpacing float32, selected TypefaceLease, source []VulkanTextGlyph,
       count int32, runs List[ShapedRun], ref cursor float32, ref extra float32,
-      ref ascent float32, ref descent float32, ref hasCluster bool, ref priorCluster uint32) {
+      ref ascent float32, ref descent float32, ref hasCluster bool, ref priorCluster uint32,
+      scratch UnicodeTextAnalysisScratchScope) {
       let glyphs = [count]uint32
       let points = [count]TextPoint
       let clusters = [count]uint32
-      let boundaries = UnicodeGraphemes.Starts(text)
+      let graphemeScalars = scratch.BeginGraphemeScalars(text.Length)
+      let boundaries = UnicodeGraphemes.Starts(text, graphemeScalars,
+        scratch.BeginGlyphStarts(text.Length))
       let factor = size / 64.0F
       var rawWidth = 0.0F
       var spacingCount int32 = 0
@@ -502,26 +515,31 @@ internal class TextShaping {
     }
 
     private func markMissingClusterSpan(source []VulkanTextGlyph, clusterStart int32,
-      textLength int32, boundaries []int32, missing []bool) {
+      textLength int32, boundaries List[int32], missing []bool) {
       if clusterStart < 0 || clusterStart >= textLength { return }
       var clusterEnd = textLength
-      for glyph in source {
-        let candidate = int32(glyph.Cluster)
+      var glyphIndex int32 = 0
+      while glyphIndex < source.Length {
+        let candidate = int32(source[glyphIndex].Cluster)
         if candidate > clusterStart && candidate < clusterEnd { clusterEnd = candidate }
+        glyphIndex++
       }
       var i int32 = 0
-      while i < boundaries.Length {
+      while i < boundaries.Count {
         let start = boundaries[i]
-        let end = if i + 1 < boundaries.Length { boundaries[i + 1] } else { textLength }
+        let end = if i + 1 < boundaries.Count { boundaries[i + 1] } else { textLength }
         if start < clusterEnd && end > clusterStart { missing[i] = true }
         i++
       }
     }
 
-    private func boundaryContains(boundaries []int32, value int32) bool {
-      for boundary in boundaries {
+    private func boundaryContains(boundaries List[int32], value int32) bool {
+      var index int32 = 0
+      while index < boundaries.Count {
+        let boundary = boundaries[index]
         if boundary == value { return true }
         if boundary > value { return false }
+        index++
       }
       return false
     }
@@ -558,6 +576,13 @@ internal class TextShaping {
       shapingWorkspace = VulkanTextShapingWorkspace(capacity)
       return shapingWorkspace!!
     }
+    private func AnalysisScratch() UnicodeTextAnalysisScratch {
+      if textAnalysisScratch == nil {
+        textAnalysisScratch = UnicodeTextAnalysisScratch()
+      }
+      return textAnalysisScratch!!
+    }
+
 
     private func validateRange(paragraph string, start int32, length int32, direction int32) {
       if paragraph == nil { throw ArgumentNullException("paragraph") }

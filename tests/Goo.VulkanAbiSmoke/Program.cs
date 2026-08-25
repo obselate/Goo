@@ -6,6 +6,9 @@ internal static class Program
 {
     private static int Main()
     {
+        if (Environment.GetEnvironmentVariable("GOO_VK_DAMAGE_JOURNAL") == "1")
+            return RunDamageJournalGate();
+
         if (Environment.GetEnvironmentVariable("GOO_VK_SCENE_ALLOC") == "1")
             return RunSceneAllocationGate();
 
@@ -16,6 +19,9 @@ internal static class Program
         }
 
         RunFontCacheGate(fontPath);
+        RunPathMorphGate();
+        RunEvenOddPathGate();
+        RunPathUploadGate();
 
         VulkanTextFont? font = null;
         try
@@ -250,6 +256,232 @@ internal static class Program
         }
     }
 
+    private static void RunPathMorphGate()
+    {
+        VectorPathNormalizedOwner owner = new VectorPathNormalizedOwner(4, 1, 0.0, 0.0, 100.0, 100.0);
+        PathQuadratic[] array = new PathQuadratic[4]
+        {
+            PathGeometry.Quadratic(0f, 0f, 50f, 0f, 100f, 0f),
+            PathGeometry.Quadratic(100f, 0f, 100f, 50f, 100f, 100f),
+            PathGeometry.Quadratic(100f, 100f, 50f, 100f, 0f, 100f),
+            PathGeometry.Quadratic(0f, 100f, 0f, 50f, 0f, 0f)
+        };
+        PathContour[] contours = new PathContour[1] { PathGeometry.Contour(0, 4, closed: true) };
+        VectorPath path = VectorPath.CreateMutableNormalized(owner, 0.0, 0.0, 100.0, 100.0);
+        if (!path.UpdateNormalized(array, 4, contours, 1))
+        {
+            throw new InvalidOperationException("Initial mutable path update failed");
+        }
+        PathGeometry pathGeometry = PathGeometry.For(path);
+        PathBandEncoding pathBandEncoding = PathBandEncoder.Encode(path);
+        if (pathBandEncoding.CurveCount != array.Length || pathBandEncoding.WordCount <= pathBandEncoding.HeaderByteCount / 4)
+        {
+            throw new InvalidOperationException("Initial path band encoding lost geometry");
+        }
+        VulkanPathIdentityRegistry vulkanPathIdentityRegistry = new VulkanPathIdentityRegistry();
+        VulkanPathResourceIdentity vulkanPathResourceIdentity = vulkanPathIdentityRegistry.Resolve(path);
+        ulong geometryRevision = path.GeometryRevision;
+        PathGeometry pathGeometry2 = pathGeometry;
+        PathBandEncoding pathBandEncoding2 = pathBandEncoding;
+        array[0] = PathGeometry.Quadratic(0f, 0f, 51f, 0f, 100f, 0f);
+        if (!path.UpdateNormalized(array, 4, contours, 1))
+        {
+            throw new InvalidOperationException("Mutable path capacity update failed");
+        }
+        PathGeometry.For(path);
+        PathBandEncoder.Encode(path);
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        long allocatedBytesForCurrentThread = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 2; i <= 9; i++)
+        {
+            array[0] = PathGeometry.Quadratic(0f, 0f, 50 + i, 0f, 100f, 0f);
+            if (!path.UpdateNormalized(array, 4, contours, 1))
+            {
+                throw new InvalidOperationException("Mutable path update did not advance");
+            }
+            if (pathGeometry2 != PathGeometry.For(path))
+            {
+                throw new InvalidOperationException("Path geometry cache was replaced");
+            }
+            if (pathBandEncoding2 != PathBandEncoder.Encode(path))
+            {
+                throw new InvalidOperationException("Path band encoding cache was replaced");
+            }
+        }
+        long allocatedBytesForCurrentThread2 = GC.GetAllocatedBytesForCurrentThread();
+        VulkanPathResourceIdentity vulkanPathResourceIdentity2 = vulkanPathIdentityRegistry.Resolve(path);
+        vulkanPathIdentityRegistry.Dispose();
+        if (allocatedBytesForCurrentThread2 != allocatedBytesForCurrentThread || path.GeometryRevision <= geometryRevision || vulkanPathResourceIdentity.PathId.LogicalId != vulkanPathResourceIdentity2.PathId.LogicalId || vulkanPathResourceIdentity.SourceId != vulkanPathResourceIdentity2.SourceId || vulkanPathResourceIdentity.GeometryRevision == vulkanPathResourceIdentity2.GeometryRevision || vulkanPathResourceIdentity.PathId.Version != vulkanPathResourceIdentity.GeometryRevision || vulkanPathResourceIdentity2.PathId.Version != vulkanPathResourceIdentity2.GeometryRevision || vulkanPathResourceIdentity.PathId.Version == vulkanPathResourceIdentity2.PathId.Version)
+        {
+            throw new InvalidOperationException("Mutable path warm allocation or identity gate failed");
+        }
+        Console.WriteLine("PATH_MORPH_GATE allocated=0 stableGeometry=1 stableEncoding=1 stableIdentity=1 versionedIdentity=1");
+    }
+
+    private static void RunPathUploadGate()
+    {
+        VectorPathNormalizedOwner owner = new VectorPathNormalizedOwner(4, 1, 0.0, 0.0, 100.0, 100.0);
+        PathQuadratic[] array = new PathQuadratic[4]
+        {
+            PathGeometry.Quadratic(0f, 0f, 50f, 0f, 100f, 0f),
+            PathGeometry.Quadratic(100f, 0f, 100f, 50f, 100f, 100f),
+            PathGeometry.Quadratic(100f, 100f, 50f, 100f, 0f, 100f),
+            PathGeometry.Quadratic(0f, 100f, 0f, 50f, 0f, 0f)
+        };
+        PathContour[] contours = new PathContour[1] { PathGeometry.Contour(0, 4, closed: true) };
+        VectorPath path = VectorPath.CreateMutableNormalized(owner, 0.0, 0.0, 100.0, 100.0);
+        if (!path.UpdateNormalized(array, 4, contours, 1))
+        {
+            throw new InvalidOperationException("Path upload gate initial update failed");
+        }
+        using VulkanPathAtlas vulkanPathAtlas = new VulkanPathAtlas(4096uL);
+        using VulkanPathResources vulkanPathResources = new VulkanPathResources(vulkanPathAtlas, new VulkanPathIdentityRegistry());
+        VulkanPathRenderable vulkanPathRenderable = vulkanPathResources.Register(path, FillRule.NonZero);
+        vulkanPathResources.PrepareUpload();
+        if (vulkanPathAtlas.UploadWordOffset != 0L || vulkanPathAtlas.UploadWordCount != vulkanPathRenderable.WordCount || vulkanPathAtlas.UploadWordCount >= vulkanPathAtlas.WordCapacity)
+        {
+            throw new InvalidOperationException("Initial path atlas upload range was invalid");
+        }
+        SubmitPathUpload(vulkanPathResources, 1uL);
+        VulkanPathRenderable vulkanPathRenderable2 = vulkanPathResources.Resolve(path, FillRule.NonZero);
+        if (vulkanPathRenderable2.Published || vulkanPathRenderable2.Renderable)
+        {
+            throw new InvalidOperationException("Path became renderable before upload completion");
+        }
+        vulkanPathResources.Collect(1uL);
+        VulkanPathRenderable vulkanPathRenderable3 = vulkanPathResources.Resolve(path, FillRule.NonZero);
+        if (!vulkanPathRenderable3.Published || !vulkanPathRenderable3.Renderable)
+        {
+            throw new InvalidOperationException("Path did not publish after upload completion");
+        }
+        array[0] = PathGeometry.Quadratic(0f, 0f, 51f, 0f, 100f, 0f);
+        if (!path.UpdateNormalized(array, 4, contours, 1))
+        {
+            throw new InvalidOperationException("Path upload gate append update failed");
+        }
+        VulkanPathRenderable vulkanPathRenderable4 = vulkanPathResources.Register(path, FillRule.NonZero);
+        vulkanPathResources.PrepareUpload();
+        if (vulkanPathAtlas.UploadWordOffset != vulkanPathRenderable.WordCount || vulkanPathAtlas.UploadWordCount != vulkanPathRenderable4.WordCount)
+        {
+            throw new InvalidOperationException("Path atlas suffix upload range was invalid");
+        }
+        SubmitPathUpload(vulkanPathResources, 2uL);
+        vulkanPathResources.Collect(2uL);
+        if (vulkanPathResources.Stats.FreeWordCount < vulkanPathRenderable.WordCount)
+        {
+            throw new InvalidOperationException("Path atlas retired range was not reclaimed");
+        }
+        array[0] = PathGeometry.Quadratic(0f, 0f, 52f, 0f, 100f, 0f);
+        if (!path.UpdateNormalized(array, 4, contours, 1))
+        {
+            throw new InvalidOperationException("Path upload gate reuse update failed");
+        }
+        VulkanPathRenderable vulkanPathRenderable5 = vulkanPathResources.Register(path, FillRule.NonZero);
+        if (vulkanPathRenderable5.BaseWord != vulkanPathRenderable.BaseWord)
+        {
+            throw new InvalidOperationException("Path atlas did not reuse the retired range");
+        }
+        vulkanPathResources.PrepareUpload();
+        ulong uploadWordCount = vulkanPathAtlas.UploadWordCount;
+        if (vulkanPathAtlas.UploadWordOffset != vulkanPathRenderable5.BaseWord || uploadWordCount != vulkanPathRenderable5.WordCount || vulkanPathAtlas.UploadWordOffset + uploadWordCount > vulkanPathAtlas.WordCapacity || uploadWordCount >= vulkanPathAtlas.WordCapacity)
+        {
+            throw new InvalidOperationException("Path atlas reused upload was not bounded");
+        }
+        VulkanPathRenderable vulkanPathRenderable6 = vulkanPathResources.Resolve(path, FillRule.NonZero);
+        if (vulkanPathRenderable6.Published || vulkanPathRenderable6.Renderable)
+        {
+            throw new InvalidOperationException("Dirty reused path was published before completion");
+        }
+        if (!vulkanPathResources.AbortUpload() || !vulkanPathResources.UploadPending || vulkanPathAtlas.UploadPending)
+        {
+            throw new InvalidOperationException("Aborted path upload did not retain dirty work");
+        }
+        vulkanPathResources.PrepareUpload();
+        if (vulkanPathAtlas.UploadWordOffset != vulkanPathRenderable5.BaseWord || vulkanPathAtlas.UploadWordCount != uploadWordCount)
+        {
+            throw new InvalidOperationException("Retained dirty path upload range changed");
+        }
+        SubmitPathUpload(vulkanPathResources, 3uL);
+        vulkanPathResources.Collect(3uL);
+        VulkanPathRenderable vulkanPathRenderable7 = vulkanPathResources.Resolve(path, FillRule.NonZero);
+        if (!vulkanPathRenderable7.Published || !vulkanPathRenderable7.Renderable)
+        {
+            throw new InvalidOperationException("Reused path did not publish after completion");
+        }
+        array[0] = PathGeometry.Quadratic(0f, 0f, 53f, 0f, 100f, 0f);
+        path.UpdateNormalized(array, 4, contours, 1);
+        vulkanPathResources.Register(path, FillRule.NonZero);
+        vulkanPathResources.PrepareUpload();
+        SubmitPathUpload(vulkanPathResources, 4uL);
+        vulkanPathResources.Collect(4uL);
+        array[0] = PathGeometry.Quadratic(0f, 0f, 54f, 0f, 100f, 0f);
+        path.UpdateNormalized(array, 4, contours, 1);
+        long allocatedBytesForCurrentThread = GC.GetAllocatedBytesForCurrentThread();
+        vulkanPathResources.Register(path, FillRule.NonZero);
+        vulkanPathResources.PrepareUpload();
+        long num = GC.GetAllocatedBytesForCurrentThread() - allocatedBytesForCurrentThread;
+        if (num != 0L)
+        {
+            throw new InvalidOperationException("Warm path atlas reuse allocated");
+        }
+        SubmitPathUpload(vulkanPathResources, 5uL);
+        vulkanPathResources.Collect(5uL);
+        Console.WriteLine("PATH_UPLOAD_GATE atlasWords=" + vulkanPathAtlas.WordCapacity + " reuseOffset=" + vulkanPathRenderable5.BaseWord + " reuseWords=" + vulkanPathRenderable5.WordCount + " warmAllocated=" + num + " abortRetained=1 unpublished=1 published=1");
+    }
+
+    private static void RunEvenOddPathGate()
+    {
+        PathBuilder pathBuilder = new PathBuilder(0.0, 0.0, 1800.0, 1800.0);
+        pathBuilder.MoveTo(20.0, 20.0).LineTo(1780.0, 20.0).LineTo(1780.0, 1780.0)
+            .LineTo(20.0, 1780.0)
+            .Close();
+        for (int i = 0; i < 256; i++)
+        {
+            int num = 40 + i % 32 * 54;
+            int num2 = 40 + i / 32 * 54;
+            pathBuilder.MoveTo(num, num2).LineTo(num + 12, num2).LineTo(num + 12, num2 + 12)
+                .LineTo(num, num2 + 12)
+                .Close();
+        }
+        VectorPath path = pathBuilder.Build();
+        PathGeometry pathGeometry = PathGeometry.For(path);
+        PathBandEncoding pathBandEncoding = PathBandEncoder.Encode(path);
+        if (pathGeometry.QuadraticCount != 1028 || pathBandEncoding.CurveCount != 1028 || pathBandEncoding.HorizontalBandCount != 32 || pathBandEncoding.VerticalBandCount != 32 || pathBandEncoding.WordCount != 13508 || !pathBandEncoding.Supports(FillRule.EvenOdd))
+        {
+            throw new InvalidOperationException("EvenOdd path encoding gate failed");
+        }
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        PathBandEncoder.Encode(path);
+        long allocatedBytesForCurrentThread = GC.GetAllocatedBytesForCurrentThread();
+        for (int j = 0; j < 64; j++)
+        {
+            if (pathBandEncoding != PathBandEncoder.Encode(path))
+            {
+                throw new InvalidOperationException("EvenOdd path encoding cache was replaced");
+            }
+        }
+        long num3 = GC.GetAllocatedBytesForCurrentThread() - allocatedBytesForCurrentThread;
+        if (num3 != 0L)
+        {
+            throw new InvalidOperationException("EvenOdd path warm encoding allocated");
+        }
+        Console.WriteLine("PATH_EVENODD_GATE holes=" + 256 + " curves=" + pathBandEncoding.CurveCount + " words=" + pathBandEncoding.WordCount + " warmAllocated=" + num3 + " warmCalls=64");
+    }
+
+    private static void SubmitPathUpload(VulkanPathResources resources, ulong fence)
+    {
+        resources.RecordUpload(1);
+        if (resources.FlushBeforeSubmit() != 0)
+        {
+            throw new InvalidOperationException("Path atlas upload flush failed");
+        }
+        resources.MarkSubmitted(1, fence);
+    }
+
     private static int RunSceneAllocationGate()
     {
         var root = new Node
@@ -291,6 +523,99 @@ internal static class Program
         Console.WriteLine("VULKAN_SCENE_ALLOC allocated=" + allocated
             + " draws=" + result.DrawCount + " visibleNodes=" + result.VisibleNodeCount);
         return allocated == 0 ? 0 : 1;
+    }
+
+    private static int RunDamageJournalGate()
+    {
+        const uint width = 320u;
+        const uint height = 180u;
+        const float scaleX = 1.0F;
+        const float scaleY = 1.0F;
+        var journal = new VulkanSceneDamageJournal(4);
+        var oldBounds = new ConservativeBounds { X = 20, Y = 30, Width = 40, Height = 20 };
+        var newBounds = new ConservativeBounds { X = 22, Y = 34, Width = 60, Height = 20 };
+
+        journal.BeginVersion(1uL);
+        journal.EndVersion();
+        RequireJournalFull(journal, 0uL, 1uL, scaleX, scaleY, width, height, "first-use");
+        RequireJournalNone(journal, 1uL, 1uL, scaleX, scaleY, width, height, "same-key");
+        RequireJournalFull(journal, 1uL, 1uL, 2.0F, scaleY, width, height, "scale-only");
+        RequireJournalFull(journal, 1uL, 1uL, 2.0F, scaleY, width * 2u, height, "extent-only");
+
+        journal.BeginVersion(2uL);
+        journal.EndVersion();
+        RequireJournalFull(journal, 1uL, 2uL, scaleX, scaleY, width, height, "scale-transition");
+
+        journal.BeginVersion(3uL);
+        journal.EndVersion();
+        RequireJournalNone(journal, 2uL, 3uL, scaleX, scaleY, width, height, "unchanged-key");
+
+        journal.BeginVersion(4uL);
+        journal.AddChange(oldBounds, true, newBounds, true);
+        journal.EndVersion();
+        RequireJournalRegion(journal, 3uL, 4uL, scaleX, scaleY, width, height,
+            new VulkanDamageRegion { X = 20, Y = 30, Width = 62, Height = 24 },
+            "unchanged-key-mutation");
+
+        var gap = new VulkanSceneDamageJournal(2);
+        gap.BeginVersion(1uL);
+        gap.EndVersion();
+        RequireJournalFull(gap, 0uL, 1uL, scaleX, scaleY, width, height, "gap-first-use");
+        gap.BeginVersion(2uL);
+        gap.EndVersion();
+        RequireJournalNone(gap, 1uL, 2uL, scaleX, scaleY, width, height, "gap-warm");
+        gap.BeginVersion(3uL);
+        gap.EndVersion();
+        RequireJournalFull(gap, 1uL, 3uL, scaleX, scaleY, width, height, "eviction-gap");
+
+        journal.Reset();
+        journal.BeginVersion(5uL);
+        journal.EndVersion();
+        RequireJournalFull(journal, 5uL, 5uL, scaleX, scaleY, width, height, "reset-first-use");
+
+        var retry = new VulkanSceneDamageJournal(2);
+        retry.BeginVersion(1uL);
+        retry.EndVersion();
+        RequireJournalFull(retry, 0uL, 1uL, scaleX, scaleY, width, height, "retry-first-use");
+        retry.BeginVersion(2uL);
+        retry.AddChange(oldBounds, true, newBounds, true);
+        RequireJournalFull(retry, 1uL, 2uL, scaleX, scaleY, width, height, "abandoned-version");
+        retry.EndVersion();
+
+        Console.WriteLine("VULKAN_DAMAGE_JOURNAL_GATE sameKey=1 scale=1 extent=1 scaleMutation=1 scaleTransition=1 unchangedKey=1 mutationUnchanged=1 logicalBounded=1 evictionGap=1 reset=1 abandoned=1");
+        return 0;
+    }
+
+    private static void RequireJournalNone(VulkanSceneDamageJournal journal,
+        ulong appliedVersion, ulong currentVersion, float scaleX, float scaleY,
+        uint width, uint height, string scenario)
+    {
+        var hasDamage = journal.BuildSince(appliedVersion, currentVersion, scaleX, scaleY,
+            width, height, out var region, out var fullRedraw);
+        if (hasDamage || fullRedraw || !region.IsEmpty)
+            throw new InvalidOperationException("Damage journal " + scenario + " was not empty");
+    }
+
+    private static void RequireJournalFull(VulkanSceneDamageJournal journal,
+        ulong appliedVersion, ulong currentVersion, float scaleX, float scaleY,
+        uint width, uint height, string scenario)
+    {
+        var hasDamage = journal.BuildSince(appliedVersion, currentVersion, scaleX, scaleY,
+            width, height, out var region, out var fullRedraw);
+        if (!hasDamage || !fullRedraw || region.X != 0 || region.Y != 0
+            || region.Width != (int)width || region.Height != (int)height)
+            throw new InvalidOperationException("Damage journal " + scenario + " was not full");
+    }
+
+    private static void RequireJournalRegion(VulkanSceneDamageJournal journal,
+        ulong appliedVersion, ulong currentVersion, float scaleX, float scaleY,
+        uint width, uint height, VulkanDamageRegion expected, string scenario)
+    {
+        var hasDamage = journal.BuildSince(appliedVersion, currentVersion, scaleX, scaleY,
+            width, height, out var region, out var fullRedraw);
+        if (!hasDamage || fullRedraw || region.X != expected.X || region.Y != expected.Y
+            || region.Width != expected.Width || region.Height != expected.Height)
+            throw new InvalidOperationException("Damage journal " + scenario + " was not bounded");
     }
 
 }

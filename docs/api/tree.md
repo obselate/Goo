@@ -388,6 +388,10 @@ Source:
 
 Owns one immutable premultiplied RGBA image resource.
 
+### `ContentChanged`
+
+Occurs when the image content changes.
+
 ### `new(int32,int32,System.Byte[])`
 
 Copies exactly Width times Height premultiplied RGBA pixels into an owned image.
@@ -405,6 +409,10 @@ Returns: The completed binding for this source.
 ### `Dispose`
 
 Releases this source's owner reference. Existing mounted leases stay valid.
+
+### `ContentVersion`
+
+Gets the current image content version.
 
 ### `Height`
 
@@ -472,9 +480,17 @@ Source:
 
 Supplies one image binding when a Goo element mounts.
 
+### `ContentChanged`
+
+Occurs when provider-backed image content changes.
+
 ### `Acquire`
 
 Creates the lease Goo owns and disposes for one mounted element.
+
+### `ContentVersion`
+
+Gets the content version used to invalidate mounted image bindings.
 
 ## `Text`
 
@@ -613,6 +629,10 @@ Gets the action that receives each edited value.
 ### `OnSubmit`
 
 Gets the action that receives the submitted value.
+
+### `Password`
+
+Reports whether the value is presented as protected text.
 
 ### `Placeholder`
 

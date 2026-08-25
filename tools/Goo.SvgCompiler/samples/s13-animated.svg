@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 120">
+  <g transform="translate(10 8)">
+    <animateTransform type="translate" values="0 0;20 0" dur="2s" repeatCount="2" fill="freeze"/>
+    <rect x="0" y="0" width="88" height="52" rx="8" fill="#2868e0" stroke="#f4dc6c" stroke-width="2">
+      <animate attributeName="fill" values="#2868e0;#e05880" dur="1s" repeatCount="indefinite" fill="freeze"/>
+      <animate attributeName="opacity" values="0.45;1" dur="500ms" calcMode="spline" keyTimes="0;1" keySplines="0.25 0.1 0.25 1" repeatCount="2" fill="freeze"/>
+      <animate attributeName="stroke-width" from="2" to="6" dur="1s" fill="freeze"/>
+    </rect>
+  </g>
+  <path d="M 130 24 L 210 24 L 170 96 Z" fill="#5cbb87" stroke="#ffffff" stroke-width="3">
+    <animateTransform type="rotate" values="0 170 52;8 170 52" dur="1.5s" repeatCount="indefinite" fill="freeze"/>
+    <animate attributeName="stroke" from="#ffffff" to="#80365c" dur="1s" repeatCount="2" fill="freeze"/>
+    <animate attributeName="stroke-linecap" values="butt;round" dur="1s" fill="freeze"/>
+  </path>
+</svg>

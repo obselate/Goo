@@ -20,6 +20,23 @@ internal struct VulkanDiagnosticTimestampContext {
     var submission uint64
     var fence uint64
 }
+internal data struct VulkanDiagnosticTimestampSnapshot {
+    var stage VulkanDiagnosticTimestampStage
+    var run uint64
+    var workload uint64
+    var process uint64
+    var window uint64
+    var frame uint64
+    var sample uint64
+    var queue uint64
+    var submission uint64
+    var fence uint64
+    var elapsedTicks uint64
+    var elapsedNanoseconds uint64
+    var scopeCount int32
+    var droppedScopeCount int32
+}
+
 
 internal struct VulkanDiagnosticTimestampRange {
     var firstQuery uint32
@@ -45,14 +62,42 @@ internal struct VulkanDiagnosticTimestampRange {
     var elapsedNanoseconds uint64
 }
 
+
+internal struct VulkanDiagnosticTimestampStageState {
+    var reset bool
+    var scopeCount int32
+    var droppedScopeCount int32
+    var submitted bool
+    var resolved bool
+    var unavailable bool
+    var result VkResult
+    var run uint64
+    var workload uint64
+    var process uint64
+    var window uint64
+    var frame uint64
+    var sample uint64
+    var queue uint64
+    var submission uint64
+    var fence uint64
+    var elapsedTicks uint64
+    var elapsedNanoseconds uint64
+}
+
+
 internal unsafe sealed class VulkanDiagnosticTimestampState {
     private const TimestampFrameSlotCount int32 = 2
     private const TimestampStageCount int32 = 4
-    private const TimestampQueriesPerStage int32 = 2
+    private const TimestampScopesPerStage int32 = 16
+    private const TimestampQueriesPerScope int32 = 2
+    private const TimestampQueriesPerStage int32 = TimestampScopesPerStage * TimestampQueriesPerScope
     private const TimestampQueriesPerSlot int32 = TimestampStageCount * TimestampQueriesPerStage
     private const TimestampQueryCount int32 = TimestampFrameSlotCount * TimestampQueriesPerSlot
 
-    private let timestampRanges []VulkanDiagnosticTimestampRange = [16]VulkanDiagnosticTimestampRange
+    private let timestampRanges []VulkanDiagnosticTimestampRange =
+        [TimestampFrameSlotCount * TimestampStageCount * TimestampScopesPerStage]VulkanDiagnosticTimestampRange
+    private let timestampStages []VulkanDiagnosticTimestampStageState =
+        [TimestampFrameSlotCount * TimestampStageCount]VulkanDiagnosticTimestampStageState
     private var timestampDevice VkDevice = nint(0)
     private var timestampDispatch VkDeviceDispatch = VkDeviceDispatch{}
     private var timestampPool VkQueryPool = 0uL
@@ -66,6 +111,8 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
 
     private let diagnostics VulkanDiagnostics
     private let objectAccounting VulkanObjectAccounting?
+    private var mainPassTimestampSink Action[VulkanDiagnosticTimestampSnapshot]?
+    private var allTimestampSink Action[VulkanDiagnosticTimestampSnapshot]?
 
     internal init(nativeDiagnostics VulkanDiagnostics,
         nativeObjectAccounting VulkanObjectAccounting?) {
@@ -73,8 +120,19 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         objectAccounting = nativeObjectAccounting
     }
 
+    internal func SetMainPassTimestampSink(
+        sink Action[VulkanDiagnosticTimestampSnapshot]?) {
+        mainPassTimestampSink = sink
+    }
+
+    internal func SetAllTimestampSink(
+        sink Action[VulkanDiagnosticTimestampSnapshot]?) {
+        allTimestampSink = sink
+    }
+
     internal prop TimestampFrameSlotCountValue int32 { get { return TimestampFrameSlotCount } }
     internal prop TimestampStageCountValue int32 { get { return TimestampStageCount } }
+    internal prop TimestampScopesPerStageValue int32 { get { return TimestampScopesPerStage } }
     internal prop TimestampQueryCountValue int32 { get { return TimestampQueryCount } }
     internal prop TimestampQueryPool VkQueryPool { get { return timestampPool } }
     internal prop TimestampQueriesCreated bool { get { return timestampPoolCreated } }
@@ -238,7 +296,7 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         while slot < TimestampFrameSlotCount {
             var stageIndex int32 = 0
             while stageIndex < TimestampStageCount {
-                let state = timestampRanges[slot * TimestampStageCount + stageIndex]
+                let state = timestampStages[slot * TimestampStageCount + stageIndex]
                 if state.submitted && !state.resolved && !state.unavailable {
                     if state.fence == 0uL
                         || getFenceStatus(timestampDevice, VkFence(state.fence)) != VkConstants.VK_SUCCESS {
@@ -270,7 +328,7 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         }
 
         ClearTimestampSlot(slot)
-        let firstQuery = FirstTimestampQuery(slot, 0)
+        let firstQuery = FirstTimestampQuery(slot, 0, 0)
         let resetQueryPool = timestampDispatch.vkCmdResetQueryPool
         resetQueryPool(commandBuffer, timestampPool, firstQuery, uint32(TimestampQueriesPerSlot))
         RecordTimestampControl(context, VkConstants.VK_SUCCESS, uint64(firstQuery), uint64(TimestampQueriesPerSlot))
@@ -279,66 +337,139 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
 
     internal func BeginTimestampStage(commandBuffer VkCommandBuffer, slot int32,
         stage VulkanDiagnosticTimestampStage, context VulkanDiagnosticTimestampContext) bool {
-        if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage)
-            || commandBuffer == nint(0) || !timestampPoolCreated || !timestampSupported
-            || timestampDispatch.vkCmdWriteTimestamp2 == nil {
-            MarkTimestampStageUnavailable(slot, stage)
-            return false
-        }
-        let rangeIndex = TimestampRangeIndex(slot, stage)
-        if !timestampRanges[rangeIndex].reset || timestampRanges[rangeIndex].beginRecorded {
-            MarkTimestampStageUnavailable(slot, stage)
-            return false
-        }
-        let query = timestampRanges[rangeIndex].firstQuery
-        let writeTimestamp = timestampDispatch.vkCmdWriteTimestamp2
-        writeTimestamp(commandBuffer, VkConstants.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, timestampPool, query)
-        var state = timestampRanges[rangeIndex]
-        state.beginRecorded = true
-        state.run = context.run
-        state.workload = context.workload
-        state.process = context.process
-        state.window = context.window
-        state.frame = context.frame
-        state.sample = context.sample
-        state.queue = context.queue
-        state.submission = context.submission
-        state.fence = context.fence
-        state.result = VkConstants.VK_SUCCESS
-        timestampRanges[rangeIndex] = state
-        return true
+        return BeginTimestampScope(commandBuffer, slot, stage, context) >= 0
     }
 
     internal func EndTimestampStage(commandBuffer VkCommandBuffer, slot int32,
         stage VulkanDiagnosticTimestampStage, context VulkanDiagnosticTimestampContext) bool {
+        return EndTimestampScope(commandBuffer, TimestampScopeHandle(slot, stage, 0), context)
+    }
+
+    internal func BeginTimestampScope(commandBuffer VkCommandBuffer, slot int32,
+        stage VulkanDiagnosticTimestampStage, context VulkanDiagnosticTimestampContext) int32 {
+        return BeginTimestampScope(commandBuffer, slot, stage,
+            VkConstants.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, context)
+    }
+
+    internal func BeginTimestampScope(commandBuffer VkCommandBuffer, slot int32,
+        stage VulkanDiagnosticTimestampStage, pipelineStage VkPipelineStageFlags2,
+        context VulkanDiagnosticTimestampContext) int32 {
         if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage)
             || commandBuffer == nint(0) || !timestampPoolCreated || !timestampSupported
             || timestampDispatch.vkCmdWriteTimestamp2 == nil {
             MarkTimestampStageUnavailable(slot, stage)
+            return -1
+        }
+        let stageIndex = TimestampRangeIndex(slot, stage)
+        var stageState = timestampStages[stageIndex]
+        if !stageState.reset || stageState.unavailable {
+            MarkTimestampStageUnavailable(slot, stage)
+            return -1
+        }
+        if stageState.scopeCount >= TimestampScopesPerStage {
+            stageState.droppedScopeCount = stageState.droppedScopeCount + 1
+            timestampStages[stageIndex] = stageState
+            RecordTimestampControl(context, VkConstants.VK_NOT_READY,
+                uint64(int32(stage)), uint64(stageState.droppedScopeCount))
+            return -1
+        }
+        let scopeIndex = stageState.scopeCount
+        let rangeIndex = TimestampScopeRangeIndex(slot, stage, scopeIndex)
+        let query = timestampRanges[rangeIndex].firstQuery
+        let writeTimestamp = timestampDispatch.vkCmdWriteTimestamp2
+        writeTimestamp(commandBuffer, pipelineStage, timestampPool, query)
+        var scopeState = timestampRanges[rangeIndex]
+        scopeState.beginRecorded = true
+        scopeState.run = context.run
+        scopeState.workload = context.workload
+        scopeState.process = context.process
+        scopeState.window = context.window
+        scopeState.frame = context.frame
+        scopeState.sample = context.sample
+        scopeState.queue = context.queue
+        scopeState.submission = context.submission
+        scopeState.fence = context.fence
+        scopeState.result = VkConstants.VK_SUCCESS
+        timestampRanges[rangeIndex] = scopeState
+        stageState.scopeCount = stageState.scopeCount + 1
+        stageState.run = context.run
+        stageState.workload = context.workload
+        stageState.process = context.process
+        stageState.window = context.window
+        stageState.frame = context.frame
+        stageState.sample = context.sample
+        stageState.queue = context.queue
+        stageState.submission = context.submission
+        stageState.fence = context.fence
+        stageState.result = VkConstants.VK_SUCCESS
+        timestampStages[stageIndex] = stageState
+        return TimestampScopeHandle(slot, stage, scopeIndex)
+    }
+
+    internal func EndTimestampScope(commandBuffer VkCommandBuffer,
+        handle int32, context VulkanDiagnosticTimestampContext) bool {
+        return EndTimestampScope(commandBuffer, handle,
+            VkConstants.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, context)
+    }
+
+    internal func EndTimestampScope(commandBuffer VkCommandBuffer,
+        handle int32, pipelineStage VkPipelineStageFlags2,
+        context VulkanDiagnosticTimestampContext) bool {
+        if !ValidTimestampHandle(handle) || commandBuffer == nint(0)
+            || !timestampPoolCreated || !timestampSupported
+            || timestampDispatch.vkCmdWriteTimestamp2 == nil {
             return false
         }
-        let rangeIndex = TimestampRangeIndex(slot, stage)
-        if !timestampRanges[rangeIndex].beginRecorded || timestampRanges[rangeIndex].endRecorded {
+        let encoded = handle - 1
+        let scopeIndex = encoded % TimestampScopesPerStage
+        let stageOrdinal = encoded / TimestampScopesPerStage
+        let slot = stageOrdinal / TimestampStageCount
+        let stage = TimestampStageFromIndex(stageOrdinal % TimestampStageCount)
+        let stageIndex = TimestampRangeIndex(slot, stage)
+        let rangeIndex = TimestampScopeRangeIndex(slot, stage, scopeIndex)
+        var scopeState = timestampRanges[rangeIndex]
+        if !scopeState.reset || !scopeState.beginRecorded || scopeState.endRecorded {
             MarkTimestampStageUnavailable(slot, stage)
             return false
         }
-        let query = timestampRanges[rangeIndex].firstQuery + 1u
+        let query = scopeState.firstQuery + 1u
         let writeTimestamp = timestampDispatch.vkCmdWriteTimestamp2
-        writeTimestamp(commandBuffer, VkConstants.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, timestampPool, query)
-        var state = timestampRanges[rangeIndex]
-        state.endRecorded = true
-        state.run = context.run
-        state.workload = context.workload
-        state.process = context.process
-        state.window = context.window
-        state.frame = context.frame
-        state.sample = context.sample
-        state.queue = context.queue
-        state.submission = context.submission
-        state.fence = context.fence
-        state.result = VkConstants.VK_SUCCESS
-        timestampRanges[rangeIndex] = state
+        writeTimestamp(commandBuffer, pipelineStage, timestampPool, query)
+        scopeState.endRecorded = true
+        scopeState.run = context.run
+        scopeState.workload = context.workload
+        scopeState.process = context.process
+        scopeState.window = context.window
+        scopeState.frame = context.frame
+        scopeState.sample = context.sample
+        scopeState.queue = context.queue
+        scopeState.submission = context.submission
+        scopeState.fence = context.fence
+        scopeState.result = VkConstants.VK_SUCCESS
+        timestampRanges[rangeIndex] = scopeState
+        var stageState = timestampStages[stageIndex]
+        stageState.run = context.run
+        stageState.workload = context.workload
+        stageState.process = context.process
+        stageState.window = context.window
+        stageState.frame = context.frame
+        stageState.sample = context.sample
+        stageState.queue = context.queue
+        stageState.submission = context.submission
+        stageState.fence = context.fence
+        stageState.result = VkConstants.VK_SUCCESS
+        timestampStages[stageIndex] = stageState
         return true
+    }
+
+    internal func EndTimestampScope(commandBuffer VkCommandBuffer, slot int32,
+        stage VulkanDiagnosticTimestampStage, handle int32,
+        context VulkanDiagnosticTimestampContext) bool {
+        if !ValidTimestampHandle(handle) || TimestampHandleSlot(handle) != slot
+            || TimestampHandleStage(handle) != stage {
+            return false
+        }
+        return EndTimestampScope(commandBuffer, handle, context)
     }
 
     internal func SubmitTimestampSlot(slot int32, context VulkanDiagnosticTimestampContext) bool {
@@ -347,7 +478,7 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         }
         var submittedStageIndex int32 = 0
         while submittedStageIndex < TimestampStageCount {
-            if timestampRanges[slot * TimestampStageCount + submittedStageIndex].submitted {
+            if timestampStages[slot * TimestampStageCount + submittedStageIndex].submitted {
                 return false
             }
             submittedStageIndex++
@@ -356,8 +487,9 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         var stageIndex int32 = 0
         while stageIndex < TimestampStageCount {
             let rangeIndex = slot * TimestampStageCount + stageIndex
-            var state = timestampRanges[rangeIndex]
-            if !state.unavailable && state.beginRecorded && state.endRecorded {
+            var state = timestampStages[rangeIndex]
+            if !state.unavailable && state.scopeCount > 0
+                && TimestampStageCompleteForSubmit(slot, stageIndex, state.scopeCount) {
                 state.submitted = true
                 state.resolved = false
                 state.run = context.run
@@ -370,13 +502,23 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
                 state.submission = context.submission
                 state.fence = context.fence
                 state.result = VkConstants.VK_SUCCESS
+                var scopeIndex int32 = 0
+                while scopeIndex < state.scopeCount {
+                    var scopeState = timestampRanges[TimestampScopeRangeIndex(
+                        slot, TimestampStageFromIndex(stageIndex), scopeIndex)]
+                    scopeState.submitted = true
+                    scopeState.resolved = false
+                    timestampRanges[TimestampScopeRangeIndex(
+                        slot, TimestampStageFromIndex(stageIndex), scopeIndex)] = scopeState
+                    scopeIndex++
+                }
                 submitted = true
             } else {
                 state.unavailable = true
                 state.resolved = true
                 state.result = VkConstants.VK_NOT_READY
             }
-            timestampRanges[rangeIndex] = state
+            timestampStages[rangeIndex] = state
             stageIndex++
         }
         return submitted
@@ -394,7 +536,7 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         var fenceValue uint64 = 0uL
         var stageIndex int32 = 0
         while stageIndex < TimestampStageCount {
-            let state = timestampRanges[slot * TimestampStageCount + stageIndex]
+            let state = timestampStages[slot * TimestampStageCount + stageIndex]
             if state.submitted && !state.resolved && !state.unavailable {
                 hasPendingStage = true
                 if fenceValue == 0uL {
@@ -426,15 +568,16 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         var overallResult VkResult = VkConstants.VK_SUCCESS
         stageIndex = 0
         while stageIndex < TimestampStageCount {
-            let rangeIndex = slot * TimestampStageCount + stageIndex
-            var state = timestampRanges[rangeIndex]
-            if state.submitted && !state.resolved && !state.unavailable {
+            let stageRangeIndex = slot * TimestampStageCount + stageIndex
+            var stageState = timestampStages[stageRangeIndex]
+            if stageState.submitted && !stageState.resolved && !stageState.unavailable {
+                let queryCount = stageState.scopeCount * TimestampQueriesPerScope
                 let result = getQueryPoolResults(
                     timestampDevice,
                     timestampPool,
-                    state.firstQuery,
-                    uint32(TimestampQueriesPerStage),
-                    nuint(TimestampQueriesPerStage * 8),
+                    FirstTimestampQuery(slot, stageIndex, 0),
+                    uint32(queryCount),
+                    nuint(queryCount * 8),
                     *void(values),
                     VkDeviceSize(8),
                     VkQueryResultFlags(uint32(VkConstants.VK_QUERY_RESULT_64_BIT)))
@@ -442,22 +585,44 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
                 if result == VkConstants.VK_NOT_READY {
                     overallResult = result
                 } else if result != VkConstants.VK_SUCCESS {
-                    state.unavailable = true
-                    state.resolved = true
-                    state.result = result
-                    timestampRanges[rangeIndex] = state
+                    stageState.unavailable = true
+                    stageState.resolved = true
+                    stageState.result = result
+                    MarkTimestampStageRangesUnavailable(slot, stageIndex, stageState.scopeCount, result)
+                    timestampStages[stageRangeIndex] = stageState
                     overallResult = result
                     diagnostics.RecordResult(VulkanDiagnosticEventIds.GpuTimestamp, int32(result),
                         context.frame, context.queue, context.submission, fenceValue)
                 } else {
-                    state.beginTicks = values[0]
-                    state.endTicks = values[1]
-                    state.elapsedTicks = ElapsedTimestampTicks(state.beginTicks, state.endTicks)
-                    state.elapsedNanoseconds = ElapsedTimestampNanoseconds(state.elapsedTicks)
-                    state.resolved = true
-                    state.result = result
-                    timestampRanges[rangeIndex] = state
-                    RecordTimestampStage(state, TimestampStageFromIndex(stageIndex))
+                    var totalTicks uint64 = 0uL
+                    var totalNanoseconds uint64 = 0uL
+                    var scopeIndex int32 = 0
+                    while scopeIndex < stageState.scopeCount {
+                        let rangeIndex = TimestampScopeRangeIndex(
+                            slot, TimestampStageFromIndex(stageIndex), scopeIndex)
+                        var scopeState = timestampRanges[rangeIndex]
+                        scopeState.beginTicks = values[scopeIndex * TimestampQueriesPerScope]
+                        scopeState.endTicks = values[scopeIndex * TimestampQueriesPerScope + 1]
+                        scopeState.elapsedTicks = ElapsedTimestampTicks(
+                            scopeState.beginTicks, scopeState.endTicks)
+                        scopeState.elapsedNanoseconds = ElapsedTimestampNanoseconds(
+                            scopeState.elapsedTicks)
+                        scopeState.resolved = true
+                        scopeState.result = result
+                        timestampRanges[rangeIndex] = scopeState
+                        totalTicks = SaturatingAddTimestamp(totalTicks, scopeState.elapsedTicks)
+                        totalNanoseconds = SaturatingAddTimestamp(
+                            totalNanoseconds, scopeState.elapsedNanoseconds)
+                        scopeIndex++
+                    }
+                    stageState.elapsedTicks = totalTicks
+                    stageState.elapsedNanoseconds = totalNanoseconds
+                    stageState.resolved = true
+                    stageState.result = result
+                    timestampStages[stageRangeIndex] = stageState
+                    let stage = TimestampStageFromIndex(stageIndex)
+                    RecordTimestampStage(stageState, stage, slot)
+                    PublishTimestamp(stageState, stage)
                 }
             }
             stageIndex++
@@ -467,18 +632,19 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         return overallResult
     }
 
+
     internal func IsTimestampStageUnavailable(slot int32, stage VulkanDiagnosticTimestampStage) bool {
         if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
             return true
         }
-        return timestampRanges[TimestampRangeIndex(slot, stage)].unavailable
+        return timestampStages[TimestampRangeIndex(slot, stage)].unavailable
     }
 
     internal func IsTimestampStageResolved(slot int32, stage VulkanDiagnosticTimestampStage) bool {
         if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
             return false
         }
-        let state = timestampRanges[TimestampRangeIndex(slot, stage)]
+        let state = timestampStages[TimestampRangeIndex(slot, stage)]
         return state.resolved && !state.unavailable
     }
 
@@ -486,21 +652,36 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
             return 0uL
         }
-        return timestampRanges[TimestampRangeIndex(slot, stage)].elapsedTicks
+        return timestampStages[TimestampRangeIndex(slot, stage)].elapsedTicks
     }
 
     internal func TimestampStageNanoseconds(slot int32, stage VulkanDiagnosticTimestampStage) uint64 {
         if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
             return 0uL
         }
-        return timestampRanges[TimestampRangeIndex(slot, stage)].elapsedNanoseconds
+        return timestampStages[TimestampRangeIndex(slot, stage)].elapsedNanoseconds
+    }
+
+    internal func TimestampStageScopeCount(slot int32, stage VulkanDiagnosticTimestampStage) int32 {
+        if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
+            return 0
+        }
+        return timestampStages[TimestampRangeIndex(slot, stage)].scopeCount
+    }
+
+    internal func TimestampStageDroppedScopeCount(slot int32,
+        stage VulkanDiagnosticTimestampStage) int32 {
+        if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
+            return 0
+        }
+        return timestampStages[TimestampRangeIndex(slot, stage)].droppedScopeCount
     }
 
     internal func TimestampStageResult(slot int32, stage VulkanDiagnosticTimestampStage) VkResult {
         if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
             return VkConstants.VK_NOT_READY
         }
-        return timestampRanges[TimestampRangeIndex(slot, stage)].result
+        return timestampStages[TimestampRangeIndex(slot, stage)].result
     }
 
     private func ValidTimestampSlot(slot int32) bool {
@@ -518,7 +699,7 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         }
         var stageIndex int32 = 0
         while stageIndex < TimestampStageCount {
-            let state = timestampRanges[slot * TimestampStageCount + stageIndex]
+            let state = timestampStages[slot * TimestampStageCount + stageIndex]
             if state.submitted && !state.resolved && !state.unavailable {
                 return true
             }
@@ -527,12 +708,53 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         return false
     }
 
+    private func TimestampStageCompleteForSubmit(slot int32,
+        stageIndex int32, scopeCount int32) bool {
+        let stage = TimestampStageFromIndex(stageIndex)
+        var scopeIndex int32 = 0
+        while scopeIndex < scopeCount {
+            let scopeState = timestampRanges[TimestampScopeRangeIndex(slot, stage, scopeIndex)]
+            if !scopeState.beginRecorded || !scopeState.endRecorded || scopeState.unavailable {
+                return false
+            }
+            scopeIndex++
+        }
+        return true
+    }
+
     private func TimestampRangeIndex(slot int32, stage VulkanDiagnosticTimestampStage) int32 {
         return slot * TimestampStageCount + int32(stage)
     }
 
-    private func FirstTimestampQuery(slot int32, stageIndex int32) uint32 {
-        return uint32(slot * TimestampQueriesPerSlot + stageIndex * TimestampQueriesPerStage)
+    private func TimestampScopeRangeIndex(slot int32,
+        stage VulkanDiagnosticTimestampStage, scopeIndex int32) int32 {
+        return (slot * TimestampStageCount + int32(stage)) * TimestampScopesPerStage + scopeIndex
+    }
+
+    private func FirstTimestampQuery(slot int32, stageIndex int32, scopeIndex int32) uint32 {
+        return uint32(slot * TimestampQueriesPerSlot
+            + stageIndex * TimestampQueriesPerStage
+            + scopeIndex * TimestampQueriesPerScope)
+    }
+
+    private func TimestampScopeHandle(slot int32,
+        stage VulkanDiagnosticTimestampStage, scopeIndex int32) int32 {
+        return 1 + ((slot * TimestampStageCount + int32(stage)) * TimestampScopesPerStage)
+            + scopeIndex
+    }
+
+    private func ValidTimestampHandle(handle int32) bool {
+        return handle > 0
+            && handle <= TimestampFrameSlotCount * TimestampStageCount * TimestampScopesPerStage
+    }
+
+    private func TimestampHandleSlot(handle int32) int32 {
+        return (handle - 1) / (TimestampStageCount * TimestampScopesPerStage)
+    }
+
+    private func TimestampHandleStage(handle int32) VulkanDiagnosticTimestampStage {
+        let stageIndex = ((handle - 1) / TimestampScopesPerStage) % TimestampStageCount
+        return TimestampStageFromIndex(stageIndex)
     }
 
     private func TimestampStageFromIndex(stageIndex int32) VulkanDiagnosticTimestampStage {
@@ -574,6 +796,13 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         return uint64(float64(ticks) * float64(timestampPeriod))
     }
 
+    private func SaturatingAddTimestamp(left uint64, right uint64) uint64 {
+        if uint64.MaxValue - left < right {
+            return uint64.MaxValue
+        }
+        return left + right
+    }
+
     private func ResetTimestampRangeState() {
         var slot int32 = 0
         while slot < TimestampFrameSlotCount {
@@ -585,12 +814,11 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
     private func ClearTimestampSlot(slot int32) {
         var stageIndex int32 = 0
         while stageIndex < TimestampStageCount {
-            let rangeIndex = slot * TimestampStageCount + stageIndex
-            timestampRanges[rangeIndex] = VulkanDiagnosticTimestampRange{
-                firstQuery: FirstTimestampQuery(slot, stageIndex),
+            let stageRangeIndex = slot * TimestampStageCount + stageIndex
+            timestampStages[stageRangeIndex] = VulkanDiagnosticTimestampStageState{
                 reset: true,
-                beginRecorded: false,
-                endRecorded: false,
+                scopeCount: 0,
+                droppedScopeCount: 0,
                 submitted: false,
                 resolved: false,
                 unavailable: false,
@@ -604,10 +832,37 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
                 queue: 0uL,
                 submission: 0uL,
                 fence: 0uL,
-                beginTicks: 0uL,
-                endTicks: 0uL,
                 elapsedTicks: 0uL,
                 elapsedNanoseconds: 0uL,
+            }
+            var scopeIndex int32 = 0
+            while scopeIndex < TimestampScopesPerStage {
+                let rangeIndex = TimestampScopeRangeIndex(
+                    slot, TimestampStageFromIndex(stageIndex), scopeIndex)
+                timestampRanges[rangeIndex] = VulkanDiagnosticTimestampRange{
+                    firstQuery: FirstTimestampQuery(slot, stageIndex, scopeIndex),
+                    reset: true,
+                    beginRecorded: false,
+                    endRecorded: false,
+                    submitted: false,
+                    resolved: false,
+                    unavailable: false,
+                    result: VkConstants.VK_SUCCESS,
+                    run: 0uL,
+                    workload: 0uL,
+                    process: 0uL,
+                    window: 0uL,
+                    frame: 0uL,
+                    sample: 0uL,
+                    queue: 0uL,
+                    submission: 0uL,
+                    fence: 0uL,
+                    beginTicks: 0uL,
+                    endTicks: 0uL,
+                    elapsedTicks: 0uL,
+                    elapsedNanoseconds: 0uL,
+                }
+                scopeIndex++
             }
             stageIndex++
         }
@@ -627,8 +882,8 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         }
         var stageIndex int32 = 0
         while stageIndex < TimestampStageCount {
-            let rangeIndex = slot * TimestampStageCount + stageIndex
-            var state = timestampRanges[rangeIndex]
+            let stageRangeIndex = slot * TimestampStageCount + stageIndex
+            var state = timestampStages[stageRangeIndex]
             if state.submitted && !state.resolved {
                 stageIndex++
                 continue
@@ -636,24 +891,44 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
             state.unavailable = true
             state.resolved = true
             state.result = VkConstants.VK_NOT_READY
-            timestampRanges[rangeIndex] = state
+            timestampStages[stageRangeIndex] = state
+            MarkTimestampStageRangesUnavailable(slot, stageIndex, state.scopeCount,
+                VkConstants.VK_NOT_READY)
             stageIndex++
         }
     }
 
-    private func MarkTimestampStageUnavailable(slot int32, stage VulkanDiagnosticTimestampStage) {
+    private func MarkTimestampStageUnavailable(slot int32,
+        stage VulkanDiagnosticTimestampStage) {
         if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
             return
         }
-        let rangeIndex = TimestampRangeIndex(slot, stage)
-        var state = timestampRanges[rangeIndex]
+        let stageRangeIndex = TimestampRangeIndex(slot, stage)
+        var state = timestampStages[stageRangeIndex]
         if state.submitted && !state.resolved {
             return
         }
         state.unavailable = true
         state.resolved = true
         state.result = VkConstants.VK_NOT_READY
-        timestampRanges[rangeIndex] = state
+        timestampStages[stageRangeIndex] = state
+        MarkTimestampStageRangesUnavailable(slot, int32(stage), state.scopeCount,
+            VkConstants.VK_NOT_READY)
+    }
+
+    private func MarkTimestampStageRangesUnavailable(slot int32, stageIndex int32,
+        scopeCount int32, result VkResult) {
+        let stage = TimestampStageFromIndex(stageIndex)
+        var scopeIndex int32 = 0
+        while scopeIndex < scopeCount {
+            let rangeIndex = TimestampScopeRangeIndex(slot, stage, scopeIndex)
+            var scopeState = timestampRanges[rangeIndex]
+            scopeState.unavailable = true
+            scopeState.resolved = true
+            scopeState.result = result
+            timestampRanges[rangeIndex] = scopeState
+            scopeIndex++
+        }
     }
 
     private func RecordTimestampControl(context VulkanDiagnosticTimestampContext,
@@ -664,8 +939,8 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
             0uL, result, value0, value1)
     }
 
-    private func RecordTimestampStage(state VulkanDiagnosticTimestampRange,
-        stage VulkanDiagnosticTimestampStage) {
+    private func RecordTimestampStage(state VulkanDiagnosticTimestampStageState,
+        stage VulkanDiagnosticTimestampStage, slot int32) {
         let eventId = if stage == VulkanDiagnosticTimestampStage.Upload {
             VulkanDiagnosticEventIds.UploadStage
         } else if stage == VulkanDiagnosticTimestampStage.Main {
@@ -675,9 +950,38 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         } else {
             VulkanDiagnosticEventIds.OffscreenPass
         }
-        diagnostics.Record(state.run, state.workload, state.process, state.window, state.frame, state.sample, state.queue,
-            state.submission, state.fence, uint64(state.firstQuery), eventId,
+        diagnostics.Record(state.run, state.workload, state.process, state.window, state.frame, state.sample,
+            state.queue, state.submission, state.fence,
+            uint64(FirstTimestampQuery(slot, int32(stage), 0)), eventId,
             VulkanDiagnosticCategories.Timing, 0uL, state.result,
             state.elapsedTicks, state.elapsedNanoseconds)
+    }
+
+    private func PublishTimestamp(state VulkanDiagnosticTimestampStageState,
+        stage VulkanDiagnosticTimestampStage) {
+        let snapshot = VulkanDiagnosticTimestampSnapshot{
+            stage: stage,
+            run: state.run,
+            workload: state.workload,
+            process: state.process,
+            window: state.window,
+            frame: state.frame,
+            sample: state.sample,
+            queue: state.queue,
+            submission: state.submission,
+            fence: state.fence,
+            elapsedTicks: state.elapsedTicks,
+            elapsedNanoseconds: state.elapsedNanoseconds,
+            scopeCount: state.scopeCount,
+            droppedScopeCount: state.droppedScopeCount,
+        }
+        if let sink = allTimestampSink {
+            sink.Invoke(snapshot)
+        }
+        if stage == VulkanDiagnosticTimestampStage.Main {
+            if let sink = mainPassTimestampSink {
+                sink.Invoke(snapshot)
+            }
+        }
     }
 }

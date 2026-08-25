@@ -67,21 +67,20 @@ internal class WindowScheduler {
     }
   }
 
-  internal func Run(owner Window) {
+  internal func Run() {
     if running {
       throw InvalidOperationException("Window scheduler is already running")
     }
     running = true
     nextWindow = 0
     try {
-      let clock = Stopwatch.StartNew()
-      var last = clock.Elapsed.TotalSeconds
-      while owner.IsOpen {
+      while true {
         let currentCount = CaptureSnapshot()
         if currentCount == 0 {
           break
         }
-        var anyDemand bool
+        var hasOpenWindow bool
+        let now = float64(Stopwatch.GetTimestamp())
         var waitMs int32 = DefaultWaitMs
         var currentIndex int32
         while currentIndex < currentCount {
@@ -90,22 +89,21 @@ internal class WindowScheduler {
             currentIndex = currentIndex + 1
             continue
           }
-          if window.SchedulerHasDemand() {
-            anyDemand = true
-          }
-          let candidate = window.SchedulerIdleWaitMs()
+          hasOpenWindow = true
+          let candidate = window.SchedulerWaitMs(now)
           if candidate < waitMs {
             waitMs = candidate
           }
           currentIndex = currentIndex + 1
         }
-        var eventCount int32
-        if anyDemand {
-          eventCount = SdlRuntime.PumpEvents(EventBudget)
-        } else {
-          eventCount = SdlRuntime.WaitEventsBounded(waitMs, EventBudget)
+        if !hasOpenWindow {
+          break
         }
-        let serviceAll = !anyDemand || eventCount != 0
+        if waitMs == 0 {
+          SdlRuntime.PumpEvents(EventBudget)
+        } else {
+          SdlRuntime.WaitEventsBounded(waitMs, EventBudget)
+        }
         let afterEventsCount = CaptureSnapshot()
         var afterEventsIndex int32
         while afterEventsIndex < afterEventsCount {
@@ -115,9 +113,7 @@ internal class WindowScheduler {
           }
           afterEventsIndex = afterEventsIndex + 1
         }
-        let now = clock.Elapsed.TotalSeconds
-        let dt = now - last
-        last = now
+        let afterEventsNow = float64(Stopwatch.GetTimestamp())
         let count = afterEventsCount
         if count == 0 {
           break
@@ -126,8 +122,13 @@ internal class WindowScheduler {
         var offset int32
         while offset < count {
           let window = snapshot[(start + offset) % count]
-          if window.IsOpen && (serviceAll || window.SchedulerHasDemand()) {
-            window.PumpScheduled(dt)
+          if window.IsOpen {
+            let service = window.SchedulerHasImmediateService()
+            let timed = window.SchedulerTimedServiceDue()
+            let frameDue = window.SchedulerFrameDue(afterEventsNow)
+            if service || timed || frameDue {
+              window.SchedulerPump(afterEventsNow, frameDue)
+            }
           }
           offset = offset + 1
         }
@@ -141,6 +142,9 @@ internal class WindowScheduler {
 
 /// Hosts a Goo tree in an SDL window.
 public partial class Window {
+  private var schedulerLastTicks float64
+  private var schedulerSimulationBank float64
+
   shared {
     private let scheduler WindowScheduler = WindowScheduler()
 
@@ -160,9 +164,10 @@ public partial class Window {
       scheduler.Unregister(window)
     }
 
-    internal func RunLiveWindowScheduler(owner Window) {
-      scheduler.Run(owner)
+    internal func RunLiveWindowScheduler() {
+      scheduler.Run()
     }
+
   }
 
   private func requireUiThread(operation string) {
@@ -229,6 +234,8 @@ public partial class Window {
       input.Attach(native)
       native.Show()
       IsOpen = true
+      schedulerLastTicks = float64(Stopwatch.GetTimestamp())
+      schedulerSimulationBank = 0.0
       Window.RegisterLiveWindow(this)
       return this
     } catch (e Exception) {
@@ -301,22 +308,55 @@ public partial class Window {
   /// @param dt elapsed seconds since the previous frame
   public func Pump(dt float64) {
     requireUiThread("Window.Pump")
-    pumpCore(dt, true)
+    schedulerSimulationBank = 0.0
+    pumpCore(dt, true, true, dt)
+    schedulerLastTicks = float64(Stopwatch.GetTimestamp())
   }
 
   internal func PumpScheduled(dt float64) {
     requireUiThread("Window scheduled pump")
-    pumpCore(dt, false)
+    schedulerSimulationBank = 0.0
+    pumpCore(dt, false, true, dt)
+    schedulerLastTicks = float64(Stopwatch.GetTimestamp())
   }
 
-  private func pumpCore(dt float64, waitForEvents bool) {
+  internal func SchedulerPump(nowTicks float64, frameAllowed bool) {
+    requireUiThread("Window scheduled pump")
+    var dt float64
+    if schedulerLastTicks > 0.0 {
+      dt = (nowTicks - schedulerLastTicks) / float64(Stopwatch.Frequency)
+      if dt < 0.0 {
+        dt = 0.0
+      }
+    }
+    schedulerLastTicks = nowTicks
+    var simulationDt float64
+    if frameAllowed {
+      simulationDt = schedulerSimulationBank + dt
+      schedulerSimulationBank = 0.0
+    } else {
+      schedulerSimulationBank = schedulerSimulationBank + dt
+    }
+    pumpCore(dt, false, frameAllowed, simulationDt)
+  }
+
+  private func pumpCore(dt float64, waitForEvents bool, frameAllowed bool,
+      simulationDt float64) {
     if !motionFinite(dt) || dt < 0.0 {
       throw ArgumentOutOfRangeException("dt")
+    }
+    if !motionFinite(simulationDt) || simulationDt < 0.0 {
+      throw ArgumentOutOfRangeException("simulationDt")
     }
     guard let native = host else {
       return
     }
+    let queueCompletedAtEntry = windowTarget?.PollQueueCompletion() == true
     if native.IsClosing {
+      if windowTarget?.PrepareClose() == false {
+        native.Wake()
+        return
+      }
       Close()
       return
     }
@@ -335,8 +375,12 @@ public partial class Window {
     }
     let repeatStartTicks = Stopwatch.GetTimestamp()
     if !native.IsClosing && drainCloseRequest() {
-      stopPosts()
-      native.BeginClose()
+      if windowTarget?.PrepareClose() == false {
+        Interlocked.Exchange(&closeRequested, 1)
+      } else {
+        stopPosts()
+        native.BeginClose()
+      }
     }
     if native.IsClosing || !IsOpen {
       try {
@@ -350,6 +394,7 @@ public partial class Window {
       return
     }
     consumeNativeMetrics()
+    native.ClearPendingEvents()
     if profiling {
       profiler.Record(FrameProfileStage.Events, eventsProfile)
     }
@@ -377,15 +422,22 @@ public partial class Window {
     // and misreads two far-apart clicks as a double-click -- only the
     // simulation step is bounded; UpdateTree's wallDt/simDt split keeps them
     // separate.
-    let stepDt = Math.Min(dt, 1.0 / 30.0)
+    let stepDt = frameAllowed ? Math.Min(simulationDt, 1.0 / 30.0) : 0.0
     let treeProfile = profiling ? profiler.Start() : FrameProfilePoint{}
     UpdateTree(dt, stepDt)
     if profiling {
       profiler.Record(FrameProfileStage.Tree, treeProfile)
     }
     native.SetCursor(toSdlCursor(input.CurrentCursor()))
+    let queueCompleted = queueCompletedAtEntry || windowTarget?.PollQueueCompletion() == true
     var rendered = false
-    if needsRenderFrame(resolver.VisualDirty) {
+    if queueCompleted {
+      markFrameRendered()
+      rendered = true
+      native.FramePacing.MarkFrame(float64(Stopwatch.GetTimestamp()))
+    }
+    let frameNeeded = needsRenderFrame(resolver.VisualDirty)
+    if frameAllowed && frameNeeded && windowTarget?.QueueWorkPending != true {
       let renderProfile = profiling ? profiler.Start() : FrameProfilePoint{}
       let currentProfile = profiling ? profiler.Start() : FrameProfilePoint{}
       windowTarget?.BeginFrame()
@@ -399,8 +451,14 @@ public partial class Window {
         profiler.Record(FrameProfileStage.Present, swapProfile)
         profiler.Record(FrameProfileStage.Render, renderProfile)
       }
-      markFrameRendered()
-      rendered = true
+      let submitted = windowTarget?.LastFrameSubmitted == true
+      if submitted {
+        markFrameRendered()
+        rendered = true
+        native.FramePacing.MarkFrame(float64(Stopwatch.GetTimestamp()))
+      } else {
+        native.FramePacing.Defer(float64(Stopwatch.GetTimestamp()))
+      }
     }
     if profiling {
       profiler.EndFrame(frameProfile, rendered)
@@ -420,17 +478,50 @@ public partial class Window {
     return motionPump.Active || resolver.Animating.Count > 0 || renderDirty || pendingRebuild != 0
       || pendingImageCompletion != 0 || pendingRetainedInvalidation != 0 || hasScrollDemand()
       || accessibility?.HasDemand == true || hasPostedActions() || MetricSubscriptions.HasDemand(this)
-      || windowTarget?.NeedsRender == true
+      || windowTarget?.NeedsRender == true || windowTarget?.QueueWorkPending == true
       || Interlocked.CompareExchange(&closeRequested, 0, 0) != 0
       || host?.IsClosing == true
   }
 
-  internal func SchedulerHasDemand() bool {
-    return hasDemand()
+  internal func SchedulerHasImmediateService() bool {
+    return host?.HasPendingEvents == true || hasPostedActions()
+      || Interlocked.CompareExchange(&closeRequested, 0, 0) != 0
+      || host?.IsClosing == true
   }
 
-  internal func SchedulerIdleWaitMs() int32 {
-    return idleWaitMs()
+  internal func SchedulerFrameDue(nowTicks float64) bool {
+    guard let native = host else {
+      return false
+    }
+    return hasDemand() && native.SchedulerPacingAvailable &&
+      native.FramePacing.IsDue(nowTicks)
+  }
+
+  internal func SchedulerWaitMs(nowTicks float64) int32 {
+    if SchedulerHasImmediateService() {
+      return 0
+    }
+    let idle = idleWaitMs()
+    let demand = hasDemand()
+    let timed = SchedulerTimedServiceDue()
+    if timed {
+      return 0
+    }
+    if !demand {
+      return idle
+    }
+    guard let native = host else {
+      return idle
+    }
+    if !native.SchedulerPacingAvailable {
+      return idle
+    }
+    let pacingWait = native.FramePacing.WaitMilliseconds(nowTicks, idle)
+    return pacingWait < idle ? pacingWait : idle
+  }
+
+  internal func SchedulerTimedServiceDue() bool {
+    return input.NextTickDeadlineSeconds() <= 0.0
   }
 
   internal func RefreshSchedulerMetrics() {
@@ -461,15 +552,18 @@ public partial class Window {
     return false
   }
 
-  /// Opens the window and processes frames until it closes.
+  /// Opens the window and processes frames until all open Goo windows close.
   public func Run() {
     requireOpenThread("Window.Run")
     Open()
     try {
-      Window.RunLiveWindowScheduler(this)
+      Window.RunLiveWindowScheduler()
     } finally {
-      if IsOpen {
+      while IsOpen {
         Close()
+        if IsOpen {
+          Thread.Yield()
+        }
       }
     }
   }
@@ -489,6 +583,8 @@ public partial class Window {
         windowTarget = nil
         host?.Dispose()
         host = nil
+        schedulerLastTicks = 0.0
+        schedulerSimulationBank = 0.0
         framebufferWidth = 0
         framebufferHeight = 0
         pendingMetrics = false
@@ -506,6 +602,10 @@ public partial class Window {
 
   internal func Close() {
     requireUiThread("Window.Close")
+    if windowTarget?.PrepareClose() == false {
+      host?.Wake()
+      return
+    }
     Window.UnregisterLiveWindow(this)
     stopPosts()
     stopImageCompletions()
@@ -536,9 +636,11 @@ public partial class Window {
         fiberBatch.Clear()
       }
       paintResourceHook = nil
+      shaderEffectInvalidatedHook = nil
       imageCompletionHook = nil
       retainedInvalidationHook = nil
       resolver.PaintResourceInvalidated = nil
+      resolver.ShaderEffectInvalidated = nil
       cellHook = nil
       hookInstalled = false
     }

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Goo\Goo.gsproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="PublicApi.approved.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          TargetPath="PublicApi.approved.txt" />
+  </ItemGroup>
+</Project>

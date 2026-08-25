@@ -9,6 +9,7 @@ internal static class Program
 {
     private const string ShaderDirectory = "proofs/Goo.VulkanProof/Shaders";
     private const string GeneratedDirectory = "proofs/Goo.VulkanProof/Generated/Shaders";
+    private const string ProductionDirectory = "Goo/Shaders/Vulkan";
     private const string InputManifestName = "shader-manifest.json";
     private const string CompilerVersionMarker = "1:";
     private const string HarfBuzzTag = "14.3.1";
@@ -37,6 +38,12 @@ internal static class Program
 
         [JsonPropertyName("compileFlags")]
         public List<string> CompileFlags { get; set; } = new();
+
+        [JsonPropertyName("primitiveRecord")]
+        public PrimitiveRecord PrimitiveRecord { get; set; } = new();
+
+        [JsonPropertyName("textInstanceRecord")]
+        public TextInstanceRecord TextInstanceRecord { get; set; } = new();
 
         [JsonPropertyName("assemblies")]
         public List<ShaderAssembly> Assemblies { get; set; } = new();
@@ -328,6 +335,45 @@ internal static class Program
         public string Type { get; set; } = string.Empty;
     }
 
+    private sealed class PrimitiveRecord
+    {
+        [JsonPropertyName("set")]
+        public int Set { get; set; }
+
+        [JsonPropertyName("binding")]
+        public int Binding { get; set; }
+
+        [JsonPropertyName("stride")]
+        public int Stride { get; set; }
+
+        [JsonPropertyName("stages")]
+        public List<string> Stages { get; set; } = new();
+
+        [JsonPropertyName("members")]
+        public List<PushConstantMember> Members { get; set; } = new();
+    }
+
+    private sealed class TextInstanceRecord
+    {
+        [JsonPropertyName("set")]
+        public int Set { get; set; }
+
+        [JsonPropertyName("binding")]
+        public int Binding { get; set; }
+
+        [JsonPropertyName("stride")]
+        public int Stride { get; set; }
+
+        [JsonPropertyName("stages")]
+        public List<string> Stages { get; set; } = new();
+
+        [JsonPropertyName("members")]
+        public List<PushConstantMember> Members { get; set; } = new();
+
+        [JsonPropertyName("hostPacking")]
+        public HostPacking HostPacking { get; set; } = new();
+    }
+
     private sealed class PipelineStage
     {
         [JsonPropertyName("shader")]
@@ -382,13 +428,16 @@ internal static class Program
 
     private sealed class HostPackingArtifact
     {
-        public Pipeline Pipeline { get; }
+        public string Path { get; }
+
+        public List<HostPacking> Packings { get; } = new();
 
         public byte[] Bytes { get; }
 
-        public HostPackingArtifact(Pipeline pipeline, byte[] bytes)
+        public HostPackingArtifact(HostPacking packing, byte[] bytes)
         {
-            Pipeline = pipeline;
+            Path = packing.Path;
+            Packings.Add(packing);
             Bytes = bytes;
         }
     }
@@ -442,6 +491,7 @@ internal static class Program
         string repositoryRoot = FindRepositoryRoot();
         string shaderRoot = Path.Combine(repositoryRoot, ShaderDirectory.Replace('/', Path.DirectorySeparatorChar));
         string generatedRoot = Path.Combine(repositoryRoot, GeneratedDirectory.Replace('/', Path.DirectorySeparatorChar));
+        string productionRoot = Path.Combine(repositoryRoot, ProductionDirectory.Replace('/', Path.DirectorySeparatorChar));
         string inputManifestPath = Path.Combine(shaderRoot, InputManifestName);
         string generatedManifestPath = Path.Combine(generatedRoot, InputManifestName);
         byte[] inputManifestBytes = File.ReadAllBytes(inputManifestPath);
@@ -474,7 +524,7 @@ internal static class Program
                 return 0;
             }
 
-            CheckGenerated(generatedRoot, generatedManifestPath, builtShaders, hostPackings, generatedManifestBytes, validatorPath);
+            CheckGenerated(generatedRoot, generatedManifestPath, productionRoot, builtShaders, hostPackings, generatedManifestBytes, validatorPath);
             Console.WriteLine($"Checked {builtShaders.Count} shaders and {generatedManifestPath}");
             return 0;
         }
@@ -508,8 +558,12 @@ internal static class Program
         }
         foreach (HostPackingArtifact hostPacking in hostPackings)
         {
-            hostPacking.Pipeline.HostPacking.Sha256 = HashBytes(hostPacking.Bytes);
-            hostPacking.Pipeline.HostPacking.Bytes = hostPacking.Bytes.LongLength;
+            string hash = HashBytes(hostPacking.Bytes);
+            foreach (HostPacking packing in hostPacking.Packings)
+            {
+                packing.Sha256 = hash;
+                packing.Bytes = hostPacking.Bytes.LongLength;
+            }
         }
         return SerializeManifest(manifest);
     }
@@ -528,6 +582,8 @@ internal static class Program
             string temporaryOutput = Path.Combine(temporaryRoot, shader.Output);
             List<string> compilerArguments = new(manifest.CompileFlags)
             {
+                "-I",
+                shaderRoot,
                 $"-fshader-stage={shader.Stage}",
                 "-o",
                 temporaryOutput,
@@ -623,33 +679,66 @@ internal static class Program
     private static List<HostPackingArtifact> BuildHostPackings(Manifest manifest, IReadOnlyList<BuiltShader> builtShaders)
     {
         List<HostPackingArtifact> artifacts = new();
-        foreach (Pipeline pipeline in manifest.Pipelines)
+        Dictionary<string, HostPackingArtifact> artifactsByPath = new(StringComparer.Ordinal);
+
+        void AddArtifact(HostPacking packing, int packingSize, IReadOnlyList<PushConstantMember> packingMembers)
         {
-            BuiltShader vertexShader = builtShaders.Single(value => value.Spec.Id == pipeline.Stages.Single(stage => stage.Stage == "vertex").Shader);
-            SpirvPushConstant pushConstant = vertexShader.Reflection.PushConstant
-                ?? throw new InvalidOperationException($"Vertex shader has no reflected push constants: {pipeline.Id}");
-            PushConstants expected = pipeline.PushConstants;
-            Require(pushConstant.Size == expected.Size, $"pipeline[{pipeline.Id}].hostPacking.size", expected.Size.ToString());
             StringBuilder text = new();
             AppendLf(text, "package Goo.Vulkan.Generated");
             AppendLf(text);
             AppendLf(text, "import System.Runtime.InteropServices");
             AppendLf(text);
-            text.Append("@StructLayout(LayoutKind.Explicit, Size: ").Append(pushConstant.Size).Append(")\n");
-            text.Append("unsafe struct ").Append(pipeline.HostPacking.TypeName).Append(" {\n");
-            for (int index = 0; index < pushConstant.Members.Count; index++)
+            text.Append("@StructLayout(LayoutKind.Explicit, Size: ").Append(packingSize).Append(")\n");
+            text.Append("unsafe struct ").Append(packing.TypeName).Append(" {\n");
+            for (int index = 0; index < packingMembers.Count; index++)
             {
-                AppendHostMember(text, expected.Members[index].Name, pushConstant.Members[index]);
+                PushConstantMember expectedMember = packingMembers[index];
+                AppendHostMember(text, expectedMember.Name, expectedMember.Offset, expectedMember.Type);
             }
             AppendLf(text, "}");
-            artifacts.Add(new HostPackingArtifact(pipeline, Encoding.UTF8.GetBytes(text.ToString())));
+            byte[] bytes = Encoding.UTF8.GetBytes(text.ToString());
+            if (artifactsByPath.TryGetValue(packing.Path, out HostPackingArtifact? existing))
+            {
+                Require(existing.Packings[0].TypeName == packing.TypeName, $"hostPacking[{packing.Path}].typeName", existing.Packings[0].TypeName);
+                Require(existing.Bytes.AsSpan().SequenceEqual(bytes), $"hostPacking[{packing.Path}].bytes", "identical");
+                existing.Packings.Add(packing);
+                return;
+            }
+            HostPackingArtifact artifact = new(packing, bytes);
+            artifactsByPath.Add(packing.Path, artifact);
+            artifacts.Add(artifact);
+        }
+
+        AddArtifact(manifest.TextInstanceRecord.HostPacking, manifest.TextInstanceRecord.Stride, manifest.TextInstanceRecord.Members);
+        foreach (Pipeline pipeline in manifest.Pipelines)
+        {
+            BuiltShader vertexShader = builtShaders.Single(value => value.Spec.Id == pipeline.Stages.Single(stage => stage.Stage == "vertex").Shader);
+            int packingSize;
+            IReadOnlyList<PushConstantMember> packingMembers;
+            if (pipeline.PushConstants.Stages.Count > 0)
+            {
+                SpirvPushConstant pushConstant = vertexShader.Reflection.PushConstant
+                    ?? throw new InvalidOperationException($"Vertex shader has no reflected push constants: {pipeline.Id}");
+                PushConstants expected = pipeline.PushConstants;
+                Require(pushConstant.Size == expected.Size, $"pipeline[{pipeline.Id}].hostPacking.size", expected.Size.ToString());
+                packingSize = pushConstant.Size;
+                packingMembers = expected.Members;
+            }
+            else
+            {
+                Require(manifest.PrimitiveRecord.Stride > 0, "primitiveRecord.stride", "positive");
+                packingSize = manifest.PrimitiveRecord.Stride;
+                packingMembers = pipeline.PushConstants.Members;
+                Require(packingMembers.Count > 0, $"pipeline[{pipeline.Id}].hostPacking.members", "non-empty");
+            }
+            AddArtifact(pipeline.HostPacking, packingSize, packingMembers);
         }
         return artifacts;
     }
 
-    private static void AppendHostMember(StringBuilder text, string name, SpirvPushConstantMember member)
+    private static void AppendHostMember(StringBuilder text, string name, int offset, string type)
     {
-        (string scalarType, string[] suffixes) = member.Type switch
+        (string scalarType, string[] suffixes) = type switch
         {
             "float" => ("float32", new[] { string.Empty }),
             "vec2" => ("float32", new[] { "_x", "_y" }),
@@ -664,11 +753,11 @@ internal static class Program
             "uvec2" => ("uint32", new[] { "_x", "_y" }),
             "uvec3" => ("uint32", new[] { "_x", "_y", "_z" }),
             "uvec4" => ("uint32", new[] { "_x", "_y", "_z", "_w" }),
-            _ => throw new InvalidOperationException($"Unsupported host push-constant type: {member.Type}")
+            _ => throw new InvalidOperationException($"Unsupported host packing type: {type}")
         };
         for (int index = 0; index < suffixes.Length; index++)
         {
-            text.Append("    @FieldOffset(").Append(member.Offset + index * 4).Append(") var ")
+            text.Append("    @FieldOffset(").Append(offset + index * 4).Append(") var ")
                 .Append(name).Append(suffixes[index]).Append(' ').Append(scalarType).Append('\n');
         }
     }
@@ -696,7 +785,9 @@ internal static class Program
             }
             foreach (HostPackingArtifact hostPacking in hostPackings)
             {
-                File.WriteAllBytes(ResolveChildPath(publicationRoot, hostPacking.Pipeline.HostPacking.Path, "host packing"), hostPacking.Bytes);
+                string outputPath = ResolveChildPath(publicationRoot, hostPacking.Path, "host packing");
+                Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+                File.WriteAllBytes(outputPath, hostPacking.Bytes);
             }
             File.WriteAllBytes(Path.Combine(publicationRoot, InputManifestName), generatedManifestBytes);
 
@@ -736,7 +827,7 @@ internal static class Program
         }
     }
 
-    private static void CheckGenerated(string generatedRoot, string generatedManifestPath, IReadOnlyList<BuiltShader> builtShaders, IReadOnlyList<HostPackingArtifact> hostPackings, byte[] generatedManifestBytes, string validatorPath)
+    private static void CheckGenerated(string generatedRoot, string generatedManifestPath, string productionRoot, IReadOnlyList<BuiltShader> builtShaders, IReadOnlyList<HostPackingArtifact> hostPackings, byte[] generatedManifestBytes, string validatorPath)
     {
         if (!File.Exists(generatedManifestPath))
         {
@@ -752,7 +843,7 @@ internal static class Program
         }
         foreach (HostPackingArtifact hostPacking in hostPackings)
         {
-            expectedFiles.Add(NormalizeRelativePath(hostPacking.Pipeline.HostPacking.Path));
+            expectedFiles.Add(NormalizeRelativePath(hostPacking.Path));
         }
         if (!Directory.Exists(generatedRoot))
         {
@@ -774,7 +865,7 @@ internal static class Program
         }
         foreach (HostPackingArtifact hostPacking in hostPackings)
         {
-            string hostPackingPath = ResolveChildPath(generatedRoot, hostPacking.Pipeline.HostPacking.Path, "host packing");
+            string hostPackingPath = ResolveChildPath(generatedRoot, hostPacking.Path, "host packing");
             if (!File.Exists(hostPackingPath))
             {
                 throw new InvalidOperationException($"Missing generated host packing: {hostPackingPath}");
@@ -802,6 +893,28 @@ internal static class Program
             ToolResult validatorResult = RunTool(validatorPath, new[] { "--target-env", "vulkan1.3", outputPath });
             RequireSuccess(validatorPath, validatorResult);
         }
+
+        string productionManifestPath = Path.Combine(productionRoot, InputManifestName);
+        RequireByteMatch(generatedManifestBytes, productionManifestPath, "production shader manifest");
+        foreach (BuiltShader builtShader in builtShaders)
+        {
+            string generatedPath = ResolveChildPath(generatedRoot, builtShader.Spec.Output, "output");
+            string productionPath = ResolveChildPath(productionRoot, builtShader.Spec.Output, "production output");
+            RequireByteMatch(File.ReadAllBytes(generatedPath), productionPath, "production shader mirror");
+        }
+    }
+
+    private static void RequireByteMatch(byte[] expectedBytes, string actualPath, string description)
+    {
+        if (!File.Exists(actualPath))
+        {
+            throw new InvalidOperationException($"Missing {description}: {actualPath}");
+        }
+        byte[] actualBytes = File.ReadAllBytes(actualPath);
+        if (!actualBytes.AsSpan().SequenceEqual(expectedBytes))
+        {
+            throw new InvalidOperationException($"{description} differs: {actualPath}");
+        }
     }
 
     private static string NormalizeRelativePath(string path)
@@ -811,7 +924,7 @@ internal static class Program
 
     private static void ValidateManifest(Manifest manifest)
     {
-        Require(manifest.Schema == 3, "schema", "3");
+        Require(manifest.Schema == 4, "schema", "4");
         Require(manifest.Toolchain.Sdk == "1.4.357.0", "toolchain.sdk", "1.4.357.0");
         RequireTool(manifest.Toolchain.Compiler, "google/shaderc", "2026.3", "ef2c68b4871a3c399a0808321b51379847a54673", "glslc", "toolchain.compiler");
         RequireTool(manifest.Toolchain.Validator, "KhronosGroup/SPIRV-Tools", "2026.3", "b707790a898e44038547df54580022fc1cf89c3d", "spirv-val", "toolchain.validator");
@@ -820,6 +933,8 @@ internal static class Program
         Require(manifest.Target.Vulkan == "1.3", "target.vulkan", "1.3");
         Require(manifest.Target.Spirv == "1.6", "target.spirv", "1.6");
         RequireSequence(manifest.CompileFlags, new[] { "--target-env=vulkan1.3", "--target-spv=spv1.6", "-std=450core", "-O", "-Werror" }, "compileFlags");
+        RequirePrimitiveRecord(manifest.PrimitiveRecord);
+        RequireTextInstanceRecord(manifest.TextInstanceRecord);
         RequireDependency(manifest.Toolchain.Dependencies, "KhronosGroup/glslang", "16.4.0", "168d452a4f460d24b588fed08477a81c44ee27a1");
         RequireDependency(manifest.Toolchain.Dependencies, "KhronosGroup/SPIRV-Headers", "1.4.357.0", "29981f65241605e08b0ede4cfeb999fe3b723c6a");
         RequireArchive(manifest.Toolchain.Archives, "linux-x64", "vulkansdk-linux-x86_64-1.4.357.0.tar.xz", "https://sdk.lunarg.com/sdk/download/1.4.357.0/linux/vulkansdk-linux-x86_64-1.4.357.0.tar.xz", "0f09bf6a0625e346bf004be70b92907e934a4c76606b323441b2baf3a5a0e66d");
@@ -835,24 +950,24 @@ internal static class Program
         RequireAssembly(manifest.Assemblies[0], "hb_gpu_vertex", new[]
         {
             new AssemblyPart { Path = HarfBuzzVertexPath, Sha256 = HarfBuzzVertexSha256 },
-            new AssemblyPart { Path = "proofs/Goo.VulkanProof/Shaders/hb_gpu.vert.wrapper.glsl", Sha256 = "063e7f572e647586070a8560eac1192749dd07cc29a7dc1a286fb214f3599c92" }
+            new AssemblyPart { Path = "proofs/Goo.VulkanProof/Shaders/hb_gpu.vert.wrapper.glsl", Sha256 = "fa6b174882dd8b5aea6bf956e8fbeed11ff9619517556e233c653acf0d9d79c8" }
         });
         RequireAssembly(manifest.Assemblies[1], "hb_gpu_draw_fragment", new[]
         {
             new AssemblyPart { Path = HarfBuzzFragmentPath, Sha256 = HarfBuzzFragmentSha256 },
             new AssemblyPart { Path = HarfBuzzDrawFragmentPath, Sha256 = HarfBuzzDrawFragmentSha256 },
-            new AssemblyPart { Path = "proofs/Goo.VulkanProof/Shaders/hb_gpu_draw.frag.wrapper.glsl", Sha256 = "a5fd76f4d996c41999ff93c6668fcaa4e3b4de7ee0029f00cd57cb0dccf04c3b" }
+            new AssemblyPart { Path = "proofs/Goo.VulkanProof/Shaders/hb_gpu_draw.frag.wrapper.glsl", Sha256 = "bbe849dd5e152672391f6a33fabb141bf37475eb2ddd61812de7c8e7e27117d4" }
         });
         RequireAssembly(manifest.Assemblies[2], "hb_gpu_paint_fragment", new[]
         {
             new AssemblyPart { Path = HarfBuzzFragmentPath, Sha256 = HarfBuzzFragmentSha256 },
             new AssemblyPart { Path = HarfBuzzDrawFragmentPath, Sha256 = HarfBuzzDrawFragmentSha256 },
             new AssemblyPart { Path = HarfBuzzPaintFragmentPath, Sha256 = HarfBuzzPaintFragmentSha256 },
-            new AssemblyPart { Path = "proofs/Goo.VulkanProof/Shaders/hb_gpu_paint.frag.wrapper.glsl", Sha256 = "df5572da972796670fd282f81a27429860ec3bb93a999cf1d17649e77d1cf3c2" }
+            new AssemblyPart { Path = "proofs/Goo.VulkanProof/Shaders/hb_gpu_paint.frag.wrapper.glsl", Sha256 = "86e84e0433951de4095f98cf057fb3819fa78270adb7b4a0efa57e668b8911f7" }
         });
-        if (manifest.Shaders.Count != 12)
+        if (manifest.Shaders.Count != 18)
         {
-            throw new InvalidOperationException("shaders must contain exactly twelve entries");
+            throw new InvalidOperationException("shaders must contain exactly eighteen entries");
         }
         RequireShader(manifest.Shaders[0], "solid_quad_vertex", "vertex", "solid_quad.vert.glsl", "solid_quad.vert.spv");
         RequireShader(manifest.Shaders[1], "solid_quad_fragment", "fragment", "solid_quad.frag.glsl", "solid_quad.frag.spv");
@@ -863,9 +978,15 @@ internal static class Program
         RequireShader(manifest.Shaders[6], "analytic_linear4_fragment", "fragment", "analytic_linear4.frag.glsl", "analytic_linear4.frag.spv");
         RequireShader(manifest.Shaders[7], "analytic_radial4_fragment", "fragment", "analytic_radial4.frag.glsl", "analytic_radial4.frag.spv");
         RequireShader(manifest.Shaders[8], "analytic_sampled_image_fragment", "fragment", "analytic_sampled_image.frag.glsl", "analytic_sampled_image.frag.spv");
-        RequireShader(manifest.Shaders[9], "hb_gpu_vertex", "vertex", "hb_gpu.vert.wrapper.glsl", "hb_gpu.vert.spv", "hb_gpu_vertex");
-        RequireShader(manifest.Shaders[10], "hb_gpu_draw_fragment", "fragment", "hb_gpu_draw.frag.wrapper.glsl", "hb_gpu_draw.frag.spv", "hb_gpu_draw_fragment");
-        RequireShader(manifest.Shaders[11], "hb_gpu_paint_fragment", "fragment", "hb_gpu_paint.frag.wrapper.glsl", "hb_gpu_paint.frag.spv", "hb_gpu_paint_fragment");
+        RequireShader(manifest.Shaders[9], "analytic_blend_fragment", "fragment", "analytic_blend.frag.glsl", "analytic_blend.frag.spv");
+        RequireShader(manifest.Shaders[10], "path_band_vertex", "vertex", "path_band.vert.glsl", "path_band.vert.spv");
+        RequireShader(manifest.Shaders[11], "path_band_fragment", "fragment", "path_band.frag.glsl", "path_band.frag.spv");
+        RequireShader(manifest.Shaders[12], "hb_gpu_vertex", "vertex", "hb_gpu.vert.wrapper.glsl", "hb_gpu.vert.spv", "hb_gpu_vertex");
+        RequireShader(manifest.Shaders[13], "hb_gpu_draw_fragment", "fragment", "hb_gpu_draw.frag.wrapper.glsl", "hb_gpu_draw.frag.spv", "hb_gpu_draw_fragment");
+        RequireShader(manifest.Shaders[14], "hb_gpu_paint_fragment", "fragment", "hb_gpu_paint.frag.wrapper.glsl", "hb_gpu_paint.frag.spv", "hb_gpu_paint_fragment");
+        RequireShader(manifest.Shaders[15], "clip_mask_vertex", "vertex", "clip_mask.vert.glsl", "clip_mask.vert.spv");
+        RequireShader(manifest.Shaders[16], "clip_mask_fragment", "fragment", "clip_mask.frag.glsl", "clip_mask.frag.spv");
+        RequireShader(manifest.Shaders[17], "lava_fragment", "fragment", "lava.frag.glsl", "lava.frag.spv");
         foreach (Shader shader in manifest.Shaders)
         {
             if (shader.SourceSha256 is not null || shader.OutputSha256 is not null || shader.OutputBytes is not null)
@@ -873,16 +994,16 @@ internal static class Program
                 throw new InvalidOperationException($"Source manifest contains generated hashes: {shader.Id}");
             }
         }
-        if (manifest.Pipelines.Count != 9)
+        if (manifest.Pipelines.Count != 13)
         {
-            throw new InvalidOperationException("pipelines must contain exactly nine entries");
+            throw new InvalidOperationException("pipelines must contain exactly thirteen entries");
         }
         RequirePipeline(manifest.Pipelines[0], "solid_quad", "SolidQuadPushConstants.Generated.gs", "SolidQuadPushConstants", 32, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "color", Offset = 16, Type = "vec4" }
-        }, new[] { "vertex" }, "disabled", null, "solid_quad_vertex", "solid_quad_fragment", "vec4", "color", Array.Empty<Descriptor>());
-        RequirePipeline(manifest.Pipelines[1], "analytic_solid", "AnalyticSolidPushConstants.Generated.gs", "AnalyticSolidPushConstants", 128, new[]
+        }, new[] { "vertex" }, "disabled", null, "solid_quad_vertex", "solid_quad_fragment", "vec4", "color", Array.Empty<Descriptor>(), false);
+        RequirePipeline(manifest.Pipelines[1], "analytic_solid", "AnalyticSolidPushConstants.Generated.gs", "AnalyticSolidPushConstants", 0, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
@@ -892,8 +1013,8 @@ internal static class Program
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
             new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
             new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_solid_fragment", "vec2", "uv", Array.Empty<Descriptor>());
-        RequirePipeline(manifest.Pipelines[2], "analytic_shadow", "AnalyticSolidPushConstants.Generated.gs", "AnalyticSolidPushConstants", 128, new[]
+        }, Array.Empty<string>(), "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_solid_fragment", "vec2", "uv", AnalyticDescriptors());
+        RequirePipeline(manifest.Pipelines[2], "analytic_shadow", "AnalyticSolidPushConstants.Generated.gs", "AnalyticSolidPushConstants", 0, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
@@ -903,8 +1024,8 @@ internal static class Program
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
             new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
             new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_shadow_fragment", "vec2", "uv", Array.Empty<Descriptor>());
-        RequirePipeline(manifest.Pipelines[3], "analytic_border", "AnalyticBorderPushConstants.Generated.gs", "AnalyticBorderPushConstants", 128, new[]
+        }, Array.Empty<string>(), "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_shadow_fragment", "vec2", "uv", AnalyticDescriptors());
+        RequirePipeline(manifest.Pipelines[3], "analytic_border", "AnalyticBorderPushConstants.Generated.gs", "AnalyticBorderPushConstants", 0, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
@@ -914,8 +1035,8 @@ internal static class Program
             new PushConstantMember { Name = "radii", Offset = 80, Type = "vec4" },
             new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
             new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_border_fragment", "vec2", "uv", Array.Empty<Descriptor>());
-        RequirePipeline(manifest.Pipelines[4], "analytic_linear4", "AnalyticLinear4PushConstants.Generated.gs", "AnalyticLinear4PushConstants", 128, new[]
+        }, Array.Empty<string>(), "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_border_fragment", "vec2", "uv", AnalyticDescriptors());
+        RequirePipeline(manifest.Pipelines[4], "analytic_linear4", "AnalyticLinear4PushConstants.Generated.gs", "AnalyticLinear4PushConstants", 0, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
@@ -925,8 +1046,8 @@ internal static class Program
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
             new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
             new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_linear4_fragment", "vec2", "uv", Array.Empty<Descriptor>());
-        RequirePipeline(manifest.Pipelines[5], "analytic_radial4", "AnalyticRadial4PushConstants.Generated.gs", "AnalyticRadial4PushConstants", 128, new[]
+        }, Array.Empty<string>(), "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_linear4_fragment", "vec2", "uv", AnalyticDescriptors());
+        RequirePipeline(manifest.Pipelines[5], "analytic_radial4", "AnalyticRadial4PushConstants.Generated.gs", "AnalyticRadial4PushConstants", 0, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
@@ -936,8 +1057,8 @@ internal static class Program
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
             new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
             new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_radial4_fragment", "vec2", "uv", Array.Empty<Descriptor>());
-        RequirePipeline(manifest.Pipelines[6], "analytic_sampled_image", "SampledImagePushConstants.Generated.gs", "SampledImagePushConstants", 128, new[]
+        }, Array.Empty<string>(), "source-over-premultiplied-linear", "rgb11-11-10-alpha10-premultiplied-linear", "analytic_vertex", "analytic_radial4_fragment", "vec2", "uv", AnalyticDescriptors());
+        RequirePipeline(manifest.Pipelines[6], "analytic_sampled_image", "SampledImagePushConstants.Generated.gs", "SampledImagePushConstants", 0, new[]
         {
             new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
             new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
@@ -947,12 +1068,70 @@ internal static class Program
             new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
             new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
             new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
-        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "straight-srgb-rgba8-sampled-to-premultiplied-linear", "analytic_vertex", "analytic_sampled_image_fragment", "vec2", "uv", new[]
+        }, Array.Empty<string>(), "source-over-premultiplied-linear", "straight-srgb-rgba8-sampled-to-premultiplied-linear", "analytic_vertex", "analytic_sampled_image_fragment", "vec2", "uv", new[]
         {
-            new Descriptor { Set = 0, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } }
+            new Descriptor { Set = 0, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } },
+            new Descriptor { Set = 1, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } },
+            new Descriptor { Set = 1, Binding = 1, Type = "storage-buffer", Count = 1, Stages = new List<string> { "fragment" } },
+            new Descriptor { Set = 2, Binding = 0, Type = "storage-buffer", Count = 1, Stages = new List<string> { "vertex", "fragment" } }
         });
-        RequireHbGpuPipeline(manifest.Pipelines[7], "hb_gpu_draw", "HbGpuTextPushConstants.Generated.gs", "HbGpuTextPushConstants", "hb_gpu_vertex", "hb_gpu_draw_fragment");
-        RequireHbGpuPipeline(manifest.Pipelines[8], "hb_gpu_paint", "HbGpuTextPushConstants.Generated.gs", "HbGpuTextPushConstants", "hb_gpu_vertex", "hb_gpu_paint_fragment");
+        RequirePipeline(manifest.Pipelines[7], "analytic_blend", "SampledImagePushConstants.Generated.gs", "SampledImagePushConstants", 0, new[]
+        {
+            new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
+            new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
+            new PushConstantMember { Name = "transform1", Offset = 32, Type = "vec4" },
+            new PushConstantMember { Name = "radii", Offset = 48, Type = "vec4" },
+            new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
+            new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
+            new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
+            new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
+        }, Array.Empty<string>(), "source-over-premultiplied-linear", "premultiplied-linear-source-over-css-blend", "analytic_vertex", "analytic_blend_fragment", "vec2", "uv", new[]
+        {
+            new Descriptor { Set = 0, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } },
+            new Descriptor { Set = 1, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } },
+            new Descriptor { Set = 2, Binding = 0, Type = "storage-buffer", Count = 1, Stages = new List<string> { "vertex", "fragment" } },
+            new Descriptor { Set = 3, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } },
+            new Descriptor { Set = 3, Binding = 1, Type = "storage-buffer", Count = 1, Stages = new List<string> { "fragment" } }
+        });
+        RequirePipeline(manifest.Pipelines[8], "path_band", "PathBandPushConstants.Generated.gs", "PathBandPushConstants", 80, new[]
+        {
+            new PushConstantMember { Name = "transform0", Offset = 0, Type = "vec4" },
+            new PushConstantMember { Name = "transform1", Offset = 16, Type = "vec4" },
+            new PushConstantMember { Name = "sampleStep", Offset = 32, Type = "vec4" },
+            new PushConstantMember { Name = "color", Offset = 48, Type = "vec4" },
+            new PushConstantMember { Name = "params", Offset = 64, Type = "uvec4" }
+        }, new[] { "vertex", "fragment" }, "source-over-premultiplied-linear", "path-band-premultiplied-linear", "path_band_vertex", "path_band_fragment", "vec2", "pathPosition", new[]
+        {
+            new Descriptor { Set = 0, Binding = 0, Type = "storage-buffer", Count = 1, Stages = new List<string> { "vertex", "fragment" } },
+            new Descriptor { Set = 1, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } },
+            new Descriptor { Set = 1, Binding = 1, Type = "storage-buffer", Count = 1, Stages = new List<string> { "fragment" } }
+        });
+        RequireHbGpuPipeline(manifest.Pipelines[9], "hb_gpu_draw", "HbGpuTextFrameConstants.Generated.gs", "HbGpuTextFrameConstants", "hb_gpu_vertex", "hb_gpu_draw_fragment");
+        RequireHbGpuPipeline(manifest.Pipelines[10], "hb_gpu_paint", "HbGpuTextFrameConstants.Generated.gs", "HbGpuTextFrameConstants", "hb_gpu_vertex", "hb_gpu_paint_fragment");
+        RequirePipeline(manifest.Pipelines[11], "clip_mask", "ClipMaskPushConstants.Generated.gs", "ClipMaskPushConstants", 112, new[]
+        {
+            new PushConstantMember { Name = "transform0", Offset = 0, Type = "vec4" },
+            new PushConstantMember { Name = "transform1", Offset = 16, Type = "vec4" },
+            new PushConstantMember { Name = "sampleStep", Offset = 32, Type = "vec4" },
+            new PushConstantMember { Name = "borderRect", Offset = 48, Type = "vec4" },
+            new PushConstantMember { Name = "borderTransform0", Offset = 64, Type = "vec4" },
+            new PushConstantMember { Name = "borderTransform1", Offset = 80, Type = "vec4" },
+            new PushConstantMember { Name = "params", Offset = 96, Type = "uvec4" }
+        }, new[] { "vertex", "fragment" }, "disabled", "clip-mask-r8-coverage", "clip_mask_vertex", "clip_mask_fragment", "vec2", "pathPosition", new[]
+        {
+            new Descriptor { Set = 0, Binding = 0, Type = "storage-buffer", Count = 1, Stages = new List<string> { "vertex", "fragment" } }
+        }, false, "r8-unorm");
+        RequirePipeline(manifest.Pipelines[12], "lava", "LavaPrimitiveRecord.Generated.gs", "LavaPrimitiveRecord", 0, new[]
+        {
+            new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
+            new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
+            new PushConstantMember { Name = "transform1", Offset = 32, Type = "vec4" },
+            new PushConstantMember { Name = "radii", Offset = 48, Type = "vec4" },
+            new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
+            new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
+            new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
+            new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
+        }, Array.Empty<string>(), "disabled", "premultiplied-linear-opaque", "analytic_vertex", "lava_fragment", "vec2", "uv", AnalyticDescriptors());
     }
 
     private static void RequireAssembly(ShaderAssembly assembly, string id, IReadOnlyList<AssemblyPart> parts)
@@ -981,10 +1160,13 @@ internal static class Program
         Require(pipeline.Id == id, $"pipeline[{id}].id", id);
         Require(pipeline.Topology == "triangle-list", $"pipeline[{id}].topology", "triangle-list");
         Require(pipeline.VertexInput == "none", $"pipeline[{id}].vertexInput", "none");
-        Require(pipeline.DescriptorCount == 1, $"pipeline[{id}].descriptorCount", "1");
+        Require(pipeline.DescriptorCount == 4, $"pipeline[{id}].descriptorCount", "4");
         RequireDescriptors(pipeline.Descriptors, new[]
         {
-            new Descriptor { Set = 0, Binding = 0, Type = "uniform-texel-buffer", Count = 1, Stages = new List<string> { "fragment" } }
+            new Descriptor { Set = 0, Binding = 0, Type = "uniform-texel-buffer", Count = 1, Stages = new List<string> { "fragment" } },
+            new Descriptor { Set = 1, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } },
+            new Descriptor { Set = 1, Binding = 1, Type = "storage-buffer", Count = 1, Stages = new List<string> { "fragment" } },
+            new Descriptor { Set = 2, Binding = 0, Type = "storage-buffer", Count = 1, Stages = new List<string> { "vertex" } }
         }, $"pipeline[{id}].descriptors");
         Require(pipeline.ColorFormat == "swapchain-sRGB", $"pipeline[{id}].colorFormat", "swapchain-sRGB");
         Require(pipeline.SampleCount == 1, $"pipeline[{id}].sampleCount", "1");
@@ -996,15 +1178,12 @@ internal static class Program
         Require(pipeline.HostPacking.Path == hostPackingPath, $"pipeline[{id}].hostPacking.path", hostPackingPath);
         Require(pipeline.HostPacking.TypeName == hostPackingTypeName, $"pipeline[{id}].hostPacking.typeName", hostPackingTypeName);
         Require(pipeline.PushConstants.Offset == 0, $"pipeline[{id}].pushConstants.offset", "0");
-        Require(pipeline.PushConstants.Size == 128, $"pipeline[{id}].pushConstants.size", "128");
-        RequireSequence(pipeline.PushConstants.Stages, new[] { "vertex", "fragment" }, $"pipeline[{id}].pushConstants.stages");
+        Require(pipeline.PushConstants.Size == 32, $"pipeline[{id}].pushConstants.size", "32");
+        RequireSequence(pipeline.PushConstants.Stages, new[] { "vertex" }, $"pipeline[{id}].pushConstants.stages");
         RequireMembers(pipeline.PushConstants, new[]
         {
-            new PushConstantMember { Name = "transform", Offset = 0, Type = "mat4" },
-            new PushConstantMember { Name = "viewport", Offset = 64, Type = "vec4" },
-            new PushConstantMember { Name = "glyphBounds", Offset = 80, Type = "vec4" },
-            new PushConstantMember { Name = "glyphInput", Offset = 96, Type = "uvec4" },
-            new PushConstantMember { Name = "foreground", Offset = 112, Type = "vec4" }
+            new PushConstantMember { Name = "viewport", Offset = 0, Type = "vec4" },
+            new PushConstantMember { Name = "origin", Offset = 16, Type = "vec4" }
         }, $"pipeline[{id}].pushConstants.members");
         if (pipeline.Stages.Count != 2)
         {
@@ -1013,13 +1192,82 @@ internal static class Program
         RequirePipelineStage(pipeline.Stages[0], vertexShader, "vertex", Array.Empty<InterfaceLocation>(), new[]
         {
             new InterfaceLocation { Location = 0, Type = "vec2", Name = "v_texcoord" },
-            new InterfaceLocation { Location = 1, Type = "uint", Name = "v_glyphLoc" }
+            new InterfaceLocation { Location = 1, Type = "uint", Name = "v_glyphLoc" },
+            new InterfaceLocation { Location = 2, Type = "uint", Name = "v_clipChainId" },
+            new InterfaceLocation { Location = 3, Type = "vec4", Name = "v_effectAndOrigin" },
+            new InterfaceLocation { Location = 4, Type = "vec4", Name = "v_foreground" }
         });
         RequirePipelineStage(pipeline.Stages[1], fragmentShader, "fragment", new[]
         {
             new InterfaceLocation { Location = 0, Type = "vec2", Name = "v_texcoord" },
-            new InterfaceLocation { Location = 1, Type = "uint", Name = "v_glyphLoc" }
+            new InterfaceLocation { Location = 1, Type = "uint", Name = "v_glyphLoc" },
+            new InterfaceLocation { Location = 2, Type = "uint", Name = "v_clipChainId" },
+            new InterfaceLocation { Location = 3, Type = "vec4", Name = "v_effectAndOrigin" },
+            new InterfaceLocation { Location = 4, Type = "vec4", Name = "v_foreground" }
         }, new[] { new InterfaceLocation { Location = 0, Type = "vec4", Name = "outColor" } });
+    }
+
+    private static Descriptor[] ClipDescriptors()
+    {
+        return new[]
+        {
+            new Descriptor { Set = 1, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } },
+            new Descriptor { Set = 1, Binding = 1, Type = "storage-buffer", Count = 1, Stages = new List<string> { "fragment" } }
+        };
+    }
+
+    private static Descriptor[] AnalyticDescriptors()
+    {
+        return new[]
+        {
+            new Descriptor { Set = 1, Binding = 0, Type = "combined-image-sampler", Count = 1, Stages = new List<string> { "fragment" } },
+            new Descriptor { Set = 1, Binding = 1, Type = "storage-buffer", Count = 1, Stages = new List<string> { "fragment" } },
+            new Descriptor { Set = 2, Binding = 0, Type = "storage-buffer", Count = 1, Stages = new List<string> { "vertex", "fragment" } }
+        };
+    }
+
+    private static void RequirePrimitiveRecord(PrimitiveRecord record)
+    {
+        Require(record.Set == 2, "primitiveRecord.set", "2");
+        Require(record.Binding == 0, "primitiveRecord.binding", "0");
+        Require(record.Stride == 128, "primitiveRecord.stride", "128");
+        RequireSequence(record.Stages, new[] { "vertex", "fragment" }, "primitiveRecord.stages");
+        RequireMembers(record.Members, new[]
+        {
+            new PushConstantMember { Name = "rect", Offset = 0, Type = "vec4" },
+            new PushConstantMember { Name = "transform0", Offset = 16, Type = "vec4" },
+            new PushConstantMember { Name = "transform1", Offset = 32, Type = "vec4" },
+            new PushConstantMember { Name = "radii", Offset = 48, Type = "vec4" },
+            new PushConstantMember { Name = "params", Offset = 64, Type = "vec4" },
+            new PushConstantMember { Name = "stopPositions", Offset = 80, Type = "vec4" },
+            new PushConstantMember { Name = "packedColors", Offset = 96, Type = "uvec4" },
+            new PushConstantMember { Name = "packedColorsExtra", Offset = 112, Type = "uvec4" }
+        }, "primitiveRecord.members");
+    }
+    private static void RequireTextInstanceRecord(TextInstanceRecord record)
+    {
+        Require(record.Set == 2, "textInstanceRecord.set", "2");
+        Require(record.Binding == 0, "textInstanceRecord.binding", "0");
+        Require(record.Stride == 128, "textInstanceRecord.stride", "128");
+        RequireSequence(record.Stages, new[] { "vertex" }, "textInstanceRecord.stages");
+        RequireMembers(record.Members, new[]
+        {
+            new PushConstantMember { Name = "transform", Offset = 0, Type = "mat4" },
+            new PushConstantMember { Name = "glyphBounds", Offset = 64, Type = "vec4" },
+            new PushConstantMember { Name = "glyphInput", Offset = 80, Type = "uvec4" },
+            new PushConstantMember { Name = "foreground", Offset = 96, Type = "vec4" },
+            new PushConstantMember { Name = "effectParams", Offset = 112, Type = "vec4" }
+        }, "textInstanceRecord.members");
+        Require(record.HostPacking.Path == "HbGpuTextInstanceRecord.Generated.gs", "textInstanceRecord.hostPacking.path", "HbGpuTextInstanceRecord.Generated.gs");
+        Require(record.HostPacking.TypeName == "HbGpuTextInstanceRecord", "textInstanceRecord.hostPacking.typeName", "HbGpuTextInstanceRecord");
+        if (record.HostPacking.Path.Contains('/') || record.HostPacking.Path.Contains('\\'))
+        {
+            throw new InvalidOperationException("Host packing paths must be file names: textInstanceRecord");
+        }
+        if (record.HostPacking.Sha256 is not null || record.HostPacking.Bytes is not null)
+        {
+            throw new InvalidOperationException("Source manifest contains generated host packing metadata: textInstanceRecord");
+        }
     }
 
     private static void RequireMembers(PushConstants actual, IReadOnlyList<PushConstantMember> expected, string path)
@@ -1034,14 +1282,27 @@ internal static class Program
         }
     }
 
-    private static void RequirePipeline(Pipeline pipeline, string id, string hostPackingPath, string hostPackingTypeName, int pushConstantSize, IReadOnlyList<PushConstantMember> members, IReadOnlyList<string> pushStages, string blend, string? colorPacking, string vertexShader, string fragmentShader, string interfaceType, string interfaceName, IReadOnlyList<Descriptor> descriptors)
+    private static void RequireMembers(IReadOnlyList<PushConstantMember> actual, IReadOnlyList<PushConstantMember> expected, string path)
+    {
+        if (actual.Count != expected.Count)
+        {
+            throw new InvalidOperationException($"{path} must contain exactly {expected.Count} entries");
+        }
+        for (int index = 0; index < expected.Count; index++)
+        {
+            RequireMember(actual[index], expected[index].Name, expected[index].Offset, expected[index].Type);
+        }
+    }
+
+    private static void RequirePipeline(Pipeline pipeline, string id, string hostPackingPath, string hostPackingTypeName, int pushConstantSize, IReadOnlyList<PushConstantMember> members, IReadOnlyList<string> pushStages, string blend, string? colorPacking, string vertexShader, string fragmentShader, string interfaceType, string interfaceName, IReadOnlyList<Descriptor> descriptors, bool clipAware = true, string colorFormat = "swapchain-sRGB")
     {
         Require(pipeline.Id == id, $"pipeline[{id}].id", id);
-        Require(pipeline.Topology == "triangle-list", $"pipeline[{id}].topology", "triangle-list");
+        string topology = pushStages.Count == 0 ? "triangle-strip" : "triangle-list";
+        Require(pipeline.Topology == topology, $"pipeline[{id}].topology", topology);
         Require(pipeline.VertexInput == "none", $"pipeline[{id}].vertexInput", "none");
         Require(pipeline.DescriptorCount == descriptors.Count, $"pipeline[{id}].descriptorCount", descriptors.Count.ToString());
         RequireDescriptors(pipeline.Descriptors, descriptors, $"pipeline[{id}].descriptors");
-        Require(pipeline.ColorFormat == "swapchain-sRGB", $"pipeline[{id}].colorFormat", "swapchain-sRGB");
+        Require(pipeline.ColorFormat == colorFormat, $"pipeline[{id}].colorFormat", colorFormat);
         Require(pipeline.SampleCount == 1, $"pipeline[{id}].sampleCount", "1");
         Require(pipeline.Blend == blend, $"pipeline[{id}].blend", blend);
         if (colorPacking is null)
@@ -1083,8 +1344,22 @@ internal static class Program
         {
             throw new InvalidOperationException($"pipeline[{id}].stages must contain exactly two entries");
         }
-        RequirePipelineStage(pipeline.Stages[0], vertexShader, "vertex", Array.Empty<InterfaceLocation>(), new[] { new InterfaceLocation { Location = 0, Type = interfaceType, Name = interfaceName } });
-        RequirePipelineStage(pipeline.Stages[1], fragmentShader, "fragment", new[] { new InterfaceLocation { Location = 0, Type = interfaceType, Name = interfaceName } }, new[] { new InterfaceLocation { Location = 0, Type = "vec4", Name = "outColor" } });
+        IReadOnlyList<InterfaceLocation> vertexOutputs = clipAware
+            ? pushStages.Count == 0
+                ? new[]
+                {
+                    new InterfaceLocation { Location = 0, Type = interfaceType, Name = interfaceName },
+                    new InterfaceLocation { Location = 2, Type = "uint", Name = "gooClipDrawOrdinal" },
+                    new InterfaceLocation { Location = 3, Type = "uint", Name = "gooPrimitiveRecordOrdinal" }
+                }
+                : new[]
+                {
+                    new InterfaceLocation { Location = 0, Type = interfaceType, Name = interfaceName },
+                    new InterfaceLocation { Location = 2, Type = "uint", Name = "gooClipDrawOrdinal" }
+                }
+            : new[] { new InterfaceLocation { Location = 0, Type = interfaceType, Name = interfaceName } };
+        RequirePipelineStage(pipeline.Stages[0], vertexShader, "vertex", Array.Empty<InterfaceLocation>(), vertexOutputs);
+        RequirePipelineStage(pipeline.Stages[1], fragmentShader, "fragment", vertexOutputs, new[] { new InterfaceLocation { Location = 0, Type = "vec4", Name = "outColor" } });
     }
 
     private static void RequireDescriptors(IReadOnlyList<Descriptor> actual, IReadOnlyList<Descriptor> expected, string path)
@@ -1201,12 +1476,26 @@ internal static class Program
                 .ToList();
             Require(reflection.DescriptorCount == expectedDescriptors.Count, $"shader[{shader.Id}].reflection.descriptorCount", expectedDescriptors.Count.ToString());
             RequireReflectedDescriptors(reflection.Descriptors, expectedDescriptors, $"shader[{shader.Id}].reflection.descriptors");
+            bool hasTextInstanceRecord = expectedDescriptors.Any(value =>
+                value.Set == manifest.TextInstanceRecord.Set
+                && value.Binding == manifest.TextInstanceRecord.Binding
+                && value.Stages.SequenceEqual(manifest.TextInstanceRecord.Stages, StringComparer.Ordinal));
+            if (hasTextInstanceRecord)
+            {
+                RequireTextInstanceRecordReflection(reflection, manifest.TextInstanceRecord, shader.Id);
+            }
             bool hasPushConstants = pipeline.PushConstants.Stages.Contains(shader.Stage, StringComparer.Ordinal);
             if (!hasPushConstants)
             {
                 if (reflection.PushConstant is not null)
                 {
                     throw new InvalidOperationException($"Shader has unexpected push constants: {shader.Id}");
+                }
+                if (pipeline.PushConstants.Size == 0
+                    && expectedDescriptors.Any(value => value.Set == manifest.PrimitiveRecord.Set
+                        && value.Binding == manifest.PrimitiveRecord.Binding))
+                {
+                    RequirePrimitiveRecordReflection(reflection, manifest.PrimitiveRecord, shader.Id);
                 }
                 continue;
             }
@@ -1225,6 +1514,49 @@ internal static class Program
                 Require(actual.Offset == member.Offset, $"shader[{shader.Id}].reflection.pushConstants.members[{index}].offset", member.Offset.ToString());
                 Require(actual.Type == member.Type, $"shader[{shader.Id}].reflection.pushConstants.members[{index}].type", member.Type);
             }
+        }
+    }
+
+    private static void RequirePrimitiveRecordReflection(SpirvModuleReflection reflection, PrimitiveRecord expected, string shaderId)
+    {
+        SpirvDescriptor actual = reflection.Descriptors.SingleOrDefault(value =>
+            value.Set == expected.Set && value.Binding == expected.Binding)
+            ?? throw new InvalidOperationException($"Shader has no primitive record descriptor: {shaderId}");
+        Require(actual.Type == "storage-buffer", $"shader[{shaderId}].primitiveRecord.type", "storage-buffer");
+        Require(actual.StorageStride == expected.Stride, $"shader[{shaderId}].primitiveRecord.stride", expected.Stride.ToString());
+        if (actual.StorageMembers.Count != expected.Members.Count)
+        {
+            throw new InvalidOperationException($"shader[{shaderId}].primitiveRecord.members count must be {expected.Members.Count}");
+        }
+        for (int index = 0; index < expected.Members.Count; index++)
+        {
+            SpirvStorageMember actualMember = actual.StorageMembers[index];
+            PushConstantMember expectedMember = expected.Members[index];
+            Require(actualMember.Offset == expectedMember.Offset,
+                $"shader[{shaderId}].primitiveRecord.members[{index}].offset", expectedMember.Offset.ToString());
+            Require(actualMember.Type == expectedMember.Type,
+                $"shader[{shaderId}].primitiveRecord.members[{index}].type", expectedMember.Type);
+        }
+    }
+    private static void RequireTextInstanceRecordReflection(SpirvModuleReflection reflection, TextInstanceRecord expected, string shaderId)
+    {
+        SpirvDescriptor actual = reflection.Descriptors.SingleOrDefault(value =>
+            value.Set == expected.Set && value.Binding == expected.Binding)
+            ?? throw new InvalidOperationException($"Shader has no text instance record descriptor: {shaderId}");
+        Require(actual.Type == "storage-buffer", $"shader[{shaderId}].textInstanceRecord.type", "storage-buffer");
+        Require(actual.StorageStride == expected.Stride, $"shader[{shaderId}].textInstanceRecord.stride", expected.Stride.ToString());
+        if (actual.StorageMembers.Count != expected.Members.Count)
+        {
+            throw new InvalidOperationException($"shader[{shaderId}].textInstanceRecord.members count must be {expected.Members.Count}");
+        }
+        for (int index = 0; index < expected.Members.Count; index++)
+        {
+            SpirvStorageMember actualMember = actual.StorageMembers[index];
+            PushConstantMember expectedMember = expected.Members[index];
+            Require(actualMember.Offset == expectedMember.Offset,
+                $"shader[{shaderId}].textInstanceRecord.members[{index}].offset", expectedMember.Offset.ToString());
+            Require(actualMember.Type == expectedMember.Type,
+                $"shader[{shaderId}].textInstanceRecord.members[{index}].type", expectedMember.Type);
         }
     }
 

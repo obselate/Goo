@@ -20,6 +20,8 @@ Use `ElementHandle` relationships only for mounted nodes in the same window. Hid
 
 Route neutral actions with `new AccessibilityActionRequest(action)`. Use `SetValue`, `SetSelection`, and `Scroll` factories for payload actions. `Window.PerformAccessibilityAction` checks the advertised capability before routing built-in or declared actions.
 
+Protected `TextEntry` nodes expose one bullet per extended grapheme cluster. Their value, selection, and caret use this masked semantic coordinate space. Copy and cut do not expose or remove protected text, while paste and `SetValue` remain available.
+
 Text editors expose `TextSnapshot`, selection, and caret metadata. The snapshot is versioned and avoids a full document copy.
 
 ## `Accessibility`
@@ -181,8 +183,8 @@ Creates a scroll request.
 
 Creates a selection-change request.
 
-- `start`: The nonnegative UTF-16 selection start.
-- `length`: The nonnegative UTF-16 selection length.
+- `start`: The nonnegative UTF-16 start in the exposed semantic value.
+- `length`: The nonnegative UTF-16 length in the exposed semantic value.
 
 ### `SetValue(string)`
 
@@ -204,11 +206,11 @@ Gets the vertical logical target supplied for Scroll.
 
 ### `SelectionLength`
 
-Gets the UTF-16 selection length supplied for SetSelection.
+Gets the UTF-16 selection length in the exposed semantic value supplied for SetSelection.
 
 ### `SelectionStart`
 
-Gets the UTF-16 selection start supplied for SetSelection.
+Gets the UTF-16 selection start in the exposed semantic value supplied for SetSelection.
 
 ### `Value`
 
@@ -291,7 +293,7 @@ Gets the resolved busy state.
 
 ### `Caret`
 
-Gets the UTF-16 active caret offset, when this node has editable text.
+Gets the UTF-16 active caret offset in the exposed semantic value, when this node has editable text.
 
 ### `Checked`
 
@@ -383,11 +385,11 @@ Gets the resolved selected state.
 
 ### `SelectionLength`
 
-Gets the UTF-16 selection length, when this node has editable text.
+Gets the UTF-16 selection length in the exposed semantic value, when this node has editable text.
 
 ### `SelectionStart`
 
-Gets the UTF-16 selection start, when this node has editable text.
+Gets the UTF-16 selection start in the exposed semantic value, when this node has editable text.
 
 ### `TextSnapshot`
 

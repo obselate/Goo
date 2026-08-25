@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100">
+  <path d="M 18 18 L 102 18 L 60 82 Z" fill="#5cbb87" stroke="#ffffff" stroke-width="3">
+    <animate attributeName="d" values="M 18 18 L 102 18 L 60 82 Z;M 24 28 L 96 20 L 60 74 Z" dur="1s" repeatCount="2" fill="freeze" calcMode="spline" keySplines="0.25 0.1 0.25 1"/>
+  </path>
+</svg>

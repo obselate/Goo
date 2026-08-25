@@ -27,6 +27,7 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
     private var completionFence VkFence
     private var solidQuad VulkanSolidQuad? = nil
     private var primitiveRenderer VulkanPrimitiveRenderer? = nil
+    private var clipChain VulkanClipChainState? = nil
     private var imageLayout VkImageLayout
     private var requestPrepared bool
     private var commandRecorded bool
@@ -54,6 +55,7 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             if completionFence != 0uL { count = count + 1u }
             if solidQuad != nil { count = count + 2u }
             if primitiveRenderer != nil { count = count + primitiveRenderer!!.LiveObjectCount }
+            if clipChain != nil { count = count + clipChain!!.LiveObjectCount }
             return count
         }
     }
@@ -202,6 +204,8 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             if textAtlas != nil && textAtlas!!.UploadPending {
                 textAtlas!!.RecordUpload(commandBuffer)
             }
+            clipChain!!.RecordPrepare(commandBuffer, frame.DrawRefCount)
+            primitiveRenderer!!.RecordPrimitiveBufferBarrier(commandBuffer)
             BeginRendering(commandBuffer, clearColor)
             renderingActive = true
             let before = GC.GetAllocatedBytesForCurrentThread()
@@ -416,6 +420,10 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             primitiveRenderer!!.Dispose()
             primitiveRenderer = nil
         }
+        if clipChain != nil {
+            clipChain!!.Dispose()
+            clipChain = nil
+        }
         if imageView != 0uL {
             let destroyImageView = dispatch.vkDestroyImageView
             destroyImageView(device, imageView, nil)
@@ -517,10 +525,12 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
             if mode == VulkanOffscreenMode.SolidQuad {
                 solidQuad = VulkanSolidQuad(device, dispatch, targetFormat)
             } else {
+                clipChain = VulkanClipChainState(device, dispatch, allocator)
                 primitiveRenderer = if imageResources != nil || textAtlas != nil {
-                    VulkanPrimitiveRenderer(device, dispatch, targetFormat, 64, imageResources, resourceGeneration, textAtlas)
+                    VulkanPrimitiveRenderer(device, dispatch, allocator, targetFormat, 64, imageResources, resourceGeneration,
+                        textAtlas, clipChain)
                 } else {
-                    VulkanPrimitiveRenderer(device, dispatch, targetFormat, 64, nil, 0uL, nil)
+                    VulkanPrimitiveRenderer(device, dispatch, allocator, targetFormat, 64, nil, 0uL, nil, clipChain)
                 }
             }
         } catch (error Exception) {

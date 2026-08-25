@@ -8,12 +8,14 @@ import System.Collections.ObjectModel
 /// Empty intervals produce a solid stroke. Odd interval counts repeat once.
 public sealed class DashPattern {
   private let intervals ReadOnlyCollection[float64]
-  private let offset float64
+  private var offset float64
+  private var revision uint64
 
   /// Gets the immutable intervals after odd-count normalization.
   public prop Intervals IReadOnlyList[float64] { get { return intervals } }
   /// Gets the finite dash phase offset in logical pixels.
   public prop Offset float64 { get { return offset } }
+  internal prop Revision uint64 { get { return revision } }
 
   /// Creates a dash pattern.
   /// @param intervals Non-negative finite dash and gap lengths. Empty is solid, and non-empty values must not all be zero.
@@ -47,5 +49,16 @@ public sealed class DashPattern {
 
     this.intervals = ReadOnlyCollection[float64](normalized)
     this.offset = offset
+    revision = 0uL
+  }
+
+  internal func SetOffset(next float64) {
+    if !motionFiniteFloat32(next) {
+      throw ArgumentOutOfRangeException("offset")
+    }
+    if offset != next {
+      offset = next
+      revision++
+    }
   }
 }

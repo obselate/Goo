@@ -82,6 +82,7 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         if entry.UploadedVersion == id.Version || entry.Upload.Succeeded {
             return false
         }
+        EnsureStagingBuffer()
         let reservation = uploadRing.Reserve(id, id.Version, byteCount, 4uL)
         if !reservation.Succeeded {
             throw InvalidOperationException("Vulkan upload ring has no available range")

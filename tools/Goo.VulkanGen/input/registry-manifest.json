@@ -98,6 +98,7 @@
     "vkCmdCopyImageToBuffer",
     "vkCmdCopyBuffer",
     "vkCmdCopyBufferToImage",
+    "vkCmdCopyImage",
     "vkCreateBufferView",
     "vkDestroyBufferView",
     "vkCreateSampler",

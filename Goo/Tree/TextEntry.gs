@@ -11,6 +11,8 @@ public class TextEntry : Blob {
   public prop Value string { get; init; }
   /// Gets the placeholder shown for an empty value.
   public prop Placeholder string { get; init; }
+  /// Reports whether the value is presented as protected text.
+  public prop Password bool { get; init; }
   /// Gets the action that receives each edited value.
   public prop OnChange Action[string]? { get; init; }
   /// Gets the action that receives the submitted value.

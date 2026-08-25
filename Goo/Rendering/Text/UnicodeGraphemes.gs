@@ -12,18 +12,28 @@ internal class UnicodeGraphemes {
   shared {
     internal func Starts(text string) []int32 {
       if text == nil { throw ArgumentNullException("text") }
-      let scalars = DecodeScalars(text)
-      if scalars.Count == 0 { return []int32{} }
-      let starts = List[int32]()
+      let scalars = List[UnicodeGraphemeScalar](text.Length)
+      let starts = List[int32](text.Length)
+      return Starts(text, scalars, starts).ToArray()
+    }
+
+    internal func Starts(text string, scalars List[UnicodeGraphemeScalar],
+      starts List[int32]) List[int32] {
+      if text == nil { throw ArgumentNullException("text") }
+      scalars.Clear()
+      starts.Clear()
+      if scalars.Capacity < text.Length { scalars.Capacity = text.Length }
+      if starts.Capacity < text.Length { starts.Capacity = text.Length }
+      DecodeScalars(text, scalars)
+      if scalars.Count == 0 { return starts }
       starts.Add(0)
       for index in 1 ... scalars.Count {
         if BreakBetween(scalars, index) { starts.Add(scalars[index].Start) }
       }
-      return starts.ToArray()
+      return starts
     }
 
-    private func DecodeScalars(text string) List[UnicodeGraphemeScalar] {
-      let scalars = List[UnicodeGraphemeScalar]()
+    private func DecodeScalars(text string, scalars List[UnicodeGraphemeScalar]) {
       var cursor int32 = 0
       while cursor < text.Length {
         let status = Rune.DecodeFromUtf16(text.AsSpan(cursor, text.Length - cursor), out var rune,
@@ -36,7 +46,6 @@ internal class UnicodeGraphemes {
           info.ExtendedPictographic))
         cursor = cursor + consumed
       }
-      return scalars
     }
 
     private func BreakBetween(scalars List[UnicodeGraphemeScalar], index int32) bool {

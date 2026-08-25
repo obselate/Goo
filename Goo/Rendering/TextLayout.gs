@@ -44,6 +44,7 @@ internal class TextLayout {
   internal prop FontFamily string { get; init; }
   internal prop FontSize float32 { get; init; }
   internal prop FontWeight float64 { get; init; }
+  internal prop FontRegistryGeneration uint64 { get; init; }
   internal prop Policy int32 { get; init; }
   internal prop TextMaxLines int32 { get; init; }
   internal prop LetterSpacing float32 { get; init; }
@@ -221,6 +222,7 @@ internal class TextLayouts {
         ShapeGeometry.Dispose(n)
       }
       BackgroundImageLayouts.Dispose(n)
+      ShaderEffectStyles.Dispose(n)
       ClipPathGeometry.Dispose(n)
       for i in 0 ... n.Children.Count {
         if let error = disposeTree(n.Children[i]) {
@@ -345,6 +347,7 @@ internal class TextLayouts {
       let result = TextLayout{
         Content: n.Content,
         FontFamily: n.FontFamily,
+        FontRegistryGeneration: FontRegistry.Generation,
         FontSize: fontSize(n),
         FontWeight: n.FontWeight,
         Policy: textPolicy(n),
@@ -710,6 +713,7 @@ internal class TextLayouts {
 
     internal func matches(layout TextLayout, n Node, maxWidth float32) bool {
       return layout.Content == n.Content && layout.FontFamily == n.FontFamily
+        && layout.FontRegistryGeneration == FontRegistry.Generation
         && layout.FontSize == fontSize(n) && layout.FontWeight == n.FontWeight
         && layout.Policy == textPolicy(n) && layout.LetterSpacing == letterSpacing(n)
         && layout.TextMaxLines == n.TextMaxLines

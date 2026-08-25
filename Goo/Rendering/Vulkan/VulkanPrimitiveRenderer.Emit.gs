@@ -175,7 +175,51 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         let packed = PackColor(color, opacity)
         push.packedColors_x = packed.Rgb
         push.packedColors_w = packed.Alpha
-        BindAndDraw(commandBuffer, solidPipeline, *void(&push))
+        BindAndDraw(commandBuffer, primitivePipelines.SolidPipeline, *void(&push))
+    }
+
+    private func EmitLava(
+        commandBuffer VkCommandBuffer,
+        extent VkExtent2D,
+        value LavaRecord,
+        frame SceneFrame) {
+        ValidateBounds(value.Bounds)
+        ValidateFinite(value.Flow, "lava flow")
+        ValidateFinite(value.Form, "lava form")
+        ValidateFinite(value.Blend, "lava blend")
+        ValidateFinite(value.Light, "lava light")
+        ValidateFinite(value.Hue, "lava hue")
+        if value.Flow < 0.0F || value.Flow > 1.0F
+            || value.Form < 0.0F || value.Form > 1.0F
+            || value.Blend < 0.0F || value.Blend > 1.0F
+            || value.Light < 0.0F || value.Light > 1.0F
+            || value.Hue < 0.0F || value.Hue > 1.0F
+            || value.Rainbow > 1u
+            || Double.IsNaN(value.Rotation.X) || Double.IsInfinity(value.Rotation.X)
+            || Double.IsNaN(value.Rotation.Y) || Double.IsInfinity(value.Rotation.Y) {
+            throw ArgumentOutOfRangeException("lava state")
+        }
+        ValidateTransformIndex(frame, value.TransformIndex)
+        if value.Bounds.IsEmpty {
+            return
+        }
+        let transform = ResolveTransform(frame, value.TransformIndex)
+        var push = AnalyticSolidPushConstants{}
+        FillTransform(&push, value.Bounds, transform, extent)
+        push.radii_x = value.Flow
+        push.radii_y = value.Form
+        push.radii_z = value.Blend
+        push.radii_w = value.Bounds.Width / value.Bounds.Height
+        let phase = lavaFrameSeconds - Math.Floor(lavaFrameSeconds / 4096.0) * 4096.0
+        push.params_x = float32(phase)
+        push.params_y = value.Light
+        push.params_z = value.Hue
+        push.params_w = value.Rainbow == 1u ? 1.0F : 0.0F
+        push.stopPositions_x = float32(value.Rotation.X)
+        push.stopPositions_y = float32(value.Rotation.Y)
+        push.stopPositions_z = 0.0F
+        push.packedColorsExtra_x = value.Seed
+        BindAndDraw(commandBuffer, primitivePipelines.LavaPipeline, *void(&push))
     }
 
     private func EmitShadow(
@@ -195,26 +239,25 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         if value.Blur < 0.0F {
             throw ArgumentOutOfRangeException("shadow blur")
         }
-        if value.Inset {
-            throw NotSupportedException("Vulkan primitive renderer does not support inset shadows")
-        }
-        if value.MaskId.IsValid {
-            throw NotSupportedException("Vulkan primitive renderer does not support masked shadows")
+        if value.MaskId.IsValid && value.MaskIndex < 0 {
+            throw NotSupportedException("Vulkan primitive renderer does not support external shadow masks")
         }
         ValidateTransformIndex(frame, value.TransformIndex)
         let transform = ResolveTransform(frame, value.TransformIndex)
-        if transform.B != 0.0F || transform.C != 0.0F {
-            throw NotSupportedException("Vulkan primitive renderer requires axis-aligned shadow transforms")
-        }
         if value.Bounds.IsEmpty {
             return
         }
-        if value.Bounds.Width + value.Spread + value.Spread <= 0.0F
-            || value.Bounds.Height + value.Spread + value.Spread <= 0.0F {
+        let sourceWidth = value.Bounds.Width + value.Spread + value.Spread
+        let sourceHeight = value.Bounds.Height + value.Spread + value.Spread
+        if !value.Inset && (sourceWidth <= 0.0F || sourceHeight <= 0.0F) {
             return
         }
         let spread = value.Spread
-        let expansion = value.Blur + Max(spread, 0.0F)
+        let blurExtent = value.Blur > 0.0F ? value.Blur * 2.0F + 2.0F : 0.0F
+        let offsetExtent = Max(MathF.Abs(value.OffsetX), MathF.Abs(value.OffsetY))
+        let expansion = value.Inset
+            ? Max(blurExtent, offsetExtent)
+            : blurExtent + Max(spread, 0.0F)
         let shadowBounds = ConservativeBounds{
             X: value.Bounds.X + value.OffsetX - expansion,
             Y: value.Bounds.Y + value.OffsetY - expansion,
@@ -237,7 +280,26 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         let packed = PackColor(value.Color, 1.0F)
         push.packedColors_x = packed.Rgb
         push.packedColors_w = packed.Alpha
-        BindAndDraw(commandBuffer, shadowPipeline, *void(&push))
+        push.packedColorsExtra_x = value.Inset ? 1u : 0u
+        if value.MaskIndex >= 0 {
+            guard let _ = preparedClipFrame else {
+                throw InvalidOperationException("Vulkan masked shadow requires a prepared clip frame")
+            }
+            if value.MaskIndex >= clipRegions.Length || value.MaskIndex >= frame.ClipMaskCount {
+                throw ArgumentOutOfRangeException("shadow mask index")
+            }
+            let region = clipRegions[value.MaskIndex]
+            push.stopPositions_x = region.Mapping.ScaleX
+            push.stopPositions_y = region.Mapping.ScaleY
+            push.stopPositions_z = region.Mapping.OffsetX
+            push.stopPositions_w = region.Mapping.OffsetY
+            push.packedColors_y = uint32(BitConverter.SingleToInt32Bits(float32(region.ScreenWidth)))
+            push.packedColors_z = uint32(BitConverter.SingleToInt32Bits(float32(region.ScreenHeight)))
+            push.packedColorsExtra_y = region.Mapping.Layer * 2u | 1u
+            push.packedColorsExtra_z = uint32(BitConverter.SingleToInt32Bits(float32(region.ScreenX)))
+            push.packedColorsExtra_w = uint32(BitConverter.SingleToInt32Bits(float32(region.ScreenY)))
+        }
+        BindAndDraw(commandBuffer, primitivePipelines.ShadowPipeline, *void(&push))
     }
 
     private func EmitBorder(
@@ -298,7 +360,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
             push.packedColorsExtra_y = left.Alpha
             push.packedColorsExtra_z = 0u
             push.packedColorsExtra_w = value.Style
-            BindAndDraw(commandBuffer, borderPipeline, *void(&push))
+            BindAndDraw(commandBuffer, primitivePipelines.BorderPipeline, *void(&push))
             return
         }
         let interiorHeight = Max(bounds.Height - topWidth - bottomWidth, 0.0F)
@@ -370,7 +432,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         push.params_z = (value.EndX - value.Bounds.X) / width
         push.params_w = (value.EndY - value.Bounds.Y) / height
         FillLinearStops(&push, frame, value.StopStart, value.StopCount, value.Opacity)
-        BindAndDraw(commandBuffer, linearPipeline, *void(&push))
+        BindAndDraw(commandBuffer, primitivePipelines.LinearPipeline, *void(&push))
     }
 
     private func EmitRadial(
@@ -407,7 +469,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         push.params_z = Max(value.RadiusX / width, 0.0001F)
         push.params_w = Max(value.RadiusY / height, 0.0001F)
         FillRadialStops(&push, frame, value.StopStart, value.StopCount, value.Opacity)
-        BindAndDraw(commandBuffer, radialPipeline, *void(&push))
+        BindAndDraw(commandBuffer, primitivePipelines.RadialPipeline, *void(&push))
     }
 
     private func EmitImage(
@@ -461,162 +523,414 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         push.params_y = value.SourceY
         push.params_z = value.SourceWidth
         push.params_w = value.SourceHeight
-        EnsureDescriptorLayout(pipelineLayout)
-        let sameDescriptor = sampledDescriptorBound
-            && SameResourceId(sampledImageId, value.ImageId)
-            && SameResourceId(sampledSamplerId, value.SamplerId)
-            && sampledSamplerMode == samplerMode
-            && sampledGeneration == resourceGeneration
-        if !sameDescriptor {
-            imageResources!!.BindDescriptor(commandBuffer, pipelineLayout, value.ImageId,
-                value.SamplerId, samplerMode, resourceGeneration)
-            recordDescriptorChangeCount++
-            sampledDescriptorBound = true
-            sampledImageId = value.ImageId
-            sampledSamplerId = value.SamplerId
-            sampledSamplerMode = samplerMode
-            sampledGeneration = resourceGeneration
+        if !primitivePrepass {
+            EnsureDescriptorLayout(pipelineLayout)
+            let sameDescriptor = sampledDescriptorBound
+                && SameResourceId(sampledImageId, value.ImageId)
+                && SameResourceId(sampledSamplerId, value.SamplerId)
+                && sampledSamplerMode == samplerMode
+                && sampledGeneration == resourceGeneration
+            if !sameDescriptor {
+                imageResources!!.BindDescriptor(commandBuffer, pipelineLayout, value.ImageId,
+                    value.SamplerId, samplerMode, resourceGeneration)
+                recordDescriptorChangeCount++
+                sampledDescriptorBound = true
+                sampledImageId = value.ImageId
+                sampledSamplerId = value.SamplerId
+                sampledSamplerMode = samplerMode
+                sampledGeneration = resourceGeneration
+            }
         }
-        if activePipeline != sampledPipeline {
-            let bindPipeline = dispatch.vkCmdBindPipeline
-            bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, sampledPipeline)
-            recordPipelineChangeCount++
-            activePipeline = sampledPipeline
-        }
-        let pushConstants = dispatch.vkCmdPushConstants
-        pushConstants(commandBuffer, pipelineLayout,
-            uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
-                | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT),
-            0u, PushConstantSize, *void(&push))
-        let draw = dispatch.vkCmdDraw
-        draw(commandBuffer, 6u, 1u, 0u, 0u)
+        BindPrimitiveAndDraw(commandBuffer, primitivePipelines.SampledPipeline,
+            pipelineLayout, *void(&push), 1u)
     }
 
-    private func EmitText(
+    private func EmitLayer(
         commandBuffer VkCommandBuffer,
         extent VkExtent2D,
-        value CachedGlyphRunRefRecord,
+        value LayerRecord,
+        target VulkanOffscreenLayerTarget?,
+        backdrop VulkanOffscreenLayerTarget?,
         frame SceneFrame) {
-        if textAtlases == nil || textPipelineLayout == 0uL {
-            throw NotSupportedException("Vulkan primitive renderer has no text atlas pipeline")
-        }
         ValidateBounds(value.Bounds)
-        ValidateTransformIndex(frame, value.TransformIndex)
-        if !value.GlyphRunId.IsValid || value.GlyphRunId.Kind != SceneResourceKind.GlyphRun {
-            throw ArgumentException("cached glyph run id is not a glyph run")
-        }
-        if !value.AtlasId.IsValid || value.AtlasId.Kind != SceneResourceKind.Atlas {
-            throw ArgumentException("cached glyph atlas id is not an atlas")
-        }
-        var selectedPipeline VkPipeline = 0uL
-        if value.RenderMode == 2u {
-            selectedPipeline = textPipeline
-        } else if value.RenderMode == 3u {
-            selectedPipeline = textPaintPipeline
-        } else {
-            throw NotSupportedException("Vulkan text renderer supports only monochrome and COLR paint glyphs")
-        }
-        if selectedPipeline == 0uL {
-            throw NotSupportedException("Vulkan primitive renderer has no selected text pipeline")
+        ValidateOpacity(value.Opacity)
+        ValidateFinite(value.OriginX, "layer origin x")
+        ValidateFinite(value.OriginY, "layer origin y")
+        if !primitivePrepass && (target == nil || target!!.DescriptorSet == 0uL) {
+            throw InvalidOperationException("Vulkan layer target descriptor is unavailable")
         }
         if value.Bounds.IsEmpty {
             return
         }
-        let atlas = textAtlases!!.Resolve(value.AtlasId)
-        let atlasTexelOffset = uint64(value.AtlasTexelOffset)
-        let atlasTexelCount = uint64(value.AtlasTexelCount)
-        let atlasTexelTotal = uint64(atlas.TexelCount)
-        if atlasTexelCount == 0uL || atlasTexelOffset >= atlasTexelTotal {
-            throw ArgumentOutOfRangeException("cached glyph atlas range")
+        if value.EffectIndex >= 0 {
+            EmitShaderEffectLayer(commandBuffer, extent, value, target, backdrop, frame)
+            return
         }
-        let atlasTexelAvailable = atlasTexelTotal - atlasTexelOffset
-        if atlasTexelCount > atlasTexelAvailable {
-            throw ArgumentOutOfRangeException("cached glyph atlas range")
+        if value.BlendMode != 0u {
+            guard let backdropTarget = backdrop else {
+                if !primitivePrepass {
+                    throw InvalidOperationException("Vulkan blend layer backdrop is unavailable")
+                }
+                EmitBlendLayer(commandBuffer, extent, value, nil, nil)
+                return
+            }
+            EmitBlendLayer(commandBuffer, extent, value, target, backdropTarget)
+            return
         }
-        ValidateFinite(value.GlyphMinX, "cached glyph min x")
-        ValidateFinite(value.GlyphMinY, "cached glyph min y")
-        ValidateFinite(value.GlyphMaxX, "cached glyph max x")
-        ValidateFinite(value.GlyphMaxY, "cached glyph max y")
-        ValidateFinite(value.EffectRadius, "cached glyph effect radius")
-        if value.EffectMode > 2u {
-            throw NotSupportedException("Vulkan text renderer supports only fill, shadow, and stroke effects")
-        }
-        if value.EffectRadius < 0.0F {
-            throw ArgumentOutOfRangeException("cached glyph effect radius")
-        }
-        if value.RenderMode == 3u && value.EffectMode != 0u {
-            throw NotSupportedException("Vulkan text effects are unsupported for COLR paint glyphs")
-        }
-        if value.GlyphMinX >= value.GlyphMaxX || value.GlyphMinY >= value.GlyphMaxY {
-            throw ArgumentOutOfRangeException("cached glyph extents")
-        }
-        let transform = ResolveTransform(frame, value.TransformIndex)
-        let width = float32(extent.width)
-        let height = float32(extent.height)
-        var push = HbGpuTextPushConstants{}
-        push.transform_m00 = 2.0F * transform.A / width
-        push.transform_m01 = 2.0F * transform.B / height
-        push.transform_m02 = 0.0F
-        push.transform_m03 = 0.0F
-        push.transform_m10 = 2.0F * transform.C / width
-        push.transform_m11 = 2.0F * transform.D / height
-        push.transform_m12 = 0.0F
-        push.transform_m13 = 0.0F
-        push.transform_m20 = 0.0F
-        push.transform_m21 = 0.0F
-        push.transform_m22 = 1.0F
-        push.transform_m23 = 0.0F
-        push.transform_m30 = 2.0F * transform.TX / width - 1.0F
-        push.transform_m31 = 2.0F * transform.TY / height - 1.0F
-        push.transform_m32 = 0.0F
-        push.transform_m33 = 1.0F
-        push.viewport_x = width
-        push.viewport_y = height
-        push.viewport_z = if value.EffectMode == 2u { value.EffectRadius } else { 0.0F }
-        push.viewport_w = 0.0F
-        push.glyphBounds_x = value.GlyphMinX
-        push.glyphBounds_y = value.GlyphMinY
-        push.glyphBounds_z = value.GlyphMaxX
-        push.glyphBounds_w = value.GlyphMaxY
-        push.glyphInput_x = value.AtlasTexelOffset
-        push.glyphInput_y = value.EffectMode
-        push.glyphInput_z = 0u
-        push.glyphInput_w = 0u
-        let rgba = int32(value.Color)
-        let red = (rgba >> int32(24)) & int32(255)
-        let green = (rgba >> int32(16)) & int32(255)
-        let blue = (rgba >> int32(8)) & int32(255)
-        let alpha = float32(rgba & int32(255)) / 255.0F
-        if value.RenderMode == 2u {
-            push.foreground_x = linearChannels[red] * alpha
-            push.foreground_y = linearChannels[green] * alpha
-            push.foreground_z = linearChannels[blue] * alpha
-        } else {
-            push.foreground_x = linearChannels[red]
-            push.foreground_y = linearChannels[green]
-            push.foreground_z = linearChannels[blue]
-        }
-        push.foreground_w = alpha
-        EnsureDescriptorLayout(textPipelineLayout)
-        if !textDescriptorBound || !SameResourceId(textAtlasId, value.AtlasId) {
-            atlas.BindDescriptor(commandBuffer, textPipelineLayout)
+        var push = SampledImagePushConstants{}
+        FillTransform(&push, value.Bounds, PrimitiveTransform{ A: 1.0F, D: 1.0F }, extent)
+        push.radii_x = value.Opacity
+        let targetWidth = float32(value.ExtentWidth)
+        let targetHeight = float32(value.ExtentHeight)
+        push.params_x = (value.Bounds.X - value.OriginX) / targetWidth
+        push.params_y = (value.Bounds.Y - value.OriginY) / targetHeight
+        push.params_z = value.Bounds.Width / targetWidth
+        push.params_w = value.Bounds.Height / targetHeight
+        if !primitivePrepass {
+            EnsureDescriptorLayout(pipelineLayout)
+            var descriptorSet = target!!.DescriptorSet
+            let bindDescriptors = dispatch.vkCmdBindDescriptorSets
+            bindDescriptors(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS,
+                pipelineLayout, 0u, 1u, &descriptorSet, 0u, nil)
             recordDescriptorChangeCount++
-            textDescriptorBound = true
-            textAtlasId = value.AtlasId
+            sampledDescriptorBound = false
+            sampledImageId = ResourceId{}
+            sampledSamplerId = ResourceId{}
+            sampledSamplerMode = VulkanImageSamplerMode.Nearest
+            sampledGeneration = 0uL
+            pathDescriptorBound = false
+            pathAtlasId = ResourceId{}
+            textDescriptorBound = false
+            textAtlasId = ResourceId{}
         }
-        if activePipeline != selectedPipeline {
-            let bindPipeline = dispatch.vkCmdBindPipeline
-            bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline)
-            recordPipelineChangeCount++
-            activePipeline = selectedPipeline
+        BindPrimitiveAndDraw(commandBuffer, primitivePipelines.SampledPipeline,
+            pipelineLayout, *void(&push), 1u)
+    }
+
+    private func EmitShaderEffectLayer(
+        commandBuffer VkCommandBuffer,
+        extent VkExtent2D,
+        value LayerRecord,
+        target VulkanOffscreenLayerTarget?,
+        backdrop VulkanOffscreenLayerTarget?,
+        frame SceneFrame) {
+        RequireRecordIndex(value.EffectIndex, frame.ShaderEffectCount, "shader effect index")
+        let effect = frame.ShaderEffects[value.EffectIndex]
+        guard let program = effect.Program else {
+            throw InvalidOperationException("Vulkan shader effect program is unavailable")
         }
+        if effect.ProgramId != value.EffectProgramId || effect.Version != value.EffectVersion {
+            throw InvalidOperationException("Vulkan shader effect snapshot does not match its layer")
+        }
+        if value.BlendMode != 0u {
+            throw NotSupportedException("ShaderEffect cannot be combined with a non-normal BlendMode")
+        }
+        if !primitivePrepass && (target == nil || target!!.DescriptorSet == 0uL) {
+            throw InvalidOperationException("Vulkan shader effect source is unavailable")
+        }
+        if effect.SamplesBackdrop && !primitivePrepass
+            && (backdrop == nil || backdrop!!.DescriptorSet == 0uL) {
+            throw InvalidOperationException("Vulkan shader effect backdrop is unavailable")
+        }
+        let effectPipeline = primitivePipelines.ResolveShaderEffectPipeline(program)
+        var primitive = SampledImagePushConstants{}
+        FillTransform(&primitive, value.Bounds,
+            PrimitiveTransform{ A: 1.0F, D: 1.0F }, extent)
+        primitive.radii_x = value.Opacity
+        let targetWidth = float32(value.ExtentWidth)
+        let targetHeight = float32(value.ExtentHeight)
+        primitive.params_x = (value.Bounds.X - value.OriginX) / targetWidth
+        primitive.params_y = (value.Bounds.Y - value.OriginY) / targetHeight
+        primitive.params_z = value.Bounds.Width / targetWidth
+        primitive.params_w = value.Bounds.Height / targetHeight
+        if !primitivePrepass {
+            EnsureDescriptorLayout(blendPipelineLayout)
+            var descriptorSets = stackalloc [2]VkDescriptorSet
+            descriptorSets[0] = target!!.DescriptorSet
+            descriptorSets[1] = if let backdropTarget = backdrop {
+                backdropTarget.DescriptorSet
+            } else { target!!.DescriptorSet }
+            let bindDescriptors = dispatch.vkCmdBindDescriptorSets
+            bindDescriptors(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS,
+                blendPipelineLayout, 0u, 2u, &descriptorSets[0], 0u, nil)
+            recordDescriptorChangeCount++
+            var parameters = VulkanShaderEffectPushConstants{
+                Parameter0: effect.Parameter0,
+                Parameter1: effect.Parameter1,
+                Parameter2: effect.Parameter2,
+                Parameter3: effect.Parameter3,
+                Parameter4: effect.Parameter4,
+                Parameter5: effect.Parameter5,
+                Parameter6: effect.Parameter6,
+                Parameter7: effect.Parameter7,
+            }
+            let pushConstants = dispatch.vkCmdPushConstants
+            pushConstants(commandBuffer, blendPipelineLayout,
+                uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT),
+                0u, 128u, *void(&parameters))
+            sampledDescriptorBound = false
+            sampledImageId = ResourceId{}
+            sampledSamplerId = ResourceId{}
+            sampledSamplerMode = VulkanImageSamplerMode.Nearest
+            sampledGeneration = 0uL
+            pathDescriptorBound = false
+            pathAtlasId = ResourceId{}
+            textDescriptorBound = false
+            textAtlasId = ResourceId{}
+        }
+        BindPrimitiveAndDraw(commandBuffer, effectPipeline, blendPipelineLayout,
+            *void(&primitive), 3u)
+    }
+
+    private func EmitBlendLayer(
+        commandBuffer VkCommandBuffer,
+        extent VkExtent2D,
+        value LayerRecord,
+        target VulkanOffscreenLayerTarget?,
+        backdrop VulkanOffscreenLayerTarget?) {
+        if !primitivePrepass && (target == nil || backdrop == nil
+            || target!!.DescriptorSet == 0uL || backdrop!!.DescriptorSet == 0uL) {
+            throw InvalidOperationException("Vulkan blend layer descriptor is unavailable")
+        }
+        if value.BlendMode > uint32(int32(BlendMode.Luminosity)) {
+            throw NotSupportedException("Vulkan blend mode is unavailable")
+        }
+        var push = SampledImagePushConstants{}
+        FillTransform(&push, value.Bounds, PrimitiveTransform{ A: 1.0F, D: 1.0F }, extent)
+        push.radii_x = value.Opacity
+        let targetWidth = float32(value.ExtentWidth)
+        let targetHeight = float32(value.ExtentHeight)
+        push.params_x = (value.Bounds.X - value.OriginX) / targetWidth
+        push.params_y = (value.Bounds.Y - value.OriginY) / targetHeight
+        push.params_z = value.Bounds.Width / targetWidth
+        push.params_w = value.Bounds.Height / targetHeight
+        push.packedColorsExtra_w = value.BlendMode
+        if !primitivePrepass {
+            EnsureDescriptorLayout(blendPipelineLayout)
+            var descriptorSets = stackalloc [2]VkDescriptorSet
+            descriptorSets[0] = target!!.DescriptorSet
+            descriptorSets[1] = backdrop!!.DescriptorSet
+            let bindDescriptors = dispatch.vkCmdBindDescriptorSets
+            bindDescriptors(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS,
+                blendPipelineLayout, 0u, 2u, &descriptorSets[0], 0u, nil)
+            recordDescriptorChangeCount++
+            sampledDescriptorBound = false
+            sampledImageId = ResourceId{}
+            sampledSamplerId = ResourceId{}
+            sampledSamplerMode = VulkanImageSamplerMode.Nearest
+            sampledGeneration = 0uL
+            pathDescriptorBound = false
+            pathAtlasId = ResourceId{}
+            textDescriptorBound = false
+            textAtlasId = ResourceId{}
+        }
+        BindPrimitiveAndDraw(commandBuffer, primitivePipelines.BlendPipeline,
+            blendPipelineLayout, *void(&push), 3u)
+    }
+
+    private func EmitTextSegment(
+        commandBuffer VkCommandBuffer,
+        extent VkExtent2D,
+        value CachedTextSegmentRefRecord,
+        drawClipChainId int32,
+        frame SceneFrame) {
+        let segment = ValidateTextSegment(value, drawClipChainId, frame)
+        if value.Bounds.IsEmpty {
+            return
+        }
+        if primitivePrepass {
+            return
+        }
+        EnsureDescriptorLayout(textPipelineLayout)
+        EnsureClipDescriptorAt(commandBuffer, textPipelineLayout, 1u)
+        EnsureTextInstanceDescriptor(commandBuffer, textPipelineLayout)
+        var framePush = HbGpuTextFrameConstants{}
+        framePush.viewport_x = float32(extent.width)
+        framePush.viewport_y = float32(extent.height)
+        framePush.viewport_z = textFrameScaleX
+        framePush.viewport_w = textFrameScaleY
+        framePush.origin_x = currentOriginX
+        framePush.origin_y = currentOriginY
+        framePush.origin_z = 0.0F
+        framePush.origin_w = 0.0F
         let pushConstants = dispatch.vkCmdPushConstants
         pushConstants(commandBuffer, textPipelineLayout,
-            uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
-                | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT),
-            0u, TextPushConstantSize, *void(&push))
-        let draw = dispatch.vkCmdDraw
-        draw(commandBuffer, 6u, 1u, 0u, 0u)
+            uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT),
+            0u, TextPushConstantSize, *void(&framePush))
+        var runIndex int32 = 0
+        while runIndex < segment.RunCount {
+            let run = segment.Runs[runIndex]
+            let atlas = textAtlases!!.Resolve(run.AtlasId)
+            if !textDescriptorBound || !SameResourceId(textAtlasId, run.AtlasId) {
+                atlas.BindDescriptor(commandBuffer, textPipelineLayout)
+                recordDescriptorChangeCount++
+                textDescriptorBound = true
+                textAtlasId = run.AtlasId
+            }
+            let selectedPipeline = if run.PipelineKind == 0u {
+                primitivePipelines.TextPipeline
+            } else {
+                primitivePipelines.TextPaintPipeline
+            }
+            if selectedPipeline == 0uL {
+                throw NotSupportedException("Vulkan primitive renderer has no selected text pipeline")
+            }
+            if activePipeline != selectedPipeline {
+                let bindPipeline = dispatch.vkCmdBindPipeline
+                bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    selectedPipeline)
+                recordPipelineChangeCount++
+                activePipeline = selectedPipeline
+            }
+            let globalFirst = uint64(value.FirstInstance) + uint64(run.FirstInstance)
+            if globalFirst > uint64(uint32.MaxValue) {
+                throw ArgumentOutOfRangeException("cached text global first instance")
+            }
+            let draw = dispatch.vkCmdDraw
+            draw(commandBuffer, 6u, uint32(run.InstanceCount), 0u, uint32(globalFirst))
+            runIndex = runIndex + 1
+        }
+    }
+
+
+    private func ValidateTextSegment(
+        value CachedTextSegmentRefRecord,
+        drawClipChainId int32,
+        frame SceneFrame) VulkanRetainedTextSegment {
+        if textAtlases == nil || textPipelineLayout == 0uL {
+            throw NotSupportedException("Vulkan primitive renderer has no text atlas pipeline")
+        }
+        ValidateBounds(value.Bounds)
+        if drawClipChainId < 0 || value.ClipChainId != drawClipChainId
+            || value.ClipChainId >= frame.ClipChainCount {
+            throw ArgumentException("cached text segment clip chain is invalid")
+        }
+        if value.SegmentId == 0uL || value.SegmentVersion == 0uL
+            || value.GlyphCount <= 0 || value.FirstInstance < 0
+            || uint64(value.FirstInstance) > uint64(uint32.MaxValue) {
+            throw ArgumentException("cached text segment reference is invalid")
+        }
+        guard let segment = value.Segment else {
+            throw ArgumentNullException("segment")
+        }
+        if segment.Id == 0uL || segment.Version == 0uL
+            || segment.Id != value.SegmentId
+            || segment.Version != value.SegmentVersion
+            || segment.GlyphCount != value.GlyphCount
+            || segment.ClipChainId != value.ClipChainId
+            || segment.AtlasGeneration != resourceGeneration
+            || segment.RecordCount != segment.GlyphCount
+            || segment.RecordCount <= 0
+            || segment.RecordCount > segment.Records.Length
+            || segment.GlyphResourceCount != segment.GlyphCount
+            || segment.GlyphResourceCount > segment.GlyphResources.Length
+            || segment.GlyphAtlasTexelOffsets.Length < segment.GlyphCount
+            || segment.GlyphAtlasTexelCounts.Length < segment.GlyphCount
+            || segment.GlyphEffectAtlasTexelOffsets.Length < segment.GlyphCount
+            || segment.GlyphEffectAtlasTexelCounts.Length < segment.GlyphCount
+            || segment.RunCount <= 0 || segment.RunCount > segment.Runs.Length {
+            throw ArgumentException("cached text segment is invalid")
+        }
+        ValidateBounds(segment.Bounds)
+        if value.Bounds.X != segment.Bounds.X || value.Bounds.Y != segment.Bounds.Y
+            || value.Bounds.Width != segment.Bounds.Width
+            || value.Bounds.Height != segment.Bounds.Height {
+            throw ArgumentException("cached text segment bounds do not match")
+        }
+        if uint64(value.FirstInstance) + uint64(segment.RecordCount)
+            > uint64(uint32.MaxValue) + 1uL {
+            throw ArgumentOutOfRangeException("cached text global instance range")
+        }
+        if segment.RendererValidationCacheEligible
+            && segment.RendererValidationValid
+            && segment.RendererValidationVersion == segment.Version
+            && segment.RendererValidationAtlasGeneration == resourceGeneration {
+            var validatedRunIndex int32 = 0
+            while validatedRunIndex < segment.RunCount {
+                let atlas = textAtlases!!.Resolve(
+                    segment.Runs[validatedRunIndex].AtlasId)
+                validatedRunIndex = validatedRunIndex + 1
+            }
+            return segment
+        }
+        var expectedFirst int32 = 0
+        var runIndex int32 = 0
+        while runIndex < segment.RunCount {
+            let run = segment.Runs[runIndex]
+            if run.FirstInstance < 0 || run.FirstInstance != expectedFirst
+                || run.InstanceCount <= 0
+                || run.InstanceCount > segment.RecordCount - expectedFirst
+                || run.PipelineKind > 1u
+                || !run.AtlasId.IsValid || run.AtlasId.Kind != SceneResourceKind.Atlas {
+                throw ArgumentException("cached text segment run is invalid")
+            }
+            let atlas = textAtlases!!.Resolve(run.AtlasId)
+            let runEnd = run.FirstInstance + run.InstanceCount
+            var glyphIndex = run.FirstInstance
+            while glyphIndex < runEnd {
+                let glyphResource = segment.GlyphResources[glyphIndex]
+                if !glyphResource.IsValid || glyphResource.Kind != SceneResourceKind.GlyphRun
+                    || glyphResource.LogicalId != run.AtlasId.LogicalId
+                    || glyphResource.Version == 0uL {
+                    throw ArgumentException("cached text segment glyph resource is invalid")
+                }
+                let record = segment.Records[glyphIndex]
+                if record.glyphInput_z != uint32(value.ClipChainId)
+                    || record.glyphInput_y > 3u {
+                    throw ArgumentException("cached text segment instance mirror is invalid")
+                }
+                let texelOffset = if record.glyphInput_y == 0u {
+                    segment.GlyphAtlasTexelOffsets[glyphIndex]
+                } else {
+                    segment.GlyphEffectAtlasTexelOffsets[glyphIndex]
+                }
+                let texelCount = if record.glyphInput_y == 0u {
+                    segment.GlyphAtlasTexelCounts[glyphIndex]
+                } else {
+                    segment.GlyphEffectAtlasTexelCounts[glyphIndex]
+                }
+                let texelTotal = uint64(atlas.TexelCount)
+                if texelCount == 0u || uint64(texelOffset) >= texelTotal
+                    || uint64(texelCount) > texelTotal - uint64(texelOffset) {
+                    throw ArgumentOutOfRangeException("cached text atlas range")
+                }
+                glyphIndex = glyphIndex + 1
+            }
+            expectedFirst = runEnd
+            runIndex = runIndex + 1
+        }
+        if expectedFirst != segment.RecordCount {
+            throw ArgumentException("cached text segment runs do not partition records")
+        }
+        segment.RendererValidationVersion = segment.Version
+        segment.RendererValidationAtlasGeneration = resourceGeneration
+        segment.RendererValidationValid = true
+        return segment
+    }
+
+    private func EnsureTextInstanceDescriptor(
+        commandBuffer VkCommandBuffer,
+        layout VkPipelineLayout) {
+        if textInstanceDescriptorBound && textInstanceDescriptorLayout == layout
+            && textInstanceDescriptorSlot == primitiveFrameSlot {
+            return
+        }
+        textFrameData.Bind(commandBuffer, layout, 2u)
+        textInstanceDescriptorBound = true
+        textInstanceDescriptorLayout = layout
+        textInstanceDescriptorSlot = primitiveFrameSlot
+        recordDescriptorChangeCount++
+    }
+
+    private func LocalizeTransform(transform PrimitiveTransform) PrimitiveTransform {
+        return PrimitiveTransform{
+            A: transform.A,
+            B: transform.B,
+            C: transform.C,
+            D: transform.D,
+            TX: transform.TX - currentOriginX,
+            TY: transform.TY - currentOriginY,
+        }
     }
 
     private func FillTransform(
@@ -624,19 +938,20 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         bounds ConservativeBounds,
         transform PrimitiveTransform,
         extent VkExtent2D) {
+        let localized = LocalizeTransform(transform)
         push->rect_x = bounds.X
         push->rect_y = bounds.Y
         push->rect_z = bounds.Width
         push->rect_w = bounds.Height
         let width = float32(extent.width)
         let height = float32(extent.height)
-        push->transform0_x = 2.0F * transform.A / width
-        push->transform0_y = 2.0F * transform.C / width
-        push->transform0_z = 2.0F * transform.TX / width - 1.0F
+        push->transform0_x = 2.0F * localized.A / width
+        push->transform0_y = 2.0F * localized.C / width
+        push->transform0_z = 2.0F * localized.TX / width - 1.0F
         push->transform0_w = 0.0F
-        push->transform1_x = 2.0F * transform.B / height
-        push->transform1_y = 2.0F * transform.D / height
-        push->transform1_z = 2.0F * transform.TY / height - 1.0F
+        push->transform1_x = 2.0F * localized.B / height
+        push->transform1_y = 2.0F * localized.D / height
+        push->transform1_z = 2.0F * localized.TY / height - 1.0F
         push->transform1_w = 0.0F
     }
 
@@ -645,19 +960,20 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         bounds ConservativeBounds,
         transform PrimitiveTransform,
         extent VkExtent2D) {
+        let localized = LocalizeTransform(transform)
         push->rect_x = bounds.X
         push->rect_y = bounds.Y
         push->rect_z = bounds.Width
         push->rect_w = bounds.Height
         let width = float32(extent.width)
         let height = float32(extent.height)
-        push->transform0_x = 2.0F * transform.A / width
-        push->transform0_y = 2.0F * transform.C / width
-        push->transform0_z = 2.0F * transform.TX / width - 1.0F
+        push->transform0_x = 2.0F * localized.A / width
+        push->transform0_y = 2.0F * localized.C / width
+        push->transform0_z = 2.0F * localized.TX / width - 1.0F
         push->transform0_w = 0.0F
-        push->transform1_x = 2.0F * transform.B / height
-        push->transform1_y = 2.0F * transform.D / height
-        push->transform1_z = 2.0F * transform.TY / height - 1.0F
+        push->transform1_x = 2.0F * localized.B / height
+        push->transform1_y = 2.0F * localized.D / height
+        push->transform1_z = 2.0F * localized.TY / height - 1.0F
         push->transform1_w = 0.0F
     }
 
@@ -666,19 +982,20 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         bounds ConservativeBounds,
         transform PrimitiveTransform,
         extent VkExtent2D) {
+        let localized = LocalizeTransform(transform)
         push->rect_x = bounds.X
         push->rect_y = bounds.Y
         push->rect_z = bounds.Width
         push->rect_w = bounds.Height
         let width = float32(extent.width)
         let height = float32(extent.height)
-        push->transform0_x = 2.0F * transform.A / width
-        push->transform0_y = 2.0F * transform.C / width
-        push->transform0_z = 2.0F * transform.TX / width - 1.0F
+        push->transform0_x = 2.0F * localized.A / width
+        push->transform0_y = 2.0F * localized.C / width
+        push->transform0_z = 2.0F * localized.TX / width - 1.0F
         push->transform0_w = 0.0F
-        push->transform1_x = 2.0F * transform.B / height
-        push->transform1_y = 2.0F * transform.D / height
-        push->transform1_z = 2.0F * transform.TY / height - 1.0F
+        push->transform1_x = 2.0F * localized.B / height
+        push->transform1_y = 2.0F * localized.D / height
+        push->transform1_z = 2.0F * localized.TY / height - 1.0F
         push->transform1_w = 0.0F
     }
 
@@ -687,19 +1004,20 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         bounds ConservativeBounds,
         transform PrimitiveTransform,
         extent VkExtent2D) {
+        let localized = LocalizeTransform(transform)
         push->rect_x = bounds.X
         push->rect_y = bounds.Y
         push->rect_z = bounds.Width
         push->rect_w = bounds.Height
         let width = float32(extent.width)
         let height = float32(extent.height)
-        push->transform0_x = 2.0F * transform.A / width
-        push->transform0_y = 2.0F * transform.C / width
-        push->transform0_z = 2.0F * transform.TX / width - 1.0F
+        push->transform0_x = 2.0F * localized.A / width
+        push->transform0_y = 2.0F * localized.C / width
+        push->transform0_z = 2.0F * localized.TX / width - 1.0F
         push->transform0_w = 0.0F
-        push->transform1_x = 2.0F * transform.B / height
-        push->transform1_y = 2.0F * transform.D / height
-        push->transform1_z = 2.0F * transform.TY / height - 1.0F
+        push->transform1_x = 2.0F * localized.B / height
+        push->transform1_y = 2.0F * localized.D / height
+        push->transform1_z = 2.0F * localized.TY / height - 1.0F
         push->transform1_w = 0.0F
     }
 
@@ -708,19 +1026,20 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         bounds ConservativeBounds,
         transform PrimitiveTransform,
         extent VkExtent2D) {
+        let localized = LocalizeTransform(transform)
         push->rect_x = bounds.X
         push->rect_y = bounds.Y
         push->rect_z = bounds.Width
         push->rect_w = bounds.Height
         let width = float32(extent.width)
         let height = float32(extent.height)
-        push->transform0_x = 2.0F * transform.A / width
-        push->transform0_y = 2.0F * transform.C / width
-        push->transform0_z = 2.0F * transform.TX / width - 1.0F
+        push->transform0_x = 2.0F * localized.A / width
+        push->transform0_y = 2.0F * localized.C / width
+        push->transform0_z = 2.0F * localized.TX / width - 1.0F
         push->transform0_w = 0.0F
-        push->transform1_x = 2.0F * transform.B / height
-        push->transform1_y = 2.0F * transform.D / height
-        push->transform1_z = 2.0F * transform.TY / height - 1.0F
+        push->transform1_x = 2.0F * localized.B / height
+        push->transform1_y = 2.0F * localized.D / height
+        push->transform1_z = 2.0F * localized.TY / height - 1.0F
         push->transform1_w = 0.0F
     }
 
@@ -793,20 +1112,51 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     }
 
     private func BindAndDraw(commandBuffer VkCommandBuffer, pipeline VkPipeline, pushData *void) {
-        EnsureDescriptorLayout(pipelineLayout)
+        BindPrimitiveAndDraw(commandBuffer, pipeline, pipelineLayout, pushData, 1u)
+    }
+
+    private func BindPrimitiveAndDraw(
+        commandBuffer VkCommandBuffer,
+        pipeline VkPipeline,
+        layout VkPipelineLayout,
+        pushData *void,
+        clipSetIndex uint32) {
+        if pushData == nil {
+            throw ArgumentNullException("pushData")
+        }
+        if primitivePrepass {
+            primitiveFrameData.WriteRecord(primitiveRecordCount, pushData)
+            primitiveRecordCount = primitiveRecordCount + 1
+            return
+        }
+        EnsureDescriptorLayout(layout)
         if activePipeline != pipeline {
             let bindPipeline = dispatch.vkCmdBindPipeline
             bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline)
             recordPipelineChangeCount++
             activePipeline = pipeline
         }
-        let push = dispatch.vkCmdPushConstants
-        push(commandBuffer, pipelineLayout,
-            uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
-                | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT),
-            0u, PushConstantSize, pushData)
+        EnsurePrimitiveDescriptor(commandBuffer, layout)
+        EnsureClipDescriptorAt(commandBuffer, layout, clipSetIndex)
+        if uint64(primitiveRecordOrdinal) > uint64(uint32.MaxValue) / 4uL {
+            throw ArgumentOutOfRangeException("primitiveRecordOrdinal")
+        }
+        let firstVertex = primitiveRecordOrdinal * 4u
         let draw = dispatch.vkCmdDraw
-        draw(commandBuffer, 6u, 1u, 0u, 0u)
+        draw(commandBuffer, 4u, 1u, firstVertex, currentDrawOrdinal)
+        primitiveRecordOrdinal = primitiveRecordOrdinal + 1u
+    }
+
+    private func EnsurePrimitiveDescriptor(commandBuffer VkCommandBuffer, layout VkPipelineLayout) {
+        if primitiveDescriptorBound && primitiveDescriptorLayout == layout
+            && primitiveDescriptorSlot == primitiveFrameSlot {
+            return
+        }
+        primitiveFrameData.Bind(commandBuffer, layout, 2u)
+        primitiveDescriptorBound = true
+        primitiveDescriptorLayout = layout
+        primitiveDescriptorSlot = primitiveFrameSlot
+        recordDescriptorChangeCount++
     }
 
     private func EnsureDescriptorLayout(layout VkPipelineLayout) {
@@ -814,6 +1164,15 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
             return
         }
         boundDescriptorLayout = layout
+        clipDescriptorBound = false
+        clipDescriptorLayout = 0uL
+        clipDescriptorSlot = -1
+        primitiveDescriptorBound = false
+        primitiveDescriptorLayout = 0uL
+        primitiveDescriptorSlot = -1
+        textInstanceDescriptorBound = false
+        textInstanceDescriptorLayout = 0uL
+        textInstanceDescriptorSlot = -1
         sampledDescriptorBound = false
         sampledImageId = ResourceId{}
         sampledSamplerId = ResourceId{}
@@ -840,7 +1199,9 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         }
         clipStack[clipDepth] = combined
         clipDepth = clipDepth + 1
-        SetScissor(commandBuffer, combined)
+        if !primitivePrepass {
+            SetScissor(commandBuffer, combined)
+        }
     }
 
     private func PopClip(commandBuffer VkCommandBuffer) {
@@ -848,6 +1209,9 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
             throw InvalidOperationException("Vulkan primitive clip stack underflow")
         }
         clipDepth = clipDepth - 1
+        if primitivePrepass {
+            return
+        }
         if clipDepth > 0 {
             SetScissor(commandBuffer, clipStack[clipDepth - 1])
         } else {
@@ -868,10 +1232,11 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         if bounds.IsEmpty {
             return PrimitiveClip{ Left: 0, Top: 0, Right: 0, Bottom: 0 }
         }
-        let x0 = transform.A * bounds.X + transform.C * bounds.Y + transform.TX
-        let y0 = transform.B * bounds.X + transform.D * bounds.Y + transform.TY
-        let x1 = transform.A * bounds.Right + transform.C * bounds.Bottom + transform.TX
-        let y1 = transform.B * bounds.Right + transform.D * bounds.Bottom + transform.TY
+        let localized = LocalizeTransform(transform)
+        let x0 = localized.A * bounds.X + localized.C * bounds.Y + localized.TX
+        let y0 = localized.B * bounds.X + localized.D * bounds.Y + localized.TY
+        let x1 = localized.A * bounds.Right + localized.C * bounds.Bottom + localized.TX
+        let y1 = localized.B * bounds.Right + localized.D * bounds.Bottom + localized.TY
         ValidateFinite(x0, "clip x0")
         ValidateFinite(y0, "clip y0")
         ValidateFinite(x1, "clip x1")

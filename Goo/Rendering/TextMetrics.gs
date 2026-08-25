@@ -6,21 +6,69 @@ public enum TextAffinity { Upstream; Downstream }
 
 internal class EntryShapeState {
   internal prop Content string { get; init; }
+  internal prop Display string { get; init; }
+  internal prop SourceStarts []int32 { get; init; }
   internal prop FontFamily string { get; init; }
   internal prop FontSize float32 { get; init; }
   internal prop FontWeight float64 { get; init; }
   internal prop Italic bool { get; init; }
   internal prop Spacing float32 { get; init; }
   internal prop Direction int32 { get; init; }
+  internal prop Password bool { get; init; }
   internal prop Shape ShapedText? { get; init; }
   internal var Placeholder string
   internal var PlaceholderShape ShapedText?
 
   internal init() {
     Content = ""
+    Display = ""
+    SourceStarts = []int32{}
     FontFamily = ""
     Placeholder = ""
   }
+}
+
+internal func protectedTextMask(value string) string {
+  return String('•', UnicodeGraphemes.Starts(value).Length)
+}
+
+internal func protectedTextDisplayOffset(value string, source int32,
+  affinity TextAffinity) int32 {
+  return mappedDisplayOffset(value, UnicodeGraphemes.Starts(value), source, affinity)
+}
+
+internal func protectedTextSourceOffset(value string, display int32) int32 {
+  return mappedSourceOffset(value, UnicodeGraphemes.Starts(value), display)
+}
+
+internal func entryDisplayOffset(state EntryShapeState, source int32,
+  affinity TextAffinity) int32 {
+  if !state.Password { return source }
+  return mappedDisplayOffset(state.Content, state.SourceStarts, source, affinity)
+}
+
+internal func entrySourceOffset(state EntryShapeState, display int32) int32 {
+  if !state.Password { return display }
+  return mappedSourceOffset(state.Content, state.SourceStarts, display)
+}
+
+private func mappedDisplayOffset(value string, starts []int32, source int32,
+  affinity TextAffinity) int32 {
+  if source <= 0 { return 0 }
+  if source >= value.Length { return starts.Length }
+  for index in 0 ... starts.Length {
+    if starts[index] == source { return index }
+    if starts[index] > source {
+      return affinity == TextAffinity.Upstream ? index - 1 : index
+    }
+  }
+  return starts.Length
+}
+
+private func mappedSourceOffset(value string, starts []int32, display int32) int32 {
+  if display <= 0 { return 0 }
+  if display >= starts.Length { return value.Length }
+  return starts[display]
 }
 
 internal class TextMetrics {
@@ -38,7 +86,8 @@ internal class TextMetrics {
         if cached.Content == n.Buffer && cached.FontFamily == n.FontFamily
           && cached.FontSize == TextLayouts.fontSize(n) && cached.FontWeight == n.FontWeight
           && cached.Italic == (n.FontStyle == FontStyle.Italic)
-          && cached.Spacing == Spacing(n) && cached.Direction == int32(n.Direction) {
+          && cached.Spacing == Spacing(n) && cached.Direction == int32(n.Direction)
+          && cached.Password == n.Password {
           if n.HasElementHandle {
             shape.PrepareGeometry()
           }
@@ -49,11 +98,14 @@ internal class TextMetrics {
       cached.PlaceholderShape?.Dispose()
       n.EntryShape = nil
     }
-    let shaped = Shape(n, n.Buffer)
+    let starts = n.Password ? UnicodeGraphemes.Starts(n.Buffer) : []int32{}
+    let display = n.Password ? String('•', starts.Length) : n.Buffer
+    let shaped = Shape(n, display)
     n.EntryShape = EntryShapeState{
-      Content: n.Buffer, FontFamily: n.FontFamily, FontSize: TextLayouts.fontSize(n),
+      Content: n.Buffer, Display: display, SourceStarts: starts,
+      FontFamily: n.FontFamily, FontSize: TextLayouts.fontSize(n),
       FontWeight: n.FontWeight, Italic: n.FontStyle == FontStyle.Italic,
-      Spacing: Spacing(n), Direction: int32(n.Direction), Shape: shaped,
+      Spacing: Spacing(n), Direction: int32(n.Direction), Password: n.Password, Shape: shaped,
     }
     if n.HasElementHandle {
       shaped.PrepareGeometry()
@@ -86,7 +138,8 @@ internal class TextMetrics {
     if cached.Content != n.Buffer || cached.FontFamily != n.FontFamily
       || cached.FontSize != TextLayouts.fontSize(n) || cached.FontWeight != n.FontWeight
       || cached.Italic != (n.FontStyle == FontStyle.Italic)
-      || cached.Spacing != Spacing(n) || cached.Direction != int32(n.Direction) {
+      || cached.Spacing != Spacing(n) || cached.Direction != int32(n.Direction)
+      || cached.Password != n.Password {
       return nil
     }
     return shape
@@ -110,34 +163,44 @@ internal class TextMetrics {
 
   internal func CaretX(n Node, index int32) float32 {
     let shaped = BufferShape(n)
-    return shaped.CaretX(index, int32(n.CaretAffinity))
+    return shaped.CaretX(entryDisplayOffset(n.EntryShape!!, index, n.CaretAffinity),
+      int32(n.CaretAffinity))
   }
 
   internal func HitAt(n Node, localX float32) TextHit {
     let shaped = BufferShape(n)
     let contentX = localX - EntryOffset(n, shaped) + n.EditScrollX
-    return shaped.HitTest(contentX)
+    let hit = shaped.HitTest(contentX)
+    return TextHit{ Index: entrySourceOffset(n.EntryShape!!, hit.Index), Affinity: hit.Affinity }
   }
 
   internal func MoveCaret(n Node, delta int32) TextHit {
     let shaped = BufferShape(n)
-    return shaped.MoveCaret(n.Caret, int32(n.CaretAffinity), delta)
+    let hit = shaped.MoveCaret(entryDisplayOffset(n.EntryShape!!, n.Caret, n.CaretAffinity),
+      int32(n.CaretAffinity), delta)
+    return TextHit{ Index: entrySourceOffset(n.EntryShape!!, hit.Index), Affinity: hit.Affinity }
   }
 
   internal func LineEdge(n Node, end bool) TextHit {
     let shaped = BufferShape(n)
-    return shaped.LineEdge(end)
+    let hit = shaped.LineEdge(end)
+    return TextHit{ Index: entrySourceOffset(n.EntryShape!!, hit.Index), Affinity: hit.Affinity }
   }
 
   internal func Collapse(n Node, delta int32) TextHit {
     let shaped = BufferShape(n)
-    return shaped.Collapse(n.Caret, int32(n.CaretAffinity),
-      n.Anchor, int32(n.AnchorAffinity), delta)
+    let state = n.EntryShape!!
+    let hit = shaped.Collapse(entryDisplayOffset(state, n.Caret, n.CaretAffinity),
+      int32(n.CaretAffinity), entryDisplayOffset(state, n.Anchor, n.AnchorAffinity),
+      int32(n.AnchorAffinity), delta)
+    return TextHit{ Index: entrySourceOffset(state, hit.Index), Affinity: hit.Affinity }
   }
 
   internal func SelectionRects(n Node) []float32 {
     let shaped = BufferShape(n)
-    return shaped.SelectionRects(n.Caret, n.Anchor)
+    let state = n.EntryShape!!
+    return shaped.SelectionRects(entryDisplayOffset(state, n.Caret, n.CaretAffinity),
+      entryDisplayOffset(state, n.Anchor, n.AnchorAffinity))
   }
 }
 
@@ -153,7 +216,7 @@ internal func FollowCaret(n Node) {
     n.EditScrollX = 0.0F
     return
   }
-  let caretX = shaped.CaretX(n.Caret, int32(n.CaretAffinity))
+  let caretX = m.CaretX(n, n.Caret)
   var sx = n.EditScrollX
   if caretX - sx > viewW - 2.0F { sx = caretX - viewW + 2.0F }
   if caretX - sx < 2.0F { sx = caretX - 2.0F }

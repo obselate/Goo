@@ -7,23 +7,17 @@ internal unsafe partial class VulkanSwapchainGeneration : IDisposable {
     private let dispatch VkDeviceDispatch
     private let surface VkSurfaceKHR
     private let surfaceFormat VkSurfaceFormatKHR
+    private let presentMode VkPresentModeKHR
     private let preTransform VkSurfaceTransformFlagBitsKHR
     private let extent VkExtent2D
     private let generation uint64
-    private let presentFenceEnabled bool
+    private let swapchainMaintenanceEnabled bool
     private let objectAccounting VulkanObjectAccounting?
-    private var imageCount uint32
+    private let requestedImageCount uint32
     private var swapchain VkSwapchainKHR
-    private var images []?VkImage = nil
-    private var imageViews []?VkImageView = nil
-    private var renderSemaphores []?VkSemaphore = nil
-    private var presentFences []?VkFence = nil
-    private var presentFencePrepared []?bool = nil
-    private var presentFencePending []?bool = nil
-    private var presentIds []?uint64 = nil
-    private var imageLayouts []?VkImageLayout = nil
+    private var imageSet VulkanSwapchainImageSet? = nil
     private var disposed bool
-    private var trackedImageCount int32
+    private let imageUsage uint32
 
     internal prop Handle VkSwapchainKHR {
         get {
@@ -53,6 +47,13 @@ internal unsafe partial class VulkanSwapchainGeneration : IDisposable {
         }
     }
 
+    internal prop PresentMode VkPresentModeKHR {
+        get {
+            EnsureUsable()
+            return presentMode
+        }
+    }
+
     internal prop Format VkFormat {
         get {
             EnsureUsable()
@@ -60,18 +61,33 @@ internal unsafe partial class VulkanSwapchainGeneration : IDisposable {
         }
     }
 
+    internal prop SupportsTransferSource bool {
+        get -> (imageUsage & uint32(VkConstants.VK_IMAGE_USAGE_TRANSFER_SRC_BIT)) != 0u
+    }
+
     internal prop ImageCount uint32 {
-        get {
-            EnsureUsable()
-            return imageCount
-        }
+        get -> RequireImageSet().Count
     }
 
     internal prop PresentFenceEnabled bool {
-        get {
-            EnsureUsable()
-            return presentFenceEnabled
-        }
+        get -> RequireImageSet().PresentFenceEnabled
+    }
+
+    internal func AppliedSceneVersion(index uint32) uint64
+        -> RequireImageSet().AppliedSceneVersion(index)
+
+    internal func PendingSceneVersion(index uint32) uint64
+        -> RequireImageSet().PendingSceneVersion(index)
+
+    internal func PromoteAcquiredSceneVersion(index uint32) bool
+        -> RequireImageSet().PromoteAcquiredSceneVersion(index)
+
+    internal func SetPendingSceneVersion(index uint32, version uint64) {
+        RequireImageSet().SetPendingSceneVersion(index, version)
+    }
+
+    internal func ResetSceneVersions() {
+        RequireImageSet().ResetSceneVersions()
     }
 
     internal init(
@@ -126,249 +142,62 @@ internal unsafe partial class VulkanSwapchainGeneration : IDisposable {
         this.dispatch = nativeDispatch
         this.surface = nativeSurface
         this.surfaceFormat = chosenSurfaceFormat
+        this.presentMode = chosenPresentMode
         this.preTransform = capabilities.currentTransform
         this.extent = resolvedExtent
         this.generation = generationId
-        this.presentFenceEnabled = enablePresentFence
+        this.swapchainMaintenanceEnabled = enablePresentFence
         objectAccounting = nativeObjectAccounting
-        this.imageCount = requestedImageCount
+        imageUsage = uint32(VkConstants.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+            | (capabilities.supportedUsageFlags
+                & uint32(VkConstants.VK_IMAGE_USAGE_TRANSFER_SRC_BIT))
+        this.requestedImageCount = requestedImageCount
         Create(chosenPresentMode, chosenCompositeAlpha, oldSwapchain)
     }
 
-    internal func Image(index uint32) VkImage {
-        EnsureIndex(index)
-        let storage = images
-        if storage == nil {
-            throw InvalidOperationException("Vulkan swapchain images are unavailable")
-        }
-        return storage!![int32(index)]
+    internal func Image(index uint32) VkImage -> RequireImageSet().Image(index)
+
+    internal func ImageView(index uint32) VkImageView -> RequireImageSet().ImageView(index)
+
+    internal func RenderSemaphore(index uint32) VkSemaphore
+        -> RequireImageSet().RenderSemaphore(index)
+
+    internal func TryPreparePresent(index uint32, out fence VkFence,
+        out completedPresentId uint64) VkResult
+        -> RequireImageSet().TryPreparePresent(index, out fence, out completedPresentId)
+
+    internal func ReconcilePreparedPresent(index uint32, presentAttempted bool) {
+        RequireImageSet().ReconcilePreparedPresent(index, presentAttempted)
     }
 
-    internal func ImageView(index uint32) VkImageView {
-        EnsureIndex(index)
-        let storage = imageViews
-        if storage == nil {
-            throw InvalidOperationException("Vulkan swapchain image views are unavailable")
-        }
-        return storage!![int32(index)]
-    }
+    internal func MarkPresented(index uint32, result VkResult, presentId uint64) VkResult
+        -> RequireImageSet().MarkPresented(index, result, presentId)
 
-    internal func RenderSemaphore(index uint32) VkSemaphore {
-        EnsureIndex(index)
-        let storage = renderSemaphores
-        if storage == nil {
-            throw InvalidOperationException("Vulkan swapchain render semaphores are unavailable")
-        }
-        return storage!![int32(index)]
-    }
+    internal func WaitForPresentCompletion(retirement VulkanPresentationRetirement) VkResult
+        -> RequireImageSet().WaitForPresentCompletion(retirement)
 
-    internal func PreparePresent(index uint32, out completedPresentId uint64) VkFence {
-        EnsureIndex(index)
-        completedPresentId = 0uL
-        if !presentFenceEnabled {
-            return 0uL
-        }
-        let fences = presentFences
-        let prepared = presentFencePrepared
-        let pending = presentFencePending
-        let presentIdsStorage = presentIds
-        if fences == nil || prepared == nil || pending == nil || presentIdsStorage == nil {
-            throw InvalidOperationException("Vulkan swapchain present fences are unavailable")
-        }
-        if prepared!![int32(index)] || pending!![int32(index)] {
-            if prepared!![int32(index)] {
-                throw InvalidOperationException("Vulkan swapchain present fence is still prepared")
-            }
-            var pendingFence = fences!![int32(index)]
-            let waitForFences = dispatch.vkWaitForFences
-            let waitResult = waitForFences(device, 1u, &pendingFence, VkConstants.VK_TRUE, VkConstants.VK_WHOLE_SIZE)
-            if waitResult != VkConstants.VK_SUCCESS {
-                throw InvalidOperationException("vkWaitForFences failed for Vulkan swapchain present fence")
-            }
-            completedPresentId = presentIdsStorage!![int32(index)]
-            pending!![int32(index)] = false
-            presentIdsStorage!![int32(index)] = 0uL
-        }
-        var fence = fences!![int32(index)]
-        let resetFences = dispatch.vkResetFences
-        let resetResult = resetFences(device, 1u, &fence)
-        if resetResult != VkConstants.VK_SUCCESS {
-            throw InvalidOperationException("vkResetFences failed for Vulkan swapchain present fence")
-        }
-        prepared!![int32(index)] = true
-        return fence
-    }
+    internal func PollForPresentCompletion(retirement VulkanPresentationRetirement) VkResult
+        -> RequireImageSet().PollForPresentCompletion(retirement)
 
-    internal func MarkPresented(index uint32, result VkResult, presentId uint64) VkResult {
-        EnsureIndex(index)
-        if !presentFenceEnabled {
-            if (result == VkConstants.VK_SUCCESS || result == VkConstants.VK_SUBOPTIMAL_KHR)
-                && presentId == 0uL {
-                throw InvalidOperationException("Vulkan successful presentation must have a nonzero present id")
-            }
-            if result != VkConstants.VK_SUCCESS && result != VkConstants.VK_SUBOPTIMAL_KHR
-                && presentId != 0uL {
-                throw InvalidOperationException("Vulkan failed presentation must have a zero present id")
-            }
-            return result
-        }
-        let prepared = presentFencePrepared
-        let pending = presentFencePending
-        let presentIdsStorage = presentIds
-        if prepared == nil || pending == nil || presentIdsStorage == nil {
-            throw InvalidOperationException("Vulkan swapchain present fences are unavailable")
-        }
-        if !prepared!![int32(index)] {
-            throw InvalidOperationException("Vulkan swapchain present fence was not prepared")
-        }
-        if result == VkConstants.VK_SUCCESS || result == VkConstants.VK_SUBOPTIMAL_KHR {
-            if presentId == 0uL {
-                throw InvalidOperationException("Vulkan successful presentation must have a nonzero present id")
-            }
-            pending!![int32(index)] = true
-            presentIdsStorage!![int32(index)] = presentId
-        } else if result == VkConstants.VK_ERROR_OUT_OF_DATE_KHR
-            || result == VkConstants.VK_ERROR_SURFACE_LOST_KHR {
-            if presentId != 0uL {
-                throw InvalidOperationException("Vulkan failed presentation must have a zero present id")
-            }
-            pending!![int32(index)] = true
-            presentIdsStorage!![int32(index)] = 0uL
-        } else {
-            if presentId != 0uL {
-                throw InvalidOperationException("Vulkan failed presentation must have a zero present id")
-            }
-            pending!![int32(index)] = false
-            presentIdsStorage!![int32(index)] = 0uL
-        }
-        prepared!![int32(index)] = false
-        return result
-    }
-
-    internal func WaitForPresentCompletion(retirement VulkanPresentationRetirement) VkResult {
-        EnsureUsable()
-        if !presentFenceEnabled {
-            return VkConstants.VK_SUCCESS
-        }
-        let fences = presentFences
-        let pending = presentFencePending
-        let prepared = presentFencePrepared
-        let presentIdsStorage = presentIds
-        if fences == nil || pending == nil || prepared == nil || presentIdsStorage == nil {
-            throw InvalidOperationException("Vulkan swapchain present fences are unavailable")
-        }
-        var index uint32 = 0u
-        while index < imageCount {
-            if prepared!![int32(index)] {
-                throw InvalidOperationException("Vulkan swapchain present fence is prepared but not submitted")
-            }
-            if pending!![int32(index)] {
-                let waitForFences = dispatch.vkWaitForFences
-                var fence = fences!![int32(index)]
-                let result = waitForFences(device, 1u, &fence, VkConstants.VK_TRUE, VkConstants.VK_WHOLE_SIZE)
-                if result != VkConstants.VK_SUCCESS {
-                    return result
-                }
-                let completedPresentId = presentIdsStorage!![int32(index)]
-                if completedPresentId != 0uL {
-                    retirement.CompletePresent(completedPresentId)
-                }
-                pending!![int32(index)] = false
-                presentIdsStorage!![int32(index)] = 0uL
-            }
-            index++
-        }
-        return VkConstants.VK_SUCCESS
-    }
-
-    internal func CurrentLayout(index uint32) VkImageLayout {
-        EnsureIndex(index)
-        let storage = imageLayouts
-        if storage == nil {
-            throw InvalidOperationException("Vulkan swapchain image layouts are unavailable")
-        }
-        return storage!![int32(index)]
-    }
+    internal func CurrentLayout(index uint32) VkImageLayout
+        -> RequireImageSet().CurrentLayout(index)
 
     internal func CommitLayout(index uint32, layout VkImageLayout) {
-        EnsureIndex(index)
-        let storage = imageLayouts
-        if storage == nil {
-            throw InvalidOperationException("Vulkan swapchain image layouts are unavailable")
-        }
-        storage!![int32(index)] = layout
+        RequireImageSet().CommitLayout(index, layout)
     }
 
     public func Dispose() {
         if disposed {
             return
         }
-        let prepared = presentFencePrepared
-        let pending = presentFencePending
-        if prepared != nil && pending != nil {
-            var index int32 = 0
-            while index < prepared!!.Length {
-                if prepared!![index] || pending!![index] {
-                    throw InvalidOperationException("Vulkan swapchain present fence is still in use")
-                }
-                index++
-            }
+        if let storage = imageSet {
+            storage.Dispose()
         }
         disposed = true
-
-        if let storage = renderSemaphores {
-            let destroySemaphore = dispatch.vkDestroySemaphore
-            var index int32 = 0
-            while index < storage.Length {
-                if storage[index] != 0uL {
-                    destroySemaphore(device, storage[index], nil)
-                    if let accounting = objectAccounting {
-                        accounting.Release()
-                    }
-                    storage[index] = 0uL
-                }
-                index++
-            }
-        }
-        if let storage = presentFences {
-            let destroyFence = dispatch.vkDestroyFence
-            var index int32 = 0
-            while index < storage.Length {
-                if storage[index] != 0uL {
-                    destroyFence(device, storage[index], nil)
-                    if let accounting = objectAccounting {
-                        accounting.Release()
-                    }
-                    storage[index] = 0uL
-                }
-                index++
-            }
-        }
-        if let storage = imageViews {
-            let destroyImageView = dispatch.vkDestroyImageView
-            var index int32 = 0
-            while index < storage.Length {
-                if storage[index] != 0uL {
-                    destroyImageView(device, storage[index], nil)
-                    if let accounting = objectAccounting {
-                        accounting.Release()
-                    }
-                    storage[index] = 0uL
-                }
-                index++
-            }
-        }
+        imageSet = nil
         if swapchain != 0uL {
             let destroySwapchain = dispatch.vkDestroySwapchainKHR
             destroySwapchain(device, swapchain, nil)
-            var index int32 = 0
-            while index < trackedImageCount {
-                if let accounting = objectAccounting {
-                    accounting.Release()
-                }
-                index = index + 1
-            }
-            trackedImageCount = 0
             if let accounting = objectAccounting {
                 accounting.Release()
             }
@@ -382,11 +211,12 @@ internal unsafe partial class VulkanSwapchainGeneration : IDisposable {
         }
     }
 
-    private func EnsureIndex(index uint32) {
+    private func RequireImageSet() VulkanSwapchainImageSet {
         EnsureUsable()
-        if index >= imageCount {
-            throw ArgumentOutOfRangeException("index")
+        guard let storage = imageSet else {
+            throw InvalidOperationException("Vulkan swapchain images are unavailable")
         }
+        return storage
     }
 
     private func ResolveExtent(capabilities VkSurfaceCapabilitiesKHR, desired VkExtent2D) VkExtent2D {
@@ -415,12 +245,12 @@ internal unsafe partial class VulkanSwapchainGeneration : IDisposable {
             var createInfo = VkSwapchainCreateInfoKHR{}
             createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR
             createInfo.surface = surface
-            createInfo.minImageCount = imageCount
+            createInfo.minImageCount = requestedImageCount
             createInfo.imageFormat = surfaceFormat.format
             createInfo.imageColorSpace = surfaceFormat.colorSpace
             createInfo.imageExtent = extent
             createInfo.imageArrayLayers = 1u
-            createInfo.imageUsage = uint32(VkConstants.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+            createInfo.imageUsage = imageUsage
             createInfo.imageSharingMode = VkConstants.VK_SHARING_MODE_EXCLUSIVE
             createInfo.preTransform = preTransform
             createInfo.compositeAlpha = chosenCompositeAlpha
@@ -452,144 +282,15 @@ internal unsafe partial class VulkanSwapchainGeneration : IDisposable {
             if queriedImageCount > 2147483647u {
                 throw InvalidOperationException("Vulkan swapchain image count changed during enumeration")
             }
-            imageCount = queriedImageCount
-
             let capacity = int32(queriedImageCount)
-            let imageStorage []VkImage = [capacity]VkImage
-            let viewStorage []VkImageView = [capacity]VkImageView
-            let semaphoreStorage []VkSemaphore = [capacity]VkSemaphore
-            let presentFenceStorage []?VkFence = if presentFenceEnabled {
-                [capacity]VkFence
-            } else {
-                nil
-            }
-            let presentFencePreparedStorage []?bool = if presentFenceEnabled {
-                [capacity]bool
-            } else {
-                nil
-            }
-            let presentFencePendingStorage []?bool = if presentFenceEnabled {
-                [capacity]bool
-            } else {
-                nil
-            }
-            let presentIdStorage []?uint64 = if presentFenceEnabled {
-                [capacity]uint64
-            } else {
-                nil
-            }
-            let layoutStorage []VkImageLayout = [capacity]VkImageLayout
-            images = imageStorage
-            imageViews = viewStorage
-            renderSemaphores = semaphoreStorage
-            presentFences = presentFenceStorage
-            presentFencePrepared = presentFencePreparedStorage
-            presentFencePending = presentFencePendingStorage
-            presentIds = presentIdStorage
-            imageLayouts = layoutStorage
-
-            var enumeratedImageCount = queriedImageCount
-            fixed imagePointer *VkImage = imageStorage {
-                let enumerateResult = getSwapchainImages(device, swapchain, &enumeratedImageCount, imagePointer)
-                if enumerateResult != VkConstants.VK_SUCCESS || enumeratedImageCount != queriedImageCount {
-                    throw InvalidOperationException("Swapchain image enumeration failed")
-                }
-            }
-            try {
-                while trackedImageCount < int32(imageCount) {
-                    if let accounting = objectAccounting {
-                        accounting.Allocate()
-                    }
-                    trackedImageCount = trackedImageCount + 1
-                }
-            } catch (error Exception) {
-                throw error
-            }
-
-            var imageIndex uint32 = 0u
-            while imageIndex < imageCount {
-                var imageViewCreateInfo = VkImageViewCreateInfo{}
-                imageViewCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
-                imageViewCreateInfo.image = imageStorage[int32(imageIndex)]
-                imageViewCreateInfo.viewType = VkConstants.VK_IMAGE_VIEW_TYPE_2D
-                imageViewCreateInfo.format = surfaceFormat.format
-                imageViewCreateInfo.components.r = VkConstants.VK_COMPONENT_SWIZZLE_IDENTITY
-                imageViewCreateInfo.components.g = VkConstants.VK_COMPONENT_SWIZZLE_IDENTITY
-                imageViewCreateInfo.components.b = VkConstants.VK_COMPONENT_SWIZZLE_IDENTITY
-                imageViewCreateInfo.components.a = VkConstants.VK_COMPONENT_SWIZZLE_IDENTITY
-                imageViewCreateInfo.subresourceRange.aspectMask = uint32(VkConstants.VK_IMAGE_ASPECT_COLOR_BIT)
-                imageViewCreateInfo.subresourceRange.baseMipLevel = 0u
-                imageViewCreateInfo.subresourceRange.levelCount = 1u
-                imageViewCreateInfo.subresourceRange.baseArrayLayer = 0u
-                imageViewCreateInfo.subresourceRange.layerCount = 1u
-                var imageView VkImageView = 0uL
-                let createImageView = dispatch.vkCreateImageView
-                let viewResult = createImageView(device, &imageViewCreateInfo, nil, &imageView)
-                if viewResult != VkConstants.VK_SUCCESS || imageView == 0uL {
-                    throw InvalidOperationException("vkCreateImageView failed")
-                }
-                try {
-                    if let accounting = objectAccounting {
-                        accounting.Allocate()
-                    }
-                } catch (error Exception) {
-                    let destroyImageView = dispatch.vkDestroyImageView
-                    destroyImageView(device, imageView, nil)
-                    throw error
-                }
-                viewStorage[int32(imageIndex)] = imageView
-                imageLayouts!![int32(imageIndex)] = VkConstants.VK_IMAGE_LAYOUT_UNDEFINED
-                imageIndex++
-            }
-
-            var semaphoreCreateInfo = VkSemaphoreCreateInfo{}
-            semaphoreCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
-            let createSemaphore = dispatch.vkCreateSemaphore
-            imageIndex = 0u
-            while imageIndex < imageCount {
-                var semaphore VkSemaphore = 0uL
-                let semaphoreResult = createSemaphore(device, &semaphoreCreateInfo, nil, &semaphore)
-                if semaphoreResult != VkConstants.VK_SUCCESS || semaphore == 0uL {
-                    throw InvalidOperationException("vkCreateSemaphore failed for swapchain render semaphore")
-                }
-                try {
-                    if let accounting = objectAccounting {
-                        accounting.Allocate()
-                    }
-                } catch (error Exception) {
-                    let destroySemaphore = dispatch.vkDestroySemaphore
-                    destroySemaphore(device, semaphore, nil)
-                    throw error
-                }
-                semaphoreStorage[int32(imageIndex)] = semaphore
-                imageIndex++
-            }
-
-            if presentFenceEnabled {
-                var fenceCreateInfo = VkFenceCreateInfo{}
-                fenceCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
-                let createFence = dispatch.vkCreateFence
-                let fenceStorage = presentFenceStorage!!
-                imageIndex = 0u
-                while imageIndex < imageCount {
-                    var fence VkFence = 0uL
-                    let fenceResult = createFence(device, &fenceCreateInfo, nil, &fence)
-                    if fenceResult != VkConstants.VK_SUCCESS || fence == 0uL {
-                        throw InvalidOperationException("vkCreateFence failed for swapchain present fence")
-                    }
-                    try {
-                        if let accounting = objectAccounting {
-                            accounting.Allocate()
-                        }
-                    } catch (error Exception) {
-                        let destroyFence = dispatch.vkDestroyFence
-                        destroyFence(device, fence, nil)
-                        throw error
-                    }
-                    fenceStorage[int32(imageIndex)] = fence
-                    imageIndex++
-                }
-            }
+            imageSet = VulkanSwapchainImageSet(
+                device,
+                dispatch,
+                swapchain,
+                capacity,
+                surfaceFormat.format,
+                swapchainMaintenanceEnabled,
+                objectAccounting)
         } catch (error Exception) {
             Dispose()
             throw error

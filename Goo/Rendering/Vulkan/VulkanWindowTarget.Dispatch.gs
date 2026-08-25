@@ -87,6 +87,9 @@ internal unsafe partial class VulkanWindowTarget {
         let allocateCommandBuffers = ResolveDeviceProc("vkAllocateCommandBuffers") as (unmanaged[Cdecl] (VkDevice, *VkCommandBufferAllocateInfo, *VkCommandBuffer) -> VkResult)?
         if allocateCommandBuffers == nil { throw InvalidOperationException("vkAllocateCommandBuffers is unavailable") }
         dispatch.vkAllocateCommandBuffers = allocateCommandBuffers!!
+        let freeCommandBuffers = ResolveDeviceProc("vkFreeCommandBuffers") as (unmanaged[Cdecl] (VkDevice, VkCommandPool, uint32, *VkCommandBuffer) -> void)?
+        if freeCommandBuffers == nil { throw InvalidOperationException("vkFreeCommandBuffers is unavailable") }
+        dispatch.vkFreeCommandBuffers = freeCommandBuffers!!
         let resetCommandBuffer = ResolveDeviceProc("vkResetCommandBuffer") as (unmanaged[Cdecl] (VkCommandBuffer, VkCommandBufferResetFlags) -> VkResult)?
         if resetCommandBuffer == nil { throw InvalidOperationException("vkResetCommandBuffer is unavailable") }
         dispatch.vkResetCommandBuffer = resetCommandBuffer!!
@@ -126,6 +129,9 @@ internal unsafe partial class VulkanWindowTarget {
         let clearColorImage = ResolveDeviceProc("vkCmdClearColorImage") as (unmanaged[Cdecl] (VkCommandBuffer, VkImage, VkImageLayout, *VkClearColorValue, uint32, *VkImageSubresourceRange) -> void)?
         if clearColorImage == nil { throw InvalidOperationException("vkCmdClearColorImage is unavailable") }
         dispatch.vkCmdClearColorImage = clearColorImage!!
+        let copyImage = ResolveDeviceProc("vkCmdCopyImage") as (unmanaged[Cdecl] (VkCommandBuffer, VkImage, VkImageLayout, VkImage, VkImageLayout, uint32, *VkImageCopy) -> void)?
+        if copyImage == nil { throw InvalidOperationException("vkCmdCopyImage is unavailable") }
+        dispatch.vkCmdCopyImage = copyImage!!
         let queueSubmit = ResolveDeviceProc("vkQueueSubmit2") as (unmanaged[Cdecl] (VkQueue, uint32, *VkSubmitInfo2, VkFence) -> VkResult)?
         if queueSubmit == nil { throw InvalidOperationException("vkQueueSubmit2 is unavailable") }
         dispatch.vkQueueSubmit2 = queueSubmit!!
@@ -236,9 +242,6 @@ internal unsafe partial class VulkanWindowTarget {
         let flushMappedMemoryRanges = ResolveDeviceProc("vkFlushMappedMemoryRanges") as (unmanaged[Cdecl] (VkDevice, uint32, *VkMappedMemoryRange) -> VkResult)?
         if flushMappedMemoryRanges == nil { throw InvalidOperationException("vkFlushMappedMemoryRanges is unavailable") }
         dispatch.vkFlushMappedMemoryRanges = flushMappedMemoryRanges!!
-        let copyImageToBuffer = ResolveDeviceProc("vkCmdCopyImageToBuffer") as (unmanaged[Cdecl] (VkCommandBuffer, VkImage, VkImageLayout, VkBuffer, uint32, *VkBufferImageCopy) -> void)?
-        if copyImageToBuffer == nil { throw InvalidOperationException("vkCmdCopyImageToBuffer is unavailable") }
-        dispatch.vkCmdCopyImageToBuffer = copyImageToBuffer!!
         let copyBuffer = ResolveDeviceProc("vkCmdCopyBuffer") as (unmanaged[Cdecl] (VkCommandBuffer, VkBuffer, VkBuffer, uint32, *VkBufferCopy) -> void)?
         if copyBuffer == nil { throw InvalidOperationException("vkCmdCopyBuffer is unavailable") }
         dispatch.vkCmdCopyBuffer = copyBuffer!!

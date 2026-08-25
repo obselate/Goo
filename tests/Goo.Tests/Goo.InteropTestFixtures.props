@@ -1,6 +1,0 @@
-<Project>
-  <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)Infrastructure/InteropFixtureAssemblyInfo.cs"
-             Link="InteropFixtureAssemblyInfo.cs" />
-  </ItemGroup>
-</Project>

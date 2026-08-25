@@ -180,6 +180,17 @@ internal func sameGradient(a Gradient?, b Gradient?) bool {
         && radial.CenterY == other.CenterY && radial.Radius == other.Radius
       case _: false
     }
+    case compiled is CompiledVectorLinearGradient: switch right {
+      case other is CompiledVectorLinearGradient: compiled.X0 == other.X0
+        && compiled.Y0 == other.Y0 && compiled.X1 == other.X1 && compiled.Y1 == other.Y1
+      case _: false
+    }
+    case compiled is CompiledVectorRadialGradient: switch right {
+      case other is CompiledVectorRadialGradient: compiled.CenterX == other.CenterX
+        && compiled.CenterY == other.CenterY && compiled.RadiusX == other.RadiusX
+        && compiled.RadiusY == other.RadiusY
+      case _: false
+    }
     case _: false
   }
   if !geometryMatches || left.Stops.Count != right.Stops.Count {
@@ -210,10 +221,23 @@ internal func computeGradientContentHash(kind int32, a float64, b float64, c flo
   return result
 }
 
+internal func computeGradientContentHash4(kind int32, a float64, b float64, c float64,
+  d float64, stops IReadOnlyList[GradientStop]) int32 {
+  var result = HashCode.Combine(kind, a, b, c, d)
+  result = HashCode.Combine(result, stops.Count)
+  for i in 0 ... stops.Count {
+    let stop = stops[i]
+    result = HashCode.Combine(result, stop.Offset, stop.Color.GetHashCode())
+  }
+  return result
+}
+
 internal func gradientContentHash(value Gradient) int32 {
   return switch value {
     case linear is LinearGradient: linear.ContentHashForCache
     case radial is RadialGradient: radial.ContentHashForCache
+    case compiled is CompiledVectorLinearGradient: compiled.ContentHashForCache
+    case compiled is CompiledVectorRadialGradient: compiled.ContentHashForCache
     case _: 0
   }
 }

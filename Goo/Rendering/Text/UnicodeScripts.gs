@@ -14,21 +14,148 @@ private data struct UnicodeScriptCluster(Start int32, End int32, ScalarStart int
 
 private data struct UnicodeScriptPair(Index int32, Value int32) { }
 
+internal sealed class UnicodeTextAnalysisScratchScope {
+  internal let GraphemeScalars List[UnicodeGraphemeScalar]
+  internal let ScriptStarts List[int32]
+  internal let FallbackStarts List[int32]
+  internal let GlyphStarts List[int32]
+  internal let ScriptScalars List[UnicodeScriptScalar]
+  internal let ScriptClusters List[UnicodeScriptCluster]
+  internal let ScriptNext List[uint32]
+  internal let ScriptPairs List[UnicodeScriptPair]
+  internal let ScriptRuns List[UnicodeScriptRun]
+  internal let FallbackCandidates List[TypefaceLease]
+
+  internal init() {
+    GraphemeScalars = List[UnicodeGraphemeScalar]()
+    ScriptStarts = List[int32]()
+    FallbackStarts = List[int32]()
+    GlyphStarts = List[int32]()
+    ScriptScalars = List[UnicodeScriptScalar]()
+    ScriptClusters = List[UnicodeScriptCluster]()
+    ScriptNext = List[uint32]()
+    ScriptPairs = List[UnicodeScriptPair]()
+    ScriptRuns = List[UnicodeScriptRun]()
+    FallbackCandidates = List[TypefaceLease]()
+  }
+
+  internal func BeginGraphemeScalars(required int32) List[UnicodeGraphemeScalar] {
+    return begin(GraphemeScalars, required)
+  }
+
+  internal func BeginScriptStarts(required int32) List[int32] {
+    return begin(ScriptStarts, required)
+  }
+
+  internal func BeginFallbackStarts(required int32) List[int32] {
+    return begin(FallbackStarts, required)
+  }
+
+  internal func BeginGlyphStarts(required int32) List[int32] {
+    return begin(GlyphStarts, required)
+  }
+
+  internal func BeginScriptScalars(required int32) List[UnicodeScriptScalar] {
+    return begin(ScriptScalars, required)
+  }
+
+  internal func BeginScriptClusters(required int32) List[UnicodeScriptCluster] {
+    return begin(ScriptClusters, required)
+  }
+
+  internal func BeginScriptNext(required int32) List[uint32] {
+    return begin(ScriptNext, required)
+  }
+
+  internal func BeginScriptPairs(required int32) List[UnicodeScriptPair] {
+    return begin(ScriptPairs, required)
+  }
+
+  internal func BeginScriptRuns(required int32) List[UnicodeScriptRun] {
+    return begin(ScriptRuns, required)
+  }
+
+  internal func BeginFallbackCandidates() List[TypefaceLease] {
+    FallbackCandidates.Clear()
+    return FallbackCandidates
+  }
+
+  internal func Clear() {
+    GraphemeScalars.Clear()
+    ScriptStarts.Clear()
+    FallbackStarts.Clear()
+    GlyphStarts.Clear()
+    ScriptScalars.Clear()
+    ScriptClusters.Clear()
+    ScriptNext.Clear()
+    ScriptPairs.Clear()
+    ScriptRuns.Clear()
+    FallbackCandidates.Clear()
+  }
+
+  private func begin[T](values List[T], required int32) List[T] {
+    values.Clear()
+    if required > values.Capacity {
+      values.Capacity = required
+    }
+    return values
+  }
+}
+
+internal sealed class UnicodeTextAnalysisScratch {
+  private const RetainedCapacity int32 = 4096
+  private const RetainedScopeCount int32 = 2
+  private let scopes []UnicodeTextAnalysisScratchScope?
+  private var active int32
+
+  internal init() {
+    scopes = [RetainedScopeCount]UnicodeTextAnalysisScratchScope?
+  }
+
+  internal func Rent(required int32) UnicodeTextAnalysisScratchScope {
+    if required < 0 { throw ArgumentOutOfRangeException("required") }
+    let index = active
+    active = active + 1
+    if required <= RetainedCapacity && index < RetainedScopeCount {
+      var value = scopes[index]
+      if value == nil {
+        value = UnicodeTextAnalysisScratchScope()
+        scopes[index] = value
+      }
+      return value!!
+    }
+    return UnicodeTextAnalysisScratchScope()
+  }
+
+  internal func Return(value UnicodeTextAnalysisScratchScope) {
+    if active <= 0 { throw InvalidOperationException("Unicode text scratch is not active") }
+    value.Clear()
+    active = active - 1
+  }
+}
+
 internal class UnicodeScripts {
   shared {
-    internal func Resolve(text string) []UnicodeScriptRun {
+    internal func Resolve(text string, scratch UnicodeTextAnalysisScratchScope)
+      List[UnicodeScriptRun] {
       if text == nil { throw ArgumentNullException("text") }
-      if text.Length == 0 { return []UnicodeScriptRun{} }
-      let starts = UnicodeGraphemes.Starts(text)
-      let scalars = DecodeScalars(text)
-      let clusters = BuildClusters(text.Length, starts, scalars)
-      ResolvePairedPunctuation(clusters, scalars)
-      ResolveContext(clusters, scalars)
-      return BuildRuns(clusters)
+      let runs = scratch.BeginScriptRuns(text.Length)
+      if text.Length == 0 { return runs }
+      let graphemeScalars = scratch.BeginGraphemeScalars(text.Length)
+      let starts = scratch.BeginScriptStarts(text.Length)
+      UnicodeGraphemes.Starts(text, graphemeScalars, starts)
+      let scalars = scratch.BeginScriptScalars(text.Length)
+      DecodeScalars(text, scalars)
+      let clusters = scratch.BeginScriptClusters(starts.Count)
+      BuildClusters(text.Length, starts, scalars, clusters)
+      let pairs = scratch.BeginScriptPairs(clusters.Count)
+      ResolvePairedPunctuation(clusters, scalars, pairs)
+      let next = scratch.BeginScriptNext(clusters.Count)
+      ResolveContext(clusters, scalars, next)
+      return BuildRuns(clusters, runs)
     }
 
-    private func DecodeScalars(text string) List[UnicodeScriptScalar] {
-      let scalars = List[UnicodeScriptScalar]()
+    private func DecodeScalars(text string, scalars List[UnicodeScriptScalar]) {
       var cursor int32 = 0
       while cursor < text.Length {
         let status = Rune.DecodeFromUtf16(text.AsSpan(cursor, text.Length - cursor), out var rune,
@@ -40,17 +167,16 @@ internal class UnicodeScripts {
           UnicodeScriptsData.Classify(rune.Value)))
         cursor = cursor + consumed
       }
-      return scalars
     }
 
-    private func BuildClusters(textLength int32, starts []int32,
-      scalars List[UnicodeScriptScalar]) List[UnicodeScriptCluster] {
-      let clusters = List[UnicodeScriptCluster](starts.Length)
+    private func BuildClusters(textLength int32, starts List[int32],
+      scalars List[UnicodeScriptScalar], clusters List[UnicodeScriptCluster]) {
       var scalarIndex int32 = 0
       var clusterIndex int32 = 0
-      while clusterIndex < starts.Length {
+      while clusterIndex < starts.Count {
         let start = starts[clusterIndex]
-        let end = if clusterIndex + 1 < starts.Length { starts[clusterIndex + 1] } else { textLength }
+        let end = if clusterIndex + 1 < starts.Count { starts[clusterIndex + 1] }
+          else { textLength }
         let scalarStart = scalarIndex
         var script uint32 = 0u
         var inheritedOnly bool = true
@@ -69,12 +195,10 @@ internal class UnicodeScripts {
         clusters.Add(UnicodeScriptCluster(start, end, scalarStart, scalarIndex, script, pairValue))
         clusterIndex++
       }
-      return clusters
     }
 
     private func ResolvePairedPunctuation(clusters List[UnicodeScriptCluster],
-      scalars List[UnicodeScriptScalar]) {
-      let stack = List[UnicodeScriptPair]()
+      scalars List[UnicodeScriptScalar], stack List[UnicodeScriptPair]) {
       var index int32 = 0
       while index < clusters.Count {
         let value = clusters[index].PairValue
@@ -148,8 +272,12 @@ internal class UnicodeScripts {
     }
 
     private func ResolveContext(clusters List[UnicodeScriptCluster],
-      scalars List[UnicodeScriptScalar]) {
-      let next = [clusters.Count]uint32
+      scalars List[UnicodeScriptScalar], next List[uint32]) {
+      var fill int32 = 0
+      while fill < clusters.Count {
+        next.Add(0u)
+        fill++
+      }
       var nextScript uint32 = 0u
       var index = clusters.Count - 1
       while index >= 0 {
@@ -202,9 +330,9 @@ internal class UnicodeScripts {
       return found
     }
 
-    private func BuildRuns(clusters List[UnicodeScriptCluster]) []UnicodeScriptRun {
-      if clusters.Count == 0 { return []UnicodeScriptRun{} }
-      let runs = List[UnicodeScriptRun]()
+    private func BuildRuns(clusters List[UnicodeScriptCluster],
+      runs List[UnicodeScriptRun]) List[UnicodeScriptRun] {
+      if clusters.Count == 0 { return runs }
       var start = clusters[0].Start
       var end = clusters[0].End
       var script = clusters[0].Script
@@ -222,7 +350,7 @@ internal class UnicodeScripts {
         index++
       }
       runs.Add(UnicodeScriptRun(start, end - start, script))
-      return runs.ToArray()
+      return runs
     }
 
     private func IsImplicit(script uint32) bool {

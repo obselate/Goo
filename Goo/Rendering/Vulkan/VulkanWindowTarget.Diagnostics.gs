@@ -3,6 +3,22 @@ package Goo
 import System.Diagnostics
 
 internal unsafe partial class VulkanWindowTarget {
+    internal prop LastClipMaskFrameStats VulkanClipMaskFrameStats {
+        get { return clipMaskFrameStats }
+    }
+
+    internal prop ClipMaskFrameTotals VulkanClipMaskFrameTotals {
+        get { return clipMaskFrameTotals }
+    }
+
+    internal func ClipMaskFrameStatsForTest() VulkanClipMaskFrameStats {
+        return clipMaskFrameStats
+    }
+
+    internal func ClipMaskFrameTotalsForTest() VulkanClipMaskFrameTotals {
+        return clipMaskFrameTotals
+    }
+
     public prop Active bool {
         get { return diagnostics != nil }
     }
@@ -69,7 +85,7 @@ internal unsafe partial class VulkanWindowTarget {
         if diagnostics == nil {
             return 0uL
         }
-        return uint64(host.WindowHandle)
+        return diagnosticWindowHandle
     }
 
     private func DiagnosticQueueValue() uint64 {
@@ -360,6 +376,9 @@ internal unsafe partial class VulkanWindowTarget {
     }
 
     private func RecordDiagnosticResult(eventId uint64, result VkResult) {
+        if result == VkConstants.VK_NOT_READY || result == VkConstants.VK_TIMEOUT {
+            return
+        }
         try {
             if let current = diagnostics {
                 current.RecordResult(
@@ -476,6 +495,35 @@ internal unsafe partial class VulkanWindowTarget {
                 }
                 RecordDiagnosticTiming(VulkanDiagnosticEventIds.PlanCompile,
                     VulkanDiagnosticCategories.Timing, start)
+            }
+        } catch (cleanup Exception) { }
+    }
+
+    private func RecordDiagnosticDamage(region VulkanDamageRegion, hasDamage bool) {
+        if !hasDamage || region.IsEmpty {
+            return
+        }
+        try {
+            if let current = diagnostics {
+                let area = uint64(region.Width) * uint64(region.Height)
+                current.AddDamage(1uL, area)
+                current.Record(
+                    0uL,
+                    0uL,
+                    0uL,
+                    DiagnosticWindowValue(),
+                    activeFrameId,
+                    0uL,
+                    DiagnosticQueueValue(),
+                    DiagnosticSubmissionValue(),
+                    DiagnosticFenceValue(),
+                    0uL,
+                    VulkanDiagnosticEventIds.DamageBuild,
+                    VulkanDiagnosticCategories.FramePlan,
+                    0uL,
+                    activePartialRedraw ? 1 : 0,
+                    area,
+                    uint64(region.Width) << 32 | uint64(region.Height))
             }
         } catch (cleanup Exception) { }
     }
@@ -666,6 +714,20 @@ internal unsafe partial class VulkanWindowTarget {
                     current.SetTextAtlasPeakByteBudget(uint64(stats.ByteBudget))
                     current.SetTextAtlasPeakResidentBytes(uint64(stats.ResidentByteSize))
                     current.SetTextAtlasPeakLiveObjectCount(stats.LiveObjectCount)
+                }
+                if let resources = pathResources {
+                    let stats = resources.Stats
+                    cacheBytes = cacheBytes + uint64(stats.LiveWordCount) * 4uL
+                    current.SetPathAtlasStats(stats, resources.Atlas.Stats.LiveObjectCount)
+                }
+                if let atlas = clipMaskAtlas {
+                    current.SetClipMaskAtlasStats(atlas.Stats)
+                } else {
+                    current.ClearClipMaskAtlasCurrentState()
+                }
+                current.SetClipMaskFrameStats(clipMaskFrameStats, clipMaskFrameTotals)
+                if let renderer = primitiveRenderer {
+                    current.SetTextFrameStats(renderer.TextFrameStats)
                 }
                 current.SetCacheBytes(cacheBytes)
                 current.CaptureResourceFacts(

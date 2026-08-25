@@ -4,7 +4,7 @@ import System
 import System.Collections.Generic
 import System.Threading
 
-internal enum FieldKind { KLength; KColor; KScalar; KEnum; KString; KGradient; KBoxShadows; KPath; KImageSource }
+internal enum FieldKind { KLength; KColor; KScalar; KEnum; KString; KGradient; KBoxShadows; KPath; KImageSource; KShaderEffect }
 
 internal data struct Transition {
   internal var Field StyleField
@@ -47,6 +47,7 @@ internal class Resolver {
 
   internal prop Animating List[Node] { get; init; }
   internal prop PaintResourceInvalidated Action? { get; set; }
+  internal prop ShaderEffectInvalidated Action? { get; set; }
   private let pending List[Node]
   private let inheritedScratch []StyleEntry
   private var pendingCursor int32
@@ -202,7 +203,7 @@ internal class Resolver {
     let mask = styleMaskUnion(localMask, inheritedMask)
     let gone = styleMaskExcept(n.AppliedMask, mask)
     if !styleMaskEmpty(gone) {
-      for i in 0 ... int32(StyleField.BackgroundImageSource) + 1 {
+      for i in 0 ... int32(StyleField.ShaderEffect) + 1 {
         let f = StyleField(int32(i))
         if styleMaskHas(gone, f) {
           writeField(n, defaultStyleEntry(f), initial)
@@ -372,7 +373,7 @@ internal class Resolver {
         return
       }
       finishTransition(n, e.Field)
-      if writeDirectWithInvalidation(n, e, PaintResourceInvalidated) {
+      if writeDirectWithInvalidation(n, e, invalidationFor(e.Field)) {
         recordResolvedChange(e.Field)
       }
       return
@@ -384,7 +385,7 @@ internal class Resolver {
     }
     if fieldKind(e.Field) == FieldKind.KLength && cur.B != e.B {
       finishTransition(n, e.Field)
-      if writeDirectWithInvalidation(n, e, PaintResourceInvalidated) {
+      if writeDirectWithInvalidation(n, e, invalidationFor(e.Field)) {
         recordResolvedChange(e.Field)
       }
       return
@@ -398,7 +399,7 @@ internal class Resolver {
       return
     }
     finishTransition(n, e.Field)
-    if writeDirectWithInvalidation(n, e, PaintResourceInvalidated) {
+    if writeDirectWithInvalidation(n, e, invalidationFor(e.Field)) {
       recordResolvedChange(e.Field)
     }
   }
@@ -564,6 +565,11 @@ internal class Resolver {
     pendingEffects = ReconcileEffects(int32(pendingEffects) | int32(styleEffects(f)))
     VisualDirty = true
   }
+
+  private func invalidationFor(f StyleField) Action? {
+    return if f == StyleField.ShaderEffect { ShaderEffectInvalidated }
+      else { PaintResourceInvalidated }
+  }
 }
 
 internal func styleFieldApplies(n Node, f StyleField) bool {
@@ -607,6 +613,7 @@ internal func sameEntry(cur StyleEntry, e StyleEntry) bool {
     && sameBoxShadows(entryShadows(cur), entryShadows(e))
     && samePath(entryPath(cur), entryPath(e))
     && entryImageSource(cur) == entryImageSource(e)
+    && entryShaderEffect(cur) == entryShaderEffect(e)
 }
 
 // Quadratic curves: raw progress in, shaped progress out.
@@ -629,6 +636,7 @@ internal func lerpable(f StyleField) bool {
   let kind = fieldKind(f)
   return kind != FieldKind.KEnum && kind != FieldKind.KString
     && kind != FieldKind.KGradient && kind != FieldKind.KPath && kind != FieldKind.KImageSource
+    && kind != FieldKind.KShaderEffect
 }
 
 internal func inheritable(f StyleField) bool {
@@ -706,9 +714,11 @@ internal func writeDirectWithInvalidation(n Node, e StyleEntry, invalidated Acti
     case StyleField.BackgroundGradient { n.BackgroundGradient = entryGradient(e) }
     case StyleField.BackgroundImage { BackgroundImageLayouts.SetPath(n, entryText(e) ?? "", invalidated) }
     case StyleField.BackgroundImageSource { BackgroundImageLayouts.SetSource(n, entryImageSource(e), invalidated) }
+    case StyleField.ShaderEffect { ShaderEffectStyles.Set(n, entryShaderEffect(e), invalidated) }
     case StyleField.BackgroundImageFit { n.BackgroundImageFit = ImageFit(int32(e.A)) }
     case StyleField.ClipPath { ClipPaths.SetPath(n, entryPath(e)) }
     case StyleField.ClipPathFit { ClipPaths.SetFit(n, ShapeFit(int32(e.A))) }
+    case StyleField.ClipPathFillRule { ClipPaths.SetFillRule(n, FillRule(int32(e.A))) }
     case StyleField.BorderRadius { n.BorderRadius = Length{ Unit: LengthUnit(int32(e.B)), Value: e.A } }
     case StyleField.BorderTopLeftRadius { n.BorderTopLeftRadius = Length{ Unit: LengthUnit(int32(e.B)), Value: e.A } }
     case StyleField.BorderTopRightRadius { n.BorderTopRightRadius = Length{ Unit: LengthUnit(int32(e.B)), Value: e.A } }
@@ -780,6 +790,7 @@ internal func writeDirectWithInvalidation(n Node, e StyleEntry, invalidated Acti
       TextLayouts.Invalidate(n)
     }
   }
+  n.BumpScenePaintVersion()
   syncYogaField(n, e.Field)
   return true
 }
@@ -832,9 +843,11 @@ internal func readField(n Node, f StyleField) StyleEntry {
     case StyleField.BackgroundGradient { return StyleEntry{ Field: f, Payload: n.BackgroundGradient } }
     case StyleField.BackgroundImage { return StyleEntry{ Field: f, Payload: BackgroundImageLayouts.Path(n) } }
     case StyleField.BackgroundImageSource { return StyleEntry{ Field: f, Payload: BackgroundImageLayouts.Source(n) } }
+    case StyleField.ShaderEffect { return StyleEntry{ Field: f, Payload: n.ShaderEffect } }
     case StyleField.BackgroundImageFit { return StyleEntry{ Field: f, A: float32(int32(n.BackgroundImageFit)) } }
     case StyleField.ClipPath { return StyleEntry{ Field: f, Payload: ClipPaths.Path(n).payload } }
     case StyleField.ClipPathFit { return StyleEntry{ Field: f, A: float32(int32(ClipPaths.Fit(n))) } }
+    case StyleField.ClipPathFillRule { return StyleEntry{ Field: f, A: float32(int32(ClipPaths.FillRule(n))) } }
     case StyleField.BorderRadius { return StyleEntry{ Field: f, A: n.BorderRadius.Value, B: float32(int32(n.BorderRadius.Unit)) } }
     case StyleField.BorderTopLeftRadius { return StyleEntry{ Field: f, A: n.BorderTopLeftRadius.Value, B: float32(int32(n.BorderTopLeftRadius.Unit)) } }
     case StyleField.BorderTopRightRadius { return StyleEntry{ Field: f, A: n.BorderTopRightRadius.Value, B: float32(int32(n.BorderTopRightRadius.Unit)) } }
@@ -983,6 +996,7 @@ internal func ApplyAllDefaults(n Node) {
   applyDefault(n, StyleField.ShapeStrokeWidth)
   applyDefault(n, StyleField.ShapeStrokeColor)
   applyDefault(n, StyleField.TextMaxLines)
+  applyDefault(n, StyleField.ShaderEffect)
 }
 
 // The table's Default column. Zero-filled entries cover the common defaults.
@@ -1024,6 +1038,7 @@ internal func defaultStyleEntry(f StyleField) StyleEntry {
     case StyleField.BackgroundImageSource { result.Payload = nil }
     case StyleField.BackgroundImageFit { result.A = float32(int32(ImageFit.Cover)) }
     case StyleField.ClipPathFit { result.A = float32(int32(ShapeFit.Fill)) }
+    case StyleField.ClipPathFillRule { result.A = float32(int32(FillRule.NonZero)) }
     default {}
   }
   return result
@@ -1079,6 +1094,7 @@ internal func styleEffects(f StyleField) ReconcileEffects {
     case StyleField.BackgroundColor { return ReconcileEffects.Paint }
     case StyleField.BorderStyle { return ReconcileEffects.Paint }
     case StyleField.BlendMode { return ReconcileEffects.Paint }
+    case StyleField.ShaderEffect { return ReconcileEffects.Paint }
     case StyleField.BackgroundGradient { return ReconcileEffects.Paint }
     case StyleField.BackgroundImage { return ReconcileEffects.Paint }
     case StyleField.BackgroundImageSource { return ReconcileEffects.Paint }
@@ -1087,6 +1103,9 @@ internal func styleEffects(f StyleField) ReconcileEffects {
       return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
     }
     case StyleField.ClipPathFit {
+      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
+    }
+    case StyleField.ClipPathFillRule {
       return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
     }
     case StyleField.BorderRadius { return ReconcileEffects.Paint }
@@ -1215,9 +1234,11 @@ internal func fieldKind(f StyleField) FieldKind {
     case StyleField.BackgroundGradient { return FieldKind.KGradient }
     case StyleField.BackgroundImage { return FieldKind.KString }
     case StyleField.BackgroundImageSource { return FieldKind.KImageSource }
+    case StyleField.ShaderEffect { return FieldKind.KShaderEffect }
     case StyleField.BackgroundImageFit { return FieldKind.KEnum }
     case StyleField.ClipPath { return FieldKind.KPath }
     case StyleField.ClipPathFit { return FieldKind.KEnum }
+    case StyleField.ClipPathFillRule { return FieldKind.KEnum }
     case StyleField.BorderRadius { return FieldKind.KLength }
     case StyleField.BorderTopLeftRadius { return FieldKind.KLength }
     case StyleField.BorderTopRightRadius { return FieldKind.KLength }

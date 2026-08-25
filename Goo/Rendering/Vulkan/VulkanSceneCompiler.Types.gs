@@ -36,9 +36,6 @@ internal enum VulkanSceneUnsupportedField {
     BlendMode = 8;
     Opacity = 9;
     BoxShadows = 10;
-    OutlineWidth = 11;
-    OutlineColor = 12;
-    OutlineOffset = 13;
     TextShadows = 14;
     TextStrokeWidth = 15;
     TextStrokeColor = 16;
@@ -74,7 +71,6 @@ internal enum VulkanSceneUnsupportedField {
     EditorOverscanLines = 46;
     BorderRadius = 47;
     ClipDepth = 48;
-    EditorSlots = 49;
     EditorComposition = 50;
 }
 
@@ -96,7 +92,6 @@ internal enum VulkanSceneUnsupportedPrimitive {
     ClipPath = 14;
     Blend = 15;
     BoxShadow = 16;
-    Outline = 17;
     TextShadow = 18;
     TextStroke = 19;
     ShapePath = 20;
@@ -119,6 +114,15 @@ internal data struct VulkanSceneTransformState {
     internal var Index int32
     internal var AxisAligned bool
 }
+internal data struct VulkanRectOverflowClipPreflight {
+    internal var ClipsX bool
+    internal var ClipsY bool
+    internal var BothAxes bool
+    internal var HasRadius bool
+    internal var DepthExceeded bool
+    internal var RectangularEmittable bool
+}
+
 
 internal data struct VulkanSceneCompileResult {
     internal var FrameVersion uint64
@@ -132,12 +136,39 @@ internal data struct VulkanSceneCompileResult {
     internal var SkippedNodeCount int32
     internal var ScrollNodeCount int32
     internal var ClipCount int32
+    internal var PathClipCount int32
+    internal var ClipMaskCount int32
+    internal var ClipChainCount int32
     internal var TransformCount int32
     internal var UnsupportedMask uint32
     internal var UnsupportedDetails []VulkanSceneUnsupportedDetail
     internal var UnsupportedDetailCount int32
     internal var UnsupportedDetailDropped int32
     internal var BackgroundDrawn bool
+    internal var RetainedLeafHitCount uint64
+    internal var RetainedLeafRebuildCount uint64
+    internal var RetainedLeafFallbackCount uint64
+    internal var RetainedLeafInvalidationCount uint64
+    internal var RetainedLeafTotalCount uint64
+    internal var RetainedBorderHitCount uint64
+    internal var RetainedBorderRebuildCount uint64
+    internal var RetainedBorderFallbackCount uint64
+    internal var RetainedBorderInvalidationCount uint64
+    internal var RetainedBorderTotalCount uint64
+    internal var RetainedParentBoxHitCount uint64
+    internal var RetainedParentBoxRebuildCount uint64
+    internal var RetainedParentBoxFallbackCount uint64
+    internal var RetainedParentBoxInvalidationCount uint64
+    internal var RetainedParentBoxTotalCount uint64
+    internal var RetainedTextHitCount uint64
+    internal var RetainedTextRebuildCount uint64
+    internal var RetainedTextFallbackCount uint64
+    internal var RetainedTextInvalidationCount uint64
+    internal var RetainedTextTotalCount uint64
+    internal var ExactTextClipCandidateCount int32
+    internal var ExactTextClipCullCount int32
+    internal var CachedTextPaintCullCount int32
+    internal var TextLayoutRequestCount int32
 
     internal prop HasUnsupported bool {
         get {
@@ -150,8 +181,52 @@ internal data struct VulkanSceneCompileResult {
 
 internal class VulkanSceneOwnerId {
     internal var Value uint64
+    internal var RetainedTextValid bool
+    internal var RetainedTextContent string?
+    internal var RetainedTextPaintVersion uint64
+    internal var RetainedTextBounds ConservativeBounds
+    internal var RetainedTextColor uint32
+    internal var RetainedTextOpacity float32
+    internal var RetainedTextAtlasGeneration uint64
+    internal var RetainedTextFontRegistryGeneration uint64
+    internal var RetainedTextParentTranslateX float32
+    internal var RetainedTextParentTranslateY float32
+    internal var RetainedTextClipDepth int32
+    internal var RetainedTextClipBounds ConservativeBounds
+    internal var RetainedTextSnapshot VulkanRetainedTextSnapshot?
+    internal var CachedTextPaintLayout TextLayout?
+    internal var CachedTextPaintBounds ConservativeBounds
+    internal var CachedTextPaintContentX float32
+    internal var CachedTextPaintContentY float32
+    internal var CachedTextPaintContentWidth float32
+    internal var CachedTextPaintLineHeight float32
+    internal var CachedTextPaintAlign TextAlign
+    internal var CachedTextPaintContent string?
+    internal var CachedTextPaintVersion uint64
+    internal var CachedTextPaintNodeBounds ConservativeBounds
+    internal var CachedTextCullVersion uint64
+    internal var CachedTextCullBounds ConservativeBounds
+    internal var CachedTextCullEligible bool
+    internal var RetainedLeafValid bool
+    internal var RetainedLeafNodeKind NodeKind
+    internal var RetainedLeafKind SceneDrawKind
+    internal var RetainedLeafPaintVersion uint64
+    internal var RetainedLeafBounds ConservativeBounds
+    internal var RetainedLeafSolid SolidBoxRecord
+    internal var RetainedLeafRounded RoundedBoxRecord
+    internal var RetainedLeafBorder PerEdgeBorderRecord
+    internal var RetainedBoxIsLeaf bool
 
     internal init(value uint64) {
         Value = value
+    }
+
+    internal func ClearRetainedLeaf() {
+        RetainedLeafValid = false
+    }
+
+    internal func ClearRetainedText() {
+        RetainedTextValid = false
+        RetainedTextContent = nil
     }
 }

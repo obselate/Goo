@@ -3,7 +3,7 @@ package Goo
 import System
 import System.Collections.Generic
 
-internal enum NodeKind { Container; Button; Text; Entry; Editor; Shape; Image }
+internal enum NodeKind { Container; Button; Text; Entry; Editor; Shape; Image; Lava }
 
 internal data struct Rect {
   internal var X float32
@@ -22,6 +22,17 @@ internal class Node {
   private var transitionSelection StyleMask
   private var nodeState int32
   private var lifecycleState uint8
+  private var scenePaintVersion uint64
+
+  internal prop ScenePaintVersion uint64 { get { return scenePaintVersion } }
+  internal var VulkanOwnerToken object?
+  internal var VulkanOwner VulkanSceneOwnerId?
+
+  internal func BumpScenePaintVersion() {
+    scenePaintVersion = scenePaintVersion == uint64.MaxValue
+      ? 1uL
+      : scenePaintVersion + 1uL
+  }
 
   internal prop Kind NodeKind { get; set; }
   internal prop Key string? { get; set; }
@@ -301,12 +312,14 @@ internal class Node {
         : nodeState & ^(int32(1) << 31)
     }
   }
+  internal prop ClipPathFillRule FillRule { get; set; }
   internal prop ZIndex int32 {
     get { return Stacking.GetZIndex(this) }
     set { Stacking.SetZIndex(this, value) }
   }
   internal prop BorderStyle BorderStyle { get; set; }
   internal prop BlendMode BlendMode { get; set; }
+  internal prop ShaderEffect ShaderEffect? { get { return ShaderEffectStyles.Get(this) } }
   internal prop Hovered bool { get; set; }
   internal prop Pressed bool { get; set; }
   internal prop PointerPressCount int32 { get; set; }
@@ -356,6 +369,12 @@ internal class Node {
       lifecycleState = value ? lifecycleState | uint8(64) : lifecycleState & ^uint8(64)
     }
   }
+  internal prop Password bool {
+    get { return (lifecycleState & uint8(128)) != uint8(0) }
+    set {
+      lifecycleState = value ? lifecycleState | uint8(128) : lifecycleState & ^uint8(128)
+    }
+  }
 
   internal prop OnClick Action? { get; set; }
   internal prop OnPointerDown ((PointerEvent) -> void)? { get; set; }
@@ -396,6 +415,14 @@ internal class Node {
   internal prop DecodedImage DecodedImage? { get; set; }
   internal prop ImageIntrinsicWidth float32 { get; set; }
   internal prop ImageIntrinsicHeight float32 { get; set; }
+  internal prop LavaFlow float64 { get; set; }
+  internal prop LavaForm float64 { get; set; }
+  internal prop LavaBlend float64 { get; set; }
+  internal prop LavaLight float64 { get; set; }
+  internal prop LavaHue float64 { get; set; }
+  internal prop LavaRainbow bool { get; set; }
+  internal prop LavaRotation Point { get; set; }
+  internal prop LavaSeed uint32 { get; set; }
   internal prop Buffer string { get; set; }
   internal prop Caret int32 { get; set; }
   internal prop Anchor int32 { get; set; }
@@ -432,12 +459,14 @@ internal class Node {
     ImageFit = ImageFit.Contain
     BackgroundImageFit = ImageFit.Cover
     ShapeFillRule = FillRule.NonZero
+    ClipPathFillRule = FillRule.NonZero
     ShapeStrokeCap = StrokeCap.Butt
     ShapeStrokeJoin = StrokeJoin.Miter
     MiterLimit = 4.0
     HitTestSelf = true
     transitionSelection = allTransitionSelection()
     ApplyAllDefaults(this)
+    BumpScenePaintVersion()
   }
 }
 

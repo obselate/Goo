@@ -49,6 +49,9 @@ public partial class Window {
         Interlocked.Exchange(&pendingPaintResourceInvalidation, 1)
         requestReconcile()
       }
+      shaderEffectInvalidatedHook = func() {
+        enqueueRetainedInvalidation(ReconcileEffects.Paint)
+      }
       imageCompletionHook = func(n Node, token object) {
         enqueueImageCompletion(n, token)
       }
@@ -56,6 +59,7 @@ public partial class Window {
         enqueueRetainedInvalidation(e)
       }
       resolver.PaintResourceInvalidated = paintResourceHook
+      resolver.ShaderEffectInvalidated = shaderEffectInvalidatedHook
       cellHook = func(cell Cell) {
         submitCell(cell)
       }

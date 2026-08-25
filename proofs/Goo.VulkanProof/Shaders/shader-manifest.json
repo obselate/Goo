@@ -1,5 +1,5 @@
 {
-  "schema": 3,
+  "schema": 4,
   "toolchain": {
     "sdk": "1.4.357.0",
     "compiler": {
@@ -60,6 +60,96 @@
     "-O",
     "-Werror"
   ],
+  "primitiveRecord": {
+    "set": 2,
+    "binding": 0,
+    "stride": 128,
+    "stages": [
+      "vertex",
+      "fragment"
+    ],
+    "members": [
+      {
+        "name": "rect",
+        "offset": 0,
+        "type": "vec4"
+      },
+      {
+        "name": "transform0",
+        "offset": 16,
+        "type": "vec4"
+      },
+      {
+        "name": "transform1",
+        "offset": 32,
+        "type": "vec4"
+      },
+      {
+        "name": "radii",
+        "offset": 48,
+        "type": "vec4"
+      },
+      {
+        "name": "params",
+        "offset": 64,
+        "type": "vec4"
+      },
+      {
+        "name": "stopPositions",
+        "offset": 80,
+        "type": "vec4"
+      },
+      {
+        "name": "packedColors",
+        "offset": 96,
+        "type": "uvec4"
+      },
+      {
+        "name": "packedColorsExtra",
+        "offset": 112,
+        "type": "uvec4"
+      }
+    ]
+  },
+  "textInstanceRecord": {
+    "set": 2,
+    "binding": 0,
+    "stride": 128,
+    "stages": [
+      "vertex"
+    ],
+    "members": [
+      {
+        "name": "transform",
+        "offset": 0,
+        "type": "mat4"
+      },
+      {
+        "name": "glyphBounds",
+        "offset": 64,
+        "type": "vec4"
+      },
+      {
+        "name": "glyphInput",
+        "offset": 80,
+        "type": "uvec4"
+      },
+      {
+        "name": "foreground",
+        "offset": 96,
+        "type": "vec4"
+      },
+      {
+        "name": "effectParams",
+        "offset": 112,
+        "type": "vec4"
+      }
+    ],
+    "hostPacking": {
+      "path": "HbGpuTextInstanceRecord.Generated.gs",
+      "typeName": "HbGpuTextInstanceRecord"
+    }
+  },
   "assemblies": [
     {
       "id": "hb_gpu_vertex",
@@ -77,7 +167,7 @@
         },
         {
           "path": "proofs/Goo.VulkanProof/Shaders/hb_gpu.vert.wrapper.glsl",
-          "sha256": "063e7f572e647586070a8560eac1192749dd07cc29a7dc1a286fb214f3599c92"
+          "sha256": "fa6b174882dd8b5aea6bf956e8fbeed11ff9619517556e233c653acf0d9d79c8"
         }
       ]
     },
@@ -101,7 +191,7 @@
         },
         {
           "path": "proofs/Goo.VulkanProof/Shaders/hb_gpu_draw.frag.wrapper.glsl",
-          "sha256": "a5fd76f4d996c41999ff93c6668fcaa4e3b4de7ee0029f00cd57cb0dccf04c3b"
+          "sha256": "bbe849dd5e152672391f6a33fabb141bf37475eb2ddd61812de7c8e7e27117d4"
         }
       ]
     },
@@ -129,7 +219,7 @@
         },
         {
           "path": "proofs/Goo.VulkanProof/Shaders/hb_gpu_paint.frag.wrapper.glsl",
-          "sha256": "df5572da972796670fd282f81a27429860ec3bb93a999cf1d17649e77d1cf3c2"
+          "sha256": "86e84e0433951de4095f98cf057fb3819fa78270adb7b4a0efa57e668b8911f7"
         }
       ]
     }
@@ -226,6 +316,36 @@
       ]
     },
     {
+      "id": "analytic_blend_fragment",
+      "stage": "fragment",
+      "source": "analytic_blend.frag.glsl",
+      "output": "analytic_blend.frag.spv",
+      "entryPoint": "main",
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "path_band_vertex",
+      "stage": "vertex",
+      "source": "path_band.vert.glsl",
+      "output": "path_band.vert.spv",
+      "entryPoint": "main",
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "path_band_fragment",
+      "stage": "fragment",
+      "source": "path_band.frag.glsl",
+      "output": "path_band.frag.spv",
+      "entryPoint": "main",
+      "capabilities": [
+        1
+      ]
+    },
+    {
       "id": "hb_gpu_vertex",
       "stage": "vertex",
       "source": "hb_gpu.vert.wrapper.glsl",
@@ -258,6 +378,36 @@
       "capabilities": [
         1,
         46
+      ]
+    },
+    {
+      "id": "clip_mask_vertex",
+      "stage": "vertex",
+      "source": "clip_mask.vert.glsl",
+      "output": "clip_mask.vert.spv",
+      "entryPoint": "main",
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "clip_mask_fragment",
+      "stage": "fragment",
+      "source": "clip_mask.frag.glsl",
+      "output": "clip_mask.frag.spv",
+      "entryPoint": "main",
+      "capabilities": [
+        1
+      ]
+    },
+    {
+      "id": "lava_fragment",
+      "stage": "fragment",
+      "source": "lava.frag.glsl",
+      "output": "lava.frag.spv",
+      "entryPoint": "main",
+      "capabilities": [
+        1
       ]
     }
   ],
@@ -334,15 +484,12 @@
     },
     {
       "id": "analytic_solid",
-      "topology": "triangle-list",
+      "topology": "triangle-strip",
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 128,
-        "stages": [
-          "vertex",
-          "fragment"
-        ],
+        "size": 0,
+        "stages": [],
         "members": [
           {
             "name": "rect",
@@ -386,8 +533,37 @@
           }
         ]
       },
-      "descriptorCount": 0,
-      "descriptors": [],
+      "descriptorCount": 3,
+      "descriptors": [
+        {
+          "set": 1,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 1,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 2,
+          "binding": 0,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "vertex",
+            "fragment"
+          ]
+        }
+      ],
       "stages": [
         {
           "shader": "analytic_vertex",
@@ -399,6 +575,16 @@
               "location": 0,
               "type": "vec2",
               "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
             }
           ]
         },
@@ -411,6 +597,16 @@
               "location": 0,
               "type": "vec2",
               "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
             }
           ],
           "outputs": [
@@ -436,15 +632,12 @@
     },
     {
       "id": "analytic_shadow",
-      "topology": "triangle-list",
+      "topology": "triangle-strip",
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 128,
-        "stages": [
-          "vertex",
-          "fragment"
-        ],
+        "size": 0,
+        "stages": [],
         "members": [
           {
             "name": "rect",
@@ -488,8 +681,37 @@
           }
         ]
       },
-      "descriptorCount": 0,
-      "descriptors": [],
+      "descriptorCount": 3,
+      "descriptors": [
+        {
+          "set": 1,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 1,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 2,
+          "binding": 0,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "vertex",
+            "fragment"
+          ]
+        }
+      ],
       "stages": [
         {
           "shader": "analytic_vertex",
@@ -501,6 +723,16 @@
               "location": 0,
               "type": "vec2",
               "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
             }
           ]
         },
@@ -513,6 +745,16 @@
               "location": 0,
               "type": "vec2",
               "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
             }
           ],
           "outputs": [
@@ -538,15 +780,12 @@
     },
     {
       "id": "analytic_border",
-      "topology": "triangle-list",
+      "topology": "triangle-strip",
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 128,
-        "stages": [
-          "vertex",
-          "fragment"
-        ],
+        "size": 0,
+        "stages": [],
         "members": [
           {
             "name": "rect",
@@ -590,8 +829,37 @@
           }
         ]
       },
-      "descriptorCount": 0,
-      "descriptors": [],
+      "descriptorCount": 3,
+      "descriptors": [
+        {
+          "set": 1,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 1,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 2,
+          "binding": 0,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "vertex",
+            "fragment"
+          ]
+        }
+      ],
       "stages": [
         {
           "shader": "analytic_vertex",
@@ -603,6 +871,16 @@
               "location": 0,
               "type": "vec2",
               "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
             }
           ]
         },
@@ -615,6 +893,16 @@
               "location": 0,
               "type": "vec2",
               "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
             }
           ],
           "outputs": [
@@ -640,15 +928,12 @@
     },
     {
       "id": "analytic_linear4",
-      "topology": "triangle-list",
+      "topology": "triangle-strip",
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 128,
-        "stages": [
-          "vertex",
-          "fragment"
-        ],
+        "size": 0,
+        "stages": [],
         "members": [
           {
             "name": "rect",
@@ -692,8 +977,37 @@
           }
         ]
       },
-      "descriptorCount": 0,
-      "descriptors": [],
+      "descriptorCount": 3,
+      "descriptors": [
+        {
+          "set": 1,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 1,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 2,
+          "binding": 0,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "vertex",
+            "fragment"
+          ]
+        }
+      ],
       "stages": [
         {
           "shader": "analytic_vertex",
@@ -705,6 +1019,16 @@
               "location": 0,
               "type": "vec2",
               "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
             }
           ]
         },
@@ -717,6 +1041,16 @@
               "location": 0,
               "type": "vec2",
               "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
             }
           ],
           "outputs": [
@@ -742,15 +1076,12 @@
     },
     {
       "id": "analytic_radial4",
-      "topology": "triangle-list",
+      "topology": "triangle-strip",
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 128,
-        "stages": [
-          "vertex",
-          "fragment"
-        ],
+        "size": 0,
+        "stages": [],
         "members": [
           {
             "name": "rect",
@@ -794,8 +1125,37 @@
           }
         ]
       },
-      "descriptorCount": 0,
-      "descriptors": [],
+      "descriptorCount": 3,
+      "descriptors": [
+        {
+          "set": 1,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 1,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 2,
+          "binding": 0,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "vertex",
+            "fragment"
+          ]
+        }
+      ],
       "stages": [
         {
           "shader": "analytic_vertex",
@@ -807,6 +1167,16 @@
               "location": 0,
               "type": "vec2",
               "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
             }
           ]
         },
@@ -819,6 +1189,16 @@
               "location": 0,
               "type": "vec2",
               "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
             }
           ],
           "outputs": [
@@ -844,15 +1224,12 @@
     },
     {
       "id": "analytic_sampled_image",
-      "topology": "triangle-list",
+      "topology": "triangle-strip",
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 128,
-        "stages": [
-          "vertex",
-          "fragment"
-        ],
+        "size": 0,
+        "stages": [],
         "members": [
           {
             "name": "rect",
@@ -896,7 +1273,7 @@
           }
         ]
       },
-      "descriptorCount": 1,
+      "descriptorCount": 4,
       "descriptors": [
         {
           "set": 0,
@@ -904,6 +1281,34 @@
           "type": "combined-image-sampler",
           "count": 1,
           "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 1,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 2,
+          "binding": 0,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "vertex",
             "fragment"
           ]
         }
@@ -919,6 +1324,16 @@
               "location": 0,
               "type": "vec2",
               "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
             }
           ]
         },
@@ -931,6 +1346,16 @@
               "location": 0,
               "type": "vec2",
               "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
             }
           ],
           "outputs": [
@@ -955,45 +1380,321 @@
       }
     },
     {
-      "id": "hb_gpu_draw",
+      "id": "analytic_blend",
+      "topology": "triangle-strip",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 0,
+        "stages": [],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 5,
+      "descriptors": [
+        {
+          "set": 0,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 2,
+          "binding": 0,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "vertex",
+            "fragment"
+          ]
+        },
+        {
+          "set": 3,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 3,
+          "binding": 1,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        }
+      ],
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
+            }
+          ]
+        },
+        {
+          "shader": "analytic_blend_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "premultiplied-linear-source-over-css-blend",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "SampledImagePushConstants.Generated.gs",
+        "typeName": "SampledImagePushConstants"
+      }
+    },
+    {
+      "id": "path_band",
       "topology": "triangle-list",
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 128,
+        "size": 80,
         "stages": [
           "vertex",
           "fragment"
         ],
         "members": [
           {
-            "name": "transform",
+            "name": "transform0",
             "offset": 0,
-            "type": "mat4"
+            "type": "vec4"
           },
+          {
+            "name": "transform1",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "sampleStep",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "color",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 3,
+      "descriptors": [
+        {
+          "set": 0,
+          "binding": 0,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "vertex",
+            "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 1,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        }
+      ],
+      "stages": [
+        {
+          "shader": "path_band_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "pathPosition"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            }
+          ]
+        },
+        {
+          "shader": "path_band_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "pathPosition"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "source-over-premultiplied-linear",
+      "colorPacking": "path-band-premultiplied-linear",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "PathBandPushConstants.Generated.gs",
+        "typeName": "PathBandPushConstants"
+      }
+    },
+    {
+      "id": "hb_gpu_draw",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 32,
+        "stages": [
+          "vertex"
+        ],
+        "members": [
           {
             "name": "viewport",
-            "offset": 64,
+            "offset": 0,
             "type": "vec4"
           },
           {
-            "name": "glyphBounds",
-            "offset": 80,
-            "type": "vec4"
-          },
-          {
-            "name": "glyphInput",
-            "offset": 96,
-            "type": "uvec4"
-          },
-          {
-            "name": "foreground",
-            "offset": 112,
+            "name": "origin",
+            "offset": 16,
             "type": "vec4"
           }
         ]
       },
-      "descriptorCount": 1,
+      "descriptorCount": 4,
       "descriptors": [
         {
           "set": 0,
@@ -1002,6 +1703,33 @@
           "count": 1,
           "stages": [
             "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 1,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 2,
+          "binding": 0,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "vertex"
           ]
         }
       ],
@@ -1021,6 +1749,21 @@
               "location": 1,
               "type": "uint",
               "name": "v_glyphLoc"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "v_clipChainId"
+            },
+            {
+              "location": 3,
+              "type": "vec4",
+              "name": "v_effectAndOrigin"
+            },
+            {
+              "location": 4,
+              "type": "vec4",
+              "name": "v_foreground"
             }
           ]
         },
@@ -1038,6 +1781,21 @@
               "location": 1,
               "type": "uint",
               "name": "v_glyphLoc"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "v_clipChainId"
+            },
+            {
+              "location": 3,
+              "type": "vec4",
+              "name": "v_effectAndOrigin"
+            },
+            {
+              "location": 4,
+              "type": "vec4",
+              "name": "v_foreground"
             }
           ],
           "outputs": [
@@ -1057,8 +1815,8 @@
       "cullMode": "none",
       "frontFace": "counter-clockwise",
       "hostPacking": {
-        "path": "HbGpuTextPushConstants.Generated.gs",
-        "typeName": "HbGpuTextPushConstants"
+        "path": "HbGpuTextFrameConstants.Generated.gs",
+        "typeName": "HbGpuTextFrameConstants"
       }
     },
     {
@@ -1067,40 +1825,24 @@
       "vertexInput": "none",
       "pushConstants": {
         "offset": 0,
-        "size": 128,
+        "size": 32,
         "stages": [
-          "vertex",
-          "fragment"
+          "vertex"
         ],
         "members": [
           {
-            "name": "transform",
-            "offset": 0,
-            "type": "mat4"
-          },
-          {
             "name": "viewport",
-            "offset": 64,
+            "offset": 0,
             "type": "vec4"
           },
           {
-            "name": "glyphBounds",
-            "offset": 80,
-            "type": "vec4"
-          },
-          {
-            "name": "glyphInput",
-            "offset": 96,
-            "type": "uvec4"
-          },
-          {
-            "name": "foreground",
-            "offset": 112,
+            "name": "origin",
+            "offset": 16,
             "type": "vec4"
           }
         ]
       },
-      "descriptorCount": 1,
+      "descriptorCount": 4,
       "descriptors": [
         {
           "set": 0,
@@ -1109,6 +1851,33 @@
           "count": 1,
           "stages": [
             "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 1,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 2,
+          "binding": 0,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "vertex"
           ]
         }
       ],
@@ -1128,6 +1897,21 @@
               "location": 1,
               "type": "uint",
               "name": "v_glyphLoc"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "v_clipChainId"
+            },
+            {
+              "location": 3,
+              "type": "vec4",
+              "name": "v_effectAndOrigin"
+            },
+            {
+              "location": 4,
+              "type": "vec4",
+              "name": "v_foreground"
             }
           ]
         },
@@ -1145,6 +1929,21 @@
               "location": 1,
               "type": "uint",
               "name": "v_glyphLoc"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "v_clipChainId"
+            },
+            {
+              "location": 3,
+              "type": "vec4",
+              "name": "v_effectAndOrigin"
+            },
+            {
+              "location": 4,
+              "type": "vec4",
+              "name": "v_foreground"
             }
           ],
           "outputs": [
@@ -1164,8 +1963,264 @@
       "cullMode": "none",
       "frontFace": "counter-clockwise",
       "hostPacking": {
-        "path": "HbGpuTextPushConstants.Generated.gs",
-        "typeName": "HbGpuTextPushConstants"
+        "path": "HbGpuTextFrameConstants.Generated.gs",
+        "typeName": "HbGpuTextFrameConstants"
+      }
+    },
+    {
+      "id": "clip_mask",
+      "topology": "triangle-list",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 112,
+        "stages": [
+          "vertex",
+          "fragment"
+        ],
+        "members": [
+          {
+            "name": "transform0",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "sampleStep",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "borderRect",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "borderTransform0",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "borderTransform1",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 96,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 1,
+      "descriptors": [
+        {
+          "set": 0,
+          "binding": 0,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "vertex",
+            "fragment"
+          ]
+        }
+      ],
+      "stages": [
+        {
+          "shader": "clip_mask_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "pathPosition"
+            }
+          ]
+        },
+        {
+          "shader": "clip_mask_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "pathPosition"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "r8-unorm",
+      "sampleCount": 1,
+      "blend": "disabled",
+      "colorPacking": "clip-mask-r8-coverage",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "ClipMaskPushConstants.Generated.gs",
+        "typeName": "ClipMaskPushConstants"
+      }
+    },
+    {
+      "id": "lava",
+      "topology": "triangle-strip",
+      "vertexInput": "none",
+      "pushConstants": {
+        "offset": 0,
+        "size": 0,
+        "stages": [],
+        "members": [
+          {
+            "name": "rect",
+            "offset": 0,
+            "type": "vec4"
+          },
+          {
+            "name": "transform0",
+            "offset": 16,
+            "type": "vec4"
+          },
+          {
+            "name": "transform1",
+            "offset": 32,
+            "type": "vec4"
+          },
+          {
+            "name": "radii",
+            "offset": 48,
+            "type": "vec4"
+          },
+          {
+            "name": "params",
+            "offset": 64,
+            "type": "vec4"
+          },
+          {
+            "name": "stopPositions",
+            "offset": 80,
+            "type": "vec4"
+          },
+          {
+            "name": "packedColors",
+            "offset": 96,
+            "type": "uvec4"
+          },
+          {
+            "name": "packedColorsExtra",
+            "offset": 112,
+            "type": "uvec4"
+          }
+        ]
+      },
+      "descriptorCount": 3,
+      "descriptors": [
+        {
+          "set": 1,
+          "binding": 0,
+          "type": "combined-image-sampler",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 1,
+          "binding": 1,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "fragment"
+          ]
+        },
+        {
+          "set": 2,
+          "binding": 0,
+          "type": "storage-buffer",
+          "count": 1,
+          "stages": [
+            "vertex",
+            "fragment"
+          ]
+        }
+      ],
+      "stages": [
+        {
+          "shader": "analytic_vertex",
+          "stage": "vertex",
+          "entryPoint": "main",
+          "inputs": [],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
+            }
+          ]
+        },
+        {
+          "shader": "lava_fragment",
+          "stage": "fragment",
+          "entryPoint": "main",
+          "inputs": [
+            {
+              "location": 0,
+              "type": "vec2",
+              "name": "uv"
+            },
+            {
+              "location": 2,
+              "type": "uint",
+              "name": "gooClipDrawOrdinal"
+            },
+            {
+              "location": 3,
+              "type": "uint",
+              "name": "gooPrimitiveRecordOrdinal"
+            }
+          ],
+          "outputs": [
+            {
+              "location": 0,
+              "type": "vec4",
+              "name": "outColor"
+            }
+          ]
+        }
+      ],
+      "colorFormat": "swapchain-sRGB",
+      "sampleCount": 1,
+      "blend": "disabled",
+      "colorPacking": "premultiplied-linear-opaque",
+      "depthStencil": "disabled",
+      "cullMode": "none",
+      "frontFace": "counter-clockwise",
+      "hostPacking": {
+        "path": "LavaPrimitiveRecord.Generated.gs",
+        "typeName": "LavaPrimitiveRecord"
       }
     }
   ]

@@ -2,36 +2,123 @@ package Goo
 
 import System
 import System.IO
-import System.Runtime.InteropServices
+
+internal struct VulkanShaderEffectPipelineEntry {
+    internal var ProgramId uint64
+    internal var Pipeline VkPipeline
+}
 
 internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
+    private const ShaderEffectCapacity int32 = 32
     private let device VkDevice
     private let dispatch VkDeviceDispatch
     private let format VkFormat
     private let objectAccounting VulkanObjectAccounting?
     private let pipelineLayout VkPipelineLayout
+    private let blendPipelineLayout VkPipelineLayout
+    private let pathPipelineLayout VkPipelineLayout
     private let textPipelineLayout VkPipelineLayout
+    private let analyticVertexModule VkShaderModule
+    private let shaderEffectPipelines []VulkanShaderEffectPipelineEntry
+    private let solidModule VkShaderModule
+    private let shadowModule VkShaderModule
+    private let borderModule VkShaderModule
+    private let linearModule VkShaderModule
+    private let radialModule VkShaderModule
+    private let sampledModule VkShaderModule
+    private let lavaModule VkShaderModule
+    private let blendModule VkShaderModule
+    private let pathVertexModule VkShaderModule
+    private let pathFragmentModule VkShaderModule
+    private let textVertexModule VkShaderModule
+    private let textFragmentModule VkShaderModule
+    private let textPaintFragmentModule VkShaderModule
+    private let pipelineGate object
+    private var shaderEffectPipelineCount int32
     private var solidPipeline VkPipeline
     private var shadowPipeline VkPipeline
     private var borderPipeline VkPipeline
     private var linearPipeline VkPipeline
     private var radialPipeline VkPipeline
     private var sampledPipeline VkPipeline
+    private var lavaPipeline VkPipeline
+    private var blendPipeline VkPipeline
+    private var pathPipeline VkPipeline
     private var textPipeline VkPipeline
     private var textPaintPipeline VkPipeline
     private var disposed bool
 
     internal prop Format VkFormat { get { return format } }
     internal prop PipelineLayout VkPipelineLayout { get { return pipelineLayout } }
+    internal prop BlendPipelineLayout VkPipelineLayout { get { return blendPipelineLayout } }
+    internal prop PathPipelineLayout VkPipelineLayout { get { return pathPipelineLayout } }
     internal prop TextPipelineLayout VkPipelineLayout { get { return textPipelineLayout } }
-    internal prop SolidPipeline VkPipeline { get { return solidPipeline } }
-    internal prop ShadowPipeline VkPipeline { get { return shadowPipeline } }
-    internal prop BorderPipeline VkPipeline { get { return borderPipeline } }
-    internal prop LinearPipeline VkPipeline { get { return linearPipeline } }
-    internal prop RadialPipeline VkPipeline { get { return radialPipeline } }
-    internal prop SampledPipeline VkPipeline { get { return sampledPipeline } }
-    internal prop TextPipeline VkPipeline { get { return textPipeline } }
-    internal prop TextPaintPipeline VkPipeline { get { return textPaintPipeline } }
+    internal prop SolidPipeline VkPipeline {
+        get {
+            return ResolvePipeline(ref solidPipeline, analyticVertexModule, solidModule,
+                pipelineLayout, true, true)
+        }
+    }
+    internal prop ShadowPipeline VkPipeline {
+        get {
+            return ResolvePipeline(ref shadowPipeline, analyticVertexModule, shadowModule,
+                pipelineLayout, true, true)
+        }
+    }
+    internal prop BorderPipeline VkPipeline {
+        get {
+            return ResolvePipeline(ref borderPipeline, analyticVertexModule, borderModule,
+                pipelineLayout, true, true)
+        }
+    }
+    internal prop LinearPipeline VkPipeline {
+        get {
+            return ResolvePipeline(ref linearPipeline, analyticVertexModule, linearModule,
+                pipelineLayout, true, true)
+        }
+    }
+    internal prop RadialPipeline VkPipeline {
+        get {
+            return ResolvePipeline(ref radialPipeline, analyticVertexModule, radialModule,
+                pipelineLayout, true, true)
+        }
+    }
+    internal prop SampledPipeline VkPipeline {
+        get {
+            return ResolvePipeline(ref sampledPipeline, analyticVertexModule, sampledModule,
+                pipelineLayout, true, true)
+        }
+    }
+    internal prop LavaPipeline VkPipeline {
+        get {
+            return ResolvePipeline(ref lavaPipeline, analyticVertexModule, lavaModule,
+                pipelineLayout, false, true)
+        }
+    }
+    internal prop BlendPipeline VkPipeline {
+        get {
+            return ResolvePipeline(ref blendPipeline, analyticVertexModule, blendModule,
+                blendPipelineLayout, true, true)
+        }
+    }
+    internal prop PathPipeline VkPipeline {
+        get {
+            return ResolvePipeline(ref pathPipeline, pathVertexModule, pathFragmentModule,
+                pathPipelineLayout, true, false)
+        }
+    }
+    internal prop TextPipeline VkPipeline {
+        get {
+            return ResolvePipeline(ref textPipeline, textVertexModule, textFragmentModule,
+                textPipelineLayout, true, false)
+        }
+    }
+    internal prop TextPaintPipeline VkPipeline {
+        get {
+            return ResolvePipeline(ref textPaintPipeline, textVertexModule,
+                textPaintFragmentModule, textPipelineLayout, true, false)
+        }
+    }
     internal prop LiveObjectCount uint64 {
         get {
             var count uint64 = 0uL
@@ -41,8 +128,12 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
             if linearPipeline != 0uL { count++ }
             if radialPipeline != 0uL { count++ }
             if sampledPipeline != 0uL { count++ }
+            if lavaPipeline != 0uL { count++ }
+            if blendPipeline != 0uL { count++ }
+            if pathPipeline != 0uL { count++ }
             if textPipeline != 0uL { count++ }
             if textPaintPipeline != 0uL { count++ }
+            count = count + uint64(shaderEffectPipelineCount)
             return count
         }
     }
@@ -52,7 +143,9 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
         nativeDispatch VkDeviceDispatch,
         targetFormat VkFormat,
         nativePipelineLayout VkPipelineLayout,
+        nativePathPipelineLayout VkPipelineLayout,
         nativeTextPipelineLayout VkPipelineLayout,
+        nativeBlendPipelineLayout VkPipelineLayout,
         vertexModule VkShaderModule,
         solidModule VkShaderModule,
         shadowModule VkShaderModule,
@@ -60,6 +153,10 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
         linearModule VkShaderModule,
         radialModule VkShaderModule,
         sampledModule VkShaderModule,
+        lavaModule VkShaderModule,
+        blendModule VkShaderModule,
+        pathVertexModule VkShaderModule,
+        pathFragmentModule VkShaderModule,
         textVertexModule VkShaderModule,
         textFragmentModule VkShaderModule,
         textPaintFragmentModule VkShaderModule,
@@ -74,13 +171,22 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
         if nativePipelineLayout == 0uL {
             throw ArgumentException("Vulkan primitive pipeline layout is null", "nativePipelineLayout")
         }
+        if nativePathPipelineLayout == 0uL {
+            throw ArgumentException("Vulkan path pipeline layout is null", "nativePathPipelineLayout")
+        }
         if nativeTextPipelineLayout == 0uL {
             throw ArgumentException("Vulkan text pipeline layout is null", "nativeTextPipelineLayout")
         }
+        if nativeBlendPipelineLayout == 0uL {
+            throw ArgumentException("Vulkan blend pipeline layout is null", "nativeBlendPipelineLayout")
+        }
         if vertexModule == 0uL || solidModule == 0uL || borderModule == 0uL
             || shadowModule == 0uL || linearModule == 0uL || radialModule == 0uL
-            || sampledModule == 0uL {
+            || sampledModule == 0uL || lavaModule == 0uL || blendModule == 0uL {
             throw ArgumentException("Vulkan primitive shader module is null")
+        }
+        if pathVertexModule == 0uL || pathFragmentModule == 0uL {
+            throw ArgumentException("Vulkan path shader module is null")
         }
         if textVertexModule == 0uL || textFragmentModule == 0uL
             || textPaintFragmentModule == 0uL {
@@ -91,155 +197,135 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
         format = targetFormat
         objectAccounting = nativeObjectAccounting
         pipelineLayout = nativePipelineLayout
+        pathPipelineLayout = nativePathPipelineLayout
         textPipelineLayout = nativeTextPipelineLayout
-        try {
-            Create(vertexModule, solidModule, shadowModule, borderModule, linearModule,
-                radialModule, sampledModule, textVertexModule, textFragmentModule,
-                textPaintFragmentModule)
-        } catch (error Exception) {
-            DestroyPipelines()
-            throw error
-        }
+        blendPipelineLayout = nativeBlendPipelineLayout
+        analyticVertexModule = vertexModule
+        this.solidModule = solidModule
+        this.shadowModule = shadowModule
+        this.borderModule = borderModule
+        this.linearModule = linearModule
+        this.radialModule = radialModule
+        this.sampledModule = sampledModule
+        this.lavaModule = lavaModule
+        this.blendModule = blendModule
+        this.pathVertexModule = pathVertexModule
+        this.pathFragmentModule = pathFragmentModule
+        this.textVertexModule = textVertexModule
+        this.textFragmentModule = textFragmentModule
+        this.textPaintFragmentModule = textPaintFragmentModule
+        pipelineGate = Object()
+        shaderEffectPipelines = [ShaderEffectCapacity]VulkanShaderEffectPipelineEntry
+    }
+    internal func MaterializePipelines() {
+        ResolvePipeline(ref solidPipeline, analyticVertexModule, solidModule,
+            pipelineLayout, true, true)
+        ResolvePipeline(ref shadowPipeline, analyticVertexModule, shadowModule,
+            pipelineLayout, true, true)
+        ResolvePipeline(ref borderPipeline, analyticVertexModule, borderModule,
+            pipelineLayout, true, true)
+        ResolvePipeline(ref linearPipeline, analyticVertexModule, linearModule,
+            pipelineLayout, true, true)
+        ResolvePipeline(ref radialPipeline, analyticVertexModule, radialModule,
+            pipelineLayout, true, true)
+        ResolvePipeline(ref sampledPipeline, analyticVertexModule, sampledModule,
+            pipelineLayout, true, true)
+        ResolvePipeline(ref lavaPipeline, analyticVertexModule, lavaModule,
+            pipelineLayout, false, true)
+        ResolvePipeline(ref blendPipeline, analyticVertexModule, blendModule,
+            blendPipelineLayout, true, true)
+        ResolvePipeline(ref pathPipeline, pathVertexModule, pathFragmentModule,
+            pathPipelineLayout, true, false)
+        ResolvePipeline(ref textPipeline, textVertexModule, textFragmentModule,
+            textPipelineLayout, true, false)
+        ResolvePipeline(ref textPaintPipeline, textVertexModule,
+            textPaintFragmentModule, textPipelineLayout, true, false)
     }
 
-    private func Create(
-        vertexModule VkShaderModule,
-        solidModule VkShaderModule,
-        shadowModule VkShaderModule,
-        borderModule VkShaderModule,
-        linearModule VkShaderModule,
-        radialModule VkShaderModule,
-        sampledModule VkShaderModule,
-        textVertexModule VkShaderModule,
-        textFragmentModule VkShaderModule,
-        textPaintFragmentModule VkShaderModule) {
-        var entryPointStorage nint = nint(0)
-        try {
-            entryPointStorage = Marshal.StringToCoTaskMemUTF8("main")
-            solidPipeline = CreatePipeline(vertexModule, solidModule, pipelineLayout, entryPointStorage)
-            shadowPipeline = CreatePipeline(vertexModule, shadowModule, pipelineLayout, entryPointStorage)
-            borderPipeline = CreatePipeline(vertexModule, borderModule, pipelineLayout, entryPointStorage)
-            linearPipeline = CreatePipeline(vertexModule, linearModule, pipelineLayout, entryPointStorage)
-            radialPipeline = CreatePipeline(vertexModule, radialModule, pipelineLayout, entryPointStorage)
-            sampledPipeline = CreatePipeline(vertexModule, sampledModule, pipelineLayout, entryPointStorage)
-            textPipeline = CreatePipeline(textVertexModule, textFragmentModule,
-                textPipelineLayout, entryPointStorage)
-            textPaintPipeline = CreatePipeline(textVertexModule, textPaintFragmentModule,
-                textPipelineLayout, entryPointStorage)
-        } finally {
-            if entryPointStorage != nint(0) {
-                Marshal.FreeCoTaskMem(entryPointStorage)
+
+
+
+    private func ResolvePipeline(ref pipeline VkPipeline,
+        vertex VkShaderModule, fragment VkShaderModule, layout VkPipelineLayout,
+        enableBlend bool, primitiveInput bool) VkPipeline {
+        if pipeline != 0uL {
+            return pipeline
+        }
+        lock (pipelineGate) {
+            if disposed {
+                throw ObjectDisposedException("VulkanSharedPrimitiveFormatState")
             }
+            if pipeline == 0uL {
+                let topology = if primitiveInput {
+                    VkConstants.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP
+                } else {
+                    VkConstants.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+                }
+                pipeline = VulkanPipelineFactory.CreateGraphics(
+                    device,
+                    dispatch,
+                    objectAccounting,
+                    vertex,
+                    fragment,
+                    layout,
+                    format,
+                    topology,
+                    enableBlend,
+                    FullColorWriteMask())
+            }
+            return pipeline
         }
     }
 
-    private func CreatePipeline(
-        vertexModule VkShaderModule,
-        fragmentModule VkShaderModule,
-        layout VkPipelineLayout,
-        entryPointStorage nint) VkPipeline {
-        let entryPoint = *int8(entryPointStorage)
-        let stages *VkPipelineShaderStageCreateInfo = stackalloc [2]VkPipelineShaderStageCreateInfo
-        stages[0] = VkPipelineShaderStageCreateInfo{}
-        stages[0].sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
-        stages[0].stage = VkConstants.VK_SHADER_STAGE_VERTEX_BIT
-        stages[0].module = vertexModule
-        stages[0].pName = entryPoint
-        stages[1] = VkPipelineShaderStageCreateInfo{}
-        stages[1].sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
-        stages[1].stage = VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT
-        stages[1].module = fragmentModule
-        stages[1].pName = entryPoint
-
-        var vertexInput = VkPipelineVertexInputStateCreateInfo{}
-        vertexInput.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
-
-        var inputAssembly = VkPipelineInputAssemblyStateCreateInfo{}
-        inputAssembly.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
-        inputAssembly.topology = VkConstants.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
-
-        var viewportState = VkPipelineViewportStateCreateInfo{}
-        viewportState.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO
-        viewportState.viewportCount = 1u
-        viewportState.scissorCount = 1u
-
-        var rasterization = VkPipelineRasterizationStateCreateInfo{}
-        rasterization.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO
-        rasterization.polygonMode = VkConstants.VK_POLYGON_MODE_FILL
-        rasterization.cullMode = uint32(VkConstants.VK_CULL_MODE_NONE)
-        rasterization.frontFace = VkConstants.VK_FRONT_FACE_COUNTER_CLOCKWISE
-        rasterization.lineWidth = 1.0F
-
-        var multisample = VkPipelineMultisampleStateCreateInfo{}
-        multisample.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO
-        multisample.rasterizationSamples = VkConstants.VK_SAMPLE_COUNT_1_BIT
-
-        var colorBlendAttachment = VkPipelineColorBlendAttachmentState{}
-        colorBlendAttachment.blendEnable = VkConstants.VK_TRUE
-        colorBlendAttachment.srcColorBlendFactor = VkConstants.VK_BLEND_FACTOR_ONE
-        colorBlendAttachment.dstColorBlendFactor = VkConstants.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
-        colorBlendAttachment.colorBlendOp = VkConstants.VK_BLEND_OP_ADD
-        colorBlendAttachment.srcAlphaBlendFactor = VkConstants.VK_BLEND_FACTOR_ONE
-        colorBlendAttachment.dstAlphaBlendFactor = VkConstants.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
-        colorBlendAttachment.alphaBlendOp = VkConstants.VK_BLEND_OP_ADD
-        colorBlendAttachment.colorWriteMask = uint32(VkConstants.VK_COLOR_COMPONENT_R_BIT)
+    private func FullColorWriteMask() uint32 ->
+        uint32(VkConstants.VK_COLOR_COMPONENT_R_BIT)
             | uint32(VkConstants.VK_COLOR_COMPONENT_G_BIT)
             | uint32(VkConstants.VK_COLOR_COMPONENT_B_BIT)
             | uint32(VkConstants.VK_COLOR_COMPONENT_A_BIT)
 
-        var colorBlend = VkPipelineColorBlendStateCreateInfo{}
-        colorBlend.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO
-        colorBlend.logicOpEnable = VkConstants.VK_FALSE
-        colorBlend.logicOp = VkConstants.VK_LOGIC_OP_COPY
-        colorBlend.attachmentCount = 1u
-        colorBlend.pAttachments = &colorBlendAttachment
-
-        let dynamicStates *VkDynamicState = stackalloc [2]VkDynamicState
-        dynamicStates[0] = VkConstants.VK_DYNAMIC_STATE_VIEWPORT
-        dynamicStates[1] = VkConstants.VK_DYNAMIC_STATE_SCISSOR
-        var dynamicState = VkPipelineDynamicStateCreateInfo{}
-        dynamicState.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO
-        dynamicState.dynamicStateCount = 2u
-        dynamicState.pDynamicStates = dynamicStates
-
-        var pipelineColorFormat = format
-        var pipelineRendering = VkPipelineRenderingCreateInfo{}
-        pipelineRendering.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO
-        pipelineRendering.colorAttachmentCount = 1u
-        pipelineRendering.pColorAttachmentFormats = &pipelineColorFormat
-        pipelineRendering.depthAttachmentFormat = VkFormat(0)
-        pipelineRendering.stencilAttachmentFormat = VkFormat(0)
-
-        var createInfo = VkGraphicsPipelineCreateInfo{}
-        createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO
-        createInfo.pNext = *void(&pipelineRendering)
-        createInfo.stageCount = 2u
-        createInfo.pStages = stages
-        createInfo.pVertexInputState = &vertexInput
-        createInfo.pInputAssemblyState = &inputAssembly
-        createInfo.pViewportState = &viewportState
-        createInfo.pRasterizationState = &rasterization
-        createInfo.pMultisampleState = &multisample
-        createInfo.pColorBlendState = &colorBlend
-        createInfo.pDynamicState = &dynamicState
-        createInfo.layout = layout
-        createInfo.renderPass = 0uL
-        var result VkPipeline = 0uL
-        let createGraphicsPipelines = dispatch.vkCreateGraphicsPipelines
-        if createGraphicsPipelines(device, 0uL, 1u, &createInfo, nil, &result) != VkConstants.VK_SUCCESS
-            || result == 0uL {
-            throw InvalidOperationException("vkCreateGraphicsPipelines failed")
+    internal func ResolveShaderEffectPipeline(effect ShaderEffect) VkPipeline {
+        if disposed { throw ObjectDisposedException("VulkanSharedPrimitiveFormatState") }
+        let programId = effect.ProgramId
+        var index int32 = 0
+        while index < shaderEffectPipelineCount {
+            let entry = shaderEffectPipelines[index]
+            if entry.ProgramId == programId { return entry.Pipeline }
+            index = index + 1
         }
+        if shaderEffectPipelineCount >= shaderEffectPipelines.Length {
+            throw InvalidOperationException("Vulkan shader effect pipeline capacity exhausted")
+        }
+        let fragmentModule = VulkanPipelineFactory.CreateShaderModule(
+            device,
+            dispatch,
+            objectAccounting,
+            effect.FragmentSpirv,
+            "shader effect")
+        var pipeline VkPipeline
         try {
-            if let accounting = objectAccounting {
-                accounting.Allocate()
-            }
-        } catch (error Exception) {
-            let destroyPipeline = dispatch.vkDestroyPipeline
-            destroyPipeline(device, result, nil)
-            throw error
+            pipeline = VulkanPipelineFactory.CreateGraphics(
+                device,
+                dispatch,
+                objectAccounting,
+                analyticVertexModule,
+                fragmentModule,
+                blendPipelineLayout,
+                format,
+                VkConstants.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+                true,
+                FullColorWriteMask())
+        } finally {
+            let destroyShaderModule = dispatch.vkDestroyShaderModule
+            destroyShaderModule(device, fragmentModule, nil)
+            if let accounting = objectAccounting { accounting.Release() }
         }
-        return result
+        let slot = shaderEffectPipelineCount
+        shaderEffectPipelines[slot] = VulkanShaderEffectPipelineEntry{
+            ProgramId: programId,
+            Pipeline: pipeline,
+        }
+        shaderEffectPipelineCount = shaderEffectPipelineCount + 1
+        return pipeline
     }
 
     public func Dispose() {
@@ -252,6 +338,17 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
 
     private func DestroyPipelines() {
         let destroyPipeline = dispatch.vkDestroyPipeline
+        var shaderIndex int32 = 0
+        while shaderIndex < shaderEffectPipelineCount {
+            let pipeline = shaderEffectPipelines[shaderIndex].Pipeline
+            if pipeline != 0uL {
+                destroyPipeline(device, pipeline, nil)
+                if let accounting = objectAccounting { accounting.Release() }
+            }
+            shaderEffectPipelines[shaderIndex] = VulkanShaderEffectPipelineEntry{}
+            shaderIndex = shaderIndex + 1
+        }
+        shaderEffectPipelineCount = 0
         if textPaintPipeline != 0uL {
             destroyPipeline(device, textPaintPipeline, nil)
             if let accounting = objectAccounting {
@@ -272,6 +369,27 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
                 accounting.Release()
             }
             sampledPipeline = 0uL
+        }
+        if lavaPipeline != 0uL {
+            destroyPipeline(device, lavaPipeline, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            lavaPipeline = 0uL
+        }
+        if blendPipeline != 0uL {
+            destroyPipeline(device, blendPipeline, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            blendPipeline = 0uL
+        }
+        if pathPipeline != 0uL {
+            destroyPipeline(device, pathPipeline, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            pathPipeline = 0uL
         }
         if shadowPipeline != 0uL {
             destroyPipeline(device, shadowPipeline, nil)
@@ -323,6 +441,8 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
     private let objectAccounting VulkanObjectAccounting?
     private let generation uint64
     private let formatStates []VulkanSharedPrimitiveFormatState?
+    private let clipPipelineGate object
+    private let eagerPipelineCreation bool
     private var vertexModule VkShaderModule
     private var solidModule VkShaderModule
     private var shadowModule VkShaderModule
@@ -330,17 +450,48 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
     private var linearModule VkShaderModule
     private var radialModule VkShaderModule
     private var sampledModule VkShaderModule
+    private var lavaModule VkShaderModule
+    private var blendModule VkShaderModule
+    private var pathVertexModule VkShaderModule
+    private var pathFragmentModule VkShaderModule
+    private var clipMaskVertexModule VkShaderModule
+    private var clipMaskFragmentModule VkShaderModule
     private var textVertexModule VkShaderModule
     private var textFragmentModule VkShaderModule
     private var textPaintFragmentModule VkShaderModule
     private var pipelineLayout VkPipelineLayout
+    private var blendPipelineLayout VkPipelineLayout
+    private var pathDescriptorSetLayout VkDescriptorSetLayout
+    private var pathPipelineLayout VkPipelineLayout
     private var textDescriptorSetLayout VkDescriptorSetLayout
     private var textPipelineLayout VkPipelineLayout
+    private var primitiveDescriptorSetLayout VkDescriptorSetLayout
+    private var clipDescriptorSetLayout VkDescriptorSetLayout
+    private var clipMaskPipelineLayout VkPipelineLayout
+    private var clipMaskR8Pipeline VkPipeline
+    private var clipMaskRgba8Pipeline VkPipeline
     private var disposed bool
 
     internal prop Generation uint64 { get { return generation } }
     internal prop PipelineLayout VkPipelineLayout { get { return pipelineLayout } }
+    internal prop PrimitiveDescriptorSetLayout VkDescriptorSetLayout { get { return primitiveDescriptorSetLayout } }
+    internal prop PathDescriptorSetLayout VkDescriptorSetLayout { get { return pathDescriptorSetLayout } }
+    internal prop PathPipelineLayout VkPipelineLayout { get { return pathPipelineLayout } }
     internal prop TextDescriptorSetLayout VkDescriptorSetLayout { get { return textDescriptorSetLayout } }
+    internal prop ClipDescriptorSetLayout VkDescriptorSetLayout { get { return clipDescriptorSetLayout } }
+    internal prop ClipMaskPipelineLayout VkPipelineLayout { get { return clipMaskPipelineLayout } }
+    internal prop ClipMaskR8Pipeline VkPipeline {
+        get {
+            return ResolveClipMaskPipeline(ref clipMaskR8Pipeline,
+                VkConstants.VK_FORMAT_R8_UNORM)
+        }
+    }
+    internal prop ClipMaskRgba8Pipeline VkPipeline {
+        get {
+            return ResolveClipMaskPipeline(ref clipMaskRgba8Pipeline,
+                VkConstants.VK_FORMAT_R8G8B8A8_UNORM)
+        }
+    }
     internal prop LiveObjectCount uint64 {
         get {
             var count uint64 = 0uL
@@ -351,12 +502,26 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
             if linearModule != 0uL { count++ }
             if radialModule != 0uL { count++ }
             if sampledModule != 0uL { count++ }
+            if lavaModule != 0uL { count++ }
+            if blendModule != 0uL { count++ }
+            if pathVertexModule != 0uL { count++ }
+            if pathFragmentModule != 0uL { count++ }
+            if clipMaskVertexModule != 0uL { count++ }
+            if clipMaskFragmentModule != 0uL { count++ }
             if textVertexModule != 0uL { count++ }
             if textFragmentModule != 0uL { count++ }
             if textPaintFragmentModule != 0uL { count++ }
             if pipelineLayout != 0uL { count++ }
+            if blendPipelineLayout != 0uL { count++ }
+            if pathDescriptorSetLayout != 0uL { count++ }
+            if pathPipelineLayout != 0uL { count++ }
             if textDescriptorSetLayout != 0uL { count++ }
             if textPipelineLayout != 0uL { count++ }
+            if primitiveDescriptorSetLayout != 0uL { count++ }
+            if clipDescriptorSetLayout != 0uL { count++ }
+            if clipMaskPipelineLayout != 0uL { count++ }
+            if clipMaskR8Pipeline != 0uL { count++ }
+            if clipMaskRgba8Pipeline != 0uL { count++ }
             var index int32 = 0
             while index < formatStates.Length {
                 if let state = formatStates[index] {
@@ -373,6 +538,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
         nativeDispatch VkDeviceDispatch,
         nativeImageResources VulkanImageResources,
         nativeGeneration uint64,
+        createPipelinesEagerly bool,
         nativeObjectAccounting VulkanObjectAccounting?) {
         if nativeDevice == nint(0) {
             throw ArgumentException("Vulkan device is null", "nativeDevice")
@@ -388,7 +554,9 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
         imageResources = nativeImageResources
         objectAccounting = nativeObjectAccounting
         generation = nativeGeneration
+        eagerPipelineCreation = createPipelinesEagerly
         formatStates = [FormatCapacity]VulkanSharedPrimitiveFormatState?
+        clipPipelineGate = Object()
         let vertexCode = LoadShaderCode("analytic.vert.spv")
         let solidCode = LoadShaderCode("analytic_solid.frag.spv")
         let shadowCode = LoadShaderCode("analytic_shadow.frag.spv")
@@ -396,6 +564,12 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
         let linearCode = LoadShaderCode("analytic_linear4.frag.spv")
         let radialCode = LoadShaderCode("analytic_radial4.frag.spv")
         let sampledCode = LoadShaderCode("analytic_sampled_image.frag.spv")
+        let lavaCode = LoadShaderCode("lava.frag.spv")
+        let blendCode = LoadShaderCode("analytic_blend.frag.spv")
+        let pathVertexCode = LoadShaderCode("path_band.vert.spv")
+        let pathFragmentCode = LoadShaderCode("path_band.frag.spv")
+        let clipMaskVertexCode = LoadShaderCode("clip_mask.vert.spv")
+        let clipMaskFragmentCode = LoadShaderCode("clip_mask.frag.spv")
         let textVertexCode = LoadShaderCode("hb_gpu.vert.spv")
         let textFragmentCode = LoadShaderCode("hb_gpu_draw.frag.spv")
         let textPaintFragmentCode = LoadShaderCode("hb_gpu_paint.frag.spv")
@@ -407,12 +581,28 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
             linearModule = CreateShaderModule(linearCode, "analytic_linear4.frag.spv")
             radialModule = CreateShaderModule(radialCode, "analytic_radial4.frag.spv")
             sampledModule = CreateShaderModule(sampledCode, "analytic_sampled_image.frag.spv")
+            lavaModule = CreateShaderModule(lavaCode, "lava.frag.spv")
+            blendModule = CreateShaderModule(blendCode, "analytic_blend.frag.spv")
+            pathVertexModule = CreateShaderModule(pathVertexCode, "path_band.vert.spv")
+            pathFragmentModule = CreateShaderModule(pathFragmentCode, "path_band.frag.spv")
+            clipMaskVertexModule = CreateShaderModule(clipMaskVertexCode, "clip_mask.vert.spv")
+            clipMaskFragmentModule = CreateShaderModule(clipMaskFragmentCode, "clip_mask.frag.spv")
             textVertexModule = CreateShaderModule(textVertexCode, "hb_gpu.vert.spv")
             textFragmentModule = CreateShaderModule(textFragmentCode, "hb_gpu_draw.frag.spv")
             textPaintFragmentModule = CreateShaderModule(textPaintFragmentCode, "hb_gpu_paint.frag.spv")
-            pipelineLayout = CreatePipelineLayout()
+            pathDescriptorSetLayout = CreatePathDescriptorSetLayout()
             textDescriptorSetLayout = CreateTextDescriptorSetLayout()
+            primitiveDescriptorSetLayout = CreatePrimitiveDescriptorSetLayout()
+            clipDescriptorSetLayout = CreateClipDescriptorSetLayout()
+            pipelineLayout = CreatePipelineLayout()
+            blendPipelineLayout = CreateBlendPipelineLayout()
+            pathPipelineLayout = CreatePathPipelineLayout()
             textPipelineLayout = CreateTextPipelineLayout()
+            clipMaskPipelineLayout = CreateClipMaskPipelineLayout()
+            if eagerPipelineCreation {
+                clipMaskR8Pipeline = CreateClipMaskPipeline(VkConstants.VK_FORMAT_R8_UNORM)
+                clipMaskRgba8Pipeline = CreateClipMaskPipeline(VkConstants.VK_FORMAT_R8G8B8A8_UNORM)
+            }
         } catch (error Exception) {
             Dispose()
             throw error
@@ -437,7 +627,9 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
             dispatch,
             targetFormat,
             pipelineLayout,
+            pathPipelineLayout,
             textPipelineLayout,
+            blendPipelineLayout,
             vertexModule,
             solidModule,
             shadowModule,
@@ -445,108 +637,220 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
             linearModule,
             radialModule,
             sampledModule,
+            lavaModule,
+            blendModule,
+            pathVertexModule,
+            pathFragmentModule,
             textVertexModule,
             textFragmentModule,
             textPaintFragmentModule,
             objectAccounting)
+        if eagerPipelineCreation {
+            created.MaterializePipelines()
+        }
         formatStates[slot] = created
         return created
     }
 
+    internal func ClipMaskPipelineFor(value VulkanClipMaskFormat) VkPipeline {
+        EnsureOpen()
+        if value == VulkanClipMaskFormat.R8Unorm {
+            return ClipMaskR8Pipeline
+        }
+        if value == VulkanClipMaskFormat.Rgba8Unorm {
+            return ClipMaskRgba8Pipeline
+        }
+        throw ArgumentOutOfRangeException("value")
+    }
+
+    private func ResolveClipMaskPipeline(ref pipeline VkPipeline,
+        targetFormat VkFormat) VkPipeline {
+        if pipeline != 0uL {
+            return pipeline
+        }
+        lock (clipPipelineGate) {
+            EnsureOpen()
+            if pipeline == 0uL {
+                pipeline = CreateClipMaskPipeline(targetFormat)
+            }
+            return pipeline
+        }
+    }
+
     private func CreatePipelineLayout() VkPipelineLayout {
-        var descriptorLayout VkDescriptorSetLayout = imageResources.DescriptorSetLayout
+        let descriptorLayout = imageResources.DescriptorSetLayout
         if descriptorLayout == 0uL {
             throw InvalidOperationException("Vulkan sampled image descriptor layout is unavailable")
         }
+        if clipDescriptorSetLayout == 0uL || primitiveDescriptorSetLayout == 0uL {
+            throw InvalidOperationException("Vulkan analytic descriptor layouts are unavailable")
+        }
+        let descriptorLayouts *VkDescriptorSetLayout = stackalloc [3]VkDescriptorSetLayout
+        descriptorLayouts[0] = descriptorLayout
+        descriptorLayouts[1] = clipDescriptorSetLayout
+        descriptorLayouts[2] = primitiveDescriptorSetLayout
+        return VulkanPipelineFactory.CreateLayout(
+            device,
+            dispatch,
+            objectAccounting,
+            descriptorLayouts,
+            3u,
+            nil,
+            0u)
+    }
+
+    private func CreateBlendPipelineLayout() VkPipelineLayout {
+        let descriptorLayout = imageResources.DescriptorSetLayout
+        if descriptorLayout == 0uL || primitiveDescriptorSetLayout == 0uL
+            || clipDescriptorSetLayout == 0uL {
+            throw InvalidOperationException("Vulkan blend descriptor layouts are unavailable")
+        }
+        let descriptorLayouts *VkDescriptorSetLayout = stackalloc [4]VkDescriptorSetLayout
+        descriptorLayouts[0] = descriptorLayout
+        descriptorLayouts[1] = descriptorLayout
+        descriptorLayouts[2] = primitiveDescriptorSetLayout
+        descriptorLayouts[3] = clipDescriptorSetLayout
+        var pushRange = VkPushConstantRange{}
+        pushRange.stageFlags = uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT)
+        pushRange.offset = 0u
+        pushRange.size = 128u
+        return VulkanPipelineFactory.CreateLayout(
+            device,
+            dispatch,
+            objectAccounting,
+            descriptorLayouts,
+            4u,
+            &pushRange,
+            1u)
+    }
+
+    private func CreatePathDescriptorSetLayout() VkDescriptorSetLayout ->
+        VulkanDescriptorFactory.CreateSingleBindingLayout(
+            device,
+            dispatch,
+            objectAccounting,
+            VkConstants.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
+                | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT))
+
+    private func CreateClipDescriptorSetLayout() VkDescriptorSetLayout {
+        let bindings *VkDescriptorSetLayoutBinding = stackalloc [2]VkDescriptorSetLayoutBinding
+        bindings[0] = VkDescriptorSetLayoutBinding{}
+        bindings[0].binding = 0u
+        bindings[0].descriptorType = VkConstants.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+        bindings[0].descriptorCount = 1u
+        bindings[0].stageFlags = uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT)
+        bindings[1] = VkDescriptorSetLayoutBinding{}
+        bindings[1].binding = 1u
+        bindings[1].descriptorType = VkConstants.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+        bindings[1].descriptorCount = 1u
+        bindings[1].stageFlags = uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT)
+        return VulkanDescriptorFactory.CreateLayout(
+            device,
+            dispatch,
+            objectAccounting,
+            bindings,
+            2u)
+    }
+
+    private func CreatePathPipelineLayout() VkPipelineLayout {
+        if pathDescriptorSetLayout == 0uL || clipDescriptorSetLayout == 0uL {
+            throw InvalidOperationException("Vulkan path descriptor layout is unavailable")
+        }
+        let descriptorLayouts *VkDescriptorSetLayout = stackalloc [2]VkDescriptorSetLayout
+        descriptorLayouts[0] = pathDescriptorSetLayout
+        descriptorLayouts[1] = clipDescriptorSetLayout
         var pushRange = VkPushConstantRange{}
         pushRange.stageFlags = uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
             | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT)
         pushRange.offset = 0u
-        pushRange.size = 128u
-        var createInfo = VkPipelineLayoutCreateInfo{}
-        createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
-        createInfo.setLayoutCount = 1u
-        createInfo.pSetLayouts = &descriptorLayout
-        createInfo.pushConstantRangeCount = 1u
-        createInfo.pPushConstantRanges = &pushRange
-        var result VkPipelineLayout = 0uL
-        let createPipelineLayout = dispatch.vkCreatePipelineLayout
-        if createPipelineLayout(device, &createInfo, nil, &result) != VkConstants.VK_SUCCESS
-            || result == 0uL {
-            throw InvalidOperationException("vkCreatePipelineLayout failed")
-        }
-        try {
-            if let accounting = objectAccounting {
-                accounting.Allocate()
-            }
-        } catch (error Exception) {
-            let destroyPipelineLayout = dispatch.vkDestroyPipelineLayout
-            destroyPipelineLayout(device, result, nil)
-            throw error
-        }
-        return result
+        pushRange.size = 80u
+        return VulkanPipelineFactory.CreateLayout(
+            device,
+            dispatch,
+            objectAccounting,
+            descriptorLayouts,
+            2u,
+            &pushRange,
+            1u)
     }
 
-    private func CreateTextDescriptorSetLayout() VkDescriptorSetLayout {
-        var layoutBinding = VkDescriptorSetLayoutBinding{}
-        layoutBinding.binding = 0u
-        layoutBinding.descriptorType = VkConstants.VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
-        layoutBinding.descriptorCount = 1u
-        layoutBinding.stageFlags = uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT)
-        var createInfo = VkDescriptorSetLayoutCreateInfo{}
-        createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
-        createInfo.bindingCount = 1u
-        createInfo.pBindings = &layoutBinding
-        var result VkDescriptorSetLayout = 0uL
-        let createLayout = dispatch.vkCreateDescriptorSetLayout
-        if createLayout(device, &createInfo, nil, &result) != VkConstants.VK_SUCCESS
-            || result == 0uL {
-            throw InvalidOperationException("vkCreateDescriptorSetLayout failed for Vulkan text")
-        }
-        try {
-            if let accounting = objectAccounting {
-                accounting.Allocate()
-            }
-        } catch (error Exception) {
-            let destroyLayout = dispatch.vkDestroyDescriptorSetLayout
-            destroyLayout(device, result, nil)
-            throw error
-        }
-        return result
-    }
+    private func CreateTextDescriptorSetLayout() VkDescriptorSetLayout ->
+        VulkanDescriptorFactory.CreateSingleBindingLayout(
+            device,
+            dispatch,
+            objectAccounting,
+            VkConstants.VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+            uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT))
+
+    private func CreatePrimitiveDescriptorSetLayout() VkDescriptorSetLayout ->
+        VulkanDescriptorFactory.CreateSingleBindingLayout(
+            device,
+            dispatch,
+            objectAccounting,
+            VkConstants.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
+                | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT))
 
     private func CreateTextPipelineLayout() VkPipelineLayout {
-        if textDescriptorSetLayout == 0uL {
-            throw InvalidOperationException("Vulkan text atlas descriptor layout is unavailable")
+        if textDescriptorSetLayout == 0uL || clipDescriptorSetLayout == 0uL
+            || primitiveDescriptorSetLayout == 0uL {
+            throw InvalidOperationException("Vulkan text descriptor layouts are unavailable")
         }
-        var descriptorLayout VkDescriptorSetLayout = textDescriptorSetLayout
+        let descriptorLayouts *VkDescriptorSetLayout = stackalloc [3]VkDescriptorSetLayout
+        descriptorLayouts[0] = textDescriptorSetLayout
+        descriptorLayouts[1] = clipDescriptorSetLayout
+        descriptorLayouts[2] = primitiveDescriptorSetLayout
+        var pushRange = VkPushConstantRange{}
+        pushRange.stageFlags = uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
+        pushRange.offset = 0u
+        pushRange.size = 32u
+        return VulkanPipelineFactory.CreateLayout(
+            device,
+            dispatch,
+            objectAccounting,
+            descriptorLayouts,
+            3u,
+            &pushRange,
+            1u)
+    }
+
+    private func CreateClipMaskPipelineLayout() VkPipelineLayout {
+        if pathDescriptorSetLayout == 0uL {
+            throw InvalidOperationException("Vulkan clip mask path descriptor layout is unavailable")
+        }
+        var descriptorLayout VkDescriptorSetLayout = pathDescriptorSetLayout
         var pushRange = VkPushConstantRange{}
         pushRange.stageFlags = uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
             | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT)
         pushRange.offset = 0u
-        pushRange.size = 128u
-        var createInfo = VkPipelineLayoutCreateInfo{}
-        createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
-        createInfo.setLayoutCount = 1u
-        createInfo.pSetLayouts = &descriptorLayout
-        createInfo.pushConstantRangeCount = 1u
-        createInfo.pPushConstantRanges = &pushRange
-        var result VkPipelineLayout = 0uL
-        let createPipelineLayout = dispatch.vkCreatePipelineLayout
-        if createPipelineLayout(device, &createInfo, nil, &result) != VkConstants.VK_SUCCESS
-            || result == 0uL {
-            throw InvalidOperationException("vkCreatePipelineLayout failed for Vulkan text")
+        pushRange.size = 112u
+        return VulkanPipelineFactory.CreateLayout(
+            device,
+            dispatch,
+            objectAccounting,
+            &descriptorLayout,
+            1u,
+            &pushRange,
+            1u)
+    }
+
+    private func CreateClipMaskPipeline(targetFormat VkFormat) VkPipeline {
+        if targetFormat != VkConstants.VK_FORMAT_R8_UNORM
+            && targetFormat != VkConstants.VK_FORMAT_R8G8B8A8_UNORM {
+            throw ArgumentException("Vulkan clip mask pipeline requires R8 or RGBA8 UNORM", "targetFormat")
         }
-        try {
-            if let accounting = objectAccounting {
-                accounting.Allocate()
-            }
-        } catch (error Exception) {
-            let destroyPipelineLayout = dispatch.vkDestroyPipelineLayout
-            destroyPipelineLayout(device, result, nil)
-            throw error
-        }
-        return result
+        return VulkanPipelineFactory.CreateGraphics(
+            device,
+            dispatch,
+            objectAccounting,
+            clipMaskVertexModule,
+            clipMaskFragmentModule,
+            clipMaskPipelineLayout,
+            targetFormat,
+            VkConstants.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+            false,
+            uint32(VkConstants.VK_COLOR_COMPONENT_R_BIT))
     }
 
     private func LoadShaderCode(fileName string) []uint8 {
@@ -558,33 +862,13 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
         return code
     }
 
-    private func CreateShaderModule(code []uint8, fileName string) VkShaderModule {
-        let pin = GCHandle.Alloc(code, GCHandleType.Pinned)
-        try {
-            var createInfo = VkShaderModuleCreateInfo{}
-            createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO
-            createInfo.codeSize = nuint(code.Length)
-            createInfo.pCode = *uint32(pin.AddrOfPinnedObject())
-            var result VkShaderModule = 0uL
-            let createShaderModule = dispatch.vkCreateShaderModule
-            if createShaderModule(device, &createInfo, nil, &result) != VkConstants.VK_SUCCESS
-                || result == 0uL {
-                throw InvalidOperationException("vkCreateShaderModule failed: " + fileName)
-            }
-            try {
-                if let accounting = objectAccounting {
-                    accounting.Allocate()
-                }
-            } catch (error Exception) {
-                let destroyShaderModule = dispatch.vkDestroyShaderModule
-                destroyShaderModule(device, result, nil)
-                throw error
-            }
-            return result
-        } finally {
-            pin.Free()
-        }
-    }
+    private func CreateShaderModule(code []uint8, fileName string) VkShaderModule ->
+        VulkanPipelineFactory.CreateShaderModule(
+            device,
+            dispatch,
+            objectAccounting,
+            code,
+            fileName)
 
     public func Dispose() {
         if disposed {
@@ -599,6 +883,22 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
             }
             index++
         }
+        if clipMaskR8Pipeline != 0uL {
+            let destroyPipeline = dispatch.vkDestroyPipeline
+            destroyPipeline(device, clipMaskR8Pipeline, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            clipMaskR8Pipeline = 0uL
+        }
+        if clipMaskRgba8Pipeline != 0uL {
+            let destroyPipeline = dispatch.vkDestroyPipeline
+            destroyPipeline(device, clipMaskRgba8Pipeline, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            clipMaskRgba8Pipeline = 0uL
+        }
         if pipelineLayout != 0uL {
             let destroyPipelineLayout = dispatch.vkDestroyPipelineLayout
             destroyPipelineLayout(device, pipelineLayout, nil)
@@ -606,6 +906,22 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
                 accounting.Release()
             }
             pipelineLayout = 0uL
+        }
+        if blendPipelineLayout != 0uL {
+            let destroyPipelineLayout = dispatch.vkDestroyPipelineLayout
+            destroyPipelineLayout(device, blendPipelineLayout, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            blendPipelineLayout = 0uL
+        }
+        if pathPipelineLayout != 0uL {
+            let destroyPipelineLayout = dispatch.vkDestroyPipelineLayout
+            destroyPipelineLayout(device, pathPipelineLayout, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            pathPipelineLayout = 0uL
         }
         if textPipelineLayout != 0uL {
             let destroyPipelineLayout = dispatch.vkDestroyPipelineLayout
@@ -615,6 +931,22 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
             }
             textPipelineLayout = 0uL
         }
+        if clipMaskPipelineLayout != 0uL {
+            let destroyPipelineLayout = dispatch.vkDestroyPipelineLayout
+            destroyPipelineLayout(device, clipMaskPipelineLayout, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            clipMaskPipelineLayout = 0uL
+        }
+        if pathDescriptorSetLayout != 0uL {
+            let destroyDescriptorSetLayout = dispatch.vkDestroyDescriptorSetLayout
+            destroyDescriptorSetLayout(device, pathDescriptorSetLayout, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            pathDescriptorSetLayout = 0uL
+        }
         if textDescriptorSetLayout != 0uL {
             let destroyDescriptorSetLayout = dispatch.vkDestroyDescriptorSetLayout
             destroyDescriptorSetLayout(device, textDescriptorSetLayout, nil)
@@ -622,6 +954,22 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
                 accounting.Release()
             }
             textDescriptorSetLayout = 0uL
+        }
+        if primitiveDescriptorSetLayout != 0uL {
+            let destroyDescriptorSetLayout = dispatch.vkDestroyDescriptorSetLayout
+            destroyDescriptorSetLayout(device, primitiveDescriptorSetLayout, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            primitiveDescriptorSetLayout = 0uL
+        }
+        if clipDescriptorSetLayout != 0uL {
+            let destroyDescriptorSetLayout = dispatch.vkDestroyDescriptorSetLayout
+            destroyDescriptorSetLayout(device, clipDescriptorSetLayout, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            clipDescriptorSetLayout = 0uL
         }
         let destroyShaderModule = dispatch.vkDestroyShaderModule
         if textPaintFragmentModule != 0uL {
@@ -651,6 +999,48 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
                 accounting.Release()
             }
             sampledModule = 0uL
+        }
+        if lavaModule != 0uL {
+            destroyShaderModule(device, lavaModule, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            lavaModule = 0uL
+        }
+        if blendModule != 0uL {
+            destroyShaderModule(device, blendModule, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            blendModule = 0uL
+        }
+        if pathFragmentModule != 0uL {
+            destroyShaderModule(device, pathFragmentModule, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            pathFragmentModule = 0uL
+        }
+        if pathVertexModule != 0uL {
+            destroyShaderModule(device, pathVertexModule, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            pathVertexModule = 0uL
+        }
+        if clipMaskFragmentModule != 0uL {
+            destroyShaderModule(device, clipMaskFragmentModule, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            clipMaskFragmentModule = 0uL
+        }
+        if clipMaskVertexModule != 0uL {
+            destroyShaderModule(device, clipMaskVertexModule, nil)
+            if let accounting = objectAccounting {
+                accounting.Release()
+            }
+            clipMaskVertexModule = 0uL
         }
         if shadowModule != 0uL {
             destroyShaderModule(device, shadowModule, nil)

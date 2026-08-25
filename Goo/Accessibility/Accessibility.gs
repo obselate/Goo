@@ -247,11 +247,11 @@ public class AccessibilityActionRequest {
   public prop Action AccessibilityAction { get { return action } }
   /// Gets text supplied for SetValue.
   public prop Value string { get { return value } }
-  /// Gets the UTF-16 selection start supplied for SetSelection.
+  /// Gets the UTF-16 selection start in the exposed semantic value supplied for SetSelection.
   public prop SelectionStart int32 {
     get { return selectionStart }
   }
-  /// Gets the UTF-16 selection length supplied for SetSelection.
+  /// Gets the UTF-16 selection length in the exposed semantic value supplied for SetSelection.
   public prop SelectionLength int32 {
     get { return selectionLength }
   }
@@ -278,8 +278,8 @@ public class AccessibilityActionRequest {
     }
 
     /// Creates a selection-change request.
-    /// @param start The nonnegative UTF-16 selection start.
-    /// @param length The nonnegative UTF-16 selection length.
+    /// @param start The nonnegative UTF-16 start in the exposed semantic value.
+    /// @param length The nonnegative UTF-16 length in the exposed semantic value.
     public func SetSelection(start int32, length int32) AccessibilityActionRequest {
       if start < 0 { throw ArgumentOutOfRangeException("start") }
       if length < 0 { throw ArgumentOutOfRangeException("length") }
@@ -456,11 +456,11 @@ public interface AccessibilityNode {
   prop Bounds ElementRect { get; }
   /// Gets the immutable editor text snapshot, when this node is a text editor.
   prop TextSnapshot TextSnapshot? { get; }
-  /// Gets the UTF-16 selection start, when this node has editable text.
+  /// Gets the UTF-16 selection start in the exposed semantic value, when this node has editable text.
   prop SelectionStart int32? { get; }
-  /// Gets the UTF-16 selection length, when this node has editable text.
+  /// Gets the UTF-16 selection length in the exposed semantic value, when this node has editable text.
   prop SelectionLength int32? { get; }
-  /// Gets the UTF-16 active caret offset, when this node has editable text.
+  /// Gets the UTF-16 active caret offset in the exposed semantic value, when this node has editable text.
   prop Caret int32? { get; }
   /// Gets supported actions in deterministic order.
   prop Actions IReadOnlyList[AccessibilityAction] { get; }

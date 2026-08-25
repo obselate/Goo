@@ -908,7 +908,8 @@ internal class TextGeometryQueries {
       guard let shape = cachedEntryShape(n) else { return false }
       let contentX = TextLayouts.ContentLeft(n) - n.Rect.X
       let hit = shape.HitTest(float32(local.X) - contentX - entryOffset(n, shape) + n.EditScrollX)
-      position = TextPosition{ Offset: hit.Index, Affinity: TextAffinity(hit.Affinity) }
+      position = TextPosition{ Offset: entrySourceOffset(n.EntryShape!!, hit.Index),
+        Affinity: TextAffinity(hit.Affinity) }
       return true
     }
 
@@ -953,7 +954,8 @@ internal class TextGeometryQueries {
       let height = shape.Descent - shape.Ascent
       let top = TextLayouts.ContentTop(n) - n.Rect.Y + (contentHeight - height) * 0.5F
       rect = Rect{ X: TextLayouts.ContentLeft(n) - n.Rect.X + entryOffset(n, shape) - n.EditScrollX
-        + shape.CaretX(position.Offset, int32(position.Affinity)), Y: top, W: 1.5F, H: height }
+        + shape.CaretX(entryDisplayOffset(n.EntryShape!!, position.Offset, position.Affinity),
+          int32(position.Affinity)), Y: top, W: 1.5F, H: height }
       return true
     }
 
@@ -1017,12 +1019,14 @@ internal class TextGeometryQueries {
       let height = shape.Descent - shape.Ascent
       let top = TextLayouts.ContentTop(n) - n.Rect.Y + (contentHeight - height) * 0.5F
       let x = TextLayouts.ContentLeft(n) - n.Rect.X + entryOffset(n, shape) - n.EditScrollX
-      let rectCount = shape.SelectionRectCount(textRange.Start, textRange.Start + textRange.Length)
+      let start = entryDisplayOffset(n.EntryShape!!, textRange.Start, TextAffinity.Downstream)
+      let end = entryDisplayOffset(n.EntryShape!!, textRange.Start + textRange.Length,
+        TextAffinity.Upstream)
+      let rectCount = shape.SelectionRectCount(start, end)
       var rectOffset int32 = 0
       var values = stackalloc [64]float32
       while rectOffset < rectCount {
-        let copied = shape.CopySelectionRects(textRange.Start, textRange.Start + textRange.Length,
-          rectOffset, values)
+        let copied = shape.CopySelectionRects(start, end, rectOffset, values)
         var value int32 = 0
         while value + 1 < copied {
           let raw = Rect{ X: x + values[value], Y: top,
@@ -1160,7 +1164,8 @@ internal class TextGeometryQueries {
       if cached.Content != n.Buffer || cached.FontFamily != n.FontFamily
         || cached.FontSize != TextLayouts.fontSize(n) || cached.FontWeight != n.FontWeight
         || cached.Italic != (n.FontStyle == FontStyle.Italic)
-        || cached.Spacing != TextLayouts.letterSpacing(n) || cached.Direction != int32(n.Direction) {
+        || cached.Spacing != TextLayouts.letterSpacing(n) || cached.Direction != int32(n.Direction)
+        || cached.Password != n.Password {
         return nil
       }
       return shape

@@ -2,6 +2,7 @@ package Goo
 
 import System
 import System.Collections.Generic
+import System.Diagnostics
 import System.Runtime.InteropServices
 import Hexa.NET.SDL3
 
@@ -20,6 +21,10 @@ internal unsafe partial class SdlHost : IDisposable {
   private var windowHandle nint
   private var disposed bool
   private var runtimeOwned bool
+  private var vulkanOwned bool
+  private var vsync bool
+  private let pacing SdlFramePacing = SdlFramePacing()
+  private var pendingEvents bool
   private var textInputActive bool
   private var hitTestEnabled bool
   private var pointerButtons SdlHostPointerButtons
@@ -37,6 +42,10 @@ internal unsafe partial class SdlHost : IDisposable {
     SdlRuntime.Acquire()
     runtimeOwned = true
     try {
+      if !SdlRuntime.AcquireVulkan() {
+        throw InvalidOperationException("SDL Vulkan loader initialization failed")
+      }
+      vulkanOwned = true
       CreateWindow(title, width, height, transparent)
       windowId = SDL.GetWindowID(window)
       if windowId == 0u {
@@ -55,6 +64,7 @@ internal unsafe partial class SdlHost : IDisposable {
       SetVSync(vsync)
       RefreshMetrics()
       RefreshPosition()
+      RefreshDisplayPacing(true)
     } catch (e Exception) {
       Dispose()
       throw e
@@ -91,6 +101,20 @@ internal unsafe partial class SdlHost : IDisposable {
   public prop IsClosing bool { get; private set }
   internal prop IsTextInputActive bool { get { return textInputActive } }
   internal prop NativeWindow SDLWindowPtr { get { return window } }
+  internal prop VSync bool { get { return vsync } }
+  internal prop FramePacing SdlFramePacing { get { return pacing } }
+  internal prop HasPendingEvents bool { get { return pendingEvents } }
+  internal prop SchedulerPacingAvailable bool {
+    get {
+      if disposed || IsClosing || FramebufferWidth <= 0 || FramebufferHeight <= 0 {
+        return false
+      }
+      let flags = SDL.GetWindowFlags(window)
+      let unavailable = uint64(SDLWindowFlags.Hidden | SDLWindowFlags.Minimized |
+        SDLWindowFlags.Occluded)
+      return (flags & unavailable) == 0uL
+    }
+  }
   internal prop WindowHandle nint {
     get {
       ThrowIfDisposed()
@@ -150,6 +174,42 @@ internal unsafe partial class SdlHost : IDisposable {
     RefreshMetricsIfChanged()
   }
 
+  internal func ClearPendingEvents() {
+    pendingEvents = false
+  }
+
+  internal func RefreshDisplayPacing(reset bool) {
+    if disposed || window.IsNull {
+      return
+    }
+    let display = SDL.GetDisplayForWindow(window)
+    var rate float64
+    if display != 0u {
+      let mode = SDL.GetCurrentDisplayMode(display)
+      if !mode.IsNull {
+        let numerator = int64(mode.RefreshRateNumerator)
+        let denominator = int64(mode.RefreshRateDenominator)
+        if numerator > 0 && denominator > 0 {
+          rate = float64(numerator) / float64(denominator)
+        } else {
+          rate = float64(mode.RefreshRate)
+        }
+      }
+    }
+    pacing.Refresh(display, rate, float64(Stopwatch.GetTimestamp()), reset)
+  }
+
+  internal func RefreshDisplayPacingForDisplay(displayId uint32) {
+    if disposed || window.IsNull {
+      return
+    }
+    let currentDisplay = SDL.GetDisplayForWindow(window)
+    if displayId == 0u || currentDisplay == 0u || currentDisplay == displayId ||
+        pacing.DisplayId == displayId {
+      RefreshDisplayPacing(true)
+    }
+  }
+
   public func Wake() {
     if disposed {
       return
@@ -203,6 +263,7 @@ internal unsafe partial class SdlHost : IDisposable {
 
   public func SetVSync(value bool) {
     ThrowIfDisposed()
+    vsync = value
   }
 
   public func SetCursor(value SdlHostCursor) {
@@ -286,6 +347,10 @@ internal unsafe partial class SdlHost : IDisposable {
       window = SDLWindowPtr.Null
       windowHandle = nint(0)
     }
+    if vulkanOwned {
+      vulkanOwned = false
+      SdlRuntime.ReleaseVulkan()
+    }
     if runtimeOwned {
       runtimeOwned = false
       SdlRuntime.Release()
@@ -336,6 +401,7 @@ internal unsafe partial class SdlHost : IDisposable {
     let framebufferWidth = FramebufferWidth
     let framebufferHeight = FramebufferHeight
     RefreshMetrics()
+    RefreshDisplayPacing(false)
     if logicalWidth != LogicalWidth || logicalHeight != LogicalHeight ||
         framebufferWidth != FramebufferWidth || framebufferHeight != FramebufferHeight {
       RaiseMetrics()

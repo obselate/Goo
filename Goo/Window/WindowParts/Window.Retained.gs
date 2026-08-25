@@ -27,7 +27,7 @@ public partial class Window {
       pendingRetainedEffects = combineEffects(pendingRetainedEffects, e)
       wake = Interlocked.Exchange(&pendingRetainedInvalidation, 1) == 0
     }
-    if wake {
+    if wake && !SdlRuntime.IsCurrentMainThread() {
       host?.Wake()
     }
   }

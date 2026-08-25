@@ -128,9 +128,12 @@ internal class TextInput {
     let end = start + length
     if end < start { return false }
     if target.Kind == NodeKind.Entry {
-      if end > target.Buffer.Length { return false }
-      target.Anchor = start
-      target.Caret = end
+      let semanticLength = target.Password
+        ? UnicodeGraphemes.Starts(target.Buffer).Length
+        : target.Buffer.Length
+      if end > semanticLength { return false }
+      target.Anchor = target.Password ? protectedTextSourceOffset(target.Buffer, start) : start
+      target.Caret = target.Password ? protectedTextSourceOffset(target.Buffer, end) : end
       target.AnchorAffinity = TextAffinity.Upstream
       target.CaretAffinity = TextAffinity.Downstream
       target.BlinkT = 0.0
@@ -304,11 +307,11 @@ internal class TextInput {
     } else if primary && key == Key.A {
       commitEdit(root, n, s, e.SelectAll(s))
     } else if primary && key == Key.C {
-      if e.HasSelection(s) {
+      if !n.Password && e.HasSelection(s) {
         clipboardSet(e.Selected(s))
       }
     } else if primary && key == Key.X {
-      if e.HasSelection(s) {
+      if !n.Password && e.HasSelection(s) {
         clipboardSet(e.Selected(s))
         commitEdit(root, n, s, e.Insert(s, ""))
       }
@@ -612,9 +615,9 @@ internal class TextInput {
         return
       }
       let metrics = TextMetrics()
-      using let shaped = metrics.Shape(n, n.Buffer)
+      let shaped = metrics.BufferShape(n)
       let caretX = metrics.EntryOriginX(n, shaped)
-        + shaped.CaretX(n.Caret, int32(n.CaretAffinity))
+        + metrics.CaretX(n, n.Caret)
       let topY = TextLayouts.ContentTop(n)
       let bottomY = topY + TextLayouts.ContentHeight(n)
       let p0 = TransformGeometry.NodeToWindow(n, caretX, topY)

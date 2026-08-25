@@ -4,7 +4,6 @@ updates:
   - package-ecosystem: "nuget"
     directories:
       - "/Goo"
-      - "/tests/Goo.Tests"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5

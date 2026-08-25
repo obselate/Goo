@@ -29,18 +29,29 @@ internal struct PackedPrimitiveColor {
 internal unsafe class VulkanPrimitiveRenderer : IDisposable {
     private const DefaultClipDepth int32 = 64
     private const MaxGradientStops int32 = 4
-    private const PushConstantSize uint32 = 128u
-    private const TextPushConstantSize uint32 = 128u
+    private const PrimitiveRecordSize VkDeviceSize = 128uL
+    private const PrimitiveRecordCapacity uint32 = 1024u
+    private const PrimitiveBufferSize VkDeviceSize = 131072uL
+    private const TextFrameConstantSize uint32 = 32u
 
     private let device VkDevice
     private let dispatch VkDeviceDispatch
     private let targetFormat VkFormat
+    private let allocator VulkanMemoryAllocator
     private let imageResources VulkanImageResources?
     private let textAtlas VulkanTextAtlas?
+    private let clipChain VulkanClipChainState?
     private let resourceGeneration uint64
     private let clipStack []PrimitiveClip
     private let linearChannels []float32
     private var pipelineLayout VkPipelineLayout
+    private var primitiveDescriptorSetLayout VkDescriptorSetLayout
+    private var primitiveDescriptorPool VkDescriptorPool
+    private var primitiveDescriptorSet VkDescriptorSet
+    private var primitiveBuffer VkBuffer
+    private var primitiveAllocation VulkanMemoryAllocation?
+    private var currentDrawOrdinal uint32
+    private var primitiveRecordOrdinal uint32
     private var solidPipeline VkPipeline
     private var shadowPipeline VkPipeline
     private var borderPipeline VkPipeline
@@ -59,6 +70,10 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
     internal prop LiveObjectCount uint32 {
         get {
             var count uint32 = 4u
+            if primitiveDescriptorSetLayout != 0uL { count++ }
+            if primitiveDescriptorPool != 0uL { count++ }
+            if primitiveDescriptorSet != 0uL { count++ }
+            if primitiveBuffer != 0uL { count++ }
             if shadowPipeline != 0uL { count++ }
             if borderPipeline != 0uL { count++ }
             if sampledPipeline != 0uL { count++ }
@@ -71,24 +86,44 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
     internal convenience init(
         nativeDevice VkDevice,
         nativeDispatch VkDeviceDispatch,
+        nativeAllocator VulkanMemoryAllocator,
         colorFormat VkFormat,
         maxClipDepth int32,
         nativeImageResources VulkanImageResources?,
         expectedGeneration uint64) {
-        init(nativeDevice, nativeDispatch, colorFormat, maxClipDepth,
-            nativeImageResources, expectedGeneration, nil)
+        init(nativeDevice, nativeDispatch, nativeAllocator, colorFormat, maxClipDepth,
+            nativeImageResources, expectedGeneration, nil, nil)
     }
 
-    internal init(
+    internal convenience init(
         nativeDevice VkDevice,
         nativeDispatch VkDeviceDispatch,
+        nativeAllocator VulkanMemoryAllocator,
         colorFormat VkFormat,
         maxClipDepth int32,
         nativeImageResources VulkanImageResources?,
         expectedGeneration uint64,
         nativeTextAtlas VulkanTextAtlas?) {
+        init(nativeDevice, nativeDispatch, nativeAllocator, colorFormat, maxClipDepth,
+            nativeImageResources, expectedGeneration, nativeTextAtlas,
+            nil)
+    }
+
+    internal init(
+        nativeDevice VkDevice,
+        nativeDispatch VkDeviceDispatch,
+        nativeAllocator VulkanMemoryAllocator,
+        colorFormat VkFormat,
+        maxClipDepth int32,
+        nativeImageResources VulkanImageResources?,
+        expectedGeneration uint64,
+        nativeTextAtlas VulkanTextAtlas?,
+        nativeClipChain VulkanClipChainState?) {
         if nativeDevice == nint(0) {
             throw ArgumentException("Vulkan device is null", "nativeDevice")
+        }
+        if nativeAllocator == nil {
+            throw ArgumentNullException("nativeAllocator")
         }
         if colorFormat != VkConstants.VK_FORMAT_R8G8B8A8_SRGB
             && colorFormat != VkConstants.VK_FORMAT_B8G8R8A8_SRGB {
@@ -99,9 +134,11 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         }
         this.device = nativeDevice
         this.dispatch = nativeDispatch
+        this.allocator = nativeAllocator
         this.targetFormat = colorFormat
         this.imageResources = nativeImageResources
         this.textAtlas = nativeTextAtlas
+        this.clipChain = nativeClipChain
         this.resourceGeneration = expectedGeneration
         if nativeImageResources != nil && expectedGeneration == 0uL {
             throw ArgumentOutOfRangeException("expectedGeneration")
@@ -135,9 +172,26 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         if frame.ActiveChunk >= 0 {
             throw InvalidOperationException("Vulkan primitive renderer requires a closed scene frame")
         }
+        if textPipelineLayout != 0uL {
+            var framePush = HbGpuTextFrameConstants{}
+            framePush.viewport_x = float32(extent.width)
+            framePush.viewport_y = float32(extent.height)
+            framePush.viewport_z = 1.0F
+            framePush.viewport_w = 1.0F
+            framePush.origin_x = 0.0F
+            framePush.origin_y = 0.0F
+            framePush.origin_z = 0.0F
+            framePush.origin_w = 0.0F
+            let pushConstants = dispatch.vkCmdPushConstants
+            pushConstants(commandBuffer, textPipelineLayout,
+                uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT),
+                0u, TextFrameConstantSize, *void(&framePush))
+        }
 
         clipDepth = 0
         activePipeline = 0uL
+        currentDrawOrdinal = 0u
+        primitiveRecordOrdinal = 0u
         var viewport = VkViewport{}
         viewport.x = 0.0F
         viewport.y = 0.0F
@@ -163,6 +217,7 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
                 ValidateChunk(frame, frame.Chunks[chunkIndex])
                 chunkIndex = chunkIndex + 1
             }
+            currentDrawOrdinal = uint32(drawIndex)
             let reference = frame.DrawRefs[drawIndex]
             switch reference.Kind {
                 case SceneDrawKind.SolidBox {
@@ -228,7 +283,7 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
                 case SceneDrawKind.CachedGlyphRun {
                     RequireRecordIndex(reference.Index, frame.CachedGlyphRunCount, "cached glyph run index")
                     let value = frame.CachedGlyphRuns[reference.Index]
-                    EmitText(commandBuffer, extent, value, frame)
+                    EmitText(commandBuffer, value, frame)
                 }
                 case SceneDrawKind.PrebuiltPathMesh {
                     throw NotSupportedException("Vulkan primitive renderer does not support path meshes")
@@ -256,6 +311,27 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         if clipDepth != 0 {
             throw InvalidOperationException("Vulkan primitive clip stack is not balanced")
         }
+    }
+
+    internal func RecordPrimitiveBufferBarrier(commandBuffer VkCommandBuffer) {
+        var barrier = VkBufferMemoryBarrier2{}
+        barrier.sType = VkConstants.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2
+        barrier.srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_HOST_BIT
+        barrier.srcAccessMask = VkConstants.VK_ACCESS_2_HOST_WRITE_BIT
+        barrier.dstStageMask = VkConstants.VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT
+            | VkConstants.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
+        barrier.dstAccessMask = VkConstants.VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+        barrier.srcQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
+        barrier.dstQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
+        barrier.buffer = primitiveBuffer
+        barrier.offset = 0uL
+        barrier.size = PrimitiveBufferSize
+        var dependency = VkDependencyInfo{}
+        dependency.sType = VkConstants.VK_STRUCTURE_TYPE_DEPENDENCY_INFO
+        dependency.bufferMemoryBarrierCount = 1u
+        dependency.pBufferMemoryBarriers = &barrier
+        let pipelineBarrier = dispatch.vkCmdPipelineBarrier2
+        pipelineBarrier(commandBuffer, &dependency)
     }
 
     public func Dispose() {
@@ -313,6 +389,7 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
             destroyPipelineLayout(device, pipelineLayout, nil)
             pipelineLayout = 0uL
         }
+        DestroyPrimitiveBuffer()
     }
 
     deinit {
@@ -369,22 +446,23 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
                 textFragmentModule = CreateShaderModule("hb_gpu_draw.frag.spv")
                 textPaintFragmentModule = CreateShaderModule("hb_gpu_paint.frag.spv")
             }
+            CreatePrimitiveBuffer()
             createdLayout = CreatePipelineLayout()
             entryPointStorage = Marshal.StringToCoTaskMemUTF8("main")
-            createdSolid = CreatePipeline(vertexModule, solidModule, createdLayout, entryPointStorage)
-            createdShadow = CreatePipeline(vertexModule, shadowModule, createdLayout, entryPointStorage)
-            createdBorder = CreatePipeline(vertexModule, borderModule, createdLayout, entryPointStorage)
-            createdLinear = CreatePipeline(vertexModule, linearModule, createdLayout, entryPointStorage)
-            createdRadial = CreatePipeline(vertexModule, radialModule, createdLayout, entryPointStorage)
+            createdSolid = CreatePipeline(vertexModule, solidModule, createdLayout, entryPointStorage, true)
+            createdShadow = CreatePipeline(vertexModule, shadowModule, createdLayout, entryPointStorage, true)
+            createdBorder = CreatePipeline(vertexModule, borderModule, createdLayout, entryPointStorage, true)
+            createdLinear = CreatePipeline(vertexModule, linearModule, createdLayout, entryPointStorage, true)
+            createdRadial = CreatePipeline(vertexModule, radialModule, createdLayout, entryPointStorage, true)
             if imageResources != nil {
-                createdSampled = CreatePipeline(vertexModule, sampledModule, createdLayout, entryPointStorage)
+                createdSampled = CreatePipeline(vertexModule, sampledModule, createdLayout, entryPointStorage, true)
             }
             if textAtlas != nil {
                 createdTextLayout = CreateTextPipelineLayout()
                 createdText = CreatePipeline(textVertexModule, textFragmentModule,
-                    createdTextLayout, entryPointStorage)
+                    createdTextLayout, entryPointStorage, false)
                 createdTextPaint = CreatePipeline(textVertexModule, textPaintFragmentModule,
-                    createdTextLayout, entryPointStorage)
+                    createdTextLayout, entryPointStorage, false)
             }
             let destroyShaderModule = dispatch.vkDestroyShaderModule
             destroyShaderModule(device, vertexModule, nil)
@@ -531,24 +609,137 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         }
     }
 
+    private func CreatePrimitiveBuffer() {
+        try {
+            var layoutBinding = VkDescriptorSetLayoutBinding{}
+            layoutBinding.binding = 0u
+            layoutBinding.descriptorType = VkConstants.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+            layoutBinding.descriptorCount = 1u
+            layoutBinding.stageFlags = uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
+                | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT)
+            var layoutInfo = VkDescriptorSetLayoutCreateInfo{}
+            layoutInfo.sType = VkConstants.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
+            layoutInfo.bindingCount = 1u
+            layoutInfo.pBindings = &layoutBinding
+            let createLayout = dispatch.vkCreateDescriptorSetLayout
+            if createLayout(device, &layoutInfo, nil, &primitiveDescriptorSetLayout)
+                != VkConstants.VK_SUCCESS || primitiveDescriptorSetLayout == 0uL {
+                throw InvalidOperationException("vkCreateDescriptorSetLayout failed for Vulkan primitive buffer")
+            }
+
+            var bufferInfo = VkBufferCreateInfo{}
+            bufferInfo.sType = VkConstants.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
+            bufferInfo.size = PrimitiveBufferSize
+            bufferInfo.usage = uint32(VkConstants.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+            bufferInfo.sharingMode = VkConstants.VK_SHARING_MODE_EXCLUSIVE
+            let createBuffer = dispatch.vkCreateBuffer
+            if createBuffer(device, &bufferInfo, nil, &primitiveBuffer) != VkConstants.VK_SUCCESS
+                || primitiveBuffer == 0uL {
+                throw InvalidOperationException("vkCreateBuffer failed for Vulkan primitive buffer")
+            }
+            primitiveAllocation = allocator.AllocateBuffer(primitiveBuffer,
+                uint32(VkConstants.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                uint32(VkConstants.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                    | uint32(VkConstants.VK_MEMORY_PROPERTY_HOST_CACHED_BIT))
+            if allocator.Map(primitiveAllocation!!) != VkConstants.VK_SUCCESS {
+                throw InvalidOperationException("vkMapMemory failed for Vulkan primitive buffer")
+            }
+            let words = *uint32(nint(primitiveAllocation!!.mapped))
+            var wordIndex int32 = 0
+            while wordIndex < 32 {
+                words[wordIndex] = 0u
+                wordIndex = wordIndex + 1
+            }
+
+            var poolSize = VkDescriptorPoolSize{}
+            poolSize._type = VkConstants.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+            poolSize.descriptorCount = 1u
+            var poolInfo = VkDescriptorPoolCreateInfo{}
+            poolInfo.sType = VkConstants.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
+            poolInfo.maxSets = 1u
+            poolInfo.poolSizeCount = 1u
+            poolInfo.pPoolSizes = &poolSize
+            let createPool = dispatch.vkCreateDescriptorPool
+            if createPool(device, &poolInfo, nil, &primitiveDescriptorPool)
+                != VkConstants.VK_SUCCESS || primitiveDescriptorPool == 0uL {
+                throw InvalidOperationException("vkCreateDescriptorPool failed for Vulkan primitive buffer")
+            }
+
+            var allocateInfo = VkDescriptorSetAllocateInfo{}
+            allocateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO
+            allocateInfo.descriptorPool = primitiveDescriptorPool
+            allocateInfo.descriptorSetCount = 1u
+            allocateInfo.pSetLayouts = &primitiveDescriptorSetLayout
+            let allocateSets = dispatch.vkAllocateDescriptorSets
+            if allocateSets(device, &allocateInfo, &primitiveDescriptorSet)
+                != VkConstants.VK_SUCCESS || primitiveDescriptorSet == 0uL {
+                throw InvalidOperationException("vkAllocateDescriptorSets failed for Vulkan primitive buffer")
+            }
+
+            var descriptorBuffer = VkDescriptorBufferInfo{}
+            descriptorBuffer.buffer = primitiveBuffer
+            descriptorBuffer.offset = 0uL
+            descriptorBuffer._range = PrimitiveBufferSize
+            var write = VkWriteDescriptorSet{}
+            write.sType = VkConstants.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
+            write.dstSet = primitiveDescriptorSet
+            write.dstBinding = 0u
+            write.descriptorCount = 1u
+            write.descriptorType = VkConstants.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+            write.pBufferInfo = &descriptorBuffer
+            let updateDescriptors = dispatch.vkUpdateDescriptorSets
+            updateDescriptors(device, 1u, &write, 0u, nil)
+        } catch (error Exception) {
+            DestroyPrimitiveBuffer()
+            throw error
+        }
+    }
+
+    private func DestroyPrimitiveBuffer() {
+        if primitiveDescriptorPool != 0uL {
+            let destroyPool = dispatch.vkDestroyDescriptorPool
+            destroyPool(device, primitiveDescriptorPool, nil)
+            primitiveDescriptorPool = 0uL
+            primitiveDescriptorSet = 0uL
+        }
+        if primitiveDescriptorSetLayout != 0uL {
+            let destroyLayout = dispatch.vkDestroyDescriptorSetLayout
+            destroyLayout(device, primitiveDescriptorSetLayout, nil)
+            primitiveDescriptorSetLayout = 0uL
+        }
+        if primitiveBuffer != 0uL {
+            let destroyBuffer = dispatch.vkDestroyBuffer
+            destroyBuffer(device, primitiveBuffer, nil)
+            primitiveBuffer = 0uL
+        }
+        if primitiveAllocation != nil {
+            allocator.Release(primitiveAllocation!!)
+            primitiveAllocation = nil
+        }
+    }
+
     private func CreatePipelineLayout() VkPipelineLayout {
-        var pushRange = VkPushConstantRange{}
-        pushRange.stageFlags = uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
-            | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT)
-        pushRange.offset = 0u
-        pushRange.size = PushConstantSize
+        if clipChain == nil || clipChain!!.DescriptorSetLayout == 0uL
+            || clipChain!!.EmptySetLayout == 0uL
+            || primitiveDescriptorSetLayout == 0uL {
+            throw InvalidOperationException("Vulkan clip chain descriptor layouts are unavailable")
+        }
         var createInfo = VkPipelineLayoutCreateInfo{}
         createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
+        let descriptorLayouts *VkDescriptorSetLayout = stackalloc [3]VkDescriptorSetLayout
+        descriptorLayouts[0] = clipChain!!.EmptySetLayout
         if imageResources != nil {
-            var descriptorLayout VkDescriptorSetLayout = imageResources!!.DescriptorSetLayout
-            if descriptorLayout == 0uL {
+            descriptorLayouts[0] = imageResources!!.DescriptorSetLayout
+            if descriptorLayouts[0] == 0uL {
                 throw InvalidOperationException("Vulkan sampled image descriptor layout is unavailable")
             }
-            createInfo.setLayoutCount = 1u
-            createInfo.pSetLayouts = &descriptorLayout
         }
-        createInfo.pushConstantRangeCount = 1u
-        createInfo.pPushConstantRanges = &pushRange
+        descriptorLayouts[1] = clipChain!!.DescriptorSetLayout
+        descriptorLayouts[2] = primitiveDescriptorSetLayout
+        createInfo.setLayoutCount = 3u
+        createInfo.pSetLayouts = descriptorLayouts
+        createInfo.pushConstantRangeCount = 0u
+        createInfo.pPushConstantRanges = nil
         var result VkPipelineLayout = 0uL
         let createPipelineLayout = dispatch.vkCreatePipelineLayout
         if createPipelineLayout(device, &createInfo, nil, &result) != VkConstants.VK_SUCCESS || result == 0uL {
@@ -558,19 +749,23 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
     }
 
     private func CreateTextPipelineLayout() VkPipelineLayout {
-        if textAtlas == nil || textAtlas!!.DescriptorSetLayout == 0uL {
-            throw InvalidOperationException("Vulkan text atlas descriptor layout is unavailable")
+        if textAtlas == nil || textAtlas!!.DescriptorSetLayout == 0uL
+            || clipChain == nil || clipChain!!.DescriptorSetLayout == 0uL
+            || primitiveDescriptorSetLayout == 0uL {
+            throw InvalidOperationException("Vulkan text descriptor layouts are unavailable")
         }
-        var descriptorLayout VkDescriptorSetLayout = textAtlas!!.DescriptorSetLayout
+        let descriptorLayouts *VkDescriptorSetLayout = stackalloc [3]VkDescriptorSetLayout
+        descriptorLayouts[0] = textAtlas!!.DescriptorSetLayout
+        descriptorLayouts[1] = clipChain!!.DescriptorSetLayout
+        descriptorLayouts[2] = primitiveDescriptorSetLayout
         var pushRange = VkPushConstantRange{}
         pushRange.stageFlags = uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
-            | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT)
         pushRange.offset = 0u
-        pushRange.size = TextPushConstantSize
+        pushRange.size = TextFrameConstantSize
         var createInfo = VkPipelineLayoutCreateInfo{}
         createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
-        createInfo.setLayoutCount = 1u
-        createInfo.pSetLayouts = &descriptorLayout
+        createInfo.setLayoutCount = 3u
+        createInfo.pSetLayouts = descriptorLayouts
         createInfo.pushConstantRangeCount = 1u
         createInfo.pPushConstantRanges = &pushRange
         var result VkPipelineLayout = 0uL
@@ -585,7 +780,8 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         vertexModule VkShaderModule,
         fragmentModule VkShaderModule,
         layout VkPipelineLayout,
-        entryPointStorage nint) VkPipeline {
+        entryPointStorage nint,
+        triangleStrip bool) VkPipeline {
         let entryPoint = *int8(entryPointStorage)
         let stages *VkPipelineShaderStageCreateInfo = stackalloc [2]VkPipelineShaderStageCreateInfo
         stages[0] = VkPipelineShaderStageCreateInfo{}
@@ -604,7 +800,11 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
 
         var inputAssembly = VkPipelineInputAssemblyStateCreateInfo{}
         inputAssembly.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
-        inputAssembly.topology = VkConstants.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+        inputAssembly.topology = if triangleStrip {
+            VkConstants.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP
+        } else {
+            VkConstants.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+        }
 
         var viewportState = VkPipelineViewportStateCreateInfo{}
         viewportState.sType = VkConstants.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO
@@ -1135,23 +1335,23 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         push.params_w = value.SourceHeight
         imageResources!!.BindDescriptor(commandBuffer, pipelineLayout, value.ImageId,
             value.SamplerId, samplerMode, resourceGeneration)
+        clipChain!!.BindDescriptor(commandBuffer, pipelineLayout)
+        let recordIndex = UploadPrimitiveRecord(*void(&push))
+        BindPrimitiveDescriptor(commandBuffer, pipelineLayout)
         if activePipeline != sampledPipeline {
             let bindPipeline = dispatch.vkCmdBindPipeline
             bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, sampledPipeline)
             activePipeline = sampledPipeline
         }
-        let pushConstants = dispatch.vkCmdPushConstants
-        pushConstants(commandBuffer, pipelineLayout,
-            uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
-                | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT),
-            0u, PushConstantSize, *void(&push))
         let draw = dispatch.vkCmdDraw
-        draw(commandBuffer, 6u, 1u, 0u, 0u)
+        if uint64(recordIndex) > uint64(uint32.MaxValue) / 4uL {
+            throw ArgumentOutOfRangeException("recordIndex")
+        }
+        draw(commandBuffer, 4u, 1u, recordIndex * 4u, currentDrawOrdinal)
     }
 
     private func EmitText(
         commandBuffer VkCommandBuffer,
-        extent VkExtent2D,
         value CachedGlyphRunRefRecord,
         frame SceneFrame) {
         if textAtlas == nil || textPipelineLayout == 0uL {
@@ -1207,63 +1407,70 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
             throw ArgumentOutOfRangeException("cached glyph extents")
         }
         let transform = ResolveTransform(frame, value.TransformIndex)
-        let width = float32(extent.width)
-        let height = float32(extent.height)
-        var push = HbGpuTextPushConstants{}
-        push.transform_m00 = 2.0F * transform.A / width
-        push.transform_m01 = 2.0F * transform.B / height
-        push.transform_m02 = 0.0F
-        push.transform_m03 = 0.0F
-        push.transform_m10 = 2.0F * transform.C / width
-        push.transform_m11 = 2.0F * transform.D / height
-        push.transform_m12 = 0.0F
-        push.transform_m13 = 0.0F
-        push.transform_m20 = 0.0F
-        push.transform_m21 = 0.0F
-        push.transform_m22 = 1.0F
-        push.transform_m23 = 0.0F
-        push.transform_m30 = 2.0F * transform.TX / width - 1.0F
-        push.transform_m31 = 2.0F * transform.TY / height - 1.0F
-        push.transform_m32 = 0.0F
-        push.transform_m33 = 1.0F
-        push.viewport_x = width
-        push.viewport_y = height
-        push.viewport_z = if value.EffectMode == 2u { value.EffectRadius } else { 0.0F }
-        push.viewport_w = 0.0F
-        push.glyphBounds_x = value.GlyphMinX
-        push.glyphBounds_y = value.GlyphMinY
-        push.glyphBounds_z = value.GlyphMaxX
-        push.glyphBounds_w = value.GlyphMaxY
-        push.glyphInput_x = value.AtlasTexelOffset
-        push.glyphInput_y = value.EffectMode
-        push.glyphInput_z = 0u
-        push.glyphInput_w = 0u
         let rgba = int32(value.Color)
         let red = (rgba >> int32(24)) & int32(255)
         let green = (rgba >> int32(16)) & int32(255)
         let blue = (rgba >> int32(8)) & int32(255)
         let alpha = float32(rgba & int32(255)) / 255.0F
-        if value.RenderMode == 2u {
-            push.foreground_x = linearChannels[red] * alpha
-            push.foreground_y = linearChannels[green] * alpha
-            push.foreground_z = linearChannels[blue] * alpha
-        } else {
-            push.foreground_x = linearChannels[red]
-            push.foreground_y = linearChannels[green]
-            push.foreground_z = linearChannels[blue]
+        var record = HbGpuTextInstanceRecord{
+            transform_m00: transform.A,
+            transform_m01: transform.B,
+            transform_m02: 0.0F,
+            transform_m03: 0.0F,
+            transform_m10: transform.C,
+            transform_m11: transform.D,
+            transform_m12: 0.0F,
+            transform_m13: 0.0F,
+            transform_m20: 0.0F,
+            transform_m21: 0.0F,
+            transform_m22: 1.0F,
+            transform_m23: 0.0F,
+            transform_m30: transform.TX,
+            transform_m31: transform.TY,
+            transform_m32: 0.0F,
+            transform_m33: 1.0F,
+            glyphBounds_x: value.GlyphMinX,
+            glyphBounds_y: value.GlyphMinY,
+            glyphBounds_z: value.GlyphMaxX,
+            glyphBounds_w: value.GlyphMaxY,
+            glyphInput_x: value.AtlasTexelOffset,
+            glyphInput_y: value.EffectMode,
+            glyphInput_z: 0u,
+            glyphInput_w: 0u,
+            foreground_x: if value.RenderMode == 2u {
+                linearChannels[red] * alpha
+            } else {
+                linearChannels[red]
+            },
+            foreground_y: if value.RenderMode == 2u {
+                linearChannels[green] * alpha
+            } else {
+                linearChannels[green]
+            },
+            foreground_z: if value.RenderMode == 2u {
+                linearChannels[blue] * alpha
+            } else {
+                linearChannels[blue]
+            },
+            foreground_w: alpha,
+            effectParams_x: if value.EffectMode == 2u {
+                value.EffectRadius
+            } else {
+                0.0F
+            },
+            effectParams_y: 0.0F,
+            effectParams_z: 0.0F,
+            effectParams_w: 0.0F,
         }
-        push.foreground_w = alpha
         textAtlas!!.BindDescriptor(commandBuffer, textPipelineLayout)
+        clipChain!!.BindDescriptor(commandBuffer, textPipelineLayout)
+        let recordIndex = UploadPrimitiveRecord(*void(&record))
+        BindPrimitiveDescriptor(commandBuffer, textPipelineLayout)
         let bindPipeline = dispatch.vkCmdBindPipeline
         bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline)
         activePipeline = selectedPipeline
-        let pushConstants = dispatch.vkCmdPushConstants
-        pushConstants(commandBuffer, textPipelineLayout,
-            uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
-                | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT),
-            0u, TextPushConstantSize, *void(&push))
         let draw = dispatch.vkCmdDraw
-        draw(commandBuffer, 6u, 1u, 0u, 0u)
+        draw(commandBuffer, 6u, 1u, 0u, recordIndex)
     }
 
     private func FillTransform(
@@ -1439,19 +1646,50 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
         push->packedColorsExtra_w = 0u
     }
 
+    private func UploadPrimitiveRecord(source *void) uint32 {
+        if source == nil || primitiveAllocation == nil || primitiveAllocation!!.mapped == nil {
+            throw InvalidOperationException("Vulkan primitive buffer is not mapped")
+        }
+        if primitiveRecordOrdinal >= PrimitiveRecordCapacity {
+            throw InvalidOperationException("Vulkan primitive record buffer capacity exceeded")
+        }
+        let recordIndex = primitiveRecordOrdinal
+        let destination = *uint32(nint(primitiveAllocation!!.mapped)
+            + nint(uint64(recordIndex) * PrimitiveRecordSize))
+        let words = *uint32(nint(source))
+        var index int32 = 0
+        while index < 32 {
+            destination[index] = words[index]
+            index = index + 1
+        }
+        let flushResult = allocator.FlushBeforeSubmit(primitiveAllocation!!, 0uL, PrimitiveRecordSize)
+        if flushResult != VkConstants.VK_SUCCESS {
+            throw InvalidOperationException("vkFlushMappedMemoryRanges failed for Vulkan primitive buffer")
+        }
+        primitiveRecordOrdinal = primitiveRecordOrdinal + 1u
+        return recordIndex
+    }
+
+    private func BindPrimitiveDescriptor(commandBuffer VkCommandBuffer, layout VkPipelineLayout) {
+        let bindDescriptorSets = dispatch.vkCmdBindDescriptorSets
+        bindDescriptorSets(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS,
+            layout, 2u, 1u, &primitiveDescriptorSet, 0u, nil)
+    }
+
     private func BindAndDraw(commandBuffer VkCommandBuffer, pipeline VkPipeline, pushData *void) {
+        let recordIndex = UploadPrimitiveRecord(pushData)
         if activePipeline != pipeline {
             let bindPipeline = dispatch.vkCmdBindPipeline
             bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline)
             activePipeline = pipeline
         }
-        let push = dispatch.vkCmdPushConstants
-        push(commandBuffer, pipelineLayout,
-            uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
-                | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT),
-            0u, PushConstantSize, pushData)
+        clipChain!!.BindDescriptor(commandBuffer, pipelineLayout)
+        BindPrimitiveDescriptor(commandBuffer, pipelineLayout)
         let draw = dispatch.vkCmdDraw
-        draw(commandBuffer, 6u, 1u, 0u, 0u)
+        if uint64(recordIndex) > uint64(uint32.MaxValue) / 4uL {
+            throw ArgumentOutOfRangeException("recordIndex")
+        }
+        draw(commandBuffer, 4u, 1u, recordIndex * 4u, currentDrawOrdinal)
     }
 
     private func PushClip(commandBuffer VkCommandBuffer, clip PrimitiveClip) {

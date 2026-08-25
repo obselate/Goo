@@ -1,0 +1,8 @@
+<Project>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)FixtureAssemblyInfo.gs"
+             Link="FixtureAssemblyInfo.gs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ImageUploadStatePerfFixture.gs"
+             Link="ImageUploadStatePerfFixture.gs" />
+  </ItemGroup>
+</Project>

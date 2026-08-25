@@ -59,6 +59,7 @@ internal unsafe partial class VulkanWindowTarget {
                 deviceFacts,
                 sharedMemoryProperties,
                 sharedPhysicalProperties.limits.maxMemoryAllocationCount,
+                sharedPhysicalProperties.limits.maxStorageBufferRange,
                 sharedPhysicalProperties.limits.nonCoherentAtomSize,
                 sharedPhysicalProperties.limits.bufferImageGranularity,
                 memoryBudgetSupported,
@@ -74,6 +75,9 @@ internal unsafe partial class VulkanWindowTarget {
             validation = nil
             validationMessenger = 0uL
             validationMessengerCreated = false
+        }
+        if let activeRuntime = runtime {
+            queueMailbox = activeRuntime.QueueWorker.CreateMailbox(host)
         }
         CreateCommandResources()
     }
@@ -118,6 +122,7 @@ internal unsafe partial class VulkanWindowTarget {
         deviceFacts = shared.Facts
         memoryAllocator = shared.MemoryAllocator
         imageResources = shared.ImageResources
+        pathResources = shared.PathResources
         timestampValidBits = deviceFacts.TimestampValidBits
         timestampPeriod = deviceFacts.TimestampPeriod
         timestampComputeAndGraphics = deviceFacts.TimestampComputeAndGraphics
@@ -582,8 +587,11 @@ internal unsafe partial class VulkanWindowTarget {
         } else if instanceMaintenanceVariant == VulkanSwapchainMaintenanceVariant.Ext && hasMaintenanceExt {
             swapchainMaintenanceVariant = VulkanSwapchainMaintenanceVariant.Ext
         }
+        if !hasSwapchain || swapchainMaintenanceVariant == VulkanSwapchainMaintenanceVariant.None {
+            return false
+        }
         memoryBudgetSupported = hasMemoryBudget
-        return hasSwapchain
+        return true
     }
 
     private func HasRequiredFeatures(candidate VkPhysicalDevice) bool {
@@ -700,6 +708,7 @@ internal unsafe partial class VulkanWindowTarget {
         if let activeRuntime = runtime {
             memoryAllocator = activeRuntime.MemoryAllocator
             imageResources = activeRuntime.ImageResources
+            pathResources = activeRuntime.PathResources
         } else {
             throw InvalidOperationException("Vulkan shared runtime is unavailable")
         }
@@ -713,70 +722,25 @@ internal unsafe partial class VulkanWindowTarget {
                 timestampPeriod,
                 timestampComputeAndGraphics)
         }
-        var poolInfo = VkCommandPoolCreateInfo{}
-        poolInfo.sType = VkConstants.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO
-        poolInfo.flags = uint32(VkConstants.VK_COMMAND_POOL_CREATE_TRANSIENT_BIT)
-            | uint32(VkConstants.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT)
-        poolInfo.queueFamilyIndex = queueFamilyIndex
-        let createCommandPool = dispatch.vkCreateCommandPool
-        var createdCommandPool VkCommandPool = 0uL
-        let poolResult = createCommandPool(device, &poolInfo, nil, &createdCommandPool)
-        if poolResult != VkConstants.VK_SUCCESS || createdCommandPool == 0uL {
-            throw InvalidOperationException("vkCreateCommandPool failed: " + poolResult.ToString())
-        }
-        try {
-            if let accounting = windowObjectAccounting {
-                accounting.Allocate()
-            }
-        } catch (error Exception) {
-            let destroyCommandPool = dispatch.vkDestroyCommandPool
-            destroyCommandPool(device, createdCommandPool, nil)
-            throw error
-        }
-        commandPool = createdCommandPool
         let buffers *VkCommandBuffer = stackalloc [2]VkCommandBuffer
-        var allocateInfo = VkCommandBufferAllocateInfo{}
-        allocateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO
-        allocateInfo.commandPool = commandPool
-        allocateInfo.level = VkConstants.VK_COMMAND_BUFFER_LEVEL_PRIMARY
-        allocateInfo.commandBufferCount = 2u
-        let allocateCommandBuffers = dispatch.vkAllocateCommandBuffers
-        let allocateResult = allocateCommandBuffers(device, &allocateInfo, buffers)
-        if allocateResult != VkConstants.VK_SUCCESS {
-            let destroyCommandPool = dispatch.vkDestroyCommandPool
-            destroyCommandPool(device, commandPool, nil)
-            if let accounting = windowObjectAccounting {
-                accounting.Release()
-            }
-            commandPool = 0uL
-            throw InvalidOperationException("vkAllocateCommandBuffers failed: " + allocateResult.ToString())
-        }
-        var trackedCommandBuffers int32 = 0
-        try {
-            while trackedCommandBuffers < 2 {
-                if let accounting = windowObjectAccounting {
-                    accounting.Allocate()
-                }
-                trackedCommandBuffers = trackedCommandBuffers + 1
-            }
-        } catch (error Exception) {
-            while trackedCommandBuffers > 0 {
-                if let accounting = windowObjectAccounting {
-                    accounting.Release()
-                }
-                trackedCommandBuffers = trackedCommandBuffers - 1
-            }
-            let destroyCommandPool = dispatch.vkDestroyCommandPool
-            destroyCommandPool(device, commandPool, nil)
-            if let accounting = windowObjectAccounting {
-                accounting.Release()
-            }
-            commandPool = 0uL
-            throw error
-        }
-        commandBufferObjectCount = trackedCommandBuffers
-        frameSlot0 = VulkanFrameSlot(device, dispatch, buffers[0], windowObjectAccounting)
-        frameSlot1 = VulkanFrameSlot(device, dispatch, buffers[1], windowObjectAccounting)
+        let commandAllocation = VulkanCommandFactory.CreatePoolAndAllocate(
+            device,
+            dispatch,
+            windowObjectAccounting,
+            queueFamilyIndex,
+            uint32(VkConstants.VK_COMMAND_POOL_CREATE_TRANSIENT_BIT)
+                | uint32(VkConstants.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT),
+            VkConstants.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            2u,
+            buffers)
+        commandPool = commandAllocation.Pool
+        commandBufferObjectCount = commandAllocation.BufferCount
+        frameSlots.Create(
+            device,
+            dispatch,
+            buffers[0],
+            buffers[1],
+            windowObjectAccounting)
         guard let activeRuntime = runtime else {
             throw InvalidOperationException("Vulkan shared runtime is unavailable")
         }
@@ -784,9 +748,11 @@ internal unsafe partial class VulkanWindowTarget {
             activeRuntime.ImageIdentityRegistry,
             activeRuntime.ImageResources,
             activeRuntime.Generation)
+        pathScene = VulkanPathScene(activeRuntime.PathResources)
         var physicalProperties = VkPhysicalDeviceProperties{}
         let getPhysicalDeviceProperties = instanceDispatch.vkGetPhysicalDeviceProperties
         getPhysicalDeviceProperties(physicalDevice, &physicalProperties)
+        clipMaskFormatSupport = QueryClipMaskFormatSupport()
         let maxAtlasBytes = uint64(physicalProperties.limits.maxTexelBufferElements) * 8uL
         let atlasByteSize = ResolveTextAtlasByteSize(maxAtlasBytes)
         if atlasByteSize < 8192uL {
@@ -804,6 +770,25 @@ internal unsafe partial class VulkanWindowTarget {
         textScene = VulkanTextScene(textAtlas!!)
         if let currentDiagnostics = diagnostics {
             textAtlasDiagnosticsToken = currentDiagnostics.RegisterTextAtlasContribution()
+        }
+    }
+
+    private func QueryClipMaskFormatSupport() VulkanClipMaskFormatSupport {
+        let getFormatProperties = instanceDispatch.vkGetPhysicalDeviceFormatProperties
+        var r8Properties = VkFormatProperties{}
+        var rgba8Properties = VkFormatProperties{}
+        getFormatProperties(physicalDevice, VkConstants.VK_FORMAT_R8_UNORM, &r8Properties)
+        getFormatProperties(physicalDevice, VkConstants.VK_FORMAT_R8G8B8A8_UNORM, &rgba8Properties)
+        let sampledImage = uint32(VkConstants.VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+        let colorAttachment = uint32(VkConstants.VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
+        let linearFilter = uint32(VkConstants.VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)
+        return VulkanClipMaskFormatSupport{
+            R8UnormSampledImage: (r8Properties.optimalTilingFeatures & sampledImage) != 0u,
+            R8UnormColorAttachment: (r8Properties.optimalTilingFeatures & colorAttachment) != 0u,
+            R8UnormLinearFilter: (r8Properties.optimalTilingFeatures & linearFilter) != 0u,
+            Rgba8UnormSampledImage: (rgba8Properties.optimalTilingFeatures & sampledImage) != 0u,
+            Rgba8UnormColorAttachment: (rgba8Properties.optimalTilingFeatures & colorAttachment) != 0u,
+            Rgba8UnormLinearFilter: (rgba8Properties.optimalTilingFeatures & linearFilter) != 0u,
         }
     }
 

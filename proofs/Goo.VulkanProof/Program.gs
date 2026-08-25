@@ -1353,7 +1353,8 @@ unsafe func Main() int32 {
             if invalidateMappedMemoryRangesNullable == nil { throw InvalidOperationException("vkInvalidateMappedMemoryRanges is unavailable") }
             deviceDispatch.vkInvalidateMappedMemoryRanges = invalidateMappedMemoryRangesNullable!!
             if imageReadbackRequested || textReadbackRequested || textEffectReadbackRequested
-                || textPaintReadbackRequested {
+                || textPaintReadbackRequested
+                || sceneReadbackRequested || shadowReadbackRequested {
                 let flushMappedMemoryRangesAddress = LoadDeviceProc(getDeviceProcAddressAddress, device, "vkFlushMappedMemoryRanges")
                 let flushMappedMemoryRangesNullable = flushMappedMemoryRangesAddress as (unmanaged[Cdecl] (VkDevice, uint32, *VkMappedMemoryRange) -> VkResult)?
                 if flushMappedMemoryRangesNullable == nil { throw InvalidOperationException("vkFlushMappedMemoryRanges is unavailable") }

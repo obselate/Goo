@@ -1,0 +1,4 @@
+package FindingSharedMemberNameResolution
+
+func check() {
+}

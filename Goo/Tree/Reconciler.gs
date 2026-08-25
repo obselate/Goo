@@ -104,6 +104,7 @@ internal class Reconciler {
 
   private func mountCore(b Blob) Node {
     let result = switch b {
+      case lava is LavaSurface: mountLava(lava)
       case bt is Button: mountButton(bt)
       case c is Container: mountContainer(c)
       case t is Text: mountText(t)
@@ -130,6 +131,7 @@ internal class Reconciler {
     if let pump = Pump {
       cell.BindPump(pump)
     }
+    cell.SetRetainedMotionInvalidation(RetainedInvalidated)
     cell.SetRebuildSubmission(CellInvalidated)
     cell.mountKey = nil
     return rebuildMounted(nil, cell, nil)
@@ -139,6 +141,45 @@ internal class Reconciler {
     let n = Node{ Kind: NodeKind.Container, Key: c.Key }
     applyContainer(n, c, true)
     mountChildren(n, c.Children)
+    return n
+  }
+
+  internal func mountLava(l LavaSurface) Node {
+    let n = Node{ Kind: NodeKind.Lava, Key: l.Key }
+    applyLava(n, l, true)
+    return n
+  }
+
+  internal func applyLava(n Node, l LavaSurface, initial bool) {
+    applyStyle(n, l, l.Focusable, initial)
+    let changed = initial
+      || n.LavaFlow != l.Flow
+      || n.LavaForm != l.Form
+      || n.LavaBlend != l.Blend
+      || n.LavaLight != l.Light
+      || n.LavaHue != l.Hue
+      || n.LavaRainbow != l.Rainbow
+      || n.LavaRotation.X != l.Rotation.X
+      || n.LavaRotation.Y != l.Rotation.Y
+      || n.LavaSeed != l.Seed
+    n.LavaFlow = l.Flow
+    n.LavaForm = l.Form
+    n.LavaBlend = l.Blend
+    n.LavaLight = l.Light
+    n.LavaHue = l.Hue
+    n.LavaRainbow = l.Rainbow
+    n.LavaRotation = l.Rotation
+    n.LavaSeed = l.Seed
+    if changed {
+      MarkEffects(ReconcileEffects.Paint)
+    }
+  }
+
+  internal func diffLava(n Node, l LavaSurface) Node {
+    if n.Kind != NodeKind.Lava || n.Key != l.Key {
+      return replace(n, l)
+    }
+    applyLava(n, l, false)
     return n
   }
 
@@ -431,6 +472,11 @@ internal class Reconciler {
   internal func applyEntry(n Node, t TextEntry, initial bool) {
     applyStyle(n, t, true, initial)
     var paintChanged = false
+    if n.Password != t.Password {
+      n.Password = t.Password
+      MarkEffects(ReconcileEffects.Accessibility)
+      paintChanged = true
+    }
     if n.Placeholder != t.Placeholder {
       n.Placeholder = t.Placeholder
       paintChanged = true
@@ -509,6 +555,7 @@ internal class Reconciler {
       return replacement
     }
     let result = switch b {
+      case lava is LavaSurface: diffLava(n, lava)
       case bt is Button: diffButton(n, bt)
       case c is Container: diffContainer(n, c)
       case t is Text: diffText(n, t)
@@ -586,6 +633,7 @@ internal class Reconciler {
       if let pump = Pump {
         cell.BindPump(pump)
       }
+      cell.SetRetainedMotionInvalidation(RetainedInvalidated)
       cell.SetRebuildSubmission(nil)
       if e.HasInput {
         cell.ApplyInput(e.Input)
@@ -614,6 +662,7 @@ internal class Reconciler {
     if let pump = Pump {
       fresh.BindPump(pump)
     }
+    fresh.SetRetainedMotionInvalidation(RetainedInvalidated)
     try {
       if let seed = e.Seed { seed(fresh) }
       fresh.SetRebuildSubmission(nil)
@@ -949,6 +998,9 @@ internal class Reconciler {
           return cell.GetType() == e.CellType && cell.mountKey == e.Key && !cell.disposed
         }
         return false
+      }
+      case lava is LavaSurface {
+        return n.Fiber == nil && n.Kind == NodeKind.Lava && n.Key == b.Key
       }
       case button is Button {
         return n.Fiber == nil && n.Kind == NodeKind.Button && n.Key == b.Key

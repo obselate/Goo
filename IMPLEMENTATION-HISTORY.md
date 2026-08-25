@@ -19,7 +19,777 @@ Add post-reduction completed-stage records in this section, above the divider. D
 to the frozen snapshot below.
 
 No post-reduction stage has completed across both required RIDs. S10R's scoped Linux substrate and the
-S11 text and S12 image Linux implementations are complete. Windows and final release gates remain open.
+S09R primitive, S11 text, and S12 image Linux implementations are complete. S14 is Linux-complete for
+its current scope, including the accepted O16 policy. S17's remaining core mechanism implementation
+and Linux requalification are complete. S20 generic retained shader effects are implemented and
+qualified on Linux. Current-host T01, T02, T04, and Linux T05 pass. T03 stage/resource and
+deterministic scale-1 three-window checks pass, while full T03 remains blocked on the resize-DPI
+frame-120 product defect and clean-source evidence. The external Windows, integrated-GPU, and
+second-real-DPI hardware matrix remains. The frozen snapshot below
+intentionally retains its historical pre-acceptance O16 wording.
+
+### 2026-08-24 current-host T01-T05 checkpoint
+
+- T01 passes from a fresh current-source snapshot: XML merge source completeness, warnings-as-errors build, pack, framework package consumer, and canonical isolated README package compilation.
+- T02 passes seven current NVIDIA Wayland package lanes with Khronos validation. Text atlas records 6 evictions and 6 retirements. Path records 3 pressure events, 10 evictions, and 8 reused ranges. Clip mask records 6 pressure events and 24 evictions. Registered fonts, text controls, image pressure, and compiled vectors also pass.
+- Fixed shared-queue host synchronization by deferring fence polling, reset, wait, and destruction while queue-worker submit/present calls remain outstanding. The strict two-window path pressure route reproduces no threading validation error after the change.
+- Fixed path-atlas tail reuse. Adjacent free ranges coalesce, a safely free tail lowers queued/published prefixes, and actual later consumption alone increments reuse and marks the reused words dirty for upload.
+- T03 stage/resource checks pass at 2,000 stage samples and one million image-upload state iterations with zero warm or managed allocation. `.github/scripts/with-kwin-scale-one.sh` provides a reversible verified scale-1 environment on KWin. The canonical 300/2,000 three-window route passes with exact metrics, 2,033 submit/present operations, clean-window zero work, both slots, independent close, zero final resources, and validation clean.
+- Resize-DPI uses the same verified environment and reaches exact `1280x720`, `2304x1296`, and `3840x2160` framebuffer states. It is no longer environment-blocked; repeated swapchain shrink/recreate fails the second return to state 0 at frame 120.
+- Raw display evidence is `artifacts/reports/deterministic-kwin-scale-one.json`.
+- T04 passes 3 windows, 1,000 operations, 10 surface losses, 3 device losses, resource plateau, validation, and post-recovery stage timestamps. API contracts pass 10/10 and core behavior passes 261/261.
+- Linux T05 passes generated ABI drift, package/bundle validation, and package-consumer NativeAOT default/window smoke. The package is `3,781,217` bytes with SHA-256 `df9718a48cae0200b75c79253c45be670ddbb2759f067009b974126791625411`. The `5,487,496`-byte NativeAOT executable has SHA-256 `1383ee1231817d13e1a4fce44efa9e31fc1c1c39f258e65a0a0a05a042cd6ace`.
+- Raw evidence is `artifacts/reports/t01-t05-current-host.json`.
+
+### 2026-08-24 S07 Effects/Offscreen timestamps and T03/T04 integration
+
+- Kept the existing Upload and Main timestamps. Added Effects scopes around eight backdrop copies and eight composites, and Offscreen scopes around eight layer subtree passes. Main and Upload remain scope-0 wrappers. Dedicated offscreen readback timing now uses graphics-queue timestamp validity directly instead of incorrectly requiring compute timestamp support.
+- Fixed the diagnostics query capacity at 2 frame slots x 4 stages x 16 scopes x 2 queries = 256 queries. Stage resolution is asynchronous and fence-owned, with no wait-bit query.
+- The final five-process NativeAOT validation-layer protocol used an NVIDIA RTX 3080 with driver 610.57.04 on `wayland-0`, the `image-effects` workload, 300 warmups, and 2,000 samples. All five processes exited 0.
+- Median Effects P50/P95/P99/Worst was `207872/218112/948224/1359872 ns`; median Offscreen was `73728/77824/79872/404480 ns`. Every frame reported Effects `scopeCount=16` and Offscreen `scopeCount=8`, with zero drops, exact completed-frame correlation, zero warm Vulkan object and device-memory allocations, and clean validation.
+- The NativeAOT binary was `5,757,936` bytes with SHA-256 `57aeae31abc6214c770f643695a3c407a017cf7098c6691f2d0659f24a5a5c99`. Raw logs are `artifacts/reports/s15-q10/stage-timestamp-final-run-{1..5}.log`.
+- The canonical dynamic Q10 five-process route after instrumentation reported CPU P50/P95/P99 `5,151,040/5,816,795/7,675,581 ns` and GPU Main P50/P95/P99 `1,553,408/2,023,424/2,296,832 ns`, versus accepted pre-stage `846,848/933,888/946,176 ns`. The diagnostics-enabled query-write tax is `+83.434%/+116.667%/+142.749%`, not an unqualified production regression. Raw logs are `artifacts/reports/s15-q10/stage-timestamp-q10-final-run-{1..5}.log`.
+- T04 FailedIdle validation passed 1,000 operations, 10 surface losses, and 3 device losses. After final recovery it emitted `stage_timestamps=1` following a positive Effects event and a successful Offscreen event; sub-resolution Offscreen durations may quantize to zero. The JIT validation stage gate also passed 2,000 samples. `artifacts/reports/s15-q10/summary.json` already contains `stage_timestamp_followup`.
+- Disabled diagnostics still create no query pool or timestamp commands, so the measured GPU query-write tax does not apply when diagnostics are disabled. Linux S07 implementation and T03/T04 integration are complete. Windows repeat remains open.
+
+### 2026-08-24 S15 startup, readback, and synthetic input latency follow-up
+
+- Added internal bounded presentation-retirement state: 64 presentation records, 64 completed
+  presentation records, and eight retired-generation records. Successful presents receive monotonic
+  present IDs. A pending token is attached only after successful `vkQueuePresentKHR` completion,
+  callbacks are stored by token rather than callback order, and present IDs plus handoff timestamps
+  remain monotonic by token. No public API changed.
+- `VK_EXT_swapchain_maintenance1` present fences now provide a later UI-thread
+  completion-observed timestamp. That timestamp is an upper bound because polling observes the fence
+  after it signals. A route without present-fence support is named `present-handoff-only`, not
+  completion observation. Retired generation records and their presentation records are removed after
+  their completed anchor, and failed, abandoned, recovery, and device-loss paths cancel pending
+  latency tokens.
+- The follow-up used five fresh Linux NativeAOT processes on actual NVIDIA hardware, 300 warmups,
+  and 2,000 pointer, key, or committed-text input samples per process. The binary was 5,733,280
+  bytes with SHA-256
+  `d0c6a3968681fd0a2675aaf7c6d45c9ba40c8597d131401b5a918e6346047bc6`. Every process exited 0 with
+  zero validation, result-failure, and fatal failures, 2,001 unique tokens, exact one-frame startup
+  submit/present, exact 300-frame warmup submit/present, and exact 2,000-frame input submit/present
+  deltas.
+- Each process proved startup/readback usability with positive logical and framebuffer metrics, a
+  mounted invariant root, one startup present-fence observation, and a successful startup readback
+  pixel check. On this route, managed-entry to successful `vkQueuePresentKHR` handoff was median
+  `226.193175 ms`; window-open to handoff was median `225.551726 ms`. The corresponding
+  completion-observed upper bounds were `226.218353 ms` and `225.576904 ms`. These are qualified
+  managed-entry/window-open to present-handoff values, not a first-usable-frame P95.
+- Synthetic injection-to-present-handoff P50/P95/P99/worst was
+  `0.381620/1.348723/1.625866/1.974053 ms` against a `37.333334 ms` P95 limit, so the synthetic
+  handoff gate passed. Completion-observed upper bounds were
+  `1.571202/6.193419/7.986581/21.262635 ms` P50/P95/P99/worst and are not the handoff gate.
+  Per-kind handoff P50/P95/P99 was pointer `0.346123/0.476438/0.529628 ms`, key
+  `0.339610/0.461310/0.518588 ms`, and committed text `0.747760/1.567176/1.711557 ms`.
+- The fixture applied causal pointer, key, and committed-text mutations. Each input changed only
+  its matching counter and one rendered generation. Synthetic `WindowReadbackFixture` injection
+  bypassed SDL polling. Actual SDL acceptance and Wayland presentation-time feedback remain open.
+- Raw evidence is `artifacts/reports/s15-q10/summary.json` and
+  `artifacts/reports/s15-q10/latency-final-run-*.log`.
+
+### 2026-08-24 VKSL-007 Vulkan memory policy
+
+- Added the value-typed `VulkanMemoryPolicy` with the three exact required and preferred mask pairs
+  already used by production. Buffer and image factories and allocator entry points now accept one
+  policy value while retaining the selector's required-bit filter and preferred-bit scoring.
+- Migrated 15 allocation sites: six device-local required, seven host-visible coherent-cached, and
+  two device-local required-preferred. The two device-local forms remain distinct to preserve owner
+  intent. No object, branch, builder, callback, collection, or per-call allocation was added.
+- Release and TestRelease product warnings-as-errors builds, package creation, isolated package
+  consumption, offscreen readback, primitive, registered-font, image-pressure, path, clip-mask, warm
+  shader-effect, and FailedIdle qualification passed on NVIDIA/Wayland. FailedIdle completed 1,000
+  operations, ten surface losses, and three device losses with exact final cleanup.
+
+### 2026-08-24 VKSL-006 Vulkan pipeline factory
+
+- Added `VulkanPipelineFactory` for accounted shader-module, pipeline-layout, and Goo fixed-state
+  dynamic-rendering graphics-pipeline creation with complete native and accounting rollback.
+- Migrated both graphics-pipeline implementations, all five pipeline-layout transactions, file-backed
+  shader modules, and dynamic shader-effect modules from `VulkanSharedPrimitiveState`. Existing
+  owners retain shader selection, descriptor and push-range policy, eager or lazy creation, caches,
+  teardown, and recovery.
+- Raw shader-module, pipeline-layout, and graphics-pipeline construction now remains only in the
+  factory and ABI declarations. The implementation adds no builder, callback, collection, delegate,
+  or per-call managed object.
+- Release and TestRelease warnings-as-errors builds, package creation, and fresh isolated consumer
+  publication passed. NVIDIA/Wayland runtime qualification passed TestRelease S09R, S14 effects,
+  rounded overflow, warm shader effects, packaged S09R, S13 path, S13 clip mask, and FailedIdle.
+  FailedIdle completed 1,000 operations, ten surface losses, and three device losses with zero final
+  image and layer residency.
+
+### 2026-08-24 VKSL-005 Vulkan transitions
+
+- Added `VulkanTransitions` for allocation-free image and buffer barrier command emission. Callers
+  retain every resource, range, layout, stage, and access policy while the helper owns complete
+  zero-initialized native records, ignored queue-family indices, and dependency wiring.
+- Passed the unmanaged `vkCmdPipelineBarrier2` function pointer instead of copying the device dispatch
+  table. Official G# aggressive-inlining support is applied to the color-range, image, and buffer
+  helpers.
+- Migrated all 14 image barriers, four buffer barriers, and 18 dependencies. Raw construction remains
+  only in the helper and Vulkan ABI declarations.
+- Release and TestRelease warnings-as-errors builds, strict lint, package creation, and a fresh
+  isolated package-consumer build passed. NVIDIA/Wayland runtime qualification passed S09R, S14
+  readback, image pressure, registered-font text, S13 path, S13 clip-mask, S20 warm effects, and
+  FailedIdle. FailedIdle completed 1,000 operations, ten surface losses, and three device losses with
+  zero final frame, image, and layer state.
+- Three-process S20 comparison used 60 warmups and 500 measured frames per process. Median P50 changed
+  from 497,488 ns to 488,231 ns. Median P95 changed from 577,378 ns to 583,781 ns inside overlapping
+  run ranges. Managed allocation, Vulkan allocation, compile, record, draw, and layer work remained
+  identical.
+
+### 2026-08-24 VKSL-004 Vulkan synchronization and command factories
+
+- Added `VulkanSynchronizationFactory` for accounted semaphore and fence creation and
+  `VulkanCommandFactory` for rollback-safe command-pool creation plus command-buffer allocation.
+  The split keeps synchronization and command-resource responsibilities explicit.
+- Migrated frame-slot semaphores and fences, swapchain render semaphores and present fences, and the
+  window command-pool plus two-command-buffer transaction. Existing owners retain handles, normal
+  teardown, device-loss teardown, and submission policy.
+- Kept `VulkanOffscreenTarget` inline because it records each exact `VkResult` and creates the command
+  pool and command buffer at different points in its diagnostic transaction.
+- Release and TestRelease warnings-as-errors builds, package creation, and fresh isolated consumer
+  publication passed. NVIDIA/Wayland runtime qualification passed S09R pixel, package S09R, and
+  FailedIdle lanes. FailedIdle completed 1,000 operations, ten surface losses, and three device losses
+  with no normal-close device idle and zero final image and layer residency.
+
+### 2026-08-24 VKSL-001 through VKSL-003 Vulkan authoring factories
+
+- Added Goo-internal buffer, image, and descriptor factories under `Goo/Rendering/Vulkan` without
+  changing the public API or moving ownership, teardown, recovery, capacity, or generation policy
+  out of existing renderer types.
+- VKSL-001 centralizes accounted buffer creation, allocation, optional mapping, and complete rollback.
+  VKSL-002 centralizes image, image-view, allocation, and rollback transactions. VKSL-003 centralizes
+  descriptor layout, pool, set-allocation, accounting, rollback, and the three renderer write shapes.
+- Exact-result diagnostic transactions remain inline where the factory exception contract would lose
+  required `VkResult` evidence. Normal teardown and device-loss teardown remain separate.
+- Release warnings-as-errors, package, isolated consumer, strict lint, and NVIDIA/Wayland runtime
+  qualification covered package, text, image pressure, path, clip-mask, shader-effect warm, and
+  FailedIdle recovery lanes. Normal lanes ended with zero validation errors, result failures, live
+  Vulkan objects, and device memory. FailedIdle passed ten surface losses and three device losses with
+  exact cleanup.
+- The remaining authoring-library candidates and their current status are tracked in
+  `VULKAN-AUTHORING-LIBRARY.md`. They do not change the core release dependency graph.
+
+### 2026-08-24 S15 q10.text-editing fast hit and image-effects diagnosis
+
+- The exact fast hit applies to `Text` and `TextEditor` only. `VulkanTextScene` reuses a positional
+  per-node `VulkanRetainedTextSegment` only when the `ShapedText` reference, font size, line
+  origin and baseline, packed color, effect mode and parameters, composed parent transform, active
+  clip chain, and atlas generation match exactly. A miss keeps the prior glyph generation and exact
+  record comparison path.
+- `TextEntry` stays on full segment generation and full renderer validation because cached Entry
+  proof repeatedly lost S17 protected-mask pixels. The active cache remains strong across atlas
+  publication for the same reason. Repository search found no in-place shaped-payload writer,
+  which is the shape-reference identity assumption.
+- Each segment run retains its maximum normal/effect `ByteRangeEnd`. Fast-hit protection marks each
+  referenced atlas active and verifies the run byte bound against the published atlas prefix,
+  replacing the prior per-glyph residency scan.
+- Eligible `Text` and `TextEditor` segments cache the renderer's full run/glyph structural proof by
+  segment version plus atlas generation. Per-reference ID, version, count, clip, bounds, and global
+  instance-range checks still run on every call, and the cached prepass still resolves every run.
+  Omitting per-run `Resolve` or enabling the proof for `TextEntry` lost protected-mask pixels.
+- The follow-up binary is 5,708,704 bytes with SHA-256
+  `7751034df36fd2f83db3ef13a175728fddc03f8d875100b05b1b325149324065`. Five isolated NativeAOT
+  text processes used 300 warmups and 2,000 measured frames. Process-median CPU P50/P95/P99 was
+  `0.497938/0.552471/0.701151 ms`, GPU P95 was `0.054272 ms`, and allocation P50 was `63,184 B`.
+  Compared with the prior current CPU `1.201987/1.320821/1.504447 ms`, reductions were
+  `58.574%/58.172%/53.395%` for P50/P95/P99.
+  Accepted recorded Skia P95 is `0.461491 ms`; the new result is `+0.090980 ms` or `+19.714%`,
+  passing the exact larger-of-3%-or-0.1-ms gate by `0.009020 ms`. This does not claim Vulkan is
+  faster than Skia.
+- All five processes exited 0 with zero validation, result-failure, or fatal failures. Release
+  warnings-as-errors, async TestRelease warnings-as-errors, CoreBehavior `261 passed`,
+  protected-text NativeAOT, text-transport NativeAOT, text-viewport-cull NativeAOT, effects/COLR
+  NativeAOT, and diff-check verification passed.
+- Raw evidence is `artifacts/reports/s15-q10/summary.json` and
+  `artifacts/reports/s15-q10/text-fast-hit-final-run-*.log`.
+- Image-effects component isolation is JIT TestRelease only, with 300 warmups and 480 measured
+  frames, not official NativeAOT qualification. Full current P50 was `5.471 ms`; static scene
+  P50 was `3.533 ms` with Paint about `3.366 ms`; eight mutations only were `4.759 ms`; one
+  same-size replacement was `5.254 ms` with `1.077 ms` layout because `ImageLayouts.Refresh`
+  marks Yoga dirty whenever `DecodedImage` identity changes. Disabling all non-normal blend layers
+  gave `5.456 ms`, only `0.015 ms` below full. Pixel generation plus immutable `ImageSource`
+  copying creates two `262,144-byte` arrays. The dominant CPU cost is the full 256-card,
+  1,316-draw scene compile/record path, not the eight blend layers. This remains an optimization
+  target and is not claimed fixed.
+
+### 2026-08-24 S15 manifest expansion and Q10 workload qualification
+
+- Implemented and measured the next official Q10 workload suite covering small-animation,
+  text-editing, image-effects, and three-window workloads alongside the true-idle baseline and
+  canonical virtual table, topology, and mutation workloads.
+- Final current NativeAOT binary: 5,708,704 bytes, SHA-256
+  `50595ae3be03c22fb42c1adea40801d5a511718f6acdda1ec0622a603eb4171f`.
+- Measured across five isolated current-binary processes per workload with 300 warmups and 2,000
+  samples each on actual NVIDIA hardware:
+  - `small-animation`: CPU P50/P95/P99 `0.528/0.610/0.853 ms`, GPU P95 `0.026 ms`.
+  - `text-editing`: CPU P50/P95/P99 `1.202/1.321/1.504 ms`, GPU P95 `0.096 ms`.
+  - `image-effects`: CPU P50/P95/P99 `5.283/6.001/7.690 ms`, GPU P95 `0.934 ms`.
+  - `three-window`: CPU P50/P95/P99 `0.648/1.463/1.652 ms`, GPU P95 `0.022 ms`.
+- All 20 workload processes passed exact local contracts and absolute performance budgets.
+- In the three-window workload, global submit/present delta is 2033 (2000 selected frames + 33 actual
+  focus-loss dirty renders), while clean local window slots remained unchanged.
+- Five isolated nested-KWin scale-1 true-idle processes ran 60 seconds with zero work/allocation and a
+  median CPU load of `0.1078%` of one core.
+- Relative text-editing regression vs. accepted Skia baseline: text editing has an accepted recorded
+  Skia P95 of `0.461491 ms`; current P95 regresses by `186.207%` despite `28.207%` lower P50
+  allocation.
+- The resize/DPI lane is implemented but blocked on active Wayland/WSI hardware behavior (cannot
+  complete exact 1.0/1.5/2.0 swapchain cycle and fails returning to state 0 at frame 60).
+- Linux final-protocol coverage stands at 7 of 8 measured current rows. Full Q10 qualification is
+  not claimed; source remains dirty.
+
+### 2026-08-23 S15 canonical workload and lifecycle closeout attempt
+
+- Added one durable NativeAOT S15 harness for the canonical 100,000-row by
+  12-column virtual table, 5,000-node and 15,000-edge topology, one-of-1,000
+  mutation, and full 1,000-box mutation workloads. It records CPU and GPU
+  P50/P95/P99/P99.9/worst, managed allocation, retained managed memory, RSS,
+  private memory and private dirty, GC collections and pause time, Vulkan
+  memory/resource counters, exact submit/present counts, and external power
+  proxy.
+- The initial Weston Pixman matrix selected the Lavapipe CPU ICD, not the RTX
+  3080, and is retained only as discarded environment evidence. The final
+  current-binary actual-NVIDIA matrix used five isolated NativeAOT processes per
+  workload, 300 warmups, and 2,000 measured frames on KDE Wayland.
+  Process-median CPU P50/P95/P99 was `1.247/1.531/3.151 ms` for table,
+  `1.641/2.309/4.171 ms` for topology, `1.625/2.106/2.398 ms` for sparse box
+  mutation, and `3.749/4.471/5.399 ms` for full mutation. Median GPU P95 was
+  `0.305`, `0.161`, `0.010`, and `0.077 ms`. All 40,000 measured frames
+  submitted and presented exactly once, with zero warm Vulkan object or
+  device-memory allocation.
+- Extended the compact failed-idle program to prove both primitive and text
+  frame slots, accepted serials, surface-loss continuity, complete device-loss
+  reconstruction, post-recovery unseen-text upload, warm zero-copy reuse, and
+  zero frame state after close. The Khronos validation run passed the existing
+  1,000 operations, ten surface losses, three device losses, and all new S15
+  tokens.
+- Reconstructed the same canonical public workloads against frozen Skia product
+  commit `9d28533`. The optimized actual-NVIDIA table and topology CPU P95 are
+  64.957 and 67.874 percent lower. This is not the missing pre-removal recorded
+  baseline.
+- Lazy first-use material and clip-mask pipelines removed unused hardware-driver
+  compiler state. CPU physical devices retain eager materialization so the
+  complete cold S14 effects route remains bounded. Against the reconstructed
+  control, table retained managed memory, working-set peak, and end private-dirty
+  are 42.394, 36.740, and 34.919 percent lower. Topology is 34.112, 35.353, and
+  43.437 percent lower.
+- Full Q10 memory does not pass. The reconstructed Skia control has no comparable
+  Goo-reserved GPU-memory metric. The non-attributable final whole-device proxy
+  differs by 9.137 and 10.115 percent, so it cannot satisfy the five-percent
+  gate. Full exit also lacks qualifying pre-removal table/topology and
+  binary/package records.
+- First-use text atlas publication returned `!emitted` with `redrawRequired` on
+  frames 1-2, where Paint previously misclassified pending publication as
+  unsupported Content. Per-call `publicationPending` now distinguishes
+  Text/TextEntry/TextEditor transient publication while permanent unsupported
+  diagnostics and incomplete retained snapshots remain.
+- Direct `EmitEntry` and `EmitEditor` calls bypassed generic `VulkanTextScene.Emit`
+  and left `activeNodeSegments` unset, which broke retained text segments for
+  protected text and editors. `VulkanSceneCompiler.Paint` now routes Text,
+  TextEntry, and TextEditor through generic `Emit`, and specialized emitters are
+  private. Local actual-NVIDIA protected-text passes 3/3, rounded-overflow passes
+  3/3, and effects/COLR passes 3/3, alongside cache-disabled passes, CPU Lavapipe
+  passes, CoreBehavior 261/261, focused S17 core/text-cull/text-transport/NVIDIA
+  FailedIdle passes, zero-warning builds, and approved code review.
+
+### 2026-08-23 focused backend-neutral behavior consolidation
+
+- Moved 261 backend-neutral Cell, reconciliation, Yoga, style, motion, input,
+  text, accessibility, and allocation contracts into
+  `tests/Goo.CoreBehaviorTests`, with explicit fixture imports and no SkiaSharp
+  or `Goo.InternalTextInterop` dependency.
+- Deleted the stale 87-file `tests/Goo.Tests` project after preserving the
+  backend-neutral contracts and using the focused API/XML and Vulkan gates for
+  migrated or duplicate coverage. Added the new Release warnings-as-errors lane
+  to CI.
+- The migrated pointer-transform contract exposed length-independent
+  collinearity tolerance in `PathGeometry.pointOnEdge`. Boundary tolerance now
+  scales with edge length, so tiny tessellation edges do not classify distant
+  points as lying on a shape.
+- The focused suite passes 261 of 261 tests. The deterministic current
+  allocation baselines are 192 B for an empty Blob, 1,240 B for an empty Node,
+  3,424 B for an empty Window, 106,664 B for the one-MiB editor semantic edit,
+  and 259,584 B for 64 intrinsic text-entry edits.
+
+### 2026-08-22 S19 API contract extraction and legacy-suite audit
+
+- Moved the public API approval baseline and complete XML documentation checks into the focused
+  `tests/Goo.ApiContractTests` project and added that Release warnings-as-errors gate to CI.
+- The first focused run found that G# emitted an internal `ShaderEffect.Changed` event as public
+  metadata. Replaced the event with private callback storage and internal subscription methods, then
+  verified the intended four-member `ShaderEffect` contract. All 10 focused contract tests pass.
+- Classified the 87 legacy suite files as 3 migrated contract files, 31 backend-coupled files, 12
+  current-gate duplicates, 37 backend-neutral behavior files, and 4 infrastructure files. The suite
+  remains until the 37 backend-neutral files are migrated or explicitly retired.
+- Removed the default stale fixture import and the obsolete Dependabot path. Deleted only generated
+  `Goo.InternalTextInterop` build artifacts. No tracked helper source existed.
+
+### 2026-08-21 S20 generic retained shader effects Linux completion
+
+- Added one compositional `ShaderEffect` mechanism for defensively owned precompiled fragment SPIR-V.
+  `Style.ShaderEffect` applies it to an element and retained subtree without changing layout, hit
+  testing, accessibility, transforms, or clipping. Goo exposes no Vulkan handles, descriptors,
+  pipelines, compiler objects, or specialized effect widgets.
+- The current public surface is one type and four members: constructors for ordinary/backdrop use and
+  bounded backdrop outset, allocation-free `SetParameter(int32, Vector4)` over eight retained slots,
+  and init-only `Style.ShaderEffect`. Backdrop outset is finite, nonnegative, capped at 256 logical
+  pixels, and valid only for backdrop sampling.
+- The fixed ABI binds source, optional backdrop, Goo primitive data, Goo clip data, and a 128-byte
+  parameter block. The process-shared device-generation pipeline cache is bounded to 32 live program
+  identities per target format. The existing offscreen layer pool owns isolation, copying, target
+  reuse, clipping, submission lifetime, resize, recovery, and teardown.
+- Five isolated Release NativeAOT runs with 300 warmup and 2,000 measured changed frames reported
+  `0 B` managed allocation and no warm Vulkan object or device-memory creation. Median CPU was P50
+  `187,934 ns`, P95 `255,271 ns`, P99 `314,052 ns`, and P99.9 `448,736 ns`. The comparable S14
+  control stayed within the accepted 3 percent limit.
+- The accepted JIT and NativeAOT gates passed ordinary source isolation, backdrop sampling, rounded
+  clipping, pointer input, resize, display scale, device recovery, package-only sidecar loading, and
+  cleanup. The later focused gate also covers bounded backdrop outset. The fixed authoring include and
+  SPIR-V sidecar are packaged without a runtime compiler.
+- P01 through P03 were rejected allocation experiments. P04 is the accepted Linux result in
+  `docs/perf/2026-08-21-vulkan-shader-effects-p04-accepted-linux.md`. Non-normal `BlendMode` plus
+  `ShaderEffect`, general masks, and higher-level filters remain separate contract work. Windows T02,
+  recovery, package, and NativeAOT repeats remain in S19.
+
+### 2026-08-21 Final local discrete-Linux core qualification and accepted P04 performance iteration
+
+- The final local Linux core wave passed Release WAE, focused S09R/S14/S15/S16/S17, failed-idle,
+  ABI, damage-journal, shader, validation, package-consumer, dependency, GLIBC, NativeAOT, and staged
+  native-smoke lanes on the RTX 3080 host. S16-D02 is locally complete: one FIFO worker owns the
+  physical queue, submit/present calls are isolated from window threads, retryable deferral converges,
+  and offscreen device loss clears shared-lease/readback storage. Three binary runs reported
+  `accepted=1 device_loss=1 storage_cleared=1 close=1`.
+- Five isolated 60-second true-idle runs used 0.0904%, 0.0874%, 0.0938%, 0.0925%, and 0.0914% of one
+  CPU core. Each recorded zero rebuild, layout, plan, upload, record, submit, present, managed bytes,
+  Vulkan objects, and device-memory allocations, with `close=1`. The final core package is 3,682,963
+  bytes, and the staged Linux bundle is 9,911,025 bytes.
+- The Linux core completion wave and local S19 qualification are closed on the available discrete host.
+  The remaining external matrix is Windows, Linux integrated GPU, clean-clone restore/build, and a
+  second real DPI scale. The public API documentation freeze repair and post-core baseline are complete.
+- P04 is accepted for strict leaf `Text`: exact cached glyph paint-bound viewport culling and a
+  non-boxing `VulkanTextAtlasGlyphKey`, with no public API change. In the 4,900-cell full control
+  using 300 warmup and 2,000 measured frames, CPU P50/P95 was `18.077680/18.809680 ms`, worst was
+  `62.564055 ms`, allocation was `2,820,666 B/frame`, and `3,711` items were skipped. The baseline
+  was `35.022465/53.240000 ms`, worst `78.539000 ms`, and `6,109,729 B/frame`.
+- The short GPU control median reported CPU P50/P95 `18.043688/19.618076 ms`, Main GPU
+  `2.366464/2.612224 ms`, `2,815,146 B/frame`, and `3,373,177` draws. The baseline was
+  CPU `35.723980/55.554462 ms`, Main GPU `7.949312/12.897280 ms`, `6,076,094 B/frame`, and
+  `13,900,767` draws. The disabled-readback S14 hot path remains `0 B` at P95 and maximum.
+  Full P04 evidence is in
+  `docs/perf/2026-08-21-vulkan-performance-p04-exact-text-cull-key-accepted.md`.
+- P05 established a five-process 1,000-record primitive-staging control at `1.104663/1.413635 ms`
+  CPU P50/P95 and `544,586 B/frame`. P06's extra pre-copy comparison removed 128,000 mapped stores
+  but regressed P50/P95 by `1.971%/0.564%`. P07 combined comparison and dirty-range construction into
+  one pass and removed the second scan, but still changed P50/P95 by `+0.076%/+0.328%`. Both candidates
+  were rejected and removed because neither produced an absolute end-to-end improvement. Evidence is
+  in `docs/perf/2026-08-21-vulkan-performance-p05-primitive-staging-before.md`,
+  `docs/perf/2026-08-21-vulkan-performance-p06-primitive-staging-copy-skip-rejected.md`, and
+  `docs/perf/2026-08-21-vulkan-performance-p07-primitive-staging-single-pass-rejected.md`.
+
+### 2026-08-20 S19 Linux discrete-host qualification
+
+- The available Linux x64 discrete-host lanes passed on an RTX 3080 with driver 610.57.04, Vulkan
+  1.4.341, .NET SDK 10.0.111, and Khronos validation. Five isolated true-idle processes each observed
+  60 seconds with zero rebuild, layout, render, upload, record, submit, present, managed allocation,
+  Vulkan object allocation, and device-memory allocation. CPU use was 0.0870% through 0.1054% of one
+  core.
+- Normal sibling close now waits target-owned frame and maintenance presentation fences. It uses
+  device-wide idle only for final runtime destruction or the safe fallback when present fences are
+  unavailable. The three-window close gate added zero device-idle calls and left both siblings usable.
+- The compact recovery gate passed three live windows, 1,000 lifecycle operations, retained-resource
+  plateau, 10 injected surface losses, 3 sequential shared-runtime device losses, recovered text and
+  image upload, offscreen layer reconstruction, independent close, zero stale final resource state,
+  and zero validation errors. S17's input, protected-text, and neutral-accessibility gates also passed
+  in the same Linux qualification wave.
+- Proof host-write visibility and offscreen target barriers were corrected. Device-loss abandonment
+  now releases offscreen image, view, and allocator state. The external path-pressure fixture now uses
+  six bounded pump pairs per phase and passed three isolated framework-dependent processes.
+- The failed-idle project now rebuilds its fixture-bearing Goo reference. Recovery waits for a
+  successful submit from the recovering window, so shared sibling activity cannot satisfy the gate.
+  Three consecutive fresh-build validation processes passed after the correction. A fourth passed
+  after the ABI fixture build and recovery rebuild were executed in the collision-prone order.
+- The final NuGet package is 3,675,706 bytes with SHA-256
+  `047aefc229a5b08fea28bba115e0d90de8c57fa82648273f3c15b10727efdca0`. The staged Linux bundle is
+  9,896,177 bytes. Its `Goo.dll` is 2,409,984 bytes with SHA-256
+  `ebd458056a67a43b87570f9c235d83c31bb8112c6eefacc569723e26f30faa95`.
+- The Ubuntu 22.04 NativeAOT executable is 5,367,936 bytes with SHA-256
+  `8c9b8e8af53f55825918551fe9a0ead8c1428a364f6cb07783de96baa94ec4c2`, uses at most GLIBC 2.34,
+  and passed all 11 package-consumer lanes. The exact final framework-dependent consumer passed the
+  same 11 lanes. No vulnerable managed package or forbidden payload was found.
+- Local S19 qualification is complete on the available discrete Linux host. Windows, integrated Linux,
+  clean-clone restore/build, and second-real-DPI coverage remain external. D01, D02, and D04 are local
+  completions with external repeats only. Idle and lifecycle evidence does not justify another
+  retained-renderer mechanism. P04 closes the strict-leaf text viewport issue for the measured workload.
+- Full evidence and exact deferrals are in
+  `docs/perf/2026-08-20-s19-linux-qualification.md`.
+
+### 2026-08-20 S17 remaining core mechanisms
+
+- Added the non-breaking `TextEntry.Password bool` public property, defaulting to false. Protected
+  entries retain the source value for `Value`, `OnChange`, and `OnSubmit`, but shape and render one
+  U+2022 bullet per extended grapheme cluster. Source and mask coordinate maps keep caret movement,
+  selection, hit testing, IME placement, and `ElementHandle` text geometry aligned.
+- Protected copy and cut are handled no-ops. Paste remains enabled. IME preedit stays transient and is
+  not retained or shaped as entry content. Committed text enters once and updates the mask once.
+- Neutral accessibility semantics always redact a protected entry, including when a consumer supplies
+  explicit value metadata. The semantic selection and caret use mask coordinates, and incoming neutral
+  selection actions map back to source grapheme boundaries.
+- The live Linux protected-text gate passed with `graphemes=3,8`, exact mask/control pixel equality,
+  geometry, clipboard, IME, semantic redaction, masked selection coordinates, diagnostics, and clean
+  close. The live core-behavior gate passed pointer, keyboard, focus, hover, active and disabled style
+  states, wheel scrolling, motion, transitions, public handle geometry, neutral actions and states,
+  diagnostics, and clean close.
+- A fresh `Goo.0.2.0` package built with warnings treated as errors and restored through an isolated
+  NuGet cache. Its Wayland text-controls lane passed with `mounted=1 focused=1 pumps=12 selection=1
+  composition=1 caretFollow=1 reopen=1 drawCount=807 close=1`. Its S09R lane passed with `mounted=1
+  scroll=1 drawCount=81 planCompileCount=3 recordCount=3 close=1`.
+- The public API baseline and generated API documentation include `TextEntry.Password`. The changelog
+  and release-lane guide record the behavior and the two S17 gates.
+- O12 and R09 remain authoritative: Goo owns the neutral semantic tree and adapter contract. UIA and
+  AT-SPI object models remain platform-adapter work outside the current core renderer wave. Native
+  focus or raise remains optional because no accepted flow requires it. A public scroll range remains
+  conditional because current public scrolling primitives passed requalification.
+- Windows behavior and packaging repeat in S19. Reopen S17 only if that qualification finds a core
+  contract defect or an accepted consumer proves one of the conditional mechanisms is required.
+
+### 2026-08-20 S16 shared runtime and window behavior first scheduling slice
+
+- The accepted S16 contract is implemented as one process-wide fair scheduler with per-window
+  high-resolution fractional deadlines. Cadence derives from the current SDL display, supports
+  different and fractional refresh rates, resets on display, mode, and lifecycle changes, and retains
+  the last valid display sample through transient invalid queries. Timer-only scheduler service banks
+  simulation time for the next frame while wall time remains exact.
+- Dirty idle windows submit zero frames after initial work. Minimized, occluded, zero-framebuffer,
+  unavailable-swapchain, and GPU-deferred windows are skipped in the implemented polling paths and do
+  not delay siblings. Closing the owner window does not strand live siblings.
+- `Window.VSync` is public and per-window and now reaches swapchain recreation. `true` selects FIFO;
+  `false` selects Immediate, then Mailbox, then FIFO, never FIFO_RELAXED. Both modes remain display-rate
+  paced under `Window.Run`. Manual `Pump` and `PumpScheduled` remain caller-paced. The internal uncapped
+  benchmark seam remains private.
+- Frame-slot fence/acquire waits and swapchain-recreation presentation waits now poll and defer. This
+  first-slice record predates the final local S19 close-isolation and queue-worker qualification below.
+- Final integrated deterministic pacing output is `rates=60,144,60000/1001 anchored=1 reset=1 defer=1
+  uncapped=1 presentModes=1`. The real VSync transition output is `initial=fifo off=immediate
+  generations=3 close=1`. The live two-window VSync-off gate ran for 552 ms at 144.001 Hz with 62
+  active submissions, 2 idle submissions, and an 88-submission bound. The fresh three-window package
+  smoke output is `presentCount=6, resultFailureCount=0, validationErrorCount=0, fatalCode=0` with zero
+  resources. Default readback and S09R/S14 passed. No performance improvement is claimed.
+- No Vulkan validation layer is installed in the current Linux environment. The accepted first Linux
+  scheduling scope was complete at this checkpoint. Final local close isolation, queue-worker behavior,
+  recovery, and S19 qualification are recorded in the 2026-08-21 entry above; only the external matrix
+  remains.
+
+### 2026-08-20 S15 retained scene and damage first slice
+
+- Scene chunks now carry stable owner, topology, and content identities. The generic partial-safe path
+  uses those digests only as prefilters, then requires exact retained draw metadata, bit-exact solid,
+  rounded, or per-edge border scalar records, bounds, and resource identities before reuse. The compiler still rebuilds
+  the CPU typed arrays on each demanded frame and writes one staging candidate. The new primitive SSBO
+  slice uses 128-byte std430 records,
+  device-local storage, mapped staging, two fence-safe per-window slots, and one offscreen slot.
+- Each slot keeps exact accepted record history and commits it only after accepted submission or
+  submission reconciliation. Buffer growth and device loss invalidate history. First use, buffer
+  generation changes, and record-count changes force full uploads. Exact record comparison coalesces
+  consecutive dirty records into 128-byte ranges. Clean frames issue zero GPU copy ranges and zero
+  flushes while still rebuilding the CPU scene and writing one staging candidate.
+- Each window now owns a bounded scene damage journal. Each swapchain image owns pending and applied
+  scene versions. Successful presentation records pending state, and reacquisition of defined image
+  contents promotes it to applied state.
+- The accepted CPU retained leaf slice is strict: leaf `Container` and `Button` nodes with solid or
+  rounded box paint can append an exact cached record on a direct hit. An exact miss performs a direct
+  exact rebuild and refreshes the owner record. Exact validity uses owner/node identity,
+  `ScenePaintVersion`, bit-exact logical bounds, node kind, packed color, opacity, and radii. Generic
+  `ContentKey` or `TopologyKey` hashes do not validate exact leaf records or exact-rebuild damage.
+- The strict border-only extension admits a transparent leaf `Container` or `Button` with a solid,
+  square per-edge border. It caches one exact logical `PerEdgeBorderRecord`, including bounds, four
+  widths, four zero radii, four packed colors, style, and transform index. Unsupported rounded border
+  state clears the record, uses generic compilation, and recaptures when square eligibility returns.
+  One retained scene draw expands to as many as four primitive records. The focused gate changes one
+  edge color and proves one dirty 128-byte primitive record, bounded damage, exact pixels for all four
+  edges, generic fallback, recapture, and a final warm hit. It emits `exact_border_leaf=1`.
+  The accepted hot path checks common eligibility once, constructs the exact record once, and passes
+  the same value to exact comparison or direct rebuild.
+- The strict own-box extension also admits a child-bearing `Container` or `Button` when its own paint
+  is an eligible solid or rounded box. Only the parent's own logical record is retained or directly
+  rebuilt. Children always recurse through generic compilation. Unsupported parent state clears the
+  retained record, uses generic parent and child fallback, and recaptures when eligibility returns.
+  The focused fixture covers parent hit, rebuild, fallback, child continuation, and recapture and
+  emits `parent_own_box=1`.
+- Stable-topology solid and rounded boxes plus square solid per-edge borders can clear and replay one
+  coalesced damage region in original visual order. All unproven dependencies retain the required
+  full-redraw fallback.
+- The damage journal stores exact scale float bits and physical extent per version. Scale or extent
+  changes force full damage, including scale plus mutation. TestRelease directly records the exact
+  last successfully presented image index, acquired applied version, assigned pending version, and
+  promotion result. This state is paired with the actual frame damage and is not a `sceneVersion - 1`
+  reconstruction. Pixel checks remain a separate offscreen replay oracle. Full-redraw frames now
+  record their physical key before the full override, so reacquiring an older swapchain image does
+  not invent a scale transition. Partial-safe classification does not depend on swapchain
+  transfer-source support for normal-blend solid and rounded scenes. Actual unsupported non-normal
+  blend use still forces the existing full fallback.
+- The new `GOO_VK_DAMAGE_JOURNAL=1` ABI gate passes same-key, scale-only, extent-only, independent
+  scale-transition, unchanged-key no-damage, unchanged-key mutation, bounded logical mutation,
+  eviction-gap, reset, and abandoned-version cases.
+- The stronger Linux TestRelease gate passed with `first_use_full=1`, `box_mutation=1`,
+  `partial_damage=1`, `bounds_old_background=1`, `topology_add_full=1`, `topology_remove_full=1`,
+  `exact_leaf_solid_rounded=1`, `exact_color_miss=1`, `exact_bounds_miss=1`, `exact_border_leaf=1`,
+  `unsupported_fallback_recapture=1`, `parent_own_box=1`,
+  `primitive_first_full=1`, `primitive_slots=2`, `primitive_warm_copy_zero=1`,
+  `primitive_staging_candidate=1`, `primitive_mutation_dirty=1`, `primitive_mutation_written=128`,
+  `primitive_topology_full=1`, `image_version_promotion=1`, `damageCount=28`,
+  `dirtyChunkCount=0`, `reusedChunkCount=7`, `drawCount=198`, `recordCount=28`,
+  `clipWritten=3664`, `clipSkipped=6336`, `clipMapped=10`, `clipFlushes=10`, `clipReuse=18`,
+  `clipRetained=1`, `close=1`. It proves old bounds clear to the background, old-plus-new bounds
+  union damage, topology full redraw, and the primitive one-box result of one dirty record, one range,
+  128 copied bytes, and one flush. Both window slots clean-reuse. The effects and rounded-overflow
+  gates also passed.
+- The no-clip typed payload slice retains two fence-safe per-slot payloads. Frames are eligible only for
+  zero masks, one clip chain, zero layers, and matching draw count, byte count, capacity, and buffer
+  generation. First use, masks, layers, changes, abort, recovery, and device loss use the write and
+  flush fallback. The physical `maxStorageBufferRange` is carried through `VulkanSharedRuntime` to
+  both window and offscreen paths. uint64 validation bounds combined words to `Int32.MaxValue` and
+  payload bytes to that physical range before int32 indexing or casts.
+- Hostile review closed offscreen accepted-submit reconciliation, failed-submit reset, device-loss,
+  adopted-request, reused-request, and close-retry lifetime paths. Final review found the paths safe,
+  and the default readback plus failed-idle recovery gates passed after the fix.
+- Historical 60-process Linux data covered 7,200 frames with 60 clean exits and zero result failures.
+  It measures retained damage only: each 1,000-box process used 151 frames with exactly 2 mapped
+  writes and flushes, 149 retained reuses, `96,224` written bytes, and `7,168,688` skipped bytes.
+  Retained-versus-full MainPass GPU results stayed 91.1% faster for 1 changed box, 77.8% for 100,
+  44.4% for 500, and 0% for 1,000. This historical matrix is not a pre/post product-binary or
+  full-frame/GPU comparison. No long benchmark harness is retained. The method and results are in
+  `docs/perf/2026-08-20-vulkan-s15-first-slice-linux.md`.
+- The final fresh current-binary control includes exact generic chunk proof and compares the retained
+  leaf compiler with an output-neutral generic fallback. Each workload uses six case-isolated fresh
+  processes in ABBAAB order, three per arm, with 30 warmups and 120 samples over 1,000 leaves. Every
+  cell allocates `0 B`, matches output hashes, and reports 1,002 chunks and 1,000 draws. Improvement
+  relative to the generic control is `+17.367%` P50 and `+20.033%` P95 for static solid, `+18.911%`
+  and `+1.225%` for static rounded, `+37.954%` and `+6.665%` for mutation N1, `+14.698%` and
+  `+16.249%` for N100, `+31.689%` and `+17.178%` for N500, and `+13.321%` and `+12.634%` for N1000.
+- An intermediate before direct exact rebuilds reported N1000 `-13.618%` P50 and `-44.275%` P95. It
+  was rejected and is not accepted evidence. The current control is CPU scene-compile timing only,
+  not a historical pre/post product binary or a full-frame/GPU result.
+- An exploratory current-binary, plan-only ABBAAB control used 1,000 eligible parent boxes and 1,000
+  generic-compiled children, with 30 warmups and 120 samples per process. Both arms produced hash
+  `10921959993146536336`, 2,002 chunks, 2,000 draws, and `0 B` allocations at P50 and P95.
+
+  | Fresh process | Retained P50/P95 ns | Generic P50/P95 ns |
+  |---|---:|---:|
+  | 1 | `2067689 / 2574675` | `2713707 / 3939820` |
+  | 2 | `2017164 / 2655698` | `2724658 / 3069288` |
+  | 3 | `740817 / 2794309` | `2695764 / 2936678` |
+
+  The median cross-process improvement was `+25.668%` P50 and `+13.475%` P95 for retained versus
+  generic. Record, submit, GPU, and full-frame evidence was unavailable. This makes no Q10 or Skia
+  claim and retains no long benchmark harness.
+- A current-binary plan-only ABBAAB border control used 1,000 transparent square solid four-sided
+  border leaves, 30 warmups, and 120 samples per fresh process. Both arms produced hash
+  `5436057910800725072`, 1,002 chunks, 1,000 scene draws, and `0 B` allocations. Those draws expand
+  to 4,000 primitive records. Median retained P50/P95 was `1882942 / 1972601 ns`. Median generic
+  P50/P95 was `2043204 / 2202644 ns`. Retained was `+7.844%` faster at P50 and `+10.444%` faster at
+  P95. Record, submit, GPU, and full-frame evidence was unavailable. This makes no Q10 or Skia claim
+  and retains no long benchmark harness.
+- The corrected border control before the one-record hot-path optimization measured retained
+  `1967740 / 2718316 ns` and generic `2376561 / 2518809 ns`. Its `+17.202%` P50 improvement came with
+  a `-7.921%` P95 regression, so it was rejected. Removing duplicate width resolution and repeated
+  finite/visibility work produced the accepted result above.
+- The legacy 4,900-cell StocksGrid workload was recovered into the TestRelease fixture and measured
+  with six current-binary ABBAAB processes, 30 warmups, and 120 samples per process. Both normal S15
+  and forced-full arms produced full redraws for all 120 measured frames, 4,902 dirty chunks, zero
+  reused chunks, and `6,075,995 B/frame` of current-thread allocation. Median normal versus
+  forced-full total-frame P50/P95 was `35.040/56.016 ms` versus `35.517/56.015 ms`. Each process
+  recorded 739,900 text fallbacks. This is pre-P04 historical evidence, not a current claim about the
+  strict-leaf text workload. P04 supersedes it with exact cached-glyph paint-bound viewport culling.
+- Goo and `Goo.AsyncReadbackSmoke` Release warnings-as-errors builds reported 0 warnings and 0 errors.
+  Default async readback, the S09R pixel gate, S14 effects, rounded overflow, FailedIdle, and proof
+  scene readback passed on the real Wayland run. No Vulkan validation or Windows qualification claim
+  is made. The effects gate's Shape outer-shadow probe moved from x129 to x128, still outside the
+  x126 shape edge, after the old point landed in the lavapipe blur tail and produced a false negative.
+- Swapchain maintenance is mandatory at physical-device selection. The unsafe no-fence fallback is
+  retired. Windows qualification remains S19.
+- At this historical checkpoint S15's broader Q10 virtual-table/topology harness and general retained
+  resource/range work were not yet closed. The later P04 entry above closes the measured strict-leaf
+  text viewport issue. No validation or external hardware claim is made by this checkpoint.
+
+### 2026-08-19 S14 Linux clipping, compositing, and effects continuation
+
+- Mixed-axis `OverflowX` and `OverflowY` now use retained square path-mask strips on the visible axis.
+  Rounded hidden and scrolling masks, scrolling offsets, affine transforms, nested arbitrary clips,
+  text, image content, stable IDs, and ancestor chains remain intact. The focused Linux gate passed
+  horizontal and vertical mixed overflow, eight corner samples, and three asynchronous readbacks with
+  `readbackCount=3`, `drawCount=488`, `planCompileCount=14`, `recordCount=14`, and clean close.
+- The readback failure caused by independent clip-mask atlas generation is fixed. Mixed-axis atlas
+  growth can advance its internal generation without matching the shared runtime generation. Clip frame
+  descriptors own that generation, and the offscreen target no longer rejects a valid readback.
+- Container and Button BoxShadow stacks now pass outer, inset, and stacked pixel assertions with
+  reverse-list order, signed spread, non-negative blur, rounded geometry, opacity, affine transforms,
+  active ancestor clip chains, conservative bounds, and collapsed inset-hole handling.
+- Shape fill and stroke silhouettes now use retained masks for outer and inset shadows. Blurred plain,
+  rich/editor, and COLR text shadows use retained monochrome glyph resources and a bounded nine-sample
+  Gaussian approximation. Shape morphology and high-radius text blur remain documented visual-quality
+  follow-ups.
+- Vulkan outlines now pass the focused effects pixel assertion for non-Shape nodes with width, color,
+  offset, rounded geometry, opacity, transforms, and expanded conservative bounds.
+- Nested normal group opacity and all 15 non-normal public blend modes use bounded sampled layers.
+  Sequential source and backdrop targets reuse safely within one command buffer without raising the
+  pool cap. Parent and nested active targets remain leased through submission and recovery.
+- The consolidated local Wayland effects gate passes Container, Button, and Shape outer/inset shadows,
+  blurred plain and COLR text shadows, outline, nested group opacity, representative Multiply, Screen,
+  Overlay, and Difference blends, rounded and arbitrary clips, transforms, COLR, two readbacks, and
+  clean close. It reported `layerPassCount=72`, `layerCompositeCount=72`, `layerCreateCount=8`,
+  `drawCount=964`, `planCompileCount=12`, and `recordCount=12`.
+- Goo, `Goo.AsyncReadbackSmoke`, and `Goo.FailedIdleSmoke` Release warnings-as-errors builds pass. The
+  mixed-axis gate still reports `readbackCount=3`, `drawCount=488`, `planCompileCount=14`, and
+  `recordCount=14`. The failed-idle gate reports `create=7`, `pass=11`, `composite=11`, zero layer
+  failures, and zero final resident targets or leases.
+- The existing-surface audit filled the public `BoxShadow` gap for `Text`, `TextEntry`, `TextEditor`,
+  and `Image` through the retained analytic rectangular shadow path. The consolidated effects gate now
+  includes one unobscured Text box-shadow pixel assertion in the x160..272, y108..136 region and passes
+  with `shadows=container,button,text,shape,outer,inset,stacked=1`, `readbackCount=2`,
+  `layerPassCount=72`, `layerCompositeCount=72`, `layerCreateCount=8`, `drawCount=964`,
+  `planCompileCount=12`, `recordCount=12`, and `close=1`.
+- Shape Outline remains excluded by the public contract because Shapes do not paint box outlines. SDL
+  Vulkan loader acquisition now occurs before SDL window creation, with a host-owned lease reused by
+  target bootstrap and recovery and released after window teardown.
+- Ubuntu 22.04.5 validation under Weston, lavapipe, and Khronos layers passes the same effects and
+  mixed-axis gates with no validation, result, or fatal Vulkan error. The Ubuntu failed-idle lane still
+  has its pre-existing image upload/final-release assertion failure, with no Vulkan validation or
+  layer-lifecycle failure, and remains outside this S14 change.
+- The final Linux x64 stripped NativeAOT effects gate passes. Its executable is `4,489,488` bytes with
+  SHA-256 `048e7d6c9d6e60d94f8556b1160cf25fee0f66afa169f95667d8a0498cf2723a`.
+- The LayerSubtreeBounds audit found conservative transformed subtree and shadow unions without active
+  viewport or ancestor-clip intersection. This can over-allocate clipped opacity or blend layers, but
+  the current effects gate reports zero layer-pool failures. Bounds tightening is deferred as a bounded
+  resource-safety follow-up.
+- Linux O16 capability and baseline evidence is recorded in
+  `docs/perf/2026-08-19-vulkan-aa-o16-linux.md`. The fixed analytic-coverage policy is accepted for
+  both required platforms; general masks, filters, and custom effects remain future planned work, and
+  Windows qualification remains in S19.
+
+### 2026-08-19 S14 O16 fixed analytic-coverage policy
+
+- O16 is accepted: Goo ships one fixed analytic-coverage antialiasing policy shared by Windows and
+  Linux. All product Vulkan targets and pipelines remain single-sampled. No MSAA, runtime AA modes,
+  per-window AA settings, fallback chains, or automatic strategy switching are permitted.
+- This supersedes the older Skia/OpenGL 8x-MSAA request and fallback direction. The proof-only layered
+  MSAA4 candidate retained analytic coverage, raised the GPU median from `10,528 ns` to `14,176 ns`
+  (`+34.65%`), added two resources, and used a nominal `65,536 B` intermediate attachment. It was
+  rejected as a product direction; the comparison code was ephemeral and deleted.
+- S14 is Linux-complete for its current implementation scope. This record does not claim Windows
+  verification. Final T02 visual/performance/memory evidence and Windows qualification remain S19
+  release gates and may reopen O16 only on a measured failure of the accepted policy.
+
+### 2026-08-19 S14 Linux rounded overflow clipping
+
+- Both-axis rounded `Overflow.Hidden` and `Overflow.Scroll` now use the retained S13 path-mask atlas.
+  Each node owns one mutable unit-viewbox path with 12 quadratic segments. Unchanged geometry reuses
+  the same arrays, path identity, encoded bands, and mask region without rebuilding a temporary path.
+- Rounded overflow has a distinct stable-ID namespace below the shape-paint namespace. Normal scene
+  owner IDs are capped below both mask domains. Radius or layout changes update the existing geometry
+  revision and dirty the retained mask region without creating a new logical path identity.
+- Node backgrounds, borders, and shadows keep their native analytic coverage. The rounded mask applies
+  to node-owned image or text content and descendants, while an axis-aligned rectangular scissor keeps
+  raster work bounded. Affine rounded clipping uses the mask without an invalid screen-space scissor.
+- The focused public G# gate covers rounded square-Shape self-content, a scrolling viewport with an
+  overflowing descendant, eight corner samples, public scrolling, two full-frame async readbacks,
+  and clean close. The local NVIDIA Wayland run and Khronos 1.4.357 validation run each reported
+  118 draws, 12 plan compiles,
+  12 command records, two readbacks, zero unsupported-scene events, and clean Vulkan teardown.
+- Mixed-axis overflow and effect interaction remain active S14 work. Windows qualification remains in
+  S19.
+
+### 2026-08-19 S09R Linux public primitive completion
+
+- One shared public G# scene now drives the fresh NuGet package smoke and the TestRelease-only Vulkan
+  readback gate. It covers solid and rounded boxes, solid, dashed, and dotted per-edge borders,
+  two-stop radial and four-stop linear gradients, nested transforms, rectangular clips, scrolling,
+  visibility, leaf opacity, and overlapping stack order.
+- The pixel gate captures the complete DPI-scaled framebuffer twice through the internal request-only
+  readback seam. Interior samples use bounded channel tolerances, dashed and dotted borders require
+  both coverage and gaps, and the second capture proves a scrolling leaf moved while its clipped
+  sliver remained visible.
+- Two normal local Wayland runs and one run with Khronos validation passed. The final validated run
+  reported two readbacks, positive draw, plan-compile, and record work, zero unsupported-scene events,
+  zero validation or result failures, and zero live Vulkan objects after close.
+- A fresh `Goo.0.2.0.nupkg` consumer passed `GOO_NATIVE_S09R_SMOKE=1` with `drawCount=108`,
+  `planCompileCount=4`, `recordCount=4`, mounted geometry, scroll-once public geometry, and clean close.
+  The production compiler and typed scene-recording gates remain zero-allocation.
+- Two through four gradient stops remain the supported bounded contract. Larger stop counts are
+  diagnosed and emit no draw. Windows repeats the public package and pixel matrix in S19.
+
+### 2026-08-19 S13 Linux path and compiled-vector completion
+
+- Public line, quadratic, cubic, and elliptical-arc paths normalize into retained quadratic geometry.
+  The same normalized source drives adaptive CPU bounds, fill containment, stroke outlines, hit testing,
+  and Vulkan analytic-band encoding for NonZero and EvenOdd fills.
+- The Vulkan path pipeline uses generated and validated SPIR-V, affine-aware outside-fringe coverage,
+  scale-aware root tolerances, endpoint ownership, and ordered fractional EvenOdd intersections.
+  Solid, linear-gradient, radial-gradient, and sampled-image path paints render through the production
+  package without Skia or CPU rasterization.
+- Retained strokes cover butt, round, and square caps, miter, round, and bevel joins, miter limits,
+  dash offsets, closed seams, and tiny intervals. Exact-scale outlines flatten at 0.25 logical-pixel
+  tolerance and retain at most eight variants per source. CPU hit testing uses the same outline and
+  shared conservative miter extent. Retained `Shape.CornerRadius` uses the shared rounded silhouette
+  for fill rendering, stroke generation, and hit testing.
+- Arbitrary `ClipPath` rendering uses per-window retained R8 coverage-mask atlases with an RGBA8
+  fallback, stable mask identity, two-slot frame data, eight-mask ancestor chains, abort-safe image
+  layouts, and resize/device-loss reconstruction.
+- Path identities use exact logical ID plus geometry revision ownership. The process-shared 256 KiB
+  path atlas has per-window references, upload-before-publication, redraw fanout, fence-safe eviction,
+  free-range reuse, path diagnostics, cleanup, and device-loss reconstruction. Safe range reuse queues
+  only the bounded dirty word interval or its union with the unpublished suffix. Abort-before-reclaim,
+  fence-overlap, upload-before-publication, and noncoherent flush gates remain enforced.
+- The latest fresh-package Khronos Wayland path gate mounted and closed cleanly with
+  `pressureEvents=3`, `eviction=10`, `retiredWords=0`, `reuse=8`, and `close=1`.
+- The final fresh-package Khronos Wayland compiled-vector gate reported `static=1500`,
+  `animatedTracks=7`, `morphCurves=12`, `plan=25`, `record=25`, `draw=460`, `pathRetired=6338`,
+  `pathReuse=59`, and `mounted=1`. The warm `PATH_MORPH_GATE` reported `allocated=0`.
+- GCV1 v1 is an 11-section little-endian compiled-vector format. `Goo.SvgCompiler` 0.2.0 owns
+  build-time SVG parsing, normalization, paint lowering, animation filtering, topology validation,
+  and deterministic output. Static, controlled-animation, and compatible-morph fixtures compile to
+  unchanged repeated SHA-256 output. Goo consumes immutable G# asset views and retained transform,
+  opacity, color, stroke, keyframe, loop, and morph playback.
+- The clip-mask atlas is limited to 32 MiB per window and now has serial-safe stale-region eviction
+  keyed by completed submission serials. Active and in-flight mask usage remains protected. The
+  package pressure lane records pressure events, eviction counts, pressure failures, resident bytes,
+  region counts, and cleanup, and requires pressure and eviction without pressure failures. Eight
+  simultaneous full-screen 4K masks remain unqualified. Fractional EvenOdd evaluation now stores
+  and insertion-sorts up to 32 roots in bounded local storage, folds saturated roots into parity,
+  and falls back to the original exact O(k^2) traversal on overflow. The final exact-semantics shader
+  solves each candidate's roots once, evaluates both ray directions in one candidate traversal, keeps
+  only four bounded distance arrays, and selects monotonic bands with a boundary-preserving binary
+  search. NonZero ordering and the exact EvenOdd overflow path are unchanged. The final
+  `path_band.frag.spv` is `91,752` bytes with SHA-256
+  `77abc9860c16f672c7d6d3d3e9524c13bc58cf814124d139034edcabd82e01d8`.
+- The exact local Linux Wayland and NVIDIA RTX 3080 Release 512-hole gate used one 1,800 by 1,800
+  EvenOdd path, 180 demand-active frames, and the retained final 30 MainPass timestamp samples.
+  The reproduced pre-change P95 was `14.759936 ms`. Three final runs measured MainPass P95
+  `7.779328 ms`, `7.833600 ms`, and `7.835648 ms`; their P99 values were `7.814144 ms`,
+  `7.838720 ms`, and `7.836672 ms`. All pass the `8.33 ms` P95 and `16.67 ms` P99 gates with
+  zero managed allocation, validation errors, result failures, fatal records, or dropped validation
+  messages. This is a `46.9%` P95 reduction from the reproduced baseline. The bounded diagnostics
+  rings retained the final 30 samples and reported the expected trace/result overwrites from the
+  180-frame run.
+- The durable ABI gate retains the deterministic 256-hole corpus with `1,028` curves, `13,508` words,
+  32 horizontal and vertical bands, 64 warm encodes, stable identity, and zero managed allocation.
+  The temporary 512-hole harness and exact temporary artifacts were deleted after recording evidence.
+- Ubuntu 22.04, Weston 9.0.0, lavapipe, and `VK_LAYER_KHRONOS_validation` 1.3.204 passed the final
+  fresh-package path, clip-mask, and compiled-vector lanes. The local stripped NativeAOT
+  compiled-vector executable is `5,277,640` bytes with SHA-256
+  `f0c036636785aaa4539859d26a407ef0695ea3ad5523a86528cd110b7285e4e3`; its 37-file directory is
+  `19,458,308` bytes. The final NuGet package is `3,636,905` bytes with SHA-256
+  `d409d60e47673dc39ba43409aca2cf8eeb49993d7866c5ca9ed6243ed6fe7085`. Its RID-specific consumer
+  passed the path, clip-mask, and compiled-vector lanes. The validated 38-file minimal Linux bundle is
+  `9,779,787` bytes. Windows repeats the complete matrix in S19.
+- The production shader mirror now byte-matches all 17 generated SPIR-V modules and the manifest.
+  `Goo.ShaderGen check` enforces both generated determinism and the production mirror. Synchronizing
+  eight stale production modules exposed one false-positive Shape shadow sample from the old
+  rectangular shader; the corrected sample targets the actual offset diamond tip. S09R primitives,
+  rounded overflow, and the complete S14 effects readback gate pass with the synchronized shaders.
 
 ### 2026-08-19 S12 Linux image completion
 
@@ -146,13 +916,6 @@ S11 text and S12 image Linux implementations are complete. Windows and final rel
   `shapeRequired=9 glyphRequired=2880 warmReuse=1 disposed=1`. Full registered-font corpus/style/
   collection/variation qualification, Scripts, editor, color, multi-atlas/eviction/recovery remain
   open.
-- The S09R Linux-supported public region is qualified through a fresh-package Wayland smoke. It
-  covered boxes, radii, all three accepted border styles, two- and four-stop gradients, nested
-  transforms and rectangular clips, scroll-once geometry, stacking, visibility, and leaf opacity.
-  The final run reported 108 draws, four plan compiles, four command records, and zero fatal,
-  validation, or unsupported-scene diagnostics. The production compiler and typed recording gates
-  both reported zero warm allocation. Exact pixels remain deferred to S14 async readback, and the
-  Windows repeat remains deferred to the Windows 11 VM.
 - The S10R Linux substrate scope is complete for current owners. S11-S14 still own text/image/path/
   offscreen-specific pressure, LRU, cache, and recovery qualification; Windows qualification and final
   T01-T05 gates remain open.
@@ -673,8 +1436,9 @@ Required capability policy:
 - Surface and swapchain support are required.
 - Dynamic rendering, synchronization2, and timeline semaphore behavior may be required through the
   chosen core version or exact extensions after the audit.
-- `VK_EXT_swapchain_maintenance1`, memory budget reporting, and incremental present remain optional
-  capabilities with correctness-preserving fallbacks inside the Vulkan design.
+- A negotiated KHR or EXT `surface_maintenance1` and `swapchain_maintenance1` pair is required for
+  fence-safe presentation retirement. Memory budget reporting and incremental present remain
+  optional capabilities with correctness-preserving fallbacks inside the Vulkan design.
 - Optional vendor blend, descriptor, or presentation features cannot be correctness dependencies.
 - Runtime shader compilation is forbidden.
 - GLSL 450 through the pinned `glslc` toolchain is the built-in Goo source policy. Optional Slang or
@@ -1975,7 +2739,8 @@ All rows are independent hard gates.
 Stop implementation and return to Q&A when:
 
 - The accepted open path direction fails a required operation or needs a new dependency or policy.
-- O16 needs the final AA policy selection.
+- The accepted O16 analytic-coverage policy fails a final measured visual, performance, memory, or
+  platform gate.
 - A required Vulkan capability is absent on a target configuration.
 - G# 0.4.1 cannot emit a required ABI or NativeAOT path safely.
 - The typed frame plan materially loses to the direct control after reasonable optimization.

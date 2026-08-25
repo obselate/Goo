@@ -12,7 +12,14 @@ internal unsafe data struct SdlVulkanExtensionPointer {
 internal unsafe partial class SdlHost {
   internal func LoadVulkanLibrary() bool {
     ThrowIfDisposed()
-    return SdlRuntime.AcquireVulkan()
+    if vulkanOwned {
+      return true
+    }
+    let loaded = SdlRuntime.AcquireVulkan()
+    if loaded {
+      vulkanOwned = true
+    }
+    return loaded
   }
 
   internal func GetVulkanGetInstanceProcAddr() nint {
@@ -22,6 +29,10 @@ internal unsafe partial class SdlHost {
 
   internal func UnloadVulkanLibrary() {
     ThrowIfDisposed()
+    if !vulkanOwned {
+      return
+    }
+    vulkanOwned = false
     SdlRuntime.ReleaseVulkan()
   }
 

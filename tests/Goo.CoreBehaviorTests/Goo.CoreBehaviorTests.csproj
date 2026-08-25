@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>Goo.Tests</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Goo\Goo.gsproj"
+                      AdditionalProperties="Configuration=Test$(Configuration);IncludeTestFixtures=true;GooTestFixturesProps=$(MSBuildProjectDirectory)/Goo.CoreBehaviorTestFixtures.props" />
+  </ItemGroup>
+  <Target Name="UseGooLinuxSdlForTests"
+          AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(GooLinuxSdlPath)' != '' and Exists('$(GooLinuxSdlPath)')">
+    <Copy SourceFiles="$(GooLinuxSdlPath)"
+          DestinationFiles="$(TargetDir)libSDL3.so" />
+  </Target>
+</Project>

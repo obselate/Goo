@@ -1,0 +1,236 @@
+package GooS09RFixture
+
+import Goo
+
+class S09RSmokeCell : Cell {
+  shared {
+    let Root ElementHandle = ElementHandle{}
+    let SolidBox ElementHandle = ElementHandle{}
+    let RoundedBox ElementHandle = ElementHandle{}
+    let SolidBorderBox ElementHandle = ElementHandle{}
+    let DashedBorderBox ElementHandle = ElementHandle{}
+    let DottedBorderBox ElementHandle = ElementHandle{}
+    let LinearGradientBox ElementHandle = ElementHandle{}
+    let RadialGradientBox ElementHandle = ElementHandle{}
+    let TransformOuter ElementHandle = ElementHandle{}
+    let TransformInner ElementHandle = ElementHandle{}
+    let ScrollViewport ElementHandle = ElementHandle{}
+    let ClipOuter ElementHandle = ElementHandle{}
+    let ClipInner ElementHandle = ElementHandle{}
+    let ScrollLeaf ElementHandle = ElementHandle{}
+    let HiddenLeaf ElementHandle = ElementHandle{}
+    let OpacityLeaf ElementHandle = ElementHandle{}
+    let BackStack ElementHandle = ElementHandle{}
+    let FrontStack ElementHandle = ElementHandle{}
+  }
+
+  override func Build() Blob {
+    return Container{
+      Width: Length.Percent(100),
+      Height: Length.Percent(100),
+      Handle: S09RSmokeCell.Root,
+      Position: PositionType.Relative,
+      BackgroundColor: Color.Rgb(12, 20, 32),
+      Children: {
+        Container{
+          Position: PositionType.Absolute,
+          Left: 10,
+          Top: 10,
+          Width: 74,
+          Height: 38,
+          Handle: S09RSmokeCell.SolidBox,
+          BackgroundColor: Color.Rgb(42, 112, 188),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 94,
+          Top: 10,
+          Width: 74,
+          Height: 38,
+          Handle: S09RSmokeCell.RoundedBox,
+          BorderRadius: 12,
+          BackgroundColor: Color.Rgb(82, 176, 112),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 178,
+          Top: 10,
+          Width: 74,
+          Height: 38,
+          Handle: S09RSmokeCell.SolidBorderBox,
+          BorderStyle: BorderStyle.Solid,
+          BorderTopWidth: 2,
+          BorderRightWidth: 3,
+          BorderBottomWidth: 4,
+          BorderLeftWidth: 5,
+          BorderTopColor: Color.Rgb(232, 96, 72),
+          BorderRightColor: Color.Rgb(96, 224, 128),
+          BorderBottomColor: Color.Rgb(72, 144, 232),
+          BorderLeftColor: Color.Rgb(224, 184, 72),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 262,
+          Top: 10,
+          Width: 60,
+          Height: 38,
+          Handle: S09RSmokeCell.DashedBorderBox,
+          BorderStyle: BorderStyle.Dashed,
+          BorderTopWidth: 3,
+          BorderRightWidth: 3,
+          BorderBottomWidth: 3,
+          BorderLeftWidth: 3,
+          BorderTopColor: Color.Rgb(232, 96, 72),
+          BorderRightColor: Color.Rgb(96, 224, 128),
+          BorderBottomColor: Color.Rgb(72, 144, 232),
+          BorderLeftColor: Color.Rgb(224, 184, 72),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 332,
+          Top: 10,
+          Width: 60,
+          Height: 38,
+          Handle: S09RSmokeCell.DottedBorderBox,
+          BorderStyle: BorderStyle.Dotted,
+          BorderTopWidth: 3,
+          BorderRightWidth: 3,
+          BorderBottomWidth: 3,
+          BorderLeftWidth: 3,
+          BorderTopColor: Color.Rgb(232, 96, 72),
+          BorderRightColor: Color.Rgb(96, 224, 128),
+          BorderBottomColor: Color.Rgb(72, 144, 232),
+          BorderLeftColor: Color.Rgb(224, 184, 72),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 10,
+          Top: 60,
+          Width: 120,
+          Height: 52,
+          Handle: S09RSmokeCell.LinearGradientBox,
+          BackgroundGradient: LinearGradient(90.0, []GradientStop{
+            GradientStop{ Offset: 0.0, Color: Color.Rgb(24, 68, 132) },
+            GradientStop{ Offset: 0.33, Color: Color.Rgb(46, 126, 196) },
+            GradientStop{ Offset: 0.66, Color: Color.Rgb(88, 172, 210) },
+            GradientStop{ Offset: 1.0, Color: Color.Rgb(38, 92, 152) },
+          }),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 140,
+          Top: 60,
+          Width: 120,
+          Height: 52,
+          Handle: S09RSmokeCell.RadialGradientBox,
+          BackgroundGradient: RadialGradient(0.5, 0.5, 0.5, []GradientStop{
+            GradientStop{ Offset: 0.0, Color: Color.Rgb(232, 178, 78) },
+            GradientStop{ Offset: 1.0, Color: Color.Rgb(128, 54, 92) },
+          }),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 270,
+          Top: 60,
+          Width: 80,
+          Height: 60,
+          Handle: S09RSmokeCell.TransformOuter,
+          Transform: PanelTransform{ TranslateX: 4, TranslateY: 2 },
+          BackgroundColor: Color.Rgb(24, 42, 72),
+          Children: {
+            Container{
+              Width: 52,
+              Height: 36,
+              Handle: S09RSmokeCell.TransformInner,
+              Transform: PanelTransform{ TranslateX: 6, TranslateY: 5 },
+              BackgroundColor: Color.Rgb(52, 116, 188),
+              Children: {
+                Container{
+                  Width: 24,
+                  Height: 20,
+                  BackgroundColor: Color.Rgb(196, 224, 88),
+                },
+              },
+            },
+          },
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 10,
+          Top: 136,
+          Width: 92,
+          Height: 54,
+          Handle: S09RSmokeCell.ScrollViewport,
+          Overflow: Overflow.Scroll,
+          BackgroundColor: Color.Rgb(18, 32, 52),
+          Children: {
+            Container{
+              Width: 180,
+              Height: 46,
+              Handle: S09RSmokeCell.ClipOuter,
+              Overflow: Overflow.Hidden,
+              BackgroundColor: Color.Rgb(24, 48, 72),
+              Children: {
+                Container{
+                  Width: 164,
+                  Height: 38,
+                  Handle: S09RSmokeCell.ClipInner,
+                  Overflow: Overflow.Hidden,
+                  BackgroundColor: Color.Rgb(32, 64, 88),
+                  Children: {
+                    Container{
+                      Width: 28,
+                      Height: 24,
+                      Handle: S09RSmokeCell.ScrollLeaf,
+                      BackgroundColor: Color.Rgb(52, 196, 112),
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 116,
+          Top: 146,
+          Width: 24,
+          Height: 24,
+          Handle: S09RSmokeCell.HiddenLeaf,
+          Visibility: Visibility.Hidden,
+          BackgroundColor: Color.Rgb(220, 48, 48),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 148,
+          Top: 146,
+          Width: 24,
+          Height: 24,
+          Handle: S09RSmokeCell.OpacityLeaf,
+          Opacity: 0.5,
+          BackgroundColor: Color.Rgb(232, 196, 48),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 198,
+          Top: 140,
+          Width: 56,
+          Height: 52,
+          Handle: S09RSmokeCell.BackStack,
+          ZIndex: -1,
+          BackgroundColor: Color.Rgb(36, 76, 208),
+        },
+        Container{
+          Position: PositionType.Absolute,
+          Left: 204,
+          Top: 144,
+          Width: 44,
+          Height: 44,
+          Handle: S09RSmokeCell.FrontStack,
+          ZIndex: 1,
+          BackgroundColor: Color.Rgb(220, 48, 48),
+        },
+      },
+    }
+  }
+}

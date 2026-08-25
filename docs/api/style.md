@@ -738,6 +738,10 @@ Sets the defensively copied front-to-back shadow stack. An empty array clears st
 
 Sets a vector path with a closed contour that clips this element and its descendants.
 
+### `ClipPathFillRule`
+
+Sets the fill rule used by ClipPath.
+
 ### `ClipPathFit`
 
 Sets how ClipPath maps into the element border box. The default is Fill.
@@ -937,6 +941,10 @@ Sets the right position offset.
 ### `RowGap`
 
 Sets the gap between rows.
+
+### `ShaderEffect`
+
+Sets a layout-neutral fragment effect over the element and its retained subtree.
 
 ### `Start`
 

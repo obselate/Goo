@@ -4,10 +4,10 @@ import System
 
 internal unsafe partial class VulkanMemoryAllocator : IDisposable {
     private func AllocateImageMemory(image VkImage, requirements VkMemoryRequirements,
-        dedicatedRequirements VkMemoryDedicatedRequirements, requiredProperties VkMemoryPropertyFlags,
-        preferredProperties VkMemoryPropertyFlags) VulkanMemoryAllocation {
+        dedicatedRequirements VkMemoryDedicatedRequirements,
+        memoryPolicy VulkanMemoryPolicy) VulkanMemoryAllocation {
         ValidateRequirements(requirements)
-        let selection = SelectMemoryType(requirements.memoryTypeBits, requiredProperties, preferredProperties)
+        let selection = SelectMemoryType(requirements.memoryTypeBits, memoryPolicy)
         let dedicated = IsDedicated(requirements, dedicatedRequirements, VulkanMemoryResourceClass.Image)
         EnsureLiveCapacity(requirements.size)
         EnsureActiveCapacity()
@@ -25,6 +25,7 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
         }
         let bindImageMemory2 = deviceDispatch.vkBindImageMemory2
         let bindResult = bindImageMemory2(device, 1u, &bindInfo)
+        lastResult = bindResult
         if bindResult != VkConstants.VK_SUCCESS {
             Release(allocation)
             throw InvalidOperationException("vkBindImageMemory2 failed")
@@ -34,10 +35,10 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
     }
 
     private func AllocateBufferMemory(buffer VkBuffer, requirements VkMemoryRequirements,
-        dedicatedRequirements VkMemoryDedicatedRequirements, requiredProperties VkMemoryPropertyFlags,
-        preferredProperties VkMemoryPropertyFlags) VulkanMemoryAllocation {
+        dedicatedRequirements VkMemoryDedicatedRequirements,
+        memoryPolicy VulkanMemoryPolicy) VulkanMemoryAllocation {
         ValidateRequirements(requirements)
-        let selection = SelectMemoryType(requirements.memoryTypeBits, requiredProperties, preferredProperties)
+        let selection = SelectMemoryType(requirements.memoryTypeBits, memoryPolicy)
         let dedicated = IsDedicated(requirements, dedicatedRequirements, VulkanMemoryResourceClass.Buffer)
         EnsureLiveCapacity(requirements.size)
         EnsureActiveCapacity()
@@ -55,6 +56,7 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
         }
         let bindBufferMemory2 = deviceDispatch.vkBindBufferMemory2
         let bindResult = bindBufferMemory2(device, 1u, &bindInfo)
+        lastResult = bindResult
         if bindResult != VkConstants.VK_SUCCESS {
             Release(allocation)
             throw InvalidOperationException("vkBindBufferMemory2 failed")
@@ -180,6 +182,7 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
         var memory VkDeviceMemory = 0uL
         let allocateMemory = deviceDispatch.vkAllocateMemory
         let allocateResult = allocateMemory(device, &allocateInfo, nil, &memory)
+        lastResult = allocateResult
         if allocateResult != VkConstants.VK_SUCCESS || memory == 0uL {
             throw InvalidOperationException("vkAllocateMemory failed")
         }
@@ -199,6 +202,7 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
         if hostVisible {
             let mapMemory = deviceDispatch.vkMapMemory
             let mapResult = mapMemory(device, memory, 0uL, VkConstants.VK_WHOLE_SIZE, 0u, *void(&mapped))
+            lastResult = mapResult
             if mapResult != VkConstants.VK_SUCCESS || mapped == nil {
                 let freeMemory = deviceDispatch.vkFreeMemory
                 freeMemory(device, memory, nil)

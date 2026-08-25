@@ -40,6 +40,7 @@ internal unsafe struct VkDeviceDispatch {
     var vkCreateCommandPool unmanaged[Cdecl] (VkDevice, *VkCommandPoolCreateInfo, *VkAllocationCallbacks, *VkCommandPool) -> VkResult
     var vkDestroyCommandPool unmanaged[Cdecl] (VkDevice, VkCommandPool, *VkAllocationCallbacks) -> void
     var vkAllocateCommandBuffers unmanaged[Cdecl] (VkDevice, *VkCommandBufferAllocateInfo, *VkCommandBuffer) -> VkResult
+    var vkFreeCommandBuffers unmanaged[Cdecl] (VkDevice, VkCommandPool, uint32, *VkCommandBuffer) -> void
     var vkResetCommandBuffer unmanaged[Cdecl] (VkCommandBuffer, VkCommandBufferResetFlags) -> VkResult
     var vkCreateSemaphore unmanaged[Cdecl] (VkDevice, *VkSemaphoreCreateInfo, *VkAllocationCallbacks, *VkSemaphore) -> VkResult
     var vkDestroySemaphore unmanaged[Cdecl] (VkDevice, VkSemaphore, *VkAllocationCallbacks) -> void
@@ -89,9 +90,9 @@ internal unsafe struct VkDeviceDispatch {
     var vkUnmapMemory unmanaged[Cdecl] (VkDevice, VkDeviceMemory) -> void
     var vkInvalidateMappedMemoryRanges unmanaged[Cdecl] (VkDevice, uint32, *VkMappedMemoryRange) -> VkResult
     var vkFlushMappedMemoryRanges unmanaged[Cdecl] (VkDevice, uint32, *VkMappedMemoryRange) -> VkResult
-    var vkCmdCopyImageToBuffer unmanaged[Cdecl] (VkCommandBuffer, VkImage, VkImageLayout, VkBuffer, uint32, *VkBufferImageCopy) -> void
     var vkCmdCopyBuffer unmanaged[Cdecl] (VkCommandBuffer, VkBuffer, VkBuffer, uint32, *VkBufferCopy) -> void
     var vkCmdCopyBufferToImage unmanaged[Cdecl] (VkCommandBuffer, VkBuffer, VkImage, VkImageLayout, uint32, *VkBufferImageCopy) -> void
+    var vkCmdCopyImage unmanaged[Cdecl] (VkCommandBuffer, VkImage, VkImageLayout, VkImage, VkImageLayout, uint32, *VkImageCopy) -> void
     var vkCreateBufferView unmanaged[Cdecl] (VkDevice, *VkBufferViewCreateInfo, *VkAllocationCallbacks, *VkBufferView) -> VkResult
     var vkDestroyBufferView unmanaged[Cdecl] (VkDevice, VkBufferView, *VkAllocationCallbacks) -> void
     var vkCreateSampler unmanaged[Cdecl] (VkDevice, *VkSamplerCreateInfo, *VkAllocationCallbacks, *VkSampler) -> VkResult

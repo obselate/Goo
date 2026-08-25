@@ -180,7 +180,7 @@ Run the narrowest relevant checks during implementation. Run the full Release ch
 
 ```sh
 dotnet build Goo/Goo.gsproj -c Release -p:TreatWarningsAsErrors=true
-dotnet test tests/Goo.Tests/Goo.Tests.csproj -c Release -p:TreatWarningsAsErrors=true
+dotnet test tests/Goo.ApiContractTests/Goo.ApiContractTests.csproj -c Release -p:TreatWarningsAsErrors=true
 dotnet run --project tools/Goo.ApiDocs/Goo.ApiDocs.csproj -c Release
 git diff --check
 ```
@@ -190,7 +190,7 @@ Review the generated `docs/api` diff. After the implementation commit, run the g
 Also run the performance lane when runtime work or retained storage can change:
 
 ```sh
-dotnet test tests/Goo.Tests/Goo.Tests.csproj -c Release --filter 'Category=Performance'
+dotnet test tests/Goo.CoreBehaviorTests/Goo.CoreBehaviorTests.csproj -c Release --filter 'Category=Performance'
 ```
 
 Do not claim a pass without command output. Do not open a pull request while a required check fails.

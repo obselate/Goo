@@ -1,14 +1,28 @@
-layout(push_constant) uniform HbGpuTextPushBlock
+struct HbGpuTextInstance
 {
     mat4 transform;
-    vec4 viewport;
     vec4 glyphBounds;
     uvec4 glyphInput;
     vec4 foreground;
-} pushConstants;
+    vec4 effectParams;
+};
+
+layout(set = 2, binding = 0, std430) readonly buffer HbGpuTextInstanceBuffer
+{
+    HbGpuTextInstance records[];
+} hbGpuTextInstances;
+
+layout(push_constant) uniform HbGpuTextFramePushBlock
+{
+    vec4 viewport;
+    vec4 origin;
+} frameConstants;
 
 layout(location = 0) out vec2 v_texcoord;
 layout(location = 1) flat out uint v_glyphLoc;
+layout(location = 2) flat out uint v_clipChainId;
+layout(location = 3) flat out vec4 v_effectAndOrigin;
+layout(location = 4) flat out vec4 v_foreground;
 
 void main()
 {
@@ -27,9 +41,27 @@ void main()
         vec2(1.0, 1.0),
         vec2(-1.0, 1.0));
 
+    HbGpuTextInstance instance = hbGpuTextInstances.records[gl_InstanceIndex];
+    mat4 transform = mat4(
+        vec4(
+            2.0 * frameConstants.viewport.z / frameConstants.viewport.x,
+            0.0,
+            0.0,
+            0.0),
+        vec4(
+            0.0,
+            2.0 * frameConstants.viewport.w / frameConstants.viewport.y,
+            0.0,
+            0.0),
+        vec4(0.0, 0.0, 1.0, 0.0),
+        vec4(
+            -1.0 - 2.0 * frameConstants.origin.x / frameConstants.viewport.x,
+            -1.0 - 2.0 * frameConstants.origin.y / frameConstants.viewport.y,
+            0.0,
+            1.0)) * instance.transform;
     vec2 position = mix(
-        pushConstants.glyphBounds.xy,
-        pushConstants.glyphBounds.zw,
+        instance.glyphBounds.xy,
+        instance.glyphBounds.zw,
         corners[gl_VertexIndex]);
     vec2 texcoord = position;
     vec4 jac = vec4(1.0, 0.0, 0.0, 1.0);
@@ -38,10 +70,16 @@ void main()
         texcoord,
         normals[gl_VertexIndex],
         jac,
-        pushConstants.transform,
-        pushConstants.viewport.xy);
+        transform,
+        frameConstants.viewport.xy);
 
-    gl_Position = pushConstants.transform * vec4(position, 0.0, 1.0);
+    gl_Position = transform * vec4(position, 0.0, 1.0);
     v_texcoord = texcoord;
-    v_glyphLoc = pushConstants.glyphInput.x;
+    v_glyphLoc = instance.glyphInput.x;
+    v_clipChainId = instance.glyphInput.z;
+    v_effectAndOrigin = vec4(
+        instance.effectParams.x,
+        uintBitsToFloat(instance.glyphInput.y),
+        frameConstants.origin.xy);
+    v_foreground = instance.foreground;
 }

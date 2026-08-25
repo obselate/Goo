@@ -1,0 +1,35 @@
+<Project Sdk="Gsharp.NET.Sdk/0.4.1">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GooAsyncReadbackSmoke</RootNamespace>
+    <AssemblyName>Goo.Tests</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="Shaders/control_effect.frag.spv"
+             Link="control_effect.frag.spv"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Compile Remove="WindowReadbackFixture.gs" />
+    <Compile Include="../Shared/S09RScene.gs" Link="S09RScene.gs" />
+    <Compile Include="../Shared/S14RoundedOverflowScene.gs" Link="S14RoundedOverflowScene.gs" />
+    <Compile Include="../Shared/S14EffectsScene.gs" Link="S14EffectsScene.gs" />
+    <Content Include="../../proofs/Goo.VulkanProof/Assets/Text/VendSans-VariableFont_wght.ttf"
+             Link="VendSans-VariableFont_wght.ttf"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../proofs/Goo.VulkanProof/Assets/Text/HarfBuzz-chromacheck-colr.ttf"
+             Link="HarfBuzz-chromacheck-colr.ttf"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Goo/Goo.gsproj"
+                      AdditionalProperties="Configuration=Test$(Configuration);IncludeTestFixtures=true;GooTestFixturesProps=$(MSBuildProjectDirectory)/Goo.AsyncReadbackFixtures.props" />
+  </ItemGroup>
+  <Target Name="UseGooLinuxSdlForAsyncReadbackSmoke"
+          AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(GooLinuxSdlPath)' != '' and Exists('$(GooLinuxSdlPath)')">
+    <Copy SourceFiles="$(GooLinuxSdlPath)"
+          DestinationFiles="$(TargetDir)libSDL3.so" />
+  </Target>
+</Project>

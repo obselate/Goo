@@ -337,6 +337,9 @@ internal class AccessibilityManager {
   }
 
   private func resolvedValue(n Node, declaration Accessibility?) string {
+    if n.Kind == NodeKind.Entry && n.Password {
+      return protectedTextMask(n.Buffer)
+    }
     if let metadata = declaration {
       if metadata.Value != "" { return metadata.Value }
     }
@@ -384,8 +387,14 @@ internal class AccessibilityManager {
   private func textStateFor(n Node) AccessibilityTextState {
     if n.Kind == NodeKind.Entry {
       let start = n.Anchor < n.Caret ? n.Anchor : n.Caret
-      let length = n.Anchor < n.Caret ? n.Caret - n.Anchor : n.Anchor - n.Caret
-      return AccessibilityTextState(nil, start, length, n.Caret)
+      let end = n.Anchor < n.Caret ? n.Caret : n.Anchor
+      if n.Password {
+        let displayStart = protectedTextDisplayOffset(n.Buffer, start, TextAffinity.Upstream)
+        let displayEnd = protectedTextDisplayOffset(n.Buffer, end, TextAffinity.Downstream)
+        let displayCaret = protectedTextDisplayOffset(n.Buffer, n.Caret, n.CaretAffinity)
+        return AccessibilityTextState(nil, displayStart, displayEnd - displayStart, displayCaret)
+      }
+      return AccessibilityTextState(nil, start, end - start, n.Caret)
     }
     if n.Kind == NodeKind.Editor {
       if let controller = n.EditorController {

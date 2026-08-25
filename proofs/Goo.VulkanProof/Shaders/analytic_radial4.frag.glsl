@@ -1,18 +1,12 @@
-#version 450 core
-
-layout(push_constant) uniform PushConstants {
-    vec4 rect;
-    vec4 transform0;
-    vec4 transform1;
-    vec4 radii;
-    vec4 params;
-    vec4 stopPositions;
-    uvec4 packedColors;
-    uvec4 packedColorsExtra;
-} pc;
+#include "primitive_record.glsl"
 
 layout(location = 0) in vec2 uv;
+layout(location = 3) flat in uint gooPrimitiveRecordOrdinal;
 layout(location = 0) out vec4 outColor;
+
+#include "clip_chain.glsl"
+
+#define pc gooPrimitiveBuffer.records[gooPrimitiveRecordOrdinal]
 
 vec4 unpackColor(uint packedRgb, uint packedAlpha, uint alphaIndex)
 {
@@ -107,5 +101,5 @@ void main()
 {
     vec2 radius = max(pc.params.zw, vec2(0.0001));
     float amount = length((uv - pc.params.xy) / radius);
-    outColor = interpolateStops(clamp(amount, 0.0, 1.0)) * roundedCoverage();
+    outColor = interpolateStops(clamp(amount, 0.0, 1.0)) * roundedCoverage() * gooClipCoverage();
 }

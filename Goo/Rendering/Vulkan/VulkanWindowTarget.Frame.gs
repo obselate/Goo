@@ -14,6 +14,9 @@ internal unsafe partial class VulkanWindowTarget {
             try {
                 HandleFrameFailure(beginResult, VulkanDiagnosticEventIds.CommandRecord)
             } finally {
+                if !recoveryPending && frameBegun {
+                    try { AbandonRecordedFrameForRetry() } catch (cleanup Exception) { frameFailed = true }
+                }
                 CloseDiagnosticFrame(false)
                 ClearActiveFrame()
             }
@@ -26,40 +29,32 @@ internal unsafe partial class VulkanWindowTarget {
     private func BeginRendering(
         current VulkanSwapchainGeneration,
         slot VulkanFrameSlot,
-        imageIndex uint32) {
+        imageIndex uint32,
+        damage VulkanDamageRegion) {
         let image = current.Image(imageIndex)
         let oldLayout = current.CurrentLayout(imageIndex)
-        var subresourceRange = VkImageSubresourceRange{}
-        subresourceRange.aspectMask = uint32(VkConstants.VK_IMAGE_ASPECT_COLOR_BIT)
-        subresourceRange.baseMipLevel = 0u
-        subresourceRange.levelCount = 1u
-        subresourceRange.baseArrayLayer = 0u
-        subresourceRange.layerCount = 1u
-        var barrier = VkImageMemoryBarrier2{}
-        barrier.sType = VkConstants.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2
+        var srcStageMask VkPipelineStageFlags2
+        var srcAccessMask VkAccessFlags2
         if oldLayout == VkConstants.VK_IMAGE_LAYOUT_UNDEFINED {
-            barrier.srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
-            barrier.srcAccessMask = VkConstants.VK_ACCESS_2_NONE
+            srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
+            srcAccessMask = VkConstants.VK_ACCESS_2_NONE
         } else if oldLayout == VkConstants.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR {
-            barrier.srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
-            barrier.srcAccessMask = VkConstants.VK_ACCESS_2_NONE
+            srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+            srcAccessMask = VkConstants.VK_ACCESS_2_NONE
         } else {
             throw InvalidOperationException("Vulkan swapchain image layout is invalid")
         }
-        barrier.dstStageMask = VkConstants.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
-        barrier.dstAccessMask = VkConstants.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
-        barrier.oldLayout = oldLayout
-        barrier.newLayout = VkConstants.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-        barrier.srcQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
-        barrier.dstQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
-        barrier.image = image
-        barrier.subresourceRange = subresourceRange
-        var dependency = VkDependencyInfo{}
-        dependency.sType = VkConstants.VK_STRUCTURE_TYPE_DEPENDENCY_INFO
-        dependency.imageMemoryBarrierCount = 1u
-        dependency.pImageMemoryBarriers = &barrier
-        let pipelineBarrier = dispatch.vkCmdPipelineBarrier2
-        pipelineBarrier(slot.CommandBuffer, &dependency)
+        VulkanTransitions.RecordImage(
+            slot.CommandBuffer,
+            dispatch.vkCmdPipelineBarrier2,
+            image,
+            VulkanTransitions.ColorSubresourceRange(),
+            oldLayout,
+            VkConstants.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            srcStageMask,
+            srcAccessMask,
+            VkConstants.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VkConstants.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT)
         RecordDiagnosticBarrier()
         var clear = VkClearValue{}
         clear.color.float32.values[0] = 0.0F
@@ -76,8 +71,11 @@ internal unsafe partial class VulkanWindowTarget {
         attachment.clearValue = clear
         var rendering = VkRenderingInfo{}
         rendering.sType = VkConstants.VK_STRUCTURE_TYPE_RENDERING_INFO
-        rendering.renderArea.offset = VkOffset2D{ x: 0, y: 0 }
-        rendering.renderArea.extent = current.Extent
+        rendering.renderArea.offset = VkOffset2D{ x: damage.X, y: damage.Y }
+        rendering.renderArea.extent = VkExtent2D{
+            width: uint32(damage.Width),
+            height: uint32(damage.Height),
+        }
         rendering.layerCount = 1u
         rendering.colorAttachmentCount = 1u
         rendering.pColorAttachments = &attachment
@@ -94,30 +92,17 @@ internal unsafe partial class VulkanWindowTarget {
         let endRendering = dispatch.vkCmdEndRendering
         endRendering(slot.CommandBuffer)
         EndDiagnosticTimestamp(slot, VulkanDiagnosticTimestampStage.Main)
-        var subresourceRange = VkImageSubresourceRange{}
-        subresourceRange.aspectMask = uint32(VkConstants.VK_IMAGE_ASPECT_COLOR_BIT)
-        subresourceRange.baseMipLevel = 0u
-        subresourceRange.levelCount = 1u
-        subresourceRange.baseArrayLayer = 0u
-        subresourceRange.layerCount = 1u
-        var barrier = VkImageMemoryBarrier2{}
-        barrier.sType = VkConstants.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2
-        barrier.srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
-        barrier.srcAccessMask = VkConstants.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
-        barrier.dstStageMask = VkConstants.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
-        barrier.dstAccessMask = VkConstants.VK_ACCESS_2_NONE
-        barrier.oldLayout = VkConstants.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-        barrier.newLayout = VkConstants.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-        barrier.srcQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
-        barrier.dstQueueFamilyIndex = VkConstants.VK_QUEUE_FAMILY_IGNORED
-        barrier.image = current.Image(activeImageIndex)
-        barrier.subresourceRange = subresourceRange
-        var dependency = VkDependencyInfo{}
-        dependency.sType = VkConstants.VK_STRUCTURE_TYPE_DEPENDENCY_INFO
-        dependency.imageMemoryBarrierCount = 1u
-        dependency.pImageMemoryBarriers = &barrier
-        let pipelineBarrier = dispatch.vkCmdPipelineBarrier2
-        pipelineBarrier(slot.CommandBuffer, &dependency)
+        VulkanTransitions.RecordImage(
+            slot.CommandBuffer,
+            dispatch.vkCmdPipelineBarrier2,
+            current.Image(activeImageIndex),
+            VulkanTransitions.ColorSubresourceRange(),
+            VkConstants.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VkConstants.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            VkConstants.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VkConstants.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            VkConstants.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+            VkConstants.VK_ACCESS_2_NONE)
         RecordDiagnosticBarrier()
     }
 }

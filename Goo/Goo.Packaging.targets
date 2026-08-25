@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeGooImplementationAssemblies</TargetsForTfmSpecificBuildOutput>
+    <BeforePack>BuildGooShaderEffectToolForPackage;$(BeforePack)</BeforePack>
     <GooVulkanShaderRoot>$(MSBuildProjectDirectory)/Shaders/Vulkan</GooVulkanShaderRoot>
     <GooVulkanRuntimeRoot>$(MSBuildProjectDirectory)/Runtime/Vulkan</GooVulkanRuntimeRoot>
     <GooVulkanEffectiveRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</GooVulkanEffectiveRid>
@@ -14,6 +15,12 @@
     <None Include="$(MSBuildProjectDirectory)/../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
     <None Include="$(MSBuildProjectDirectory)/Goo.targets"
           Pack="true" PackagePath="buildTransitive/Goo.targets" />
+    <None Include="$(MSBuildProjectDirectory)/../tools/Goo.ShaderEffectTool/bin/$(Configuration)/net10.0/Goo.ShaderEffectTool.dll"
+          Pack="true" PackagePath="tools/net10.0/any/Goo.ShaderEffectTool.dll" />
+    <None Include="$(MSBuildProjectDirectory)/../tools/Goo.ShaderEffectTool/bin/$(Configuration)/net10.0/Goo.ShaderEffectTool.deps.json"
+          Pack="true" PackagePath="tools/net10.0/any/Goo.ShaderEffectTool.deps.json" />
+    <None Include="$(MSBuildProjectDirectory)/../tools/Goo.ShaderEffectTool/bin/$(Configuration)/net10.0/Goo.ShaderEffectTool.runtimeconfig.json"
+          Pack="true" PackagePath="tools/net10.0/any/Goo.ShaderEffectTool.runtimeconfig.json" />
     <None Include="$(GooLinuxSdlPath)"
           Pack="true" PackagePath="runtimes/linux-x64/native/libSDL3.so"
           Condition="'$(GooLinuxSdlPath)' != '' and Exists('$(GooLinuxSdlPath)')" />
@@ -33,6 +40,16 @@
           PackagePath="contentFiles/any/any/Vulkan/Shaders/harfbuzz-14.3.1.provenance.json"
           PackageBuildAction="None"
           PackageCopyToOutput="true" />
+    <None Update="$(MSBuildProjectDirectory)/Shaders/Authoring/goo_effect.glsl"
+          Pack="true"
+          PackagePath="contentFiles/any/any/Vulkan/Shaders/Authoring/goo_effect.glsl"
+          PackageBuildAction="None"
+          PackageCopyToOutput="false" />
+    <None Update="$(MSBuildProjectDirectory)/Shaders/Authoring/goo_effect.slang"
+          Pack="true"
+          PackagePath="contentFiles/any/any/Vulkan/Shaders/Authoring/goo_effect.slang"
+          PackageBuildAction="None"
+          PackageCopyToOutput="false" />
     <None Update="$(GooVulkanRuntimeRoot)/HarfBuzz-COPYING.txt"
           Pack="true"
           PackagePath="contentFiles/any/any/Vulkan/Runtime/HarfBuzz-COPYING.txt"
@@ -91,13 +108,29 @@
           CopyToPublishDirectory="Always" />
   </ItemGroup>
 
+  <Target Name="BuildGooShaderEffectToolForPackage">
+    <MSBuild Projects="$(MSBuildProjectDirectory)/../tools/Goo.ShaderEffectTool/Goo.ShaderEffectTool.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);TreatWarningsAsErrors=true" />
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)/../tools/Goo.ShaderEffectTool/bin/$(Configuration)/net10.0/Goo.ShaderEffectTool.dll')"
+           Text="Goo ShaderEffect build tool is missing." />
+  </Target>
+
   <Target Name="ValidateGooVulkanPackageAssets" BeforeTargets="Build;Pack">
     <Error Condition="!Exists('$(GooVulkanShaderRoot)/solid_quad.vert.spv')"
            Text="Goo Vulkan asset is missing: $(GooVulkanShaderRoot)/solid_quad.vert.spv" />
     <Error Condition="!Exists('$(GooVulkanShaderRoot)/solid_quad.frag.spv')"
            Text="Goo Vulkan asset is missing: $(GooVulkanShaderRoot)/solid_quad.frag.spv" />
+    <Error Condition="!Exists('$(GooVulkanShaderRoot)/path_band.vert.spv')"
+           Text="Goo Vulkan path-band vertex shader is missing: $(GooVulkanShaderRoot)/path_band.vert.spv" />
+    <Error Condition="!Exists('$(GooVulkanShaderRoot)/path_band.frag.spv')"
+           Text="Goo Vulkan path-band fragment shader is missing: $(GooVulkanShaderRoot)/path_band.frag.spv" />
     <Error Condition="!Exists('$(GooVulkanShaderRoot)/shader-manifest.json')"
            Text="Goo Vulkan metadata is missing: $(GooVulkanShaderRoot)/shader-manifest.json" />
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)/Shaders/Authoring/goo_effect.glsl')"
+           Text="Goo Vulkan shader-effect authoring include is missing." />
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)/Shaders/Authoring/goo_effect.slang')"
+           Text="Goo Slang shader-effect authoring include is missing." />
     <Error Condition="!Exists('$(GooVulkanRuntimeRoot)/linux-x64/libgoo-harfbuzz.so')"
            Text="Goo Vulkan Linux HarfBuzz payload is missing." />
     <Error Condition="!Exists('$(GooVulkanRuntimeRoot)/linux-x64/libgoo-harfbuzz-gpu.so')"
@@ -121,6 +154,16 @@
       <DocFileItem Include="$(DocumentationFile)" />
       <FinalDocFile Include="$(OutDir)$([System.IO.Path]::GetFileName('$(DocumentationFile)'))" />
     </ItemGroup>
+  </Target>
+  <PropertyGroup>
+    <GooXmlSupplement>$(MSBuildProjectDirectory)/../docs/api/Goo.xml.supplement.xml</GooXmlSupplement>
+  </PropertyGroup>
+  <Target Name="MergeGooXmlSupplement"
+          AfterTargets="CoreCompile"
+          Condition="'$(DocumentationFile)' != ''">
+    <Error Condition="!Exists('$(GooXmlSupplement)')"
+           Text="Goo XML documentation supplement is missing: $(GooXmlSupplement)" />
+    <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/../tools/merge_xml_docs.py&quot; --generated &quot;$(MSBuildProjectDirectory)/$([System.String]::Copy('$(DocumentationFile)').Replace('\', '/'))&quot; --supplement &quot;$(GooXmlSupplement)&quot;" />
   </Target>
   <Target Name="IncludeGooImplementationAssemblies"
           DependsOnTargets="BuildOnlySettings;ResolveReferences">

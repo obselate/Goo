@@ -146,6 +146,11 @@ internal partial class SdlRuntime {
       }
     }
 
+    internal func IsCurrentMainThread() bool {
+      let expected = Volatile.Read(ref mainThreadId)
+      return expected != 0 && Environment.CurrentManagedThreadId == expected
+    }
+
     internal func SetCursor(value SdlHostCursor) {
       RequireMainThread("SDL cursor mutation")
       if int32(value) < int32(SdlHostCursor.Default) ||
@@ -261,17 +266,16 @@ internal partial class SdlRuntime {
     }
 
     internal func RequireMainThread(operation string, prefix string = "") {
-      lock (sync) {
-        RequireMainThreadLocked(operation, prefix)
-      }
+      RequireMainThreadLocked(operation, prefix)
     }
 
     private func RequireMainThreadLocked(operation string, prefix string = "") {
       let currentThreadId = Environment.CurrentManagedThreadId
-      if mainThreadId != 0 && currentThreadId != mainThreadId {
+      let expectedThreadId = Volatile.Read(ref mainThreadId)
+      if expectedThreadId != 0 && currentThreadId != expectedThreadId {
         let operationText = prefix.Length == 0 ? operation : String.Concat(prefix, operation)
         throw InvalidOperationException(
-          operationText + " must run on Goo's main UI thread " + mainThreadId.ToString() +
+          operationText + " must run on Goo's main UI thread " + expectedThreadId.ToString() +
           "; the current managed thread is " + currentThreadId.ToString() + ".")
       }
       if !SDL.IsMainThread() {
@@ -285,6 +289,9 @@ internal partial class SdlRuntime {
     private func DispatchOne(nativeEvent SDLEvent) {
       let eventType = SDLEventType(nativeEvent.Type)
       if eventType == SDLEventType.Quit || eventType == SDLEventType.Terminating {
+        events.RouteAll(nativeEvent)
+      } else if eventType >= SDLEventType.DisplayFirst &&
+          eventType <= SDLEventType.DisplayLast {
         events.RouteAll(nativeEvent)
       } else if eventType == SDLEventType.PenProximityOut && nativeEvent.Pproximity.WindowID == 0u {
         events.RouteAll(nativeEvent)

@@ -37,6 +37,17 @@ var members = XDocument.Load(xmlPath)
 
 var matched = new HashSet<string>(StringComparer.Ordinal);
 Directory.CreateDirectory(outputRoot);
+var expectedPages = sourceDirectories
+    .Select(directory => Path.GetFileName(directory).ToLowerInvariant() + ".md")
+    .Append("README.md")
+    .ToHashSet(StringComparer.Ordinal);
+foreach (var stalePath in Directory.EnumerateFiles(outputRoot, "*.md"))
+{
+    if (expectedPages.Contains(Path.GetFileName(stalePath)))
+        continue;
+    File.Delete(stalePath);
+    Console.WriteLine($"Removed stale API page {stalePath}.");
+}
 foreach (var directoryPath in sourceDirectories)
 {
     var directory = Path.GetFileName(directoryPath);
@@ -84,6 +95,8 @@ static string BuildPage(string directory, ApiType[] types, ApiMember[] members, 
         AppendElementMetricsGuide(text);
     if (directory == "Tree")
         AppendTextInputAreaGuide(text);
+    if (directory == "Rendering")
+        AppendShaderEffectGuide(text);
 
     if (types.Length == 0)
     {
@@ -186,6 +199,61 @@ static void AppendImageSourceProviderMembers(StringBuilder text)
     text.AppendLine("Creates the lease that Goo owns and disposes for one mounted image or background binding.");
 }
 
+static void AppendShaderEffectGuide(StringBuilder text)
+{
+    text.AppendLine();
+    text.AppendLine("## Apply fragment shaders to retained elements");
+    text.AppendLine();
+    text.AppendLine("Create one `ShaderEffect` from precompiled fragment SPIR-V and assign it through the ordinary `Style.ShaderEffect` property on a `Container`, `Button`, `Text`, `Image`, `Shape`, or another Blob. Goo renders that element and its subtree into a bounded offscreen layer, runs the fragment program, then composites the result without changing layout, hit testing, accessibility, transforms, or clipping.");
+    text.AppendLine();
+    text.AppendLine("```gsharp");
+    text.AppendLine("import System");
+    text.AppendLine("import System.IO");
+    text.AppendLine("import System.Numerics");
+    text.AppendLine("import Goo");
+    text.AppendLine();
+    text.AppendLine("let path = Path.Combine(AppContext.BaseDirectory, \"Shaders\", \"glass.spv\")");
+    text.AppendLine("let effect = ShaderEffect(File.ReadAllBytes(path),");
+    text.AppendLine("  samplesBackdrop: true,");
+    text.AppendLine("  backdropOutset: 24.0F)");
+    text.AppendLine("effect.SetParameter(0, Vector4(0.18F, 0.65F, 0.9F, 1.0F))");
+    text.AppendLine();
+    text.AppendLine("let control = Button{");
+    text.AppendLine("  Width: 180,");
+    text.AppendLine("  Height: 52,");
+    text.AppendLine("  BorderRadius: 18,");
+    text.AppendLine("  ShaderEffect: effect,");
+    text.AppendLine("}");
+    text.AppendLine("```");
+    text.AppendLine();
+    text.AppendLine("Reuse the same effect instance for controls that share program and parameters. `SetParameter` accepts slots 0 through 7, marks mounted users paint-dirty only when a value changes, and stays allocation-free after construction. Create separate effect instances when controls need independent parameter state.");
+    text.AppendLine();
+    text.AppendLine("Author ShaderEffects in native Slang by including Goo's fixed module and implementing `float4 gooEffect(float2 uv, float4 source, float4 backdrop)`. GLSL compatibility sources instead include `goo_effect.glsl` and implement the equivalent `vec4` function.");
+    text.AppendLine();
+    text.AppendLine("```slang");
+    text.AppendLine("#include \"goo_effect.slang\"");
+    text.AppendLine();
+    text.AppendLine("float4 gooEffect(float2 uv, float4 source, float4 backdrop)");
+    text.AppendLine("{");
+    text.AppendLine("    return lerp(source, backdrop, gooParameter(0).x);");
+    text.AppendLine("}");
+    text.AppendLine("```");
+    text.AppendLine();
+    text.AppendLine("Add the source to the G# project:");
+    text.AppendLine();
+    text.AppendLine("```xml");
+    text.AppendLine("<ItemGroup>");
+    text.AppendLine("  <GooShaderEffect Include=\"Shaders/glass.slang\" />");
+    text.AppendLine("</ItemGroup>");
+    text.AppendLine("```");
+    text.AppendLine();
+    text.AppendLine("Build requires the pinned Slang 2026.16 compiler through `SLANG_SDK` or `PATH` and SPIRV-Tools 2026.3 from Vulkan SDK 1.4.357.0 through `VULKAN_SDK` or `PATH`. Goo compiles and validates the source during the build, writes deterministic intermediates under `obj`, and copies `Shaders/glass.spv` plus `Shaders/glass.spv.json` provenance to build and publish output. Set `TargetPath` on `GooShaderEffect` to override the relative output path. Unchanged inputs skip compilation. Tool-version mismatches, compiler errors, validation errors, ABI mismatches, and unsupported capabilities fail the build.");
+    text.AppendLine();
+    text.AppendLine("The fixed ABI binds the isolated source at set 0, the optional backdrop at set 1, Goo primitive data at set 2, Goo clip data at set 3, and eight `vec4` values in a 128-byte fragment push block. `uv` is normalized to the visible element bounds. `source` and `backdrop` are premultiplied linear colors. Return premultiplied linear color. Goo applies retained clip coverage and element opacity after `gooEffect`. Set `backdropOutset` to the largest displacement or filter radius the shader needs beyond those bounds. When backdrop sampling is disabled, the backdrop argument aliases the source and Goo skips the target copy.");
+    text.AppendLine();
+    text.AppendLine("SPIR-V stays a sidecar asset in JIT and NativeAOT builds. Goo packages the build adapter, but neither the adapter, authoring modules, nor compiler toolchains are copied to application output. Goo does not invoke a runtime shader compiler. The first use creates a Vulkan pipeline in a device-generation cache. Warm parameter updates reuse that pipeline and the retained layer pool. One target format supports up to 32 distinct effect program identities per device generation. A non-normal `BlendMode` cannot currently share the same element with `ShaderEffect`.");
+}
+
 static void AppendAccessibilityGuide(StringBuilder text)
 {
     text.AppendLine();
@@ -204,6 +272,8 @@ static void AppendAccessibilityGuide(StringBuilder text)
     text.AppendLine("Use `ElementHandle` relationships only for mounted nodes in the same window. Hidden, flattened, detached, and foreign targets are omitted.");
     text.AppendLine();
     text.AppendLine("Route neutral actions with `new AccessibilityActionRequest(action)`. Use `SetValue`, `SetSelection`, and `Scroll` factories for payload actions. `Window.PerformAccessibilityAction` checks the advertised capability before routing built-in or declared actions.");
+    text.AppendLine();
+    text.AppendLine("Protected `TextEntry` nodes expose one bullet per extended grapheme cluster. Their value, selection, and caret use this masked semantic coordinate space. Copy and cut do not expose or remove protected text, while paste and `SetValue` remain available.");
     text.AppendLine();
     text.AppendLine("Text editors expose `TextSnapshot`, selection, and caret metadata. The snapshot is versioned and avoids a full document copy.");
 }

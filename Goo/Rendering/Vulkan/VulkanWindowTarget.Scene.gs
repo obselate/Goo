@@ -1,5 +1,7 @@
 package Goo
 
+import System
+
 internal partial class VulkanWindowTarget {
     private func ScaleFrame(frame SceneFrame, scaleX float32, scaleY float32) {
         if scaleX == 1.0F && scaleY == 1.0F {
@@ -16,7 +18,10 @@ internal partial class VulkanWindowTarget {
                 DrawCount: value.DrawCount,
                 FirstResource: value.FirstResource,
                 ResourceCount: value.ResourceCount,
+                ContentKey: value.ContentKey,
+                TopologyKey: value.TopologyKey,
                 Dirty: value.Dirty,
+                RetentionState: value.RetentionState,
             }
             index = index + 1
         }
@@ -126,50 +131,21 @@ internal partial class VulkanWindowTarget {
             index = index + 1
         }
         index = 0
-        while index < frame.CachedGlyphRunCount {
-            let value = frame.CachedGlyphRuns[index]
-            if value.TransformIndex >= 0 {
-                let transform = frame.Transforms[value.TransformIndex]
-                frame.Transforms[value.TransformIndex] = TransformRecord{
-                    A: transform.A * scaleX,
-                    B: transform.B * scaleY,
-                    C: transform.C * scaleX,
-                    D: transform.D * scaleY,
-                    TX: transform.TX,
-                    TY: transform.TY,
-                    ParentIndex: transform.ParentIndex,
-                }
-            }
-            frame.CachedGlyphRuns[index] = CachedGlyphRunRefRecord{
+        while index < frame.AnalyticPathBandCount {
+            let value = frame.AnalyticPathBands[index]
+            frame.AnalyticPathBands[index] = AnalyticPathBandRecord{
                 Bounds: ScaleBounds(value.Bounds, scaleX, scaleY),
-                GlyphRunId: value.GlyphRunId,
+                PathId: value.PathId,
                 AtlasId: value.AtlasId,
-                GlyphId: value.GlyphId,
-                AtlasTexelOffset: value.AtlasTexelOffset,
-                AtlasTexelCount: value.AtlasTexelCount,
-                GlyphMinX: value.GlyphMinX,
-                GlyphMinY: value.GlyphMinY,
-                GlyphMaxX: value.GlyphMaxX,
-                GlyphMaxY: value.GlyphMaxY,
-                Color: value.Color,
-                RenderMode: value.RenderMode,
-                EffectMode: value.EffectMode,
-                EffectRadius: value.EffectRadius,
-                TransformIndex: value.TransformIndex,
-            }
-            index = index + 1
-        }
-        index = 0
-        while index < frame.PathMeshCount {
-            let value = frame.PathMeshes[index]
-            frame.PathMeshes[index] = PrebuiltPathMeshRefRecord{
-                Bounds: ScaleBounds(value.Bounds, scaleX, scaleY),
-                MeshId: value.MeshId,
-                FillBrushId: value.FillBrushId,
-                StrokeBrushId: value.StrokeBrushId,
+                AtlasWordOffset: value.AtlasWordOffset,
+                AtlasWordCount: value.AtlasWordCount,
+                FillColor: value.FillColor,
                 FillRule: value.FillRule,
-                StrokeWidth: ScaleRadius(value.StrokeWidth, scaleX, scaleY),
-                StrokeColor: value.StrokeColor,
+                Opacity: value.Opacity,
+                ScaleX: value.ScaleX * scaleX,
+                ScaleY: value.ScaleY * scaleY,
+                TranslateX: value.TranslateX * scaleX,
+                TranslateY: value.TranslateY * scaleY,
                 TransformIndex: value.TransformIndex,
             }
             index = index + 1
@@ -199,6 +175,28 @@ internal partial class VulkanWindowTarget {
             index = index + 1
         }
         index = 0
+        while index < frame.ClipMaskCount {
+            let value = frame.ClipMasks[index]
+            frame.ClipMasks[index] = ClipMaskRecord{
+                StableId: value.StableId,
+                PathId: value.PathId,
+                AtlasId: value.AtlasId,
+                AtlasWordOffset: value.AtlasWordOffset,
+                AtlasWordCount: value.AtlasWordCount,
+                Bounds: ScaleBounds(value.Bounds, scaleX, scaleY),
+                PathBounds: ScaleBounds(value.PathBounds, scaleX, scaleY),
+                Fit: value.Fit,
+                FillRule: value.FillRule,
+                ScaleX: value.ScaleX * scaleX,
+                ScaleY: value.ScaleY * scaleY,
+                TranslateX: value.TranslateX * scaleX,
+                TranslateY: value.TranslateY * scaleY,
+                TransformIndex: value.TransformIndex,
+                ContentKey: ScaleClipContentKey(value.ContentKey, scaleX, scaleY),
+            }
+            index = index + 1
+        }
+        index = 0
         while index < frame.ShadowCount {
             let value = frame.Shadows[index]
             frame.Shadows[index] = ShadowRecord{
@@ -213,6 +211,7 @@ internal partial class VulkanWindowTarget {
                 Blur: ScaleRadius(value.Blur, scaleX, scaleY),
                 Color: value.Color,
                 MaskId: value.MaskId,
+                MaskIndex: value.MaskIndex,
                 Inset: value.Inset,
                 TransformIndex: value.TransformIndex,
             }
@@ -226,6 +225,23 @@ internal partial class VulkanWindowTarget {
                 Thickness: ScaleRadius(value.Thickness, scaleX, scaleY),
                 Color: value.Color,
                 Mode: value.Mode,
+                TransformIndex: value.TransformIndex,
+            }
+            index = index + 1
+        }
+        index = 0
+        while index < frame.LavaCount {
+            let value = frame.Lavas[index]
+            frame.Lavas[index] = LavaRecord{
+                Bounds: ScaleBounds(value.Bounds, scaleX, scaleY),
+                Flow: value.Flow,
+                Form: value.Form,
+                Blend: value.Blend,
+                Light: value.Light,
+                Hue: value.Hue,
+                Rainbow: value.Rainbow,
+                Rotation: value.Rotation,
+                Seed: value.Seed,
                 TransformIndex: value.TransformIndex,
             }
             index = index + 1
@@ -250,9 +266,16 @@ internal partial class VulkanWindowTarget {
             let value = frame.Layers[index]
             frame.Layers[index] = LayerRecord{
                 Bounds: ScaleBounds(value.Bounds, scaleX, scaleY),
+                OriginX: value.OriginX * scaleX,
+                OriginY: value.OriginY * scaleY,
+                ExtentWidth: uint32(MathF.Ceiling(float32(value.ExtentWidth) * scaleX)),
+                ExtentHeight: uint32(MathF.Ceiling(float32(value.ExtentHeight) * scaleY)),
                 Opacity: value.Opacity,
                 BlendMode: value.BlendMode,
                 OffscreenTargetId: value.OffscreenTargetId,
+                EffectProgramId: value.EffectProgramId,
+                EffectVersion: value.EffectVersion,
+                EffectIndex: value.EffectIndex,
                 Flags: value.Flags,
                 TransformIndex: value.TransformIndex,
             }
@@ -271,5 +294,13 @@ internal partial class VulkanWindowTarget {
 
     private func ScaleRadius(value float32, scaleX float32, scaleY float32) float32 {
         return value * (scaleX < scaleY ? scaleX : scaleY)
+    }
+
+    private func ScaleClipContentKey(value uint64, scaleX float32, scaleY float32) uint64 {
+        var hash = (value ^ uint64(uint32(BitConverter.SingleToInt32Bits(scaleX)))) *
+            uint64(1099511628211)
+        hash = (hash ^ uint64(uint32(BitConverter.SingleToInt32Bits(scaleY)))) *
+            uint64(1099511628211)
+        return hash
     }
 }

@@ -2,6 +2,7 @@ package Goo
 
 import System
 import System.Collections.Generic
+import System.Diagnostics
 import System.Numerics
 import System.Threading
 
@@ -27,27 +28,39 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     }
 
     private let host SdlHost
+    private let diagnosticWindowHandle uint64
     private var diagnostics VulkanDiagnostics? = nil
     private var timestampState VulkanDiagnosticTimestampState? = nil
     private var validation VulkanDiagnosticsValidation? = nil
     private let sceneCompiler VulkanSceneCompiler
     private let presentationRetirement VulkanPresentationRetirement
     private var runtime VulkanSharedLease? = nil
+    private var queueMailbox VulkanQueueMailbox? = nil
     private var objectAccounting VulkanObjectAccounting? = nil
     private var sharedObjectAccounting VulkanObjectAccounting? = nil
     private var windowObjectAccounting VulkanObjectAccounting? = nil
     private var memoryAllocator VulkanMemoryAllocator? = nil
     private var imageResources VulkanImageResources? = nil
     private var imageScene VulkanImageScene? = nil
+    private var pathResources VulkanPathResources? = nil
+    private var pathScene VulkanPathScene? = nil
     private var textAtlas VulkanTextAtlasSet? = nil
     private var textScene VulkanTextScene? = nil
     private var textAtlasDiagnosticsToken uint64
+    private var clipMaskAtlas VulkanClipMaskAtlas? = nil
+    private var clipMaskRedrawPending bool
+    private var clipMaskFrameStarted bool
+    private var clipMaskFramePrepared bool
+    private var clipMaskAtlasAbandoned bool
+    private var clipMaskFrameStats VulkanClipMaskFrameStats
+    private var clipMaskFrameTotals VulkanClipMaskFrameTotals
     private var instance VkInstance = nint(0)
     private var instanceDispatch VkInstanceDispatch = VkInstanceDispatch{}
     private var getProcAddress nint = nint(0)
     private var instanceMaintenanceVariant VulkanSwapchainMaintenanceVariant
     private var swapchainMaintenanceVariant VulkanSwapchainMaintenanceVariant
     private var memoryBudgetSupported bool
+    private var clipMaskFormatSupport VulkanClipMaskFormatSupport
     private var physicalDevice VkPhysicalDevice = nint(0)
     private var device VkDevice = nint(0)
     private var dispatch VkDeviceDispatch = VkDeviceDispatch{}
@@ -68,17 +81,15 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     private var deviceWaitIdleAddress nint = nint(0)
     private var commandPool VkCommandPool = 0uL
     private var commandBufferObjectCount int32
-    private var frameSlot0 VulkanFrameSlot? = nil
-    private var frameSlot1 VulkanFrameSlot? = nil
+    private var frameSlots VulkanFrameSlotRing
     private var generation VulkanSwapchainGeneration? = nil
-    private var retiredSwapchains ([]VulkanRetiredWindowSwapchain?)? = nil
-    private var retiredSwapchainCount int32
+    private let retiredSwapchains VulkanRetiredSwapchainSet
     private var primitiveRenderer VulkanPrimitiveRenderer? = nil
+    private var layerPool VulkanOffscreenLayerPool? = nil
     private var framebufferWidth int32
     private var framebufferHeight int32
     private var requestedWidth int32
     private var requestedHeight int32
-    private var nextFrameSlot uint32
     private var nextFrameId uint64
     private var activeFrameId uint64
     private var activeFrameSlot VulkanFrameSlot? = nil
@@ -88,12 +99,35 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     private var frameBegun bool
     private var renderingBegun bool
     private var frameRendered bool
+    private var activeDamageRegion VulkanDamageRegion
+    private var activePartialRedraw bool
+    private var activeSceneVersion uint64
+    private var activeAppliedSceneVersion uint64
+    private var lastFrameSubmitted bool
+    private var activeImagePromoted bool
+    private var lastPresentedImageStateValid bool
+    private var lastPresentedImageIndex uint32
+    private var lastPresentedAppliedSceneVersion uint64
+    private var lastPresentedPendingSceneVersion uint64
+    private var lastPresentedImagePromoted bool
     private var frameFailed bool
+    private var frameFailureRetryable bool
     private var textRedrawPending bool
     private var imageRedrawPending bool
+    private var pathRedrawPending bool
     private var recreatePending bool = true
+    private var vsync bool
     private var surfaceLost bool
     private var disposed bool
+    private const QueueStageIdle int32 = 0
+    private const QueueStageSubmit int32 = 1
+    private const QueueStagePresentPrepare int32 = 2
+    private const QueueStagePresent int32 = 3
+    private var queueStage int32
+    private var pendingGlobalSubmissionSerial uint64
+    private var pendingSubmitStart uint64
+    private var pendingPresentStart uint64
+    private var pendingPresentFence VkFence
 
     internal prop NeedsRender bool {
         get {
@@ -102,10 +136,152 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
                     return true
                 }
             }
-            return textRedrawPending || imageRedrawPending
+            return textRedrawPending || imageRedrawPending || pathRedrawPending
+                || clipMaskRedrawPending
+                || sceneCompiler.Frame.LavaCount > 0
                 || forceFullRedraw
                 || (recreatePending && framebufferWidth > 0 && framebufferHeight > 0)
         }
+    }
+
+    internal prop LastFrameSubmitted bool { get { return lastFrameSubmitted } }
+    internal prop QueueWorkPending bool { get { return queueStage != QueueStageIdle } }
+
+    internal func PrepareClose() bool {
+        PollQueueCompletion()
+        if queueStage != QueueStageIdle || frameBegun {
+            return false
+        }
+        if let activeRuntime = runtime {
+            if activeRuntime.QueueWorker.HasOutstandingWork {
+                host.Wake()
+                return false
+            }
+        }
+        var ready = true
+        if let slot = frameSlots.Slot(0u) {
+            let result = slot.PollForCompletion()
+            RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, result)
+            if result == VkConstants.VK_ERROR_DEVICE_LOST {
+                runtime?.MarkDeviceLost()
+            } else if result != VkConstants.VK_SUCCESS {
+                ready = false
+            } else {
+                presentationRetirement.CollectCompleted(0u, slot.LastCompletedSerial)
+            }
+        }
+        if let slot = frameSlots.Slot(1u) {
+            let result = slot.PollForCompletion()
+            RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, result)
+            if result == VkConstants.VK_ERROR_DEVICE_LOST {
+                runtime?.MarkDeviceLost()
+            } else if result != VkConstants.VK_SUCCESS {
+                ready = false
+            } else {
+                presentationRetirement.CollectCompleted(1u, slot.LastCompletedSerial)
+            }
+        }
+        if let current = generation {
+            let result = current.PollForPresentCompletion(presentationRetirement)
+            RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, result)
+            if result == VkConstants.VK_ERROR_DEVICE_LOST {
+                runtime?.MarkDeviceLost()
+            } else if result != VkConstants.VK_SUCCESS {
+                ready = false
+            }
+        }
+        var retiredIndex int32 = 0
+        while retiredIndex < retiredSwapchains.Count {
+            let result = retiredSwapchains.Generation(retiredIndex)
+                .PollForPresentCompletion(presentationRetirement)
+            RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, result)
+            if result == VkConstants.VK_ERROR_DEVICE_LOST {
+                runtime?.MarkDeviceLost()
+            } else if result != VkConstants.VK_SUCCESS {
+                ready = false
+            }
+            retiredIndex = retiredIndex + 1
+        }
+        CollectRetiredSwapchains()
+        if let request = readbackRequest {
+            let result = request.PollTargetCompletionForClose()
+            if result == VkConstants.VK_ERROR_DEVICE_LOST {
+                runtime?.MarkDeviceLost()
+            } else if result == VkConstants.VK_NOT_READY || result == VkConstants.VK_TIMEOUT {
+                ready = false
+            } else if result != VkConstants.VK_SUCCESS {
+                throw InvalidOperationException("Vulkan readback close poll failed: " + result.ToString())
+            }
+        }
+        if ready {
+            return true
+        }
+        return VulkanDeviceRecoveryCoordinator.Count <= 1
+    }
+
+    internal func HoldNextQueueSubmitForTest() {
+        guard let mailbox = queueMailbox else { return }
+        VulkanSharedRuntime.HoldQueueSubmitForMailboxForTest(mailbox)
+    }
+
+    internal func HoldNextQueuePresentForTest() {
+        guard let mailbox = queueMailbox else { return }
+        VulkanSharedRuntime.HoldQueuePresentForMailboxForTest(mailbox)
+    }
+
+    internal func FailedIdleCollectRetiredSwapchainsForTest() {
+        CollectRetiredSwapchains()
+    }
+    internal func SetPresentationLatencySink(
+        sink Action[VulkanPresentationLatencySample]?) {
+        if sink == nil {
+            presentationRetirement.ClearPresentationLatency()
+            return
+        }
+        presentationRetirement.SetPresentationLatencySink(sink)
+    }
+
+    internal func BeginPresentationLatency(
+        token uint64, kind int32, startTimestamp int64) {
+        presentationRetirement.BeginPresentationLatency(token, kind, startTimestamp)
+    }
+
+    internal prop PresentFenceSupported bool {
+        get {
+            if let current = generation {
+                return current.PresentFenceEnabled
+            }
+            return false
+        }
+    }
+
+    internal prop CurrentPresentMode VkPresentModeKHR {
+        get {
+            if let current = generation {
+                return current.PresentMode
+            }
+            return VkPresentModeKHR(-1)
+        }
+    }
+
+    internal prop CurrentPresentGeneration uint64 {
+        get {
+            if let current = generation {
+                return current.Generation
+            }
+            return 0uL
+        }
+    }
+
+    internal func SetVSync(value bool) {
+        if disposed || vsync == value {
+            return
+        }
+        vsync = value
+        recreatePending = true
+        forceFullRedraw = true
+        host.RefreshDisplayPacing(true)
+        host.Wake()
     }
 
     internal init(nativeHost SdlHost) {
@@ -113,15 +289,18 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
             throw ArgumentNullException("nativeHost")
         }
         host = nativeHost
+        diagnosticWindowHandle = uint64(nativeHost.WindowHandle)
+        vsync = host.VSync
         sceneCompiler = VulkanSceneCompiler()
         presentationRetirement = VulkanPresentationRetirement(64u, 8u)
-        retiredSwapchains = [8]VulkanRetiredWindowSwapchain?
+        retiredSwapchains = VulkanRetiredSwapchainSet(8)
         try {
             Bootstrap()
             if let resources = textScene {
                 sceneCompiler.SetTextScene(resources)
             }
             sceneCompiler.SetImageScene(imageScene)
+            sceneCompiler.SetPathScene(pathScene)
             RecordDiagnosticEvent(
                 VulkanDiagnosticEventIds.WindowCreate,
                 VulkanDiagnosticCategories.Window,
@@ -130,7 +309,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
                 uint64(framebufferWidth),
                 uint64(framebufferHeight))
             CaptureDiagnosticWsi()
-            VulkanWindowTarget.RegisterLiveTarget(this)
+            VulkanDeviceRecoveryCoordinator.Register(this)
         } catch (error Exception) {
             CaptureDiagnosticFatal(-1, VulkanDiagnosticEventIds.RuntimeStart)
             try { Dispose() } catch (cleanup Exception) { }
@@ -139,19 +318,33 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     }
 
     internal func BeginFrame() {
+        lastFrameSubmitted = false
         if frameFailed {
             throw InvalidOperationException("Vulkan window target cannot continue after a failed frame")
         }
-        if disposed || frameBegun {
+        if disposed || frameBegun || queueStage != QueueStageIdle {
             return
         }
         if let activeRuntime = runtime {
             if activeRuntime.DeviceLost {
-                if !VulkanWindowTarget.RecoverDeviceLoss(VkConstants.VK_ERROR_DEVICE_LOST) {
+                if !VulkanDeviceRecoveryCoordinator.Recover(VkConstants.VK_ERROR_DEVICE_LOST) {
                     frameFailed = true
                     throw InvalidOperationException("Vulkan device recovery failed")
                 }
             } else if activeRuntime.DeviceLost || activeRuntime.Terminal {
+                presentationRetirement.ClearPresentationLatency()
+                return
+            }
+        }
+        VulkanDeviceRecoveryCoordinator.ServiceQueueCompletions(this)
+        if let activeRuntime = runtime {
+            if activeRuntime.DeviceLost || activeRuntime.Terminal {
+                presentationRetirement.ClearPresentationLatency()
+                return
+            }
+            if activeRuntime.HasUnsubmittedRecordedSharedUpload {
+                frameFailureRetryable = true
+                host.Wake()
                 return
             }
         }
@@ -160,6 +353,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         }
         activeFrameId = nextFrameId + 1uL
         nextFrameId = activeFrameId
+        frameFailureRetryable = false
         RecordDiagnosticEvent(
             VulkanDiagnosticEventIds.FrameBegin,
             VulkanDiagnosticCategories.Timing,
@@ -176,17 +370,22 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
             guard let current = generation else {
                 return
             }
-            let slot = if nextFrameSlot == 0u { frameSlot0 } else { frameSlot1 }
+            let slotIndex = frameSlots.CurrentIndex
+            let slot = frameSlots.Current
             guard let selectedSlot = slot else {
                 throw InvalidOperationException("Vulkan frame slots are unavailable")
             }
             let prepareResult = selectedSlot.PrepareAcquire()
             RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, prepareResult)
             if prepareResult != VkConstants.VK_SUCCESS {
+                if prepareResult == VkConstants.VK_NOT_READY || prepareResult == VkConstants.VK_TIMEOUT {
+                    frameFailureRetryable = true
+                    return
+                }
                 HandleFrameFailure(prepareResult, VulkanDiagnosticEventIds.PresentWait)
                 return
             }
-            ResolveDiagnosticTimestamp(selectedSlot, nextFrameSlot)
+            ResolveDiagnosticTimestamp(selectedSlot, slotIndex)
             if let atlas = textAtlas {
                 atlas.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
                 textScene?.PublishCompletedUploads()
@@ -194,14 +393,25 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
             if let resources = imageResources {
                 resources.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
             }
-            presentationRetirement.CollectCompleted(nextFrameSlot, selectedSlot.LastCompletedSerial)
+            if let resources = pathScene {
+                resources.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
+            }
+            layerPool?.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
+            if let renderer = primitiveRenderer {
+                renderer.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
+                clipMaskFrameStats = renderer.ClipMaskFrameStats
+                clipMaskFrameTotals = renderer.ClipMaskFrameTotals
+            } else if let atlas = clipMaskAtlas {
+                atlas.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
+            }
+            presentationRetirement.CollectCompleted(slotIndex, selectedSlot.LastCompletedSerial)
             CollectRetiredSwapchains()
             var imageIndex uint32 = 0u
             let acquireNextImage = dispatch.vkAcquireNextImageKHR
             let acquire = acquireNextImage(
                 device,
                 current.Handle,
-                VkConstants.VK_WHOLE_SIZE,
+                0uL,
                 selectedSlot.AcquireSemaphore,
                 0uL,
                 &imageIndex)
@@ -216,20 +426,29 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
                 surfaceLost = markedAcquire == VkConstants.VK_ERROR_SURFACE_LOST_KHR
                 return
             }
+            if markedAcquire == VkConstants.VK_NOT_READY || markedAcquire == VkConstants.VK_TIMEOUT {
+                frameFailureRetryable = true
+                return
+            }
             if markedAcquire != VkConstants.VK_SUCCESS && markedAcquire != VkConstants.VK_SUBOPTIMAL_KHR {
                 HandleFrameFailure(markedAcquire, VulkanDiagnosticEventIds.SwapchainAcquire)
                 return
             }
-            if imageIndex >= current.ImageCount {
-                throw InvalidOperationException("Vulkan acquired image index is invalid")
-            }
             activeFrameSlot = selectedSlot
-            activeFrameSlotIndex = nextFrameSlot
+            activeFrameSlotIndex = slotIndex
             activeImageIndex = imageIndex
-            activeImageLayout = current.CurrentLayout(imageIndex)
             frameBegun = true
             renderingBegun = false
             frameRendered = false
+            if imageIndex >= current.ImageCount {
+                throw InvalidOperationException("Vulkan acquired image index is invalid")
+            }
+            activeImageLayout = current.CurrentLayout(imageIndex)
+            activeImagePromoted = current.PromoteAcquiredSceneVersion(imageIndex)
+            activeAppliedSceneVersion = current.AppliedSceneVersion(imageIndex)
+            activeSceneVersion = 0uL
+            activeDamageRegion = VulkanDamageRegion{}
+            activePartialRedraw = false
             CaptureDiagnosticWsi()
             if markedAcquire == VkConstants.VK_SUBOPTIMAL_KHR {
                 recreatePending = true
@@ -237,12 +456,20 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
             if !BeginCommandBuffer(selectedSlot) {
                 return
             }
+        } catch (error Exception) {
+            CaptureDiagnosticFatal(-1, VulkanDiagnosticEventIds.SwapchainAcquire)
+            if frameBegun && !recoveryPending {
+                try { AbandonRecordedFrameForRetry() } catch (cleanup Exception) { frameFailed = true }
+                ClearActiveFrame()
+            }
+            throw error
         } finally {
             if !frameBegun {
                 CloseDiagnosticFrame(false)
             }
         }
     }
+
 
     internal func Render(root Node?, background Color, dpi Vector2) {
         if disposed || !frameBegun || frameRendered {
@@ -265,18 +492,63 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
             let logicalHeight = host.LogicalHeight > 0
                 ? float32(host.LogicalHeight)
                 : float32(framebufferHeight) / scaleY
-            let planStart = DiagnosticTimestamp()
+            let blendModesSupported = if let activeGeneration = generation {
+                activeGeneration.SupportsTransferSource
+            } else { false }
+            sceneCompiler.SetBlendModeSupport(blendModesSupported)
             var completedGlobalSubmissionSerial uint64 = 0uL
             if let slot = activeFrameSlot {
                 completedGlobalSubmissionSerial = slot.LastCompletedGlobalSubmissionSerial
             }
             textScene?.BeginCompile(completedGlobalSubmissionSerial)
             imageScene?.BeginCompile()
+            let planStart = DiagnosticTimestamp()
             let compileResult = sceneCompiler.Compile(root, background, logicalWidth, logicalHeight)
+            RecordDiagnosticPlan(planStart, compileResult,
+                sceneCompiler.Frame.Counters, sceneCompiler.Frame)
             textRedrawPending = textScene?.RedrawRequired == true
             imageRedrawPending = imageScene?.RedrawRequired == true
+            pathRedrawPending = pathScene?.RedrawRequired == true
             ScaleFrame(sceneCompiler.Frame, scaleX, scaleY)
-            RecordDiagnosticPlan(planStart, compileResult, sceneCompiler.Frame.Counters, sceneCompiler.Frame)
+            guard let current = generation else {
+                return
+            }
+            activeSceneVersion = compileResult.FrameVersion
+            var damageRegion VulkanDamageRegion
+            var fullRedraw bool
+            var hasDamage = sceneCompiler.BuildDamage(
+                activeAppliedSceneVersion,
+                activeSceneVersion,
+                scaleX,
+                scaleY,
+                current.Extent.width,
+                current.Extent.height,
+                out damageRegion,
+                out fullRedraw)
+            if forceFullRedraw || textRedrawPending || imageRedrawPending
+                || pathRedrawPending || clipMaskRedrawPending
+                || sceneCompiler.Frame.LavaCount > 0 {
+                fullRedraw = true
+                hasDamage = true
+                damageRegion = VulkanDamageRegion{
+                    X: 0,
+                    Y: 0,
+                    Width: int32(current.Extent.width),
+                    Height: int32(current.Extent.height),
+                }
+            } else if !hasDamage {
+                fullRedraw = true
+                hasDamage = true
+                damageRegion = VulkanDamageRegion{
+                    X: 0,
+                    Y: 0,
+                    Width: int32(current.Extent.width),
+                    Height: int32(current.Extent.height),
+                }
+            }
+            activeDamageRegion = damageRegion
+            activePartialRedraw = hasDamage && !fullRedraw
+            RecordDiagnosticDamage(damageRegion, hasDamage)
             let uploadStart = DiagnosticTimestamp()
             var uploadBytes uint64 = 0uL
             if let resources = imageResources {
@@ -301,6 +573,21 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
                     uploadBytes = uploadBytes + uint64(imageUploadBytes)
                 }
             }
+            if let resources = pathScene {
+                resources.PrepareUpload()
+                if let slot = activeFrameSlot {
+                    let stats = resources.Resources.Atlas.Stats
+                    if stats.UploadPending && !stats.UploadSubmitted {
+                        resources.RecordUpload(slot.CommandBuffer)
+                        let recorded = resources.Resources.Atlas.Stats
+                        if recorded.UploadRecorded
+                            && recorded.UploadCommandBuffer == slot.CommandBuffer {
+                            uploadBytes = uploadBytes + uint64(recorded.UploadByteCount)
+                            RecordDiagnosticBarrierCount(1)
+                        }
+                    }
+                }
+            }
             if let resources = textScene {
                 resources.PrepareUpload()
                 if let slot = activeFrameSlot, let atlas = textAtlas {
@@ -321,250 +608,504 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
                 if let slot = activeFrameSlot {
                     let recordStart = DiagnosticTimestamp()
                     renderer.ReserveImageReferences(sceneCompiler.Frame)
-                    BeginRendering(current, slot, activeImageIndex)
+                    clipMaskFrameStarted = true
+                    let clipFrameStats = renderer.PrepareClipMasks(
+                        sceneCompiler.Frame,
+                        current.Extent,
+                        int32(activeFrameSlotIndex),
+                        completedGlobalSubmissionSerial)
+                    clipMaskFrameStats = clipFrameStats
+                    clipMaskFrameTotals = renderer.ClipMaskFrameTotals
+                    clipMaskFramePrepared = true
+                    clipMaskRedrawPending = clipFrameStats.DirtyRegionCount > 0
+                    renderer.SetPrimitiveFrameSlot(int32(activeFrameSlotIndex))
+                    renderer.PreparePrimitiveFrame(
+                        sceneCompiler.Frame,
+                        current.Extent,
+                        scaleX,
+                        scaleY,
+                        completedGlobalSubmissionSerial)
+                    renderer.RecordPrimitiveFrameUpload(slot.CommandBuffer)
+                    renderer.RecordClipMaskPass(slot.CommandBuffer, current.Extent)
+                    BeginRendering(current, slot, activeImageIndex, activeDamageRegion)
+                    renderer.ConfigureLayerFrame(
+                        slot.CommandBuffer,
+                        current.Image(activeImageIndex),
+                        current.ImageView(activeImageIndex),
+                        current.Extent,
+                        completedGlobalSubmissionSerial)
+                    renderer.ConfigureTimestampRecording(
+                        timestampState,
+                        int32(activeFrameSlotIndex),
+                        DiagnosticTimestampRecordingContext(slot))
                     let recordResult = renderer.RecordInsideRendering(
-                        slot.CommandBuffer, sceneCompiler.Frame, current.Extent)
+                        slot.CommandBuffer,
+                        sceneCompiler.Frame,
+                        current.Extent,
+                        activeDamageRegion,
+                        activePartialRedraw)
+                    renderer.ClearTimestampRecording()
                     RecordDiagnosticRecord(recordStart, sceneCompiler.Frame, recordResult)
                     frameRendered = true
                 }
             }
         } catch (error Exception) {
-            try {
-                if !renderingBegun {
-                    if let current = generation {
-                        if let slot = activeFrameSlot {
-                            BeginRendering(current, slot, activeImageIndex)
-                        }
-                    }
-                }
-            } catch (cleanup Exception) { }
-            try { Present() } catch (cleanup Exception) { }
             CaptureDiagnosticFatal(-1, VulkanDiagnosticEventIds.CommandRecord)
+            if let renderer = primitiveRenderer {
+                try { renderer.ClearTimestampRecording() } catch (cleanup Exception) { }
+                try { renderer.ReleaseImageReferences(sceneCompiler.Frame) } catch (cleanup Exception) { }
+            }
+            try { AbortUnsubmittedTextUpload() } catch (cleanup Exception) { }
+            try { AbortUnsubmittedImageUploads() } catch (cleanup Exception) { }
+            try { AbortUnsubmittedPathUpload() } catch (cleanup Exception) { }
+            try { AbortUnsubmittedClipMask() } catch (cleanup Exception) { }
+            layerPool?.Abort()
+            if !recoveryPending {
+                try { AbandonRecordedFrameForRetry() } catch (cleanup Exception) { frameFailed = true }
+            }
+            CaptureDiagnosticResources()
+            CloseDiagnosticFrame(false)
+            CaptureDiagnosticValidationBoundary()
+            presentationRetirement.CancelPendingPresentationLatency()
+            ClearActiveFrame()
             throw error
         }
     }
 
     internal func Present() {
-        if disposed || !frameBegun {
+        if disposed || !frameBegun || queueStage != QueueStageIdle {
             return
         }
-        if let activeRuntime = runtime {
-            if activeRuntime.DeviceLost || activeRuntime.Terminal {
-                return
-            }
-        }
-        guard let current = generation, let slot = activeFrameSlot else {
-            if let renderer = primitiveRenderer {
-                try { renderer.ReleaseImageReferences(sceneCompiler.Frame) } catch (cleanup Exception) { }
-            }
-            CloseDiagnosticFrame(false)
-            ClearActiveFrame()
+        guard let current = generation, let slot = activeFrameSlot, let mailbox = queueMailbox,
+            let activeRuntime = runtime else {
             return
         }
-        var submissionAccepted = false
-        var endStart uint64 = 0uL
-        var uploadFlushStart uint64 = 0uL
-        var submitStart uint64 = 0uL
+        if activeRuntime.DeviceLost || activeRuntime.Terminal {
+            return
+        }
         try {
             if !renderingBegun {
-                BeginRendering(current, slot, activeImageIndex)
+                if activeDamageRegion.IsEmpty {
+                    activeDamageRegion = VulkanDamageRegion{
+                        X: 0,
+                        Y: 0,
+                        Width: int32(current.Extent.width),
+                        Height: int32(current.Extent.height),
+                    }
+                }
+                BeginRendering(current, slot, activeImageIndex, activeDamageRegion)
             }
-            endStart = DiagnosticTimestamp()
+            let endStart = DiagnosticTimestamp()
             EndRendering(current, slot)
             let endCommandBuffer = dispatch.vkEndCommandBuffer
             let endResult = endCommandBuffer(slot.CommandBuffer)
             RecordDiagnosticResult(VulkanDiagnosticEventIds.CommandRecord, endResult)
-            RecordDiagnosticTiming(VulkanDiagnosticEventIds.CommandRecord, VulkanDiagnosticCategories.Timing, endStart)
+            RecordDiagnosticTiming(VulkanDiagnosticEventIds.CommandRecord,
+                VulkanDiagnosticCategories.Timing, endStart)
             if endResult != VkConstants.VK_SUCCESS {
                 HandleFrameFailure(endResult, VulkanDiagnosticEventIds.CommandRecord)
                 return
             }
             if let atlas = textAtlas {
-                uploadFlushStart = DiagnosticTimestamp()
                 let flushResult = atlas.FlushBeforeSubmit()
                 RecordDiagnosticResult(VulkanDiagnosticEventIds.UploadStage, flushResult)
-                RecordDiagnosticTiming(VulkanDiagnosticEventIds.UploadStage, VulkanDiagnosticCategories.Timing, uploadFlushStart)
                 if flushResult != VkConstants.VK_SUCCESS {
                     HandleFrameFailure(flushResult, VulkanDiagnosticEventIds.UploadStage)
                     return
                 }
             }
             if let resources = imageResources {
-                uploadFlushStart = DiagnosticTimestamp()
                 let flushResult = resources.FlushBeforeSubmit()
                 RecordDiagnosticResult(VulkanDiagnosticEventIds.UploadStage, flushResult)
-                RecordDiagnosticTiming(VulkanDiagnosticEventIds.UploadStage, VulkanDiagnosticCategories.Timing, uploadFlushStart)
                 if flushResult != VkConstants.VK_SUCCESS {
                     HandleFrameFailure(flushResult, VulkanDiagnosticEventIds.UploadStage)
                     return
                 }
             }
-            submitStart = DiagnosticTimestamp()
-            let prepareSubmit = slot.PrepareSubmit(true)
+            if let resources = pathScene {
+                let stats = resources.Resources.Atlas.Stats
+                if stats.UploadPending && stats.UploadRecorded && !stats.UploadSubmitted
+                    && stats.UploadCommandBuffer == slot.CommandBuffer {
+                    let flushResult = resources.FlushBeforeSubmit()
+                    RecordDiagnosticResult(VulkanDiagnosticEventIds.UploadStage, flushResult)
+                    if flushResult != VkConstants.VK_SUCCESS {
+                        HandleFrameFailure(flushResult, VulkanDiagnosticEventIds.UploadStage)
+                        return
+                    }
+                }
+            }
+            if let renderer = primitiveRenderer {
+                let flushResult = renderer.FlushPrimitiveFrameBeforeSubmit()
+                RecordDiagnosticResult(VulkanDiagnosticEventIds.UploadStage, flushResult)
+                if flushResult != VkConstants.VK_SUCCESS {
+                    HandleFrameFailure(flushResult, VulkanDiagnosticEventIds.UploadStage)
+                    return
+                }
+            }
+            pendingSubmitStart = DiagnosticTimestamp()
+            let prepareSubmit = slot.PrepareSubmit()
             RecordDiagnosticResult(VulkanDiagnosticEventIds.Submit, prepareSubmit)
             if prepareSubmit != VkConstants.VK_SUCCESS {
-                RecordDiagnosticTiming(VulkanDiagnosticEventIds.Submit, VulkanDiagnosticCategories.Timing, submitStart)
                 HandleFrameFailure(prepareSubmit, VulkanDiagnosticEventIds.Submit)
                 return
             }
-            var waitInfo = VkSemaphoreSubmitInfo{}
-            waitInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO
-            waitInfo.semaphore = slot.AcquireSemaphore
-            waitInfo.stageMask = VkConstants.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
-            var signalInfo = VkSemaphoreSubmitInfo{}
-            signalInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO
-            signalInfo.semaphore = current.RenderSemaphore(activeImageIndex)
-            signalInfo.stageMask = VkConstants.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
-            var commandInfo = VkCommandBufferSubmitInfo{}
-            commandInfo.sType = VkConstants.VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO
-            commandInfo.commandBuffer = slot.CommandBuffer
-            var submitInfo = VkSubmitInfo2{}
-            submitInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SUBMIT_INFO_2
-            submitInfo.waitSemaphoreInfoCount = 1u
-            submitInfo.pWaitSemaphoreInfos = &waitInfo
-            submitInfo.commandBufferInfoCount = 1u
-            submitInfo.pCommandBufferInfos = &commandInfo
-            submitInfo.signalSemaphoreInfoCount = 1u
-            submitInfo.pSignalSemaphoreInfos = &signalInfo
-            guard let activeRuntime = runtime else {
-                throw InvalidOperationException("Vulkan shared runtime is unavailable")
-            }
             let globalSubmissionSerial = activeRuntime.ReserveGraphicsSubmissionSerial()
+            pendingGlobalSubmissionSerial = globalSubmissionSerial
             if let resources = imageResources {
-                resources.ValidateUploadSubmission(
-                    slot.CommandBuffer,
-                    globalSubmissionSerial,
-                    resources.Generation)
+                resources.ValidateUploadSubmission(slot.CommandBuffer, globalSubmissionSerial, resources.Generation)
             }
-            let queueSubmit = dispatch.vkQueueSubmit2
-            let submitResult = if VulkanSharedRuntime.TakeTestGraphicsSubmissionFailure() {
-                let syntheticDrain = activeRuntime.WaitDeviceIdleResult()
-                RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, syntheticDrain)
-                if syntheticDrain == VkConstants.VK_SUCCESS {
-                    VkConstants.VK_ERROR_DEVICE_LOST
-                } else {
-                    syntheticDrain
+            if clipMaskFramePrepared {
+                guard let renderer = primitiveRenderer else {
+                    throw InvalidOperationException("Vulkan clip renderer is unavailable after preparation")
                 }
-            } else {
-                queueSubmit(queue, 1u, &submitInfo, slot.SubmissionFence)
+                renderer.ValidateClipFrameSubmission(int32(activeFrameSlotIndex), globalSubmissionSerial)
             }
-            RecordDiagnosticResult(VulkanDiagnosticEventIds.Submit, submitResult)
-            let markedSubmit = slot.MarkSubmitted(submitResult, globalSubmissionSerial)
-            if markedSubmit != VkConstants.VK_SUCCESS {
-                RecordDiagnosticTiming(VulkanDiagnosticEventIds.Submit, VulkanDiagnosticCategories.Timing, submitStart)
-                HandleFrameFailure(markedSubmit, VulkanDiagnosticEventIds.Submit)
+            mailbox.PrepareSubmit(slot.CommandBuffer, slot.AcquireSemaphore,
+                current.RenderSemaphore(activeImageIndex), slot.SubmissionFence)
+            if !mailbox.BeginSubmit() || !activeRuntime.QueueWorker.Enqueue(mailbox) {
+                mailbox.CancelSubmit()
+                try { AbortUnsubmittedTextUpload() } catch (cleanup Exception) { }
+                try { AbortUnsubmittedImageUploads() } catch (cleanup Exception) { }
+                try { AbortUnsubmittedPathUpload() } catch (cleanup Exception) { }
+                try { AbortUnsubmittedClipMask() } catch (cleanup Exception) { }
+                layerPool?.Abort()
+                if slot.HasAbandonableAcquiredWork {
+                    try { AbandonRecordedFrameForRetry() } catch (cleanup Exception) { }
+                }
+                frameFailed = false
+                frameFailureRetryable = true
+                forceFullRedraw = true
+                CloseDiagnosticFrame(false)
+                ClearActiveFrame()
                 return
             }
-            submissionAccepted = true
+            queueStage = QueueStageSubmit
+        } catch (error Exception) {
+            try { AbortUnsubmittedTextUpload() } catch (cleanup Exception) { }
+            try { AbortUnsubmittedImageUploads() } catch (cleanup Exception) { }
+            try { AbortUnsubmittedPathUpload() } catch (cleanup Exception) { }
+            try { AbortUnsubmittedClipMask() } catch (cleanup Exception) { }
+            layerPool?.Abort()
+            try { AbandonRecordedFrameForRetry() } catch (cleanup Exception) { }
+            CloseDiagnosticFrame(false)
+            presentationRetirement.CancelPendingPresentationLatency()
+            ClearActiveFrame()
+            throw error
+        }
+    }
+
+    internal func PollQueueCompletion() bool {
+        guard let mailbox = queueMailbox else {
+            return false
+        }
+        if queueStage == QueueStageSubmit {
+            var submitResult VkResult = VkConstants.VK_NOT_READY
+            if !mailbox.TakeSubmitCompletion(out submitResult) {
+                return false
+            }
+            if submitResult != VkConstants.VK_SUCCESS {
+                mailbox.ResetSubmitCompletion()
+                if mailbox.SyntheticDrainPerformed {
+                    RecordDiagnosticResult(
+                        VulkanDiagnosticEventIds.PresentWait,
+                        mailbox.SyntheticDrainResult)
+                }
+                let marked = activeFrameSlot?.MarkSubmitted(submitResult, pendingGlobalSubmissionSerial)
+                RecordDiagnosticResult(VulkanDiagnosticEventIds.Submit, marked ?? submitResult)
+                runtime?.MarkDeviceLost()
+                queueStage = QueueStageIdle
+                try {
+                    HandleFrameFailure(VkConstants.VK_ERROR_DEVICE_LOST,
+                        VulkanDiagnosticEventIds.Submit)
+                } finally {
+                    CaptureDiagnosticResources()
+                    CaptureDiagnosticValidationBoundary()
+                    CloseDiagnosticFrame(false)
+                    ClearActiveFrame()
+                }
+                return false
+            }
+            CompleteQueueSubmit()
+            return false
+        }
+        if queueStage == QueueStagePresentPrepare {
+            TryQueuePresent()
+            return false
+        }
+        if queueStage == QueueStagePresent {
+            var presentResult VkResult = VkConstants.VK_NOT_READY
+            if !mailbox.TakePresentCompletion(out presentResult) {
+                return false
+            }
+            let completed = CompleteQueuePresent(presentResult)
+            return completed
+        }
+        return false
+    }
+
+    private func CompleteQueueSubmit() {
+        guard let mailbox = queueMailbox else {
+            queueStage = QueueStageIdle
+            ClearActiveFrame()
+            presentationRetirement.CancelPendingPresentationLatency()
+            return
+        }
+        guard let current = generation, let slot = activeFrameSlot,
+            let activeRuntime = runtime else {
+            mailbox.ResetSubmitCompletion()
+            queueStage = QueueStageIdle
+            frameFailed = true
+            ClearActiveFrame()
+            presentationRetirement.CancelPendingPresentationLatency()
+            return
+        }
+        let markedSubmit = slot.MarkSubmitted(VkConstants.VK_SUCCESS, pendingGlobalSubmissionSerial)
+        if markedSubmit != VkConstants.VK_SUCCESS {
+            mailbox.ResetSubmitCompletion()
+            queueStage = QueueStageIdle
+                try {
+                    HandleFrameFailure(markedSubmit, VulkanDiagnosticEventIds.Submit)
+                } finally {
+                    CaptureDiagnosticResources()
+                    CaptureDiagnosticValidationBoundary()
+                    CloseDiagnosticFrame(false)
+                    ClearActiveFrame()
+            }
+            return
+        }
+        lastFrameSubmitted = true
+        try {
+            layerPool?.MarkSubmitted(pendingGlobalSubmissionSerial)
+            if clipMaskFramePrepared {
+                if let renderer = primitiveRenderer {
+                    renderer.MarkClipFrameSubmitted(int32(activeFrameSlotIndex), pendingGlobalSubmissionSerial)
+                    renderer.MarkPrimitiveFrameSubmitted(pendingGlobalSubmissionSerial)
+                    clipMaskFrameStats = renderer.ClipMaskFrameStats
+                    clipMaskFrameTotals = renderer.ClipMaskFrameTotals
+                }
+            }
             if let resources = imageResources {
-                resources.MarkSubmitted(
-                    slot.CommandBuffer,
-                    globalSubmissionSerial,
-                    resources.Generation)
+                resources.MarkSubmitted(slot.CommandBuffer, pendingGlobalSubmissionSerial, resources.Generation)
                 var imageIndex int32 = 0
                 while imageIndex < sceneCompiler.Frame.CachedImageCount {
                     let image = sceneCompiler.Frame.CachedImages[imageIndex]
                     if image.ImageId.IsValid {
-                        resources.MarkUsed(
-                            image.ImageId,
-                            resources.Generation,
-                            globalSubmissionSerial)
+                        resources.MarkUsed(image.ImageId, resources.Generation, pendingGlobalSubmissionSerial)
                     }
                     imageIndex = imageIndex + 1
                 }
             }
             SubmitDiagnosticTimestamp(slot)
-            RecordDiagnosticSubmit(submitStart)
+            RecordDiagnosticSubmit(pendingSubmitStart)
             if let atlas = textAtlas {
-                atlas.MarkSubmitted(slot.CommandBuffer, globalSubmissionSerial)
-                var glyphIndex int32 = 0
-                while glyphIndex < sceneCompiler.Frame.CachedGlyphRunCount {
-                    atlas.MarkUsed(sceneCompiler.Frame.CachedGlyphRuns[glyphIndex].AtlasId,
-                        globalSubmissionSerial)
-                    glyphIndex = glyphIndex + 1
+                atlas.MarkSubmitted(slot.CommandBuffer, pendingGlobalSubmissionSerial)
+                var segmentIndex int32 = 0
+                while segmentIndex < sceneCompiler.Frame.CachedTextSegmentCount {
+                    let reference = sceneCompiler.Frame.CachedTextSegments[segmentIndex]
+                    guard let segment = reference.Segment else {
+                        throw InvalidOperationException("cached text segment is unavailable at submit")
+                    }
+                    var runIndex int32 = 0
+                    while runIndex < segment.RunCount {
+                        atlas.MarkUsed(segment.Runs[runIndex].AtlasId,
+                            pendingGlobalSubmissionSerial)
+                        runIndex = runIndex + 1
+                    }
+                    segmentIndex = segmentIndex + 1
                 }
             }
-            if activeImageLayout == VkConstants.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR {
-                presentationRetirement.BindPriorSameImageToCompletion(
-                    current.Generation,
-                    activeImageIndex,
-                    activeFrameSlotIndex,
-                    slot.SubmissionSerial)
+            if let resources = pathScene {
+                resources.MarkSubmitted(slot.CommandBuffer, pendingGlobalSubmissionSerial)
             }
-            var completedPresentId uint64 = 0uL
-            var presentFence VkFence = current.PreparePresent(activeImageIndex, out completedPresentId)
+            if activeImageLayout == VkConstants.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR {
+                presentationRetirement.TryBindPriorSameImageToCompletion(current.Generation,
+                    activeImageIndex, activeFrameSlotIndex, slot.SubmissionSerial)
+            }
+            pendingPresentStart = DiagnosticTimestamp()
+            queueStage = QueueStagePresentPrepare
+        } catch (error Exception) {
+            frameFailed = true
+            presentationRetirement.CancelPendingPresentationLatency()
+            recreatePending = true
+            forceFullRedraw = true
+            CaptureDiagnosticFatal(-1, VulkanDiagnosticEventIds.Submit)
+            try { mailbox.ResetSubmitCompletion() } catch (cleanup Exception) { }
+            queueStage = QueueStageIdle
+            try { CaptureDiagnosticResources() } catch (cleanup Exception) { }
+            try { CaptureDiagnosticValidationBoundary() } catch (cleanup Exception) { }
+            try { CloseDiagnosticFrame(false) } catch (cleanup Exception) { }
+            ClearActiveFrame()
+            throw error
+        }
+        TryQueuePresent()
+    }
+
+    private func TryQueuePresent() {
+        guard let current = generation, let mailbox = queueMailbox,
+            let activeRuntime = runtime else {
+            queueStage = QueueStageIdle
+            ClearActiveFrame()
+            presentationRetirement.CancelPendingPresentationLatency()
+            return
+        }
+        if activeRuntime.DeviceLost || activeRuntime.Terminal {
+            mailbox.ResetSubmitCompletion()
+            queueStage = QueueStageIdle
+            try {
+                HandleFrameFailure(VkConstants.VK_ERROR_DEVICE_LOST,
+                    VulkanDiagnosticEventIds.PresentWait)
+            } finally {
+                CaptureDiagnosticResources()
+                CaptureDiagnosticValidationBoundary()
+                CloseDiagnosticFrame(false)
+                ClearActiveFrame()
+            }
+            return
+        }
+        if activeRuntime.QueueWorker.HasOutstandingWork {
+            host.Wake()
+            return
+        }
+        var completedPresentId uint64 = 0uL
+        try {
+            let prepareResult = current.TryPreparePresent(activeImageIndex,
+                out pendingPresentFence, out completedPresentId)
+            RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, prepareResult)
+            if prepareResult == VkConstants.VK_NOT_READY || prepareResult == VkConstants.VK_TIMEOUT {
+                host.Wake()
+                return
+            }
+            if prepareResult != VkConstants.VK_SUCCESS {
+                mailbox.ResetSubmitCompletion()
+                queueStage = QueueStageIdle
+                try {
+                    HandleFrameFailure(prepareResult, VulkanDiagnosticEventIds.PresentWait)
+                } finally {
+                    CaptureDiagnosticResources()
+                    CaptureDiagnosticValidationBoundary()
+                    CloseDiagnosticFrame(false)
+                    ClearActiveFrame()
+                }
+                return
+            }
             if completedPresentId != 0uL {
                 presentationRetirement.CompletePresent(completedPresentId)
             }
-            var fenceInfo = VkSwapchainPresentFenceInfoEXT{}
-            var presentInfo = VkPresentInfoKHR{}
-            presentInfo.sType = VkConstants.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
-            if current.PresentFenceEnabled {
-                fenceInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT
-                fenceInfo.swapchainCount = 1u
-                fenceInfo.pFences = &presentFence
-                presentInfo.pNext = *void(&fenceInfo)
-            }
-            presentInfo.waitSemaphoreCount = 1u
-            presentInfo.pWaitSemaphores = &signalInfo.semaphore
-            var swapchainHandle = current.Handle
-            presentInfo.swapchainCount = 1u
-            presentInfo.pSwapchains = &swapchainHandle
-            presentInfo.pImageIndices = &activeImageIndex
-            let queuePresent = dispatch.vkQueuePresentKHR
-            let presentStart = DiagnosticTimestamp()
-            let presentResult = queuePresent(queue, &presentInfo)
-            RecordDiagnosticResult(VulkanDiagnosticEventIds.SwapchainPresent, presentResult)
-            RecordDiagnosticPresent(presentStart)
-            if presentResult == VkConstants.VK_ERROR_SURFACE_LOST_KHR {
-                current.MarkPresented(activeImageIndex, presentResult, 0uL)
-                surfaceLost = true
-                recreatePending = true
-            } else {
-                var presentId uint64 = 0uL
-                if presentResult == VkConstants.VK_SUCCESS || presentResult == VkConstants.VK_SUBOPTIMAL_KHR {
-                    presentId = presentationRetirement.RecordPresent(current.Generation, activeImageIndex)
-                }
-                let markedPresent = current.MarkPresented(activeImageIndex, presentResult, presentId)
-                if markedPresent != presentResult {
-                    RecordDiagnosticResult(VulkanDiagnosticEventIds.SwapchainPresent, markedPresent)
-                }
-                if markedPresent != VkConstants.VK_SUCCESS
-                    && markedPresent != VkConstants.VK_SUBOPTIMAL_KHR
-                    && markedPresent != VkConstants.VK_ERROR_OUT_OF_DATE_KHR {
-                    HandleFrameFailure(markedPresent, VulkanDiagnosticEventIds.SwapchainPresent)
-                }
-                if presentId != 0uL {
-                    presentationRetirement.AnchorRetiredGenerations(current.Generation)
-                }
-                if presentResult == VkConstants.VK_ERROR_OUT_OF_DATE_KHR {
-                    recreatePending = true
-                } else if presentResult == VkConstants.VK_SUBOPTIMAL_KHR {
-                    recreatePending = true
-                } else if presentResult != VkConstants.VK_SUCCESS {
-                    HandleFrameFailure(presentResult, VulkanDiagnosticEventIds.SwapchainPresent)
-                } else {
-                    current.CommitLayout(activeImageIndex, VkConstants.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-                }
-            }
-            CaptureDiagnosticWsi()
-        } finally {
-            if !submissionAccepted {
-                if let renderer = primitiveRenderer {
-                    try { renderer.ReleaseImageReferences(sceneCompiler.Frame) } catch (cleanup Exception) { }
-                }
-                try { AbortUnsubmittedTextUpload() } catch (cleanup Exception) { }
-                try { AbortUnsubmittedImageUploads() } catch (cleanup Exception) { }
-                frameFailed = !recoveryPending
-            }
-            if submissionAccepted && !recoveryPending {
-                forceFullRedraw = false
-            }
-            CaptureDiagnosticResources()
-            CloseDiagnosticFrame(submissionAccepted)
-            CaptureDiagnosticValidationBoundary()
+            mailbox.PreparePresent(current.Handle, activeImageIndex,
+                current.RenderSemaphore(activeImageIndex), pendingPresentFence, current.PresentFenceEnabled)
+        } catch (error Exception) {
+            frameFailed = true
+            recreatePending = true
+            forceFullRedraw = true
+            CaptureDiagnosticFatal(-1, VulkanDiagnosticEventIds.PresentWait)
+            try { current.ReconcilePreparedPresent(activeImageIndex, false) } catch (cleanup Exception) { }
+            try { mailbox.ResetSubmitCompletion() } catch (cleanup Exception) { }
+            queueStage = QueueStageIdle
+            try { CaptureDiagnosticResources() } catch (cleanup Exception) { }
+            try { CaptureDiagnosticValidationBoundary() } catch (cleanup Exception) { }
+            try { CloseDiagnosticFrame(false) } catch (cleanup Exception) { }
+            presentationRetirement.CancelPendingPresentationLatency()
             ClearActiveFrame()
+            throw error
         }
+        if !mailbox.BeginPresent() {
+            mailbox.ResetSubmitCompletion()
+            queueStage = QueueStageIdle
+            frameFailed = true
+            try {
+                try { current.ReconcilePreparedPresent(activeImageIndex, false) } catch (cleanup Exception) { }
+                HandleFrameFailure(VkConstants.VK_ERROR_UNKNOWN,
+                    VulkanDiagnosticEventIds.SwapchainPresent)
+            } finally {
+                CaptureDiagnosticResources()
+                CaptureDiagnosticValidationBoundary()
+                CloseDiagnosticFrame(false)
+                ClearActiveFrame()
+            }
+            return
+        }
+        if !activeRuntime.QueueWorker.Enqueue(mailbox) {
+            mailbox.RetryPresent()
+            try { current.ReconcilePreparedPresent(activeImageIndex, false) } catch (cleanup Exception) { }
+            pendingPresentFence = 0uL
+            host.Wake()
+            return
+        }
+        queueStage = QueueStagePresent
+    }
+
+    private func CompleteQueuePresent(presentResult VkResult) bool {
+        var completed = false
+        guard let current = generation else {
+            queueStage = QueueStageIdle
+            ClearActiveFrame()
+            presentationRetirement.CancelPendingPresentationLatency()
+            return false
+        }
+        try {
+          RecordDiagnosticResult(VulkanDiagnosticEventIds.SwapchainPresent, presentResult)
+          RecordDiagnosticPresent(pendingPresentStart)
+          if presentResult == VkConstants.VK_ERROR_SURFACE_LOST_KHR {
+            current.MarkPresented(activeImageIndex, presentResult, 0uL)
+            surfaceLost = true
+            recreatePending = true
+          } else {
+            var presentId uint64 = 0uL
+            if presentResult == VkConstants.VK_SUCCESS || presentResult == VkConstants.VK_SUBOPTIMAL_KHR {
+                presentId = presentationRetirement.RecordPresent(current.Generation, activeImageIndex)
+            }
+            let markedPresent = current.MarkPresented(activeImageIndex, presentResult, presentId)
+            if markedPresent != VkConstants.VK_SUCCESS && markedPresent != VkConstants.VK_SUBOPTIMAL_KHR
+                && markedPresent != VkConstants.VK_ERROR_OUT_OF_DATE_KHR {
+                HandleFrameFailure(markedPresent, VulkanDiagnosticEventIds.SwapchainPresent)
+            }
+            completed = (presentResult == VkConstants.VK_SUCCESS
+                || presentResult == VkConstants.VK_SUBOPTIMAL_KHR)
+                && (markedPresent == VkConstants.VK_SUCCESS
+                    || markedPresent == VkConstants.VK_SUBOPTIMAL_KHR)
+            if completed && presentId != 0uL {
+                let handoffTimestamp = Stopwatch.GetTimestamp()
+                presentationRetirement.AttachPendingPresentationLatency(
+                    presentId, handoffTimestamp, current.PresentFenceEnabled)
+            }
+            if presentId != 0uL {
+                presentationRetirement.AnchorRetiredGenerations(current.Generation)
+            }
+            if (presentResult == VkConstants.VK_SUCCESS || presentResult == VkConstants.VK_SUBOPTIMAL_KHR)
+                && (markedPresent == VkConstants.VK_SUCCESS || markedPresent == VkConstants.VK_SUBOPTIMAL_KHR)
+                && activeSceneVersion != 0uL {
+                current.SetPendingSceneVersion(activeImageIndex, activeSceneVersion)
+                PublishLastPresentedImageState(activeImageIndex, activeAppliedSceneVersion,
+                    activeSceneVersion, activeImagePromoted)
+            }
+            if presentResult == VkConstants.VK_ERROR_OUT_OF_DATE_KHR || presentResult == VkConstants.VK_SUBOPTIMAL_KHR {
+                recreatePending = true
+            } else if presentResult != VkConstants.VK_SUCCESS {
+                HandleFrameFailure(presentResult, VulkanDiagnosticEventIds.SwapchainPresent)
+            } else {
+                current.CommitLayout(activeImageIndex, VkConstants.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+            }
+          }
+          CaptureDiagnosticWsi()
+          clipMaskFrameStarted = false
+          clipMaskFramePrepared = false
+          clipMaskRedrawPending = false
+          if !recoveryPending && presentResult == VkConstants.VK_SUCCESS {
+              forceFullRedraw = false
+          }
+        } catch (error Exception) {
+          presentationRetirement.CancelPendingPresentationLatency()
+          recreatePending = true
+          forceFullRedraw = true
+          throw error
+        } finally {
+          queueStage = QueueStageIdle
+          CaptureDiagnosticResources()
+          CaptureDiagnosticValidationBoundary()
+          CloseDiagnosticFrame(completed)
+          ClearActiveFrame()
+        }
+        return completed
     }
 
     internal func Resize(width int32, height int32) bool {
@@ -583,6 +1124,10 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         requestedHeight = height
         framebufferWidth = width
         framebufferHeight = height
+        if QueueWorkPending {
+            recreatePending = true
+            return true
+        }
         if width == 0 || height == 0 {
             recreatePending = true
             return true
@@ -590,18 +1135,31 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         if frameBegun {
             return false
         }
-        return RecreateSwapchain(width, height)
+        frameFailureRetryable = false
+        let recreated = RecreateSwapchain(width, height)
+        return recreated || frameFailureRetryable
     }
 
     public func Dispose() {
         if disposed {
             return
         }
+        presentationRetirement.ClearPresentationLatency()
+        if QueueWorkPending {
+            host.Wake()
+            return
+        }
+        InvalidateLastPresentedImageState()
         let lostRuntime = runtime
-        disposed = true
-        VulkanWindowTarget.UnregisterLiveTarget(this)
         if let activeRuntime = lostRuntime {
-            if activeRuntime.DeviceLost && VulkanWindowTarget.LiveTargetCount() > 0 {
+            if activeRuntime.DeviceLost {
+                AbandonReadbackAfterDeviceLoss()
+            }
+        }
+        disposed = true
+        VulkanDeviceRecoveryCoordinator.Unregister(this)
+        if let activeRuntime = lostRuntime {
+            if activeRuntime.DeviceLost && VulkanDeviceRecoveryCoordinator.Count > 0 {
                 AbandonAfterDeviceLossForClose()
                 return
             }
@@ -611,14 +1169,45 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         }
         CaptureDiagnosticWsi()
         CaptureDiagnosticResources()
-        var idleResult VkResult = VkConstants.VK_ERROR_INITIALIZATION_FAILED
+        let liveTargetsRemain = VulkanDeviceRecoveryCoordinator.Count > 0
+        var deviceIdleCompleted = device == nint(0)
+        var idleResult VkResult = if deviceIdleCompleted {
+            VkConstants.VK_SUCCESS
+        } else {
+            VkConstants.VK_ERROR_INITIALIZATION_FAILED
+        }
         if device != nint(0) {
-            idleResult = WaitDeviceIdleResult()
+            if liveTargetsRemain {
+                idleResult = WaitForOwnedWorkCompletion()
+            }
+            if !liveTargetsRemain || idleResult == VkConstants.VK_ERROR_FEATURE_NOT_PRESENT {
+                idleResult = WaitDeviceIdleResult()
+                deviceIdleCompleted = idleResult == VkConstants.VK_SUCCESS
+            }
         }
         RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, idleResult)
-        let deviceIdleCompleted = device == nint(0) || idleResult == VkConstants.VK_SUCCESS
+        let ownedWorkCompleted = device == nint(0) || idleResult == VkConstants.VK_SUCCESS
+        if ownedWorkCompleted {
+            if !DrainReadbackForClose(deviceIdleCompleted) {
+                disposed = false
+                VulkanDeviceRecoveryCoordinator.Register(this)
+                throw InvalidOperationException("Vulkan readback could not be drained during close")
+            }
+        } else {
+            var deviceLoss = idleResult == VkConstants.VK_ERROR_DEVICE_LOST
+            if let activeRuntime = runtime {
+                deviceLoss = deviceLoss || activeRuntime.DeviceLost
+            }
+            if deviceLoss {
+                AbandonReadbackAfterDeviceLoss()
+            } else {
+                disposed = false
+                VulkanDeviceRecoveryCoordinator.Register(this)
+                throw InvalidOperationException("Vulkan window work did not complete during close")
+            }
+        }
         CaptureDiagnosticValidationBoundary()
-        if !deviceIdleCompleted {
+        if !ownedWorkCompleted {
             RemoveTextAtlasDiagnosticContribution()
             if let activeRuntime = runtime {
                 activeRuntime.MarkTeardownFailed(idleResult)
@@ -643,14 +1232,30 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
             try { renderer.ReleaseImageReferences(sceneCompiler.Frame) } catch (cleanup Exception) { }
         }
         try { AbortUnsubmittedImageUploads() } catch (cleanup Exception) { }
+        try { AbortUnsubmittedPathUpload() } catch (cleanup Exception) { }
+        try { AbortUnsubmittedClipMask() } catch (cleanup Exception) { }
         CloseDiagnosticFrame(false)
         ClearActiveFrame()
         DestroyDiagnosticTimestampPool()
         let timestampPoolDestroyed = ForceDestroyDiagnosticTimestampPool()
         if let renderer = primitiveRenderer {
+            try { renderer.Collect(CompletedGlobalSubmissionSerial()) } catch (cleanup Exception) { }
             try { renderer.Dispose() } catch (cleanup Exception) { }
             primitiveRenderer = nil
         }
+        if let pool = layerPool {
+            try { pool.Dispose() } catch (cleanup Exception) { }
+            layerPool = nil
+        }
+        if let atlas = clipMaskAtlas {
+            try { atlas.RetireAll(uint64.MaxValue) } catch (cleanup Exception) { }
+            try { atlas.Dispose() } catch (cleanup Exception) { }
+            clipMaskAtlas = nil
+        }
+        clipMaskRedrawPending = false
+        clipMaskFrameStarted = false
+        clipMaskFramePrepared = false
+        clipMaskAtlasAbandoned = false
         if let atlas = textAtlas {
             try { atlas.RetireAll(uint64.MaxValue) } catch (cleanup Exception) { }
             try { atlas.Collect(uint64.MaxValue) } catch (cleanup Exception) { }
@@ -664,6 +1269,12 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         imageScene = nil
         imageRedrawPending = false
         imageResources = nil
+        if let scene = pathScene {
+            try { scene.Dispose() } catch (cleanup Exception) { }
+            pathScene = nil
+        }
+        pathRedrawPending = false
+        pathResources = nil
         if let current = generation {
             try {
                 let presentCompletionResult = current.WaitForPresentCompletion(presentationRetirement)
@@ -673,14 +1284,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
             generation = nil
         }
         DisposeRetiredSwapchains()
-        if let slot = frameSlot0 {
-            try { slot.Dispose() } catch (cleanup Exception) { }
-            frameSlot0 = nil
-        }
-        if let slot = frameSlot1 {
-            try { slot.Dispose() } catch (cleanup Exception) { }
-            frameSlot1 = nil
-        }
+        frameSlots.Dispose()
         if commandPool != 0uL && device != nint(0) {
             let destroyCommandPool = dispatch.vkDestroyCommandPool
             destroyCommandPool(device, commandPool, nil)
@@ -727,7 +1331,13 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         var flushDiagnostics = runtime == nil
         if let activeRuntime = runtime {
             var releasedLastLease = false
-            try { releasedLastLease = activeRuntime.ReleaseAfterIdle() } catch (cleanup Exception) { }
+            try {
+                releasedLastLease = if deviceIdleCompleted {
+                    activeRuntime.ReleaseAfterIdle()
+                } else {
+                    activeRuntime.Release()
+                }
+            } catch (cleanup Exception) { }
             if !releasedLastLease && activeRuntime.Terminal {
                 RemoveTextAtlasDiagnosticContribution()
                 RecordDiagnosticResult(
@@ -790,12 +1400,39 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         frameBegun = false
         renderingBegun = false
         frameRendered = false
+        frameFailureRetryable = false
+        clipMaskFrameStarted = false
+        clipMaskFramePrepared = false
         activeFrameSlot = nil
         activeFrameSlotIndex = 0u
         activeImageIndex = 0u
         activeImageLayout = VkConstants.VK_IMAGE_LAYOUT_UNDEFINED
         activeFrameId = 0uL
-        nextFrameSlot = nextFrameSlot == 0u ? 1u : 0u
+        pendingGlobalSubmissionSerial = 0uL
+        pendingSubmitStart = 0uL
+        pendingPresentStart = 0uL
+        pendingPresentFence = 0uL
+        frameSlots.Advance()
+    }
+
+    private func PublishLastPresentedImageState(
+        imageIndex uint32,
+        appliedSceneVersion uint64,
+        pendingSceneVersion uint64,
+        promoted bool) {
+        lastPresentedImageIndex = imageIndex
+        lastPresentedAppliedSceneVersion = appliedSceneVersion
+        lastPresentedPendingSceneVersion = pendingSceneVersion
+        lastPresentedImagePromoted = promoted
+        lastPresentedImageStateValid = true
+    }
+
+    private func InvalidateLastPresentedImageState() {
+        lastPresentedImageStateValid = false
+        lastPresentedImageIndex = 0u
+        lastPresentedAppliedSceneVersion = 0uL
+        lastPresentedPendingSceneVersion = 0uL
+        lastPresentedImagePromoted = false
     }
 
     private func AbortUnsubmittedTextUpload() {
@@ -814,23 +1451,73 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         resources.AbortUnrecordedUploads(resources.Generation)
     }
 
+    private func AbortUnsubmittedPathUpload() {
+        guard let resources = pathScene else { return }
+        let stats = resources.Resources.Atlas.Stats
+        if !stats.UploadPending || stats.UploadSubmitted {
+            return
+        }
+        if stats.UploadRecorded {
+            guard let slot = activeFrameSlot else { return }
+            if stats.UploadCommandBuffer != slot.CommandBuffer {
+                return
+            }
+        }
+        resources.AbortUpload()
+    }
+
+    private func AbortUnsubmittedClipMask() {
+        if clipMaskFrameStarted {
+            if let renderer = primitiveRenderer {
+                try { renderer.Abort(int32(activeFrameSlotIndex)) } catch (cleanup Exception) { }
+                clipMaskFrameStats = renderer.ClipMaskFrameStats
+                clipMaskFrameTotals = renderer.ClipMaskFrameTotals
+            }
+            if let atlas = clipMaskAtlas {
+                try { atlas.InvalidateRecordedLayouts() } catch (cleanup Exception) { }
+            }
+            clipMaskFrameStarted = false
+            clipMaskFramePrepared = false
+            clipMaskRedrawPending = true
+        }
+        if let atlas = clipMaskAtlas {
+            if atlas.DirtyRegionCount > 0 {
+                clipMaskRedrawPending = true
+            }
+        }
+    }
+
+    private func AbandonRecordedFrameForRetry() {
+        guard let slot = activeFrameSlot else { return }
+        slot.AbandonAcquiredForSwapchainRetirement()
+        recreatePending = true
+        forceFullRedraw = true
+        frameFailed = false
+    }
+
     private func HandleFrameFailure(result VkResult, eventId uint64) {
         if result == VkConstants.VK_ERROR_OUT_OF_DATE_KHR
             || result == VkConstants.VK_SUBOPTIMAL_KHR {
+            frameFailureRetryable = true
             recreatePending = true
             return
         }
         if result == VkConstants.VK_ERROR_SURFACE_LOST_KHR {
+            frameFailureRetryable = true
             surfaceLost = true
             recreatePending = true
             return
         }
         if result == VkConstants.VK_ERROR_DEVICE_LOST {
+            presentationRetirement.ClearPresentationLatency()
+            frameFailureRetryable = false
             runtime?.MarkDeviceLost()
             recoveryPending = true
             forceFullRedraw = true
             return
         }
+        frameFailureRetryable = false
+        presentationRetirement.ClearPresentationLatency()
         CaptureDiagnosticFatal(int32(result), eventId)
         throw InvalidOperationException("Vulkan frame operation failed: " + result.ToString())
     }

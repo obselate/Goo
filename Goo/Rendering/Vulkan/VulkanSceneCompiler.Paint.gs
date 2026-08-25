@@ -1,6 +1,7 @@
 package Goo
 
 import System
+import Facebook.Yoga
 
 internal partial class VulkanSceneCompiler {
     private func ValidateViewport(width float32, height float32) {
@@ -33,6 +34,12 @@ internal partial class VulkanSceneCompiler {
         let product = parent * boundedLocal
         if product >= 1.0F { return 1.0F }
         return product <= 0.0F ? 0.0F : product
+    }
+
+    private func BlendModeSupported(value BlendMode) bool {
+        let ordinal = int32(value)
+        return ordinal >= int32(BlendMode.Normal)
+            && ordinal <= int32(BlendMode.Luminosity)
     }
 
     private func AddNodeTransform(node Node, parentIndex int32) VulkanSceneTransformState {
@@ -74,37 +81,10 @@ internal partial class VulkanSceneCompiler {
                     VulkanSceneUnsupportedPrimitive.BackgroundImage)
             }
         }
-        if node.HasClipPath {
-            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ClipPath,
-                VulkanSceneUnsupportedPrimitive.ClipPath)
-            if ClipPaths.Fit(node) != ShapeFit.Fill {
-                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ClipPathFit,
-                    VulkanSceneUnsupportedPrimitive.ClipPath)
-            }
-        }
-        if node.BlendMode != BlendMode.Normal {
+        if node.BlendMode != BlendMode.Normal
+            && (!blendModeSupported || !BlendModeSupported(node.BlendMode)) {
             RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BlendMode,
                 VulkanSceneUnsupportedPrimitive.Blend)
-        }
-        if node.HasOutlineState {
-            let width = node.OutlineWidth
-            if width.HasMagnitude {
-                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.OutlineWidth,
-                    VulkanSceneUnsupportedPrimitive.Outline)
-            }
-            if !transparent(node.OutlineColor) {
-                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.OutlineColor,
-                    VulkanSceneUnsupportedPrimitive.Outline)
-            }
-            let offset = node.OutlineOffset
-            if offset.HasMagnitude {
-                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.OutlineOffset,
-                    VulkanSceneUnsupportedPrimitive.Outline)
-            }
-        }
-        if node.HasTextShadowState && HasBlurredTextShadow(node.TextShadows) {
-            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
-                VulkanSceneUnsupportedPrimitive.TextShadow)
         }
         if node.HasTextStrokeState {
             let width = node.TextStrokeWidth
@@ -151,57 +131,11 @@ internal partial class VulkanSceneCompiler {
                 }
             }
             case NodeKind.Shape {
-                if node.ShapePath.CommandCount != 0 {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapePath,
-                        VulkanSceneUnsupportedPrimitive.Shape)
-                }
-                if node.ShapeFit != ShapeFit.Contain {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeFit,
-                        VulkanSceneUnsupportedPrimitive.Shape)
-                }
-                if node.ShapeFillRule != FillRule.NonZero {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeFillRule,
-                        VulkanSceneUnsupportedPrimitive.Shape)
-                }
-                if node.BorderLeftWidth.HasMagnitude {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeStrokeWidth,
-                        VulkanSceneUnsupportedPrimitive.Shape)
-                }
-                if !transparent(node.BorderLeftColor) {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeStrokeColor,
-                        VulkanSceneUnsupportedPrimitive.Shape)
-                }
-                if node.ShapeStrokeCap != StrokeCap.Butt {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeStrokeCap,
-                        VulkanSceneUnsupportedPrimitive.Shape)
-                }
-                if node.ShapeStrokeJoin != StrokeJoin.Miter {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeStrokeJoin,
-                        VulkanSceneUnsupportedPrimitive.Shape)
-                }
-                if node.MiterLimit != 4.0 {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeMiterLimit,
-                        VulkanSceneUnsupportedPrimitive.Shape)
-                }
-                if node.ShapeCornerRadius != 0.0 {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeCornerRadius,
-                        VulkanSceneUnsupportedPrimitive.Shape)
-                }
-                if let dashes = node.Dashes {
-                    if dashes.Intervals.Count != 0 {
-                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.ShapeDashes,
-                            VulkanSceneUnsupportedPrimitive.Shape)
-                    }
-                }
             }
             case NodeKind.Entry {
             }
             case NodeKind.Editor {
-                if let state = node.EditorState {
-                    if EditorHasSlots(state) {
-                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.EditorSlots,
-                            VulkanSceneUnsupportedPrimitive.TextEditor)
-                    }
+                if let _ = node.EditorState {
                     RecordUnsupportedEditorTextFields(node)
                 }
             }
@@ -212,7 +146,6 @@ internal partial class VulkanSceneCompiler {
     private func RecordUnsupportedRichTextFields(node Node) {
         let layout = TextLayouts.For(node, TextLayouts.ContentWidth(node))
         guard let rich = layout.Rich else { return }
-        var shadows = node.HasTextShadowState && HasBlurredTextShadow(node.TextShadows)
         var stroke = node.TextStrokeWidth.Px > VulkanTextScene.MaximumStrokeWidth
             && !transparent(node.TextStrokeColor)
         for line in rich.Lines {
@@ -224,11 +157,6 @@ internal partial class VulkanSceneCompiler {
                         VulkanSceneUnsupportedPrimitive.TextStroke)
                     stroke = true
                 }
-                if !shadows && HasBlurredTextShadow(style.Shadows) {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
-                        VulkanSceneUnsupportedPrimitive.TextShadow)
-                    shadows = true
-                }
             }
         }
     }
@@ -236,7 +164,6 @@ internal partial class VulkanSceneCompiler {
     private func RecordUnsupportedEditorTextFields(node Node) {
         let layout = TextEditorLayouts.For(node, TextLayouts.ContentWidth(node),
             TextLayouts.ContentHeight(node))
-        var shadows = node.HasTextShadowState && HasBlurredTextShadow(node.TextShadows)
         var stroke = node.TextStrokeWidth.Px > VulkanTextScene.MaximumStrokeWidth
             && !transparent(node.TextStrokeColor)
         for line in layout.Lines {
@@ -248,33 +175,16 @@ internal partial class VulkanSceneCompiler {
                         VulkanSceneUnsupportedPrimitive.TextStroke)
                     stroke = true
                 }
-                if !shadows && HasBlurredTextShadow(style.Shadows) {
-                    RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
-                        VulkanSceneUnsupportedPrimitive.TextShadow)
-                    shadows = true
-                }
             }
         }
     }
 
-    private func HasBlurredTextShadow(shadows BoxShadowStack?) bool {
-        var index int32 = 0
-        let count = textShadowCount(shadows)
-        while index < count {
-            if textShadowAt(shadows, index).Blur.Px > 0.0F {
-                return true
-            }
-            index = index + 1
-        }
-        return false
-    }
-
-    private func HasSharpTextShadow(shadows BoxShadowStack?) bool {
+    private func HasVisibleTextShadow(shadows BoxShadowStack?) bool {
         var index int32 = 0
         let count = textShadowCount(shadows)
         while index < count {
             let shadow = textShadowAt(shadows, index)
-            if shadow.Color.A > 0.0F && shadow.Blur.Px <= 0.0F {
+            if shadow.Color.A > 0.0F {
                 return true
             }
             index = index + 1
@@ -285,7 +195,7 @@ internal partial class VulkanSceneCompiler {
     private func RecordColorEffectsSkipped(node Node) {
         var shadow = false
         var stroke = false
-        if node.HasTextShadowState && HasSharpTextShadow(node.TextShadows) {
+        if node.HasTextShadowState && HasVisibleTextShadow(node.TextShadows) {
             RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
                 VulkanSceneUnsupportedPrimitive.TextShadow)
             shadow = true
@@ -302,7 +212,7 @@ internal partial class VulkanSceneCompiler {
                 for line in rich.Lines {
                     for run in line.Runs {
                         let style = run.Style
-                        if !shadow && HasSharpTextShadow(style.Shadows) {
+                        if !shadow && HasVisibleTextShadow(style.Shadows) {
                             RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
                                 VulkanSceneUnsupportedPrimitive.TextShadow)
                             shadow = true
@@ -321,7 +231,7 @@ internal partial class VulkanSceneCompiler {
             for line in layout.Lines {
                 for run in line.Runs {
                     let style = run.Style
-                    if !shadow && HasSharpTextShadow(style.Shadows) {
+                    if !shadow && HasVisibleTextShadow(style.Shadows) {
                         RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
                             VulkanSceneUnsupportedPrimitive.TextShadow)
                         shadow = true
@@ -341,23 +251,8 @@ internal partial class VulkanSceneCompiler {
     }
 
     private func TextEditorSupported(node Node) bool {
-        guard let state = node.EditorState else { return false }
-        return textScene != nil && !EditorHasSlots(state)
-    }
-
-    private func EditorHasSlots(state TextEditorRenderState) bool {
-        var layerIndex int32 = 0
-        while layerIndex < state.LayerCount {
-            let layer = state.Layer(layerIndex)
-            for projection in layer.ReadProjections() {
-                if projection.Kind == TextProjectionKind.InlineSlot
-                    || projection.Kind == TextProjectionKind.BlockSlot {
-                    return true
-                }
-            }
-            layerIndex = layerIndex + 1
-        }
-        return false
+        guard let _ = node.EditorState else { return false }
+        return textScene != nil
     }
 
     private func HasBorderWidth(node Node, bounds ConservativeBounds) bool {
@@ -373,8 +268,22 @@ internal partial class VulkanSceneCompiler {
         opacity float32,
         transformIndex int32,
         axisAligned bool,
-        clipDepth int32) {
-        PaintBoxShadows(node, bounds, opacity, transformIndex, axisAligned)
+        clipDepth int32,
+        shapePaintClip bool,
+        shapePaintParentChainId int32,
+        contentPathClipChainId int32,
+        out textComplete bool) {
+        textComplete = node.Kind != NodeKind.Text
+        if node.Kind != NodeKind.Shape {
+            PaintBoxShadows(node, bounds, opacity, transformIndex, false)
+        }
+        if node.Kind == NodeKind.Shape {
+            PaintShapeBoxShadows(node, bounds, opacity, transformIndex, false)
+            PaintShape(node, bounds, opacity, transformIndex, shapePaintClip,
+                shapePaintParentChainId)
+            PaintShapeBoxShadows(node, bounds, opacity, transformIndex, true)
+            return
+        }
         if let gradient = node.BackgroundGradient {
             PaintGradient(node, gradient, bounds, opacity, transformIndex)
         } else {
@@ -391,6 +300,7 @@ internal partial class VulkanSceneCompiler {
         }
         if node.Kind == NodeKind.Image {
             if let scene = imageScene {
+                frame.SetActiveClipChain(contentPathClipChainId)
                 scene.Emit(
                     frame,
                     bounds,
@@ -398,12 +308,17 @@ internal partial class VulkanSceneCompiler {
                     node.ImageFit,
                     opacity,
                     transformIndex)
+                frame.SetActiveClipChain(shapePaintParentChainId)
             }
         }
+        PaintBoxShadows(node, bounds, opacity, transformIndex, true)
         PaintBorder(node, bounds, opacity, transformIndex)
+        frame.SetActiveClipChain(contentPathClipChainId)
         if node.Kind == NodeKind.Text {
             if let renderer = textScene {
-                let emitted = renderer.Emit(frame, node, opacity, transformIndex)
+                var complete bool
+                let emitted = renderer.Emit(frame, node, opacity, transformIndex, out complete)
+                textComplete = emitted && complete
                 if renderer.ConsumeColorEffectSkipped() {
                     RecordColorEffectsSkipped(node)
                 }
@@ -411,7 +326,8 @@ internal partial class VulkanSceneCompiler {
                     RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.Content,
                         VulkanSceneUnsupportedPrimitive.Text)
                 }
-                if !emitted {
+                let publicationPending = renderer.ConsumePublicationPending()
+                if !emitted && !publicationPending {
                     MarkUnsupported(node, VulkanSceneUnsupportedKind.Text,
                         VulkanSceneUnsupportedField.Content,
                         VulkanSceneUnsupportedPrimitive.Text)
@@ -423,7 +339,7 @@ internal partial class VulkanSceneCompiler {
             if let renderer = textScene {
                 if TextEntrySupported(node)
                     && TextClipSupported(node, axisAligned, clipDepth) {
-                    let emitted = renderer.EmitEntry(frame, node, opacity, transformIndex)
+                    let emitted = renderer.Emit(frame, node, opacity, transformIndex)
                     if renderer.ConsumeColorEffectSkipped() {
                         RecordColorEffectsSkipped(node)
                     }
@@ -431,7 +347,8 @@ internal partial class VulkanSceneCompiler {
                         RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.Content,
                             VulkanSceneUnsupportedPrimitive.TextEntry)
                     }
-                    if !emitted {
+                    let publicationPending = renderer.ConsumePublicationPending()
+                    if !emitted && !publicationPending {
                         MarkUnsupported(node, VulkanSceneUnsupportedKind.Entry,
                             VulkanSceneUnsupportedField.Content,
                             VulkanSceneUnsupportedPrimitive.TextEntry)
@@ -440,24 +357,128 @@ internal partial class VulkanSceneCompiler {
                 }
             }
         }
-        if node.Kind == NodeKind.Editor {
-            if let renderer = textScene {
-                if TextEditorSupported(node)
-                    && TextClipSupported(node, axisAligned, clipDepth) {
-                    let emitted = renderer.EmitEditor(frame, node, opacity, transformIndex)
-                    if renderer.ConsumeColorEffectSkipped() {
-                        RecordColorEffectsSkipped(node)
-                    }
-                    if renderer.ConsumeColorGlyphFallback() {
-                        RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.Content,
-                            VulkanSceneUnsupportedPrimitive.TextEditor)
-                    }
-                    if !emitted {
-                        MarkUnsupported(node, VulkanSceneUnsupportedKind.Editor,
-                            VulkanSceneUnsupportedField.Content,
-                            VulkanSceneUnsupportedPrimitive.TextEditor)
-                        unsupportedNodeCount = unsupportedNodeCount + 1
-                    }
+        frame.SetActiveClipChain(shapePaintParentChainId)
+    }
+
+    private func PaintEditorContent(node Node, opacity float32, transformIndex int32) {
+        guard let renderer = textScene else { return }
+        let emitted = renderer.Emit(frame, node, opacity, transformIndex)
+        if renderer.ConsumeColorEffectSkipped() {
+            RecordColorEffectsSkipped(node)
+        }
+        if renderer.ConsumeColorGlyphFallback() {
+            RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.Content,
+                VulkanSceneUnsupportedPrimitive.TextEditor)
+        }
+        let publicationPending = renderer.ConsumePublicationPending()
+        if !emitted && !publicationPending {
+            MarkUnsupported(node, VulkanSceneUnsupportedKind.Editor,
+                VulkanSceneUnsupportedField.Content,
+                VulkanSceneUnsupportedPrimitive.TextEditor)
+            unsupportedNodeCount = unsupportedNodeCount + 1
+        }
+    }
+
+    private func PaintShape(
+        node Node,
+        bounds ConservativeBounds,
+        opacity float32,
+        transformIndex int32,
+        shapePaintClip bool,
+        shapePaintParentChainId int32) {
+        let hasBackgroundImage = node.HasBackgroundImageState
+            && (BackgroundImageLayouts.Path(node) != ""
+                || BackgroundImageLayouts.Source(node) != nil)
+        let fillVisible = node.BackgroundColor.A > 0.0F
+            || node.BackgroundGradient != nil
+            || hasBackgroundImage
+        let strokeWidth = node.BorderLeftWidth.Px
+        let strokeVisible = strokeWidth > 0.0F && node.BorderLeftColor.A > 0.0F
+        if bounds.IsEmpty || opacity <= 0.0F || (!fillVisible && !strokeVisible)
+            || node.ShapePath.CommandCount == 0 {
+            return
+        }
+        guard let renderer = pathScene else { return }
+        let halfStroke = strokeWidth * 0.5F
+        let paddingLeft = resolveEdgePadding(node, YGEdge.Left, bounds.Width)
+        let paddingTop = resolveEdgePadding(node, YGEdge.Top, bounds.Width)
+        let paddingRight = resolveEdgePadding(node, YGEdge.Right, bounds.Width)
+        let paddingBottom = resolveEdgePadding(node, YGEdge.Bottom, bounds.Width)
+        let contentLeft = bounds.X + paddingLeft + halfStroke
+        let contentTop = bounds.Y + paddingTop + halfStroke
+        let contentWidth = bounds.Width - paddingLeft - paddingRight - strokeWidth
+        let contentHeight = bounds.Height - paddingTop - paddingBottom - strokeWidth
+        if contentWidth <= 0.0F || contentHeight <= 0.0F {
+            return
+        }
+        let mapping = PathGeometry.Map(node.ShapePath, node.ShapeFit,
+            contentLeft, contentTop, contentWidth, contentHeight)
+        if !mapping.Valid {
+            return
+        }
+        let shapePath = PathRoundedCache.Shared.Resolve(node.ShapePath, mapping,
+            node.ShapeCornerRadius)
+        if shapePath.CommandCount == 0 {
+            return
+        }
+        if shapePaintClip {
+            if let gradient = node.BackgroundGradient {
+                PaintGradient(node, gradient, bounds, opacity, transformIndex)
+            } else {
+                PaintSolid(node.BackgroundColor, node, bounds, opacity, transformIndex)
+            }
+            if let scene = imageScene {
+                scene.Emit(
+                    frame,
+                    bounds,
+                    BackgroundImageLayouts.CurrentToken(node),
+                    node.BackgroundImageFit,
+                    opacity,
+                    transformIndex)
+            }
+            frame.SetActiveClipChain(shapePaintParentChainId)
+        } else if fillVisible && node.BackgroundGradient == nil && !hasBackgroundImage {
+            let path = renderer.Emit(shapePath, node.ShapeFillRule)
+            if path.Renderable {
+                frame.AddAnalyticPathBand(AnalyticPathBandRecord{
+                    Bounds: bounds,
+                    PathId: path.PathId,
+                    AtlasId: path.AtlasId,
+                    AtlasWordOffset: path.BaseWord,
+                    AtlasWordCount: path.WordCount,
+                    FillColor: node.BackgroundColor.ToPackedRgba(),
+                    FillRule: path.FillRule,
+                    Opacity: opacity,
+                    ScaleX: mapping.ScaleX,
+                    ScaleY: mapping.ScaleY,
+                    TranslateX: mapping.TranslateX,
+                    TranslateY: mapping.TranslateY,
+                    TransformIndex: transformIndex,
+                })
+            }
+        }
+        if strokeVisible {
+            let outline = strokeCache.Resolve(shapePath, mapping, strokeWidth,
+                node.ShapeStrokeCap, node.ShapeStrokeJoin, float32(node.MiterLimit), node.Dashes)
+            if outline.CommandCount != 0 {
+                let path = renderer.Emit(outline, FillRule.NonZero)
+                if path.Renderable {
+                    frame.AddAnalyticPathBand(AnalyticPathBandRecord{
+                        Bounds: bounds.Inflate(resolveShapeStrokeExtent(strokeWidth, node.ShapeStrokeJoin,
+                            float32(node.MiterLimit))),
+                        PathId: path.PathId,
+                        AtlasId: path.AtlasId,
+                        AtlasWordOffset: path.BaseWord,
+                        AtlasWordCount: path.WordCount,
+                        FillColor: node.BorderLeftColor.ToPackedRgba(),
+                        FillRule: path.FillRule,
+                        Opacity: opacity,
+                        ScaleX: mapping.ScaleX,
+                        ScaleY: mapping.ScaleY,
+                        TranslateX: mapping.TranslateX,
+                        TranslateY: mapping.TranslateY,
+                        TransformIndex: transformIndex,
+                    })
                 }
             }
         }
@@ -502,47 +523,361 @@ internal partial class VulkanSceneCompiler {
         bounds ConservativeBounds,
         opacity float32,
         transformIndex int32,
-        axisAligned bool) {
+        insetOnly bool) {
         let count = boxShadowCount(node.BoxShadows)
         if count == 0 {
             return
         }
-        let supportedOwner = node.Kind == NodeKind.Container || node.Kind == NodeKind.Button
-        let supportedContext = supportedOwner
-            && axisAligned
-            && !node.HasClipPath
-            && node.OverflowX == Overflow.Visible
-            && node.OverflowY == Overflow.Visible
+        let supportedOwner = ShadowContextSupported(node)
         var index = count - 1
         while index >= 0 {
             let shadow = boxShadowAt(node.BoxShadows, index)
+            if shadow.Inset != insetOnly {
+                index = index - 1
+                continue
+            }
             let validGeometry = Finite(shadow.OffsetX.Value)
                 && Finite(shadow.OffsetY.Value)
                 && Finite(shadow.Blur.Value)
                 && Finite(shadow.Spread.Value)
                 && shadow.Blur.Value >= 0.0F
-            if !supportedOwner || !supportedContext || shadow.Inset || !validGeometry {
+            let shadowBounds = insetOnly ? InsetShadowBounds(node, bounds) : bounds
+            if !supportedOwner || !validGeometry {
                 RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BoxShadows,
                     VulkanSceneUnsupportedPrimitive.BoxShadow)
-            } else if shadow.Color.A > 0.0F && !bounds.IsEmpty {
+            } else if shadow.Color.A > 0.0F && !shadowBounds.IsEmpty {
                 frame.AddShadow(ShadowRecord{
-                    Bounds: bounds,
-                    RadiusTopLeft: Radius(node.BorderTopLeftRadius, node.BorderRadius, bounds),
-                    RadiusTopRight: Radius(node.BorderTopRightRadius, node.BorderRadius, bounds),
-                    RadiusBottomRight: Radius(node.BorderBottomRightRadius, node.BorderRadius, bounds),
-                    RadiusBottomLeft: Radius(node.BorderBottomLeftRadius, node.BorderRadius, bounds),
+                    Bounds: shadowBounds,
+                    RadiusTopLeft: insetOnly
+                        ? InsetShadowRadius(node, node.BorderTopLeftRadius, node.BorderRadius,
+                            bounds, shadowBounds, true, true)
+                        : Radius(node.BorderTopLeftRadius, node.BorderRadius, bounds),
+                    RadiusTopRight: insetOnly
+                        ? InsetShadowRadius(node, node.BorderTopRightRadius, node.BorderRadius,
+                            bounds, shadowBounds, false, true)
+                        : Radius(node.BorderTopRightRadius, node.BorderRadius, bounds),
+                    RadiusBottomRight: insetOnly
+                        ? InsetShadowRadius(node, node.BorderBottomRightRadius, node.BorderRadius,
+                            bounds, shadowBounds, false, false)
+                        : Radius(node.BorderBottomRightRadius, node.BorderRadius, bounds),
+                    RadiusBottomLeft: insetOnly
+                        ? InsetShadowRadius(node, node.BorderBottomLeftRadius, node.BorderRadius,
+                            bounds, shadowBounds, true, false)
+                        : Radius(node.BorderBottomLeftRadius, node.BorderRadius, bounds),
                     OffsetX: shadow.OffsetX.Px,
                     OffsetY: shadow.OffsetY.Px,
                     Spread: shadow.Spread.Px,
                     Blur: shadow.Blur.Px,
                     Color: EffectiveColor(shadow.Color, opacity),
                     MaskId: ResourceId{},
-                    Inset: false,
+                    MaskIndex: -1,
+                    Inset: insetOnly,
                     TransformIndex: transformIndex,
                 })
             }
             index = index - 1
         }
+    }
+
+    private func PaintShapeBoxShadows(
+        node Node,
+        bounds ConservativeBounds,
+        opacity float32,
+        transformIndex int32,
+        insetOnly bool) {
+        let count = boxShadowCount(node.BoxShadows)
+        if count == 0 || bounds.IsEmpty || opacity <= 0.0F
+            || node.ShapePath.CommandCount == 0 {
+            return
+        }
+        guard let renderer = pathScene else {
+            return
+        }
+        let strokeWidth = node.BorderLeftWidth.Px
+        let halfStroke = strokeWidth * 0.5F
+        let paddingLeft = resolveEdgePadding(node, YGEdge.Left, bounds.Width)
+        let paddingTop = resolveEdgePadding(node, YGEdge.Top, bounds.Width)
+        let paddingRight = resolveEdgePadding(node, YGEdge.Right, bounds.Width)
+        let paddingBottom = resolveEdgePadding(node, YGEdge.Bottom, bounds.Width)
+        let contentLeft = bounds.X + paddingLeft + halfStroke
+        let contentTop = bounds.Y + paddingTop + halfStroke
+        let contentWidth = bounds.Width - paddingLeft - paddingRight - strokeWidth
+        let contentHeight = bounds.Height - paddingTop - paddingBottom - strokeWidth
+        if contentWidth <= 0.0F || contentHeight <= 0.0F {
+            return
+        }
+        let mapping = PathGeometry.Map(node.ShapePath, node.ShapeFit,
+            contentLeft, contentTop, contentWidth, contentHeight)
+        if !mapping.Valid || mapping.ScaleX == 0.0F || mapping.ScaleY == 0.0F {
+            return
+        }
+        let shapePath = PathRoundedCache.Shared.Resolve(node.ShapePath, mapping,
+            node.ShapeCornerRadius)
+        if shapePath.CommandCount == 0 {
+            return
+        }
+        let fillVisible = (node.BackgroundColor.A > 0.0F
+            || node.BackgroundGradient != nil
+            || node.HasBackgroundImageState)
+            && shapePath.HasClosedContour
+        let strokeVisible = strokeWidth > 0.0F && node.BorderLeftColor.A > 0.0F
+        var fillPath VulkanPathRenderable{}
+        if fillVisible {
+            fillPath = renderer.Emit(shapePath, node.ShapeFillRule)
+        }
+        var strokePath VulkanPathRenderable{}
+        if strokeVisible {
+            let outline = strokeCache.Resolve(shapePath, mapping, strokeWidth,
+                node.ShapeStrokeCap, node.ShapeStrokeJoin, float32(node.MiterLimit), node.Dashes)
+            if outline.CommandCount != 0 {
+                strokePath = renderer.Emit(outline, FillRule.NonZero)
+            }
+        }
+        var index = count - 1
+        while index >= 0 {
+            let shadow = boxShadowAt(node.BoxShadows, index)
+            if shadow.Inset != insetOnly {
+                index = index - 1
+                continue
+            }
+            let validGeometry = Finite(shadow.OffsetX.Value)
+                && Finite(shadow.OffsetY.Value)
+                && Finite(shadow.Blur.Value)
+                && Finite(shadow.Spread.Value)
+                && shadow.Blur.Value >= 0.0F
+            if !validGeometry {
+                RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BoxShadows,
+                    VulkanSceneUnsupportedPrimitive.BoxShadow)
+                index = index - 1
+                continue
+            }
+            let maskBounds = ShapeShadowMaskBounds(bounds, shadow)
+            if shadow.Color.A > 0.0F && !maskBounds.IsEmpty {
+                if fillVisible && fillPath.Renderable {
+                    let maskIndex = AddShapeShadowMask(node, shapePath, mapping,
+                        fillPath, node.ShapeFillRule, maskBounds, transformIndex, index, false,
+                        insetOnly, shadow)
+                    AddShapeShadow(node, bounds, opacity, transformIndex, shadow,
+                        maskIndex, insetOnly)
+                }
+                if strokeVisible && strokePath.Renderable {
+                    let maskIndex = AddShapeShadowMask(node, shapePath, mapping,
+                        strokePath, FillRule.NonZero, maskBounds, transformIndex, index, true,
+                        insetOnly, shadow)
+                    AddShapeShadow(node, bounds, opacity, transformIndex, shadow,
+                        maskIndex, insetOnly)
+                }
+            }
+            index = index - 1
+        }
+    }
+
+    private func ShapeShadowMaskBounds(
+        bounds ConservativeBounds,
+        shadow BoxShadow) ConservativeBounds {
+        let blur = shadow.Blur.Px
+        let spread = MathF.Abs(shadow.Spread.Px)
+        let blurExtent = blur > 0.0F ? blur * 2.0F + 2.0F : 1.0F
+        let extent = blurExtent + spread
+        return bounds.Inflate(extent)
+    }
+
+    private func AddShapeShadowMask(
+        node Node,
+        shapePath VectorPath,
+        mapping PathMapping,
+        path VulkanPathRenderable,
+        fillRule FillRule,
+        maskBounds ConservativeBounds,
+        transformIndex int32,
+        shadowIndex int32,
+        stroke bool,
+        inset bool,
+        shadow BoxShadow) int32 {
+        let stableId = ShapeShadowMaskId(node, shadowIndex, stroke, inset)
+        var contentKey = ClipContentKey(node, shapePath, node.ShapeFit,
+            uint32(fillRule), maskBounds, transformIndex)
+        contentKey = MixPathHash(contentKey, uint64(shadowIndex + 1))
+        contentKey = MixPathHash(contentKey, stroke ? 3uL : 5uL)
+        contentKey = MixPathHash(contentKey, inset ? 7uL : 11uL)
+        contentKey = HashPathFloat(contentKey, shadow.OffsetX.Px)
+        contentKey = HashPathFloat(contentKey, shadow.OffsetY.Px)
+        contentKey = HashPathFloat(contentKey, shadow.Spread.Px)
+        contentKey = HashPathFloat(contentKey, shadow.Blur.Px)
+        let mask = frame.AddClipMask(ClipMaskRecord{
+            StableId: stableId,
+            PathId: path.PathId,
+            AtlasId: path.AtlasId,
+            AtlasWordOffset: path.BaseWord,
+            AtlasWordCount: path.WordCount,
+            Bounds: maskBounds,
+            PathBounds: maskBounds,
+            Fit: ShapeFit.Fill,
+            FillRule: path.FillRule,
+            ScaleX: mapping.ScaleX,
+            ScaleY: mapping.ScaleY,
+            TranslateX: mapping.TranslateX,
+            TranslateY: mapping.TranslateY,
+            TransformIndex: transformIndex,
+            ContentKey: contentKey,
+        })
+        clipMaskCount = frame.ClipMaskCount
+        return mask
+    }
+
+    private func AddShapeShadow(
+        node Node,
+        bounds ConservativeBounds,
+        opacity float32,
+        transformIndex int32,
+        shadow BoxShadow,
+        maskIndex int32,
+        inset bool) {
+        if maskIndex < 0 {
+            return
+        }
+        frame.AddShadow(ShadowRecord{
+            Bounds: bounds,
+            RadiusTopLeft: 0.0F,
+            RadiusTopRight: 0.0F,
+            RadiusBottomRight: 0.0F,
+            RadiusBottomLeft: 0.0F,
+            OffsetX: shadow.OffsetX.Px,
+            OffsetY: shadow.OffsetY.Px,
+            Spread: shadow.Spread.Px,
+            Blur: shadow.Blur.Px,
+            Color: EffectiveColor(shadow.Color, opacity),
+            MaskId: ResourceId{},
+            MaskIndex: maskIndex,
+            Inset: inset,
+            TransformIndex: transformIndex,
+        })
+    }
+
+    private func ShapeShadowMaskId(
+        node Node,
+        shadowIndex int32,
+        stroke bool,
+        inset bool) uint64 {
+        var result = OwnerId(node) | (1uL << 61)
+        result = MixPathHash(result, uint64(shadowIndex + 1))
+        result = MixPathHash(result, stroke ? 3uL : 5uL)
+        result = MixPathHash(result, inset ? 7uL : 11uL)
+        return result == 0uL ? 1uL : result
+    }
+
+    private func InsetShadowBounds(node Node, bounds ConservativeBounds) ConservativeBounds {
+        let basis = MinDimension(bounds)
+        let left = ResolveLength(node.BorderLeftWidth, basis)
+        let top = ResolveLength(node.BorderTopWidth, basis)
+        let right = ResolveLength(node.BorderRightWidth, basis)
+        let bottom = ResolveLength(node.BorderBottomWidth, basis)
+        let width = bounds.Width - left - right
+        let height = bounds.Height - top - bottom
+        if width <= 0.0F || height <= 0.0F {
+            return ConservativeBounds{}
+        }
+        return ConservativeBounds{
+            X: bounds.X + left,
+            Y: bounds.Y + top,
+            Width: width,
+            Height: height,
+        }
+    }
+
+    private func InsetShadowRadius(
+        node Node,
+        value Length,
+        fallback Length,
+        bounds ConservativeBounds,
+        insetBounds ConservativeBounds,
+        left bool,
+        top bool) float32 {
+        let radius = Radius(value, fallback, bounds)
+        let basis = MinDimension(bounds)
+        let xInset = if left {
+            ResolveLength(node.BorderLeftWidth, basis)
+        } else {
+            ResolveLength(node.BorderRightWidth, basis)
+        }
+        let yInset = if top {
+            ResolveLength(node.BorderTopWidth, basis)
+        } else {
+            ResolveLength(node.BorderBottomWidth, basis)
+        }
+        let inset = xInset > yInset ? xInset : yInset
+        let result = radius - inset
+        let limit = MinDimension(insetBounds) * 0.5F
+        if result <= 0.0F { return 0.0F }
+        return result > limit ? limit : result
+    }
+
+    private func PaintOutline(
+        node Node,
+        bounds ConservativeBounds,
+        opacity float32,
+        transformIndex int32) {
+        let outlineBounds = OutlineBounds(node, bounds)
+        if outlineBounds.IsEmpty || opacity <= 0.0F {
+            return
+        }
+        let width = node.OutlineWidth.Px
+        let offset = node.OutlineOffset.Px
+        let amount = offset + width
+        let color = EffectiveColor(node.OutlineColor, opacity)
+        frame.AddPerEdgeBorder(PerEdgeBorderRecord{
+            Bounds: outlineBounds,
+            TopWidth: width,
+            RightWidth: width,
+            BottomWidth: width,
+            LeftWidth: width,
+            RadiusTopLeft: OutlineRadius(node.BorderTopLeftRadius, node.BorderRadius,
+                bounds, amount),
+            RadiusTopRight: OutlineRadius(node.BorderTopRightRadius, node.BorderRadius,
+                bounds, amount),
+            RadiusBottomRight: OutlineRadius(node.BorderBottomRightRadius, node.BorderRadius,
+                bounds, amount),
+            RadiusBottomLeft: OutlineRadius(node.BorderBottomLeftRadius, node.BorderRadius,
+                bounds, amount),
+            TopColor: color,
+            RightColor: color,
+            BottomColor: color,
+            LeftColor: color,
+            Style: uint32(int32(BorderStyle.Solid)),
+            TransformIndex: transformIndex,
+        })
+    }
+
+    private func OutlineBounds(node Node, bounds ConservativeBounds) ConservativeBounds {
+        if node.Kind == NodeKind.Shape || !node.HasOutlineState
+            || bounds.IsEmpty || node.OutlineColor.A <= 0.0F {
+            return ConservativeBounds{}
+        }
+        let width = node.OutlineWidth.Px
+        let offset = node.OutlineOffset.Px
+        if !Finite(width) || !Finite(offset) || width <= 0.0F {
+            return ConservativeBounds{}
+        }
+        let amount = offset + width
+        if !Finite(amount) {
+            return ConservativeBounds{}
+        }
+        let result = bounds.Inflate(amount)
+        if !Finite(result.X) || !Finite(result.Y)
+            || !Finite(result.Width) || !Finite(result.Height)
+            || result.IsEmpty {
+            return ConservativeBounds{}
+        }
+        return result
+    }
+
+    private func OutlineRadius(
+        value Length,
+        fallback Length,
+        bounds ConservativeBounds,
+        amount float32) float32 {
+        let radius = Radius(value, fallback, bounds) + amount
+        return radius > 0.0F && Finite(radius) ? radius : 0.0F
     }
 
     private func ExpandedChunkBounds(
@@ -554,6 +889,10 @@ internal partial class VulkanSceneCompiler {
             return bounds
         }
         var result = bounds
+        let outlineBounds = OutlineBounds(node, bounds)
+        if !outlineBounds.IsEmpty {
+            result = UnionBounds(result, outlineBounds)
+        }
         if eligible {
             var index int32 = 0
             while index < count {
@@ -565,7 +904,9 @@ internal partial class VulkanSceneCompiler {
                     && Finite(shadow.Spread.Value)
                     && shadow.Blur.Value >= 0.0F {
                     let spread = shadow.Spread.Px > 0.0F ? shadow.Spread.Px : 0.0F
-                    let extent = shadow.Blur.Px + spread
+                    let blur = shadow.Blur.Px
+                    let blurExtent = blur > 0.0F ? blur * 2.0F + 2.0F : 0.0F
+                    let extent = blurExtent + spread
                     let candidate = ConservativeBounds{
                         X: bounds.X + shadow.OffsetX.Px - extent,
                         Y: bounds.Y + shadow.OffsetY.Px - extent,
@@ -577,15 +918,38 @@ internal partial class VulkanSceneCompiler {
                 index = index + 1
             }
         }
-        if node.Kind == NodeKind.Text {
+        if node.Kind == NodeKind.Text || node.Kind == NodeKind.Entry
+            || node.Kind == NodeKind.Editor {
             let pad = TextEffectChunkPad(node)
             if pad > 0.0F { result = result.Inflate(pad) }
+        }
+        if node.Kind == NodeKind.Shape {
+            let width = ResolveLength(node.BorderLeftWidth, MinDimension(bounds))
+            if width > 0.0F && node.BorderLeftColor.A > 0.0F {
+                result = result.Inflate(resolveShapeStrokeExtent(width, node.ShapeStrokeJoin,
+                    float32(node.MiterLimit)))
+            }
         }
         return result
     }
 
     private func TextEffectChunkPad(node Node) float32 {
         var result = textPaintPad(node.TextStrokeWidth.Px, node.TextShadows)
+        if node.Kind == NodeKind.Editor {
+            let layout = TextEditorLayouts.For(node, TextLayouts.ContentWidth(node),
+                TextLayouts.ContentHeight(node))
+            for line in layout.Lines {
+                if let baseStyle = line.Paragraph.BaseStyle {
+                    let pad = textPaintPad(baseStyle.StrokeWidth, baseStyle.Shadows)
+                    if pad > result { result = pad }
+                }
+                for run in line.Runs {
+                    let pad = textPaintPad(run.Style.StrokeWidth, run.Style.Shadows)
+                    if pad > result { result = pad }
+                }
+            }
+            return result
+        }
         let layout = TextLayouts.For(node, TextLayouts.ContentWidth(node))
         if let rich = layout.Rich {
             for line in rich.Lines {
@@ -596,20 +960,10 @@ internal partial class VulkanSceneCompiler {
     }
 
     private func ShadowContextSupported(node Node) bool {
-        if node.Kind != NodeKind.Container && node.Kind != NodeKind.Button {
-            return false
-        }
-        if node.HasClipPath
-            || node.OverflowX != Overflow.Visible
-            || node.OverflowY != Overflow.Visible {
-            return false
-        }
-        if !node.HasVisualTransform {
-            return true
-        }
-        let matrix = TransformGeometry.Matrix(node)
-        return Finite(matrix.B) && Finite(matrix.C)
-            && matrix.B == 0.0F && matrix.C == 0.0F
+        return node.Kind == NodeKind.Container || node.Kind == NodeKind.Button
+            || node.Kind == NodeKind.Text || node.Kind == NodeKind.Entry
+            || node.Kind == NodeKind.Editor || node.Kind == NodeKind.Shape
+            || node.Kind == NodeKind.Image
     }
 
     private func UnionBounds(left ConservativeBounds, right ConservativeBounds) ConservativeBounds {
@@ -703,6 +1057,8 @@ internal partial class VulkanSceneCompiler {
         }
         let stops = gradient.Stops
         let primitive = switch gradient {
+            case linear is CompiledVectorLinearGradient: VulkanSceneUnsupportedPrimitive.LinearGradient
+            case radial is CompiledVectorRadialGradient: VulkanSceneUnsupportedPrimitive.RadialGradient
             case linear is LinearGradient: VulkanSceneUnsupportedPrimitive.LinearGradient
             case radial is RadialGradient: VulkanSceneUnsupportedPrimitive.RadialGradient
             case _: VulkanSceneUnsupportedPrimitive.Gradient
@@ -728,6 +1084,42 @@ internal partial class VulkanSceneCompiler {
             index = index + 1
         }
         switch gradient {
+            case compiled is CompiledVectorLinearGradient {
+                frame.AddLinearGradient(LinearGradientRecord{
+                    Bounds: bounds,
+                    RadiusTopLeft: Radius(node.BorderTopLeftRadius, node.BorderRadius, bounds),
+                    RadiusTopRight: Radius(node.BorderTopRightRadius, node.BorderRadius, bounds),
+                    RadiusBottomRight: Radius(node.BorderBottomRightRadius, node.BorderRadius, bounds),
+                    RadiusBottomLeft: Radius(node.BorderBottomLeftRadius, node.BorderRadius, bounds),
+                    StartX: bounds.X + bounds.Width * float32(compiled.X0),
+                    StartY: bounds.Y + bounds.Height * float32(compiled.Y0),
+                    EndX: bounds.X + bounds.Width * float32(compiled.X1),
+                    EndY: bounds.Y + bounds.Height * float32(compiled.Y1),
+                    StopStart: start,
+                    StopCount: stops.Count,
+                    Opacity: opacity,
+                    TransformIndex: transformIndex,
+                })
+                return
+            }
+            case compiled is CompiledVectorRadialGradient {
+                frame.AddRadialGradient(RadialGradientRecord{
+                    Bounds: bounds,
+                    RadiusTopLeft: Radius(node.BorderTopLeftRadius, node.BorderRadius, bounds),
+                    RadiusTopRight: Radius(node.BorderTopRightRadius, node.BorderRadius, bounds),
+                    RadiusBottomRight: Radius(node.BorderBottomRightRadius, node.BorderRadius, bounds),
+                    RadiusBottomLeft: Radius(node.BorderBottomLeftRadius, node.BorderRadius, bounds),
+                    CenterX: bounds.X + bounds.Width * float32(compiled.CenterX),
+                    CenterY: bounds.Y + bounds.Height * float32(compiled.CenterY),
+                    RadiusX: bounds.Width * float32(compiled.RadiusX),
+                    RadiusY: bounds.Height * float32(compiled.RadiusY),
+                    StopStart: start,
+                    StopCount: stops.Count,
+                    Opacity: opacity,
+                    TransformIndex: transformIndex,
+                })
+                return
+            }
             case linear is LinearGradient {
                 let radians = float32(linear.Angle) * MathF.PI / 180.0F
                 let dx = MathF.Sin(radians)

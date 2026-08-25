@@ -21,6 +21,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     private const ImageStagingBytes VkDeviceSize = 16777216uL
     private const ImageUploadRangeCapacity int32 = 64
     private const ImageIdentityCapacity int32 = 4096
+    private const PathAtlasBytes VkDeviceSize = 262144uL
     private let instance VkInstance
     private let instanceDispatch VkInstanceDispatch
     private let physicalDevice VkPhysicalDevice
@@ -28,16 +29,20 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     private let dispatch VkDeviceDispatch
     private let graphicsQueue VkQueue
     private let presentQueue VkQueue
+    private let queueWorker VulkanQueueWorker
     private let graphicsFamilyIndex uint32
     private let presentFamilyIndex uint32
     private let deviceWaitIdleAddress nint
     private let instanceMaintenanceVariant VulkanSwapchainMaintenanceVariant
     private let swapchainMaintenanceVariant VulkanSwapchainMaintenanceVariant
     private let facts VulkanSharedDeviceFacts
+    private let maxStorageBufferRange VkDeviceSize
     private let memoryAllocator VulkanMemoryAllocator
     private let imageResources VulkanImageResources
     private let primitiveState VulkanSharedPrimitiveState
     private let imageIdentityRegistry VulkanImageIdentityRegistry
+    private let pathResources VulkanPathResources
+    private let pathIdentityRegistry VulkanPathIdentityRegistry
     private let objectAccounting VulkanObjectAccounting?
     private let sharedObjectAccounting VulkanObjectAccounting?
     private let diagnostics VulkanDiagnostics?
@@ -59,10 +64,16 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
         private var current VulkanSharedRuntime?
         private var generationSeed uint64
         private var logicalImageIdentityRegistry VulkanImageIdentityRegistry?
+        private var logicalPathIdentityRegistry VulkanPathIdentityRegistry?
         private var terminalFailure bool
         private var terminalFailureResult VkResult = VkConstants.VK_SUCCESS
         private var testFailNextDeviceIdle int32
         private var testFailNextGraphicsSubmission int32
+        private var testDeviceIdleCallCount int64
+
+        internal prop DeviceIdleCallCountForTest int64 {
+            get { return Interlocked.Read(ref testDeviceIdleCallCount) }
+        }
 
         internal func FailNextDeviceIdleForTest() {
             Interlocked.Exchange(ref testFailNextDeviceIdle, 1)
@@ -78,6 +89,45 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
 
         internal func TakeTestGraphicsSubmissionFailure() bool {
             return Interlocked.Exchange(ref testFailNextGraphicsSubmission, 0) != 0
+        }
+
+        internal func DrainTestGraphicsSubmissionFailure() VkResult {
+            if let owner = current {
+                return owner.WaitDeviceIdleResult()
+            }
+            return VkConstants.VK_ERROR_INITIALIZATION_FAILED
+        }
+
+        internal func HoldNextQueueSubmitForTest() {
+            VulkanQueueWorker.HoldNextSubmitForTest()
+        }
+
+        internal func HoldNextQueuePresentForTest() {
+            VulkanQueueWorker.HoldNextPresentForTest()
+        }
+
+        internal func HoldQueueSubmitForMailboxForTest(mailbox VulkanQueueMailbox) {
+            VulkanQueueWorker.HoldSubmitForMailboxForTest(mailbox)
+        }
+
+        internal func HoldQueuePresentForMailboxForTest(mailbox VulkanQueueMailbox) {
+            VulkanQueueWorker.HoldPresentForMailboxForTest(mailbox)
+        }
+
+        internal func ReleaseHeldQueueCallForTest() {
+            VulkanQueueWorker.ReleaseHeldQueueCallForTest()
+        }
+
+        internal func WaitForHeldQueueCallForTest(timeoutMs int32) bool {
+            return VulkanQueueWorker.WaitForHeldQueueCallForTest(timeoutMs)
+        }
+
+        internal func DeferNextQueueEnqueueForTest() {
+            VulkanQueueWorker.DeferNextEnqueueForTest()
+        }
+
+        internal prop QueueEnqueueDeferralCountForTest int64 {
+            get { return VulkanQueueWorker.EnqueueDeferralCountForTest }
         }
 
         internal func TryAcquire() VulkanSharedLease? {
@@ -108,6 +158,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
             nativeFacts VulkanSharedDeviceFacts,
             nativeMemoryProperties VkPhysicalDeviceMemoryProperties,
             nativeMaxMemoryAllocationCount uint32,
+            nativeMaxStorageBufferRange uint32,
             nativeNonCoherentAtomSize VkDeviceSize,
             nativeBufferImageGranularity VkDeviceSize,
             nativeMemoryBudgetAvailable bool,
@@ -131,12 +182,18 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
             if generationSeed == uint64.MaxValue {
                 throw OverflowException("Vulkan shared runtime generation overflow")
             }
+            if nativeMaxStorageBufferRange == 0u {
+                throw ArgumentOutOfRangeException("nativeMaxStorageBufferRange")
+            }
             generationSeed = generationSeed + 1uL
             var allocator VulkanMemoryAllocator? = nil
             var imageResources VulkanImageResources? = nil
             var primitiveState VulkanSharedPrimitiveState? = nil
             var imageIdentityRegistry VulkanImageIdentityRegistry? = nil
+            var pathResources VulkanPathResources? = nil
+            var pathIdentityRegistry VulkanPathIdentityRegistry? = nil
             var createdImageIdentityRegistry bool = false
+            var createdPathIdentityRegistry bool = false
             try {
                 let createdBudget = VulkanMemoryBudgetState(
                     nativePhysicalDevice,
@@ -172,8 +229,36 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
                     nativeDispatch,
                     createdImageResources,
                     generationSeed,
+                    nativeFacts.DeviceType == int32(VkConstants.VK_PHYSICAL_DEVICE_TYPE_CPU),
                     nativeSharedObjectAccounting)
                 primitiveState = createdPrimitiveState
+                let retainedPathIdentities = if let retained = logicalPathIdentityRegistry {
+                    retained
+                } else {
+                    let created = VulkanPathIdentityRegistry()
+                    logicalPathIdentityRegistry = created
+                    createdPathIdentityRegistry = true
+                    created
+                }
+                pathIdentityRegistry = retainedPathIdentities
+                let pathAtlasByteSize = if uint64(nativeMaxStorageBufferRange) < PathAtlasBytes {
+                    uint64(nativeMaxStorageBufferRange)
+                } else {
+                    PathAtlasBytes
+                }
+                if pathAtlasByteSize < 4096uL {
+                    throw InvalidOperationException("Vulkan path atlas capacity is too small")
+                }
+                let pathAtlas = VulkanPathAtlas(
+                    nativeDevice,
+                    nativeDispatch,
+                    createdAllocator,
+                    pathAtlasByteSize,
+                    nativeMaxStorageBufferRange,
+                    createdPrimitiveState.PathDescriptorSetLayout,
+                    nativeSharedObjectAccounting)
+                let createdPathResources = VulkanPathResources(pathAtlas, retainedPathIdentities)
+                pathResources = createdPathResources
                 let identityRegistry = if let retained = logicalImageIdentityRegistry {
                     retained
                 } else {
@@ -197,10 +282,13 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
                     nativeInstanceMaintenanceVariant,
                     nativeSwapchainMaintenanceVariant,
                     nativeFacts,
+                    nativeMaxStorageBufferRange,
                     createdAllocator,
                     createdImageResources,
                     createdPrimitiveState,
                     identityRegistry,
+                    createdPathResources,
+                    retainedPathIdentities,
                     nativeDiagnostics,
                     nativeDebugUtilsEnabled,
                     nativeValidation,
@@ -221,6 +309,15 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
                     }
                     logicalImageIdentityRegistry = nil
                 }
+                if let createdPathResources = pathResources {
+                    try { createdPathResources.Dispose() } catch (cleanup Exception) { }
+                }
+                if createdPathIdentityRegistry {
+                    if let createdIdentityRegistry = pathIdentityRegistry {
+                        try { createdIdentityRegistry.Dispose() } catch (cleanup Exception) { }
+                    }
+                    logicalPathIdentityRegistry = nil
+                }
                 if let createdPrimitiveState = primitiveState {
                     try { createdPrimitiveState.Dispose() } catch (cleanup Exception) { }
                 }
@@ -239,16 +336,25 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
             terminalFailureResult = result
             if current == nil {
                 DisposeRetainedLogicalImageIdentityRegistry()
+                DisposeRetainedLogicalPathIdentityRegistry()
             }
         }
 
         private func DisposeRetainedLogicalImageIdentityRegistry() {
             let retained = logicalImageIdentityRegistry
             logicalImageIdentityRegistry = nil
-            if let registry = retained {
-                try { registry.Dispose() } catch (cleanup Exception) { }
-            }
+        if let registry = retained {
+            try { registry.Dispose() } catch (cleanup Exception) { }
         }
+    }
+
+    private func DisposeRetainedLogicalPathIdentityRegistry() {
+        let retained = logicalPathIdentityRegistry
+        logicalPathIdentityRegistry = nil
+        if let registry = retained {
+            try { registry.Dispose() } catch (cleanup Exception) { }
+        }
+    }
 
         internal func DiscardAfterDeviceLoss() {
             if let owner = current {
@@ -265,10 +371,13 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
         nativePresentFamilyIndex uint32, nativeDeviceWaitIdleAddress nint,
         nativeInstanceMaintenanceVariant VulkanSwapchainMaintenanceVariant,
         nativeSwapchainMaintenanceVariant VulkanSwapchainMaintenanceVariant,
-        nativeFacts VulkanSharedDeviceFacts, nativeAllocator VulkanMemoryAllocator,
+        nativeFacts VulkanSharedDeviceFacts, nativeMaxStorageBufferRange uint32,
+        nativeAllocator VulkanMemoryAllocator,
         nativeImageResources VulkanImageResources,
         nativePrimitiveState VulkanSharedPrimitiveState,
         nativeImageIdentityRegistry VulkanImageIdentityRegistry,
+        nativePathResources VulkanPathResources,
+        nativePathIdentityRegistry VulkanPathIdentityRegistry,
         nativeDiagnostics VulkanDiagnostics?,
         nativeDebugUtilsEnabled bool,
         nativeValidation VulkanDiagnosticsValidation?,
@@ -280,6 +389,9 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
         nativeSharedObjectAccounting VulkanObjectAccounting?) {
         if nativeInstance == nint(0) || nativePhysicalDevice == nint(0) || nativeDevice == nint(0) {
             throw ArgumentException("Vulkan shared runtime handles cannot be null")
+        }
+        if nativeMaxStorageBufferRange == 0u {
+            throw ArgumentOutOfRangeException("nativeMaxStorageBufferRange")
         }
         if nativeGraphicsQueue == nint(0) || nativePresentQueue == nint(0) {
             throw ArgumentException("Vulkan shared runtime queues cannot be null")
@@ -297,6 +409,12 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
         if nativeImageIdentityRegistry == nil {
             throw ArgumentNullException("nativeImageIdentityRegistry")
         }
+        if nativePathResources == nil {
+            throw ArgumentNullException("nativePathResources")
+        }
+        if nativePathIdentityRegistry == nil {
+            throw ArgumentNullException("nativePathIdentityRegistry")
+        }
         if nativeObjectAccounting == nil && nativeSharedObjectAccounting != nil {
             throw ArgumentException("Vulkan shared object accounting parent is unavailable")
         }
@@ -307,16 +425,20 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
         dispatch = nativeDispatch
         graphicsQueue = nativeGraphicsQueue
         presentQueue = nativePresentQueue
+        queueWorker = VulkanQueueWorker(nativeGraphicsQueue, nativeDispatch)
         graphicsFamilyIndex = nativeGraphicsFamilyIndex
         presentFamilyIndex = nativePresentFamilyIndex
         deviceWaitIdleAddress = nativeDeviceWaitIdleAddress
         instanceMaintenanceVariant = nativeInstanceMaintenanceVariant
         swapchainMaintenanceVariant = nativeSwapchainMaintenanceVariant
         facts = nativeFacts
+        maxStorageBufferRange = VkDeviceSize(nativeMaxStorageBufferRange)
         memoryAllocator = nativeAllocator
         imageResources = nativeImageResources
         primitiveState = nativePrimitiveState
         imageIdentityRegistry = nativeImageIdentityRegistry
+        pathResources = nativePathResources
+        pathIdentityRegistry = nativePathIdentityRegistry
         objectAccounting = nativeObjectAccounting
         sharedObjectAccounting = nativeSharedObjectAccounting
         diagnostics = nativeDiagnostics
@@ -338,6 +460,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     internal prop Dispatch VkDeviceDispatch { get { return dispatch } }
     internal prop GraphicsQueue VkQueue { get { return graphicsQueue } }
     internal prop PresentQueue VkQueue { get { return presentQueue } }
+    internal prop QueueWorker VulkanQueueWorker { get { return queueWorker } }
     internal prop GraphicsFamilyIndex uint32 { get { return graphicsFamilyIndex } }
     internal prop PresentFamilyIndex uint32 { get { return presentFamilyIndex } }
     internal prop DeviceWaitIdleAddress nint { get { return deviceWaitIdleAddress } }
@@ -348,11 +471,16 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
         get { return swapchainMaintenanceVariant }
     }
     internal prop Facts VulkanSharedDeviceFacts { get { return facts } }
+    internal prop MaxStorageBufferRange VkDeviceSize { get { return maxStorageBufferRange } }
     internal prop MemoryAllocator VulkanMemoryAllocator { get { return memoryAllocator } }
     internal prop ImageResources VulkanImageResources { get { return imageResources } }
     internal prop PrimitiveState VulkanSharedPrimitiveState { get { return primitiveState } }
     internal prop ImageIdentityRegistry VulkanImageIdentityRegistry {
         get { return imageIdentityRegistry }
+    }
+    internal prop PathResources VulkanPathResources { get { return pathResources } }
+    internal prop PathIdentityRegistry VulkanPathIdentityRegistry {
+        get { return pathIdentityRegistry }
     }
     internal prop ObjectAccounting VulkanObjectAccounting? { get { return objectAccounting } }
     internal prop Diagnostics VulkanDiagnostics? { get { return diagnostics } }
@@ -361,6 +489,13 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     internal prop Terminal bool { get { return terminal } }
     internal prop TerminalIdleResult VkResult { get { return terminalIdleResult } }
     internal prop Generation uint64 { get { return generation } }
+
+    internal prop HasUnsubmittedRecordedSharedUpload bool {
+        get {
+            return imageResources.HasUnsubmittedRecordedUpload
+                || (pathResources.UploadRecorded && !pathResources.UploadSubmitted)
+        }
+    }
 
     internal func ReserveGraphicsSubmissionSerial() uint64 {
         if disposed {
@@ -437,7 +572,12 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     internal func MarkDeviceLost() {
         if !disposed {
             deviceLost = true
+            queueWorker.MarkFaulted()
         }
+    }
+
+    internal func QuiesceQueueAfterDeviceLoss() {
+        queueWorker.QuiesceAfterDeviceLoss()
     }
 
     internal func MarkTeardownFailed(result VkResult) {
@@ -448,6 +588,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
         terminalIdleResult = result
         terminalFailure = true
         terminalFailureResult = result
+        queueWorker.MarkFaulted()
         VulkanSharedRuntime.DisposeRetainedLogicalImageIdentityRegistry()
         if result == VkConstants.VK_ERROR_DEVICE_LOST {
             deviceLost = true
@@ -455,6 +596,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     }
 
     internal func WaitDeviceIdleResult() VkResult {
+        Interlocked.Increment(ref testDeviceIdleCallCount)
         if terminal {
             return terminalIdleResult
         }
@@ -497,12 +639,22 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
             return
         }
         disposed = true
+        try { queueWorker.Dispose() } catch (cleanup Exception) { }
+        try { pathResources.Collect(uint64.MaxValue) } catch (cleanup Exception) { }
+        try { pathResources.Dispose() } catch (cleanup Exception) { }
+        if let currentDiagnostics = diagnostics {
+            currentDiagnostics.ClearPathAtlasCurrentState()
+        }
         try { primitiveState.Dispose() } catch (cleanup Exception) { }
         try { imageResources.Collect(uint64.MaxValue) } catch (cleanup Exception) { }
         try { imageResources.Dispose() } catch (cleanup Exception) { }
         try { imageIdentityRegistry.Dispose() } catch (cleanup Exception) { }
         if Object.ReferenceEquals(logicalImageIdentityRegistry, imageIdentityRegistry) {
             logicalImageIdentityRegistry = nil
+        }
+        try { pathIdentityRegistry.Dispose() } catch (cleanup Exception) { }
+        if Object.ReferenceEquals(logicalPathIdentityRegistry, pathIdentityRegistry) {
+            logicalPathIdentityRegistry = nil
         }
         try { memoryAllocator.Dispose() } catch (cleanup Exception) { }
         if device != nint(0) && deviceDestroyAvailable {
@@ -538,6 +690,11 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
         }
         disposed = true
         references = 0
+        try { queueWorker.Dispose() } catch (cleanup Exception) { }
+        try { pathResources.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
+        if let currentDiagnostics = diagnostics {
+            currentDiagnostics.ClearPathAtlasCurrentState()
+        }
         try { primitiveState.Dispose() } catch (cleanup Exception) { }
         try { imageResources.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
         try { memoryAllocator.Dispose() } catch (cleanup Exception) { }
@@ -589,6 +746,7 @@ internal unsafe sealed class VulkanSharedLease : IDisposable {
     internal prop Dispatch VkDeviceDispatch { get { return owner.Dispatch } }
     internal prop GraphicsQueue VkQueue { get { return owner.GraphicsQueue } }
     internal prop PresentQueue VkQueue { get { return owner.PresentQueue } }
+    internal prop QueueWorker VulkanQueueWorker { get { return owner.QueueWorker } }
     internal prop GraphicsFamilyIndex uint32 { get { return owner.GraphicsFamilyIndex } }
     internal prop PresentFamilyIndex uint32 { get { return owner.PresentFamilyIndex } }
     internal prop DeviceWaitIdleAddress nint { get { return owner.DeviceWaitIdleAddress } }
@@ -599,11 +757,16 @@ internal unsafe sealed class VulkanSharedLease : IDisposable {
         get { return owner.SwapchainMaintenanceVariant }
     }
     internal prop Facts VulkanSharedDeviceFacts { get { return owner.Facts } }
+    internal prop MaxStorageBufferRange VkDeviceSize { get { return owner.MaxStorageBufferRange } }
     internal prop MemoryAllocator VulkanMemoryAllocator { get { return owner.MemoryAllocator } }
     internal prop ImageResources VulkanImageResources { get { return owner.ImageResources } }
     internal prop PrimitiveState VulkanSharedPrimitiveState { get { return owner.PrimitiveState } }
     internal prop ImageIdentityRegistry VulkanImageIdentityRegistry {
         get { return owner.ImageIdentityRegistry }
+    }
+    internal prop PathResources VulkanPathResources { get { return owner.PathResources } }
+    internal prop PathIdentityRegistry VulkanPathIdentityRegistry {
+        get { return owner.PathIdentityRegistry }
     }
     internal prop ObjectAccounting VulkanObjectAccounting? { get { return owner.ObjectAccounting } }
     internal prop Diagnostics VulkanDiagnostics? { get { return owner.Diagnostics } }
@@ -612,6 +775,9 @@ internal unsafe sealed class VulkanSharedLease : IDisposable {
     internal prop Terminal bool { get { return owner.Terminal } }
     internal prop TerminalIdleResult VkResult { get { return owner.TerminalIdleResult } }
     internal prop Generation uint64 { get { return owner.Generation } }
+    internal prop HasUnsubmittedRecordedSharedUpload bool {
+        get { return owner.HasUnsubmittedRecordedSharedUpload }
+    }
 
     internal func ReserveGraphicsSubmissionSerial() uint64 {
         return owner.ReserveGraphicsSubmissionSerial()
@@ -619,6 +785,10 @@ internal unsafe sealed class VulkanSharedLease : IDisposable {
 
     internal func MarkDeviceLost() {
         owner.MarkDeviceLost()
+    }
+
+    internal func QuiesceQueueAfterDeviceLoss() {
+        owner.QuiesceQueueAfterDeviceLoss()
     }
 
     internal func MarkTeardownFailed(result VkResult) {

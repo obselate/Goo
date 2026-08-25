@@ -4,6 +4,106 @@ Generated from `Goo.xml`. Source declarations supply type ownership and XML-emit
 
 Source: [`Goo/Text`](../../Goo/Text)
 
+## `FontSource`
+
+Source:
+
+- [`FontSource.gs`](../../Goo/Text/FontSource.gs)
+
+Owns one font face and its registration state.
+
+### `new(string,int32,bool,System.Byte[])`
+
+Creates a font source for the default face and variation set.
+
+### `new(string,int32,bool,System.Byte[],System.UInt32,FontVariation[])`
+
+Creates a font source for a face and variation set.
+
+### `Dispose`
+
+Releases the source and unregisters it when necessary.
+
+### `Register`
+
+Registers the source with Goo's font registry.
+
+### `FaceIndex`
+
+Gets the face index in the font bytes.
+
+### `Family`
+
+Gets the canonical family name.
+
+### `IsDisposed`
+
+Gets whether the source has been disposed.
+
+### `IsRegistered`
+
+Gets whether the source is registered and usable.
+
+### `Italic`
+
+Gets whether the font is italic.
+
+### `Variations`
+
+Gets a copy of the validated font variations.
+
+### `Weight`
+
+Gets the font weight.
+
+## `FontVariation`
+
+Source:
+
+- [`FontSource.gs`](../../Goo/Text/FontSource.gs)
+
+Stores one four-character font variation axis and value.
+
+### `new(string,float32)`
+
+Creates a font variation value.
+
+### `Deconstruct(string@,float32@)`
+
+Deconstructs the variation into its tag and value.
+
+### `Equals(FontVariation)`
+
+Tests equality with another variation.
+
+### `Equals(System.Object)`
+
+Tests equality with another value.
+
+### `GetHashCode`
+
+Gets the variation hash code.
+
+### `ToString`
+
+Returns the variation text representation.
+
+### `op_Equality(FontVariation,FontVariation)`
+
+Tests whether two variations are equal.
+
+### `op_Inequality(FontVariation,FontVariation)`
+
+Tests whether two variations are different.
+
+### `Tag`
+
+Gets the four-character variation axis tag.
+
+### `Value`
+
+Gets the variation axis value.
+
 ## `TextChange`
 
 Source:

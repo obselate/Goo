@@ -46,9 +46,11 @@ jobs:
           vulkaninfo --summary 2>&1 | tee artifacts/reports/vulkaninfo-summary.txt
           grep -F 'VK_LAYER_KHRONOS_validation' artifacts/reports/vulkaninfo-summary.txt
 
-      - name: Build Goo and focused S11 gates
+      - name: Build Goo, SVG compiler, and focused S11 gates
         run: |
           dotnet build Goo/Goo.gsproj -c Release -p:TreatWarningsAsErrors=true
+          dotnet build tools/Goo.SvgCompiler/Goo.SvgCompiler.csproj \
+            -c Release -p:TreatWarningsAsErrors=true
           dotnet build tests/Goo.VulkanAbiSmoke/Goo.VulkanAbiSmoke.csproj \
             -c Release -p:TreatWarningsAsErrors=true \
             -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so"
@@ -96,6 +98,17 @@ jobs:
           dotnet run --project tools/Goo.ApiDocs/Goo.ApiDocs.csproj -c Release
           git diff --exit-code -- docs/api
 
+      - name: Run focused API contract tests
+        run: |
+          dotnet test tests/Goo.ApiContractTests/Goo.ApiContractTests.csproj \
+            -c Release -p:TreatWarningsAsErrors=true
+
+      - name: Run focused core behavior tests
+        run: |
+          dotnet test tests/Goo.CoreBehaviorTests/Goo.CoreBehaviorTests.csproj \
+            -c Release -p:TreatWarningsAsErrors=true \
+            -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so"
+
       - name: Pack Goo
         run: |
           mkdir -p artifacts/packages
@@ -104,6 +117,11 @@ jobs:
             -p:ContinuousIntegrationBuild=true \
             -p:RepositoryCommit="$GITHUB_SHA" \
             -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so"
+          dotnet pack tools/Goo.SvgCompiler/Goo.SvgCompiler.csproj \
+            -c Release -o artifacts/packages \
+            -p:TreatWarningsAsErrors=true \
+            -p:ContinuousIntegrationBuild=true \
+            -p:RepositoryCommit="$GITHUB_SHA"
 
       - name: Publish clean package consumer
         env:
@@ -118,7 +136,7 @@ jobs:
           .github/scripts/validate-readme-examples.py \
             --package-dir artifacts/packages --cache "$NUGET_PACKAGES"
 
-      - name: Run focused S11 and S12 package Wayland lanes
+      - name: Run focused S11, S12, and S13 package Wayland lanes
         run: |
           export SDL_VIDEODRIVER=wayland
           export LIBGL_ALWAYS_SOFTWARE=1
@@ -133,6 +151,9 @@ jobs:
           run_package_lane GOO_NATIVE_TEXT_ATLAS_SMOKE=1 \
             GOO_VK_TEXT_ATLAS_BYTES=8192
           run_package_lane GOO_NATIVE_IMAGE_PRESSURE_SMOKE=1
+          run_package_lane GOO_NATIVE_S13_PATH_SMOKE=1
+          run_package_lane GOO_NATIVE_S13_CLIP_MASK_SMOKE=1
+          run_package_lane GOO_NATIVE_S13_COMPILED_VECTOR_SMOKE=1
 
       - name: Stage minimal Linux bundle and separate symbols
         run: |
@@ -167,6 +188,7 @@ jobs:
           if-no-files-found: error
           path: |
             artifacts/packages/Goo.${{ env.GOO_VERSION }}.nupkg
+            artifacts/packages/Goo.SvgCompiler.${{ env.GOO_VERSION }}.nupkg
             artifacts/linux-x64/
             artifacts/reports/
 
@@ -187,6 +209,7 @@ jobs:
           path: |
             artifacts/packages/Goo.${{ env.GOO_VERSION }}.nupkg
             artifacts/packages/Goo.${{ env.GOO_VERSION }}.snupkg
+            artifacts/packages/Goo.SvgCompiler.${{ env.GOO_VERSION }}.nupkg
             artifacts/Goo.${{ env.GOO_VERSION }}-linux-x64.tar.gz
             artifacts/Goo.${{ env.GOO_VERSION }}-linux-x64.tar.gz.sha256
 
@@ -215,6 +238,7 @@ jobs:
           [[ "$GOO_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]
           test "$GITHUB_REF_NAME" = "v$GOO_VERSION"
           grep -Fx "    <Version>$GOO_VERSION</Version>" Goo/Goo.gsproj
+          grep -Fx "    <Version>$GOO_VERSION</Version>" tools/Goo.SvgCompiler/Goo.SvgCompiler.csproj
           git fetch origin main --no-tags
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
@@ -235,13 +259,17 @@ jobs:
         with:
           user: ${{ vars.NUGET_USER }}
 
-      - name: Publish Goo to NuGet.org
+      - name: Publish Goo and Goo.SvgCompiler to NuGet.org
         run: |
           dotnet nuget push "artifacts/packages/Goo.$GOO_VERSION.nupkg" \
             --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
           dotnet nuget push "artifacts/packages/Goo.$GOO_VERSION.snupkg" \
+            --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+          dotnet nuget push "artifacts/packages/Goo.SvgCompiler.$GOO_VERSION.nupkg" \
             --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
@@ -257,6 +285,7 @@ jobs:
           assets=(
             "artifacts/packages/Goo.$GOO_VERSION.nupkg"
             "artifacts/packages/Goo.$GOO_VERSION.snupkg"
+            "artifacts/packages/Goo.SvgCompiler.$GOO_VERSION.nupkg"
             "artifacts/Goo.$GOO_VERSION-linux-x64.tar.gz"
             "artifacts/Goo.$GOO_VERSION-linux-x64.tar.gz.sha256"
           )

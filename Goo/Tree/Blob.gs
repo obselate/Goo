@@ -29,6 +29,12 @@ public open class Blob : Style {
     }
   }
   internal prop HasElementHandle bool { get { return (blobState & int32(64)) != 0 } }
+
+  internal func AttachRetainedHandle(handle ElementHandle?) {
+    ElementHandles.SetBlobHandle(this, handle)
+    blobState = handle != nil ? blobState | int32(64) : blobState & ^int32(64)
+    updateSparseInputState()
+  }
   /// Gets the platform-neutral accessibility declaration for this element.
   public prop Accessibility Accessibility? {
     get { return AccessibilityMetadata.BlobValue(this) }

@@ -5,6 +5,7 @@
     <RootNamespace>GooPackageSmoke</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Shared/S09RScene.gs" Link="S09RScene.gs" />
     <PackageReference Include="Goo" Version="0.2.0" />
     <Content Include="../../proofs/Goo.VulkanProof/Assets/Text/VendSans-VariableFont_wght.ttf"
              Link="VendSans-VariableFont_wght.ttf"

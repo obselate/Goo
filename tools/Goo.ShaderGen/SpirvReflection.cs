@@ -37,19 +37,47 @@ internal sealed class SpirvPushConstant
     }
 }
 
+internal sealed class SpirvStorageMember
+{
+    public int Offset { get; }
+    public string Type { get; }
+
+    public SpirvStorageMember(int offset, string type)
+    {
+        Offset = offset;
+        Type = type;
+    }
+}
+
 internal sealed class SpirvDescriptor
 {
     public int Set { get; }
     public int Binding { get; }
     public string Type { get; }
     public int Count { get; }
+    public int? StorageStride { get; }
+    public IReadOnlyList<SpirvStorageMember> StorageMembers { get; }
+    public string? ImageDimension { get; }
+    public bool? ImageArrayed { get; }
 
-    public SpirvDescriptor(int set, int binding, string type, int count)
+    public SpirvDescriptor(
+        int set,
+        int binding,
+        string type,
+        int count,
+        int? storageStride,
+        IReadOnlyList<SpirvStorageMember> storageMembers,
+        string? imageDimension,
+        bool? imageArrayed)
     {
         Set = set;
         Binding = binding;
         Type = type;
         Count = count;
+        StorageStride = storageStride;
+        StorageMembers = storageMembers;
+        ImageDimension = imageDimension;
+        ImageArrayed = imageArrayed;
     }
 }
 
@@ -63,6 +91,7 @@ internal sealed class SpirvModuleReflection
     public int DescriptorCount { get; }
     public IReadOnlyList<SpirvDescriptor> Descriptors { get; }
     public IReadOnlyList<uint> Capabilities { get; }
+    public IReadOnlyList<string> Extensions { get; }
 
     public SpirvModuleReflection(
         string stage,
@@ -72,7 +101,8 @@ internal sealed class SpirvModuleReflection
         SpirvPushConstant? pushConstant,
         int descriptorCount,
         IReadOnlyList<SpirvDescriptor> descriptors,
-        IReadOnlyList<uint> capabilities)
+        IReadOnlyList<uint> capabilities,
+        IReadOnlyList<string> extensions)
     {
         Stage = stage;
         EntryPoint = entryPoint;
@@ -82,6 +112,7 @@ internal sealed class SpirvModuleReflection
         DescriptorCount = descriptorCount;
         Descriptors = descriptors;
         Capabilities = capabilities;
+        Extensions = extensions;
     }
 }
 
@@ -112,6 +143,7 @@ internal static class SpirvReflection
     private const uint Magic = 0x07230203;
     private const uint Version16 = 0x00010600;
     private const uint OpCapability = 17;
+    private const uint OpExtension = 10;
     private const uint OpEntryPoint = 15;
     private const uint OpDecorate = 71;
     private const uint OpMemberDecorate = 72;
@@ -132,6 +164,7 @@ internal static class SpirvReflection
     private const uint DecorationBinding = 33;
     private const uint DecorationDescriptorSet = 34;
     private const uint DecorationOffset = 35;
+    private const uint DecorationArrayStride = 6;
     private const uint StorageUniformConstant = 0;
     private const uint StorageInput = 1;
     private const uint StorageUniform = 2;
@@ -165,9 +198,11 @@ internal static class SpirvReflection
         Dictionary<uint, Variable> variables = new();
         Dictionary<uint, Decorations> decorations = new();
         Dictionary<(uint StructId, uint Member), int> memberOffsets = new();
+        Dictionary<uint, int> arrayStrides = new();
         Dictionary<uint, ulong> constants = new();
         List<EntryPoint> entryPoints = new();
         List<uint> capabilities = new();
+        List<string> extensions = new();
 
         int cursor = 5;
         while (cursor < words.Length)
@@ -179,7 +214,7 @@ internal static class SpirvReflection
             {
                 throw new InvalidOperationException($"Invalid SPIR-V instruction at word {cursor}");
             }
-            ReadInstruction(words, cursor, wordCount, opcode, types, variables, decorations, memberOffsets, constants, entryPoints, capabilities);
+            ReadInstruction(words, cursor, wordCount, opcode, types, variables, decorations, memberOffsets, arrayStrides, constants, entryPoints, capabilities, extensions);
             cursor += wordCount;
         }
 
@@ -211,8 +246,9 @@ internal static class SpirvReflection
                 {
                     throw new InvalidOperationException($"Descriptor variable %{id} lacks set or binding");
                 }
-                (string descriptorType, int descriptorCount) = ReflectDescriptor(variable.TypeId, variable.StorageClass, types, constants);
-                descriptors.Add(new SpirvDescriptor(value.DescriptorSet.Value, value.Binding.Value, descriptorType, descriptorCount));
+                SpirvDescriptor descriptor = ReflectDescriptor(value.DescriptorSet.Value, value.Binding.Value,
+                    variable.TypeId, variable.StorageClass, types, memberOffsets, arrayStrides, constants);
+                descriptors.Add(descriptor);
                 continue;
             }
             if (variable.StorageClass == StoragePushConstant)
@@ -221,7 +257,8 @@ internal static class SpirvReflection
                 {
                     throw new InvalidOperationException("SPIR-V module has multiple push-constant variables");
                 }
-                pushConstant = ReflectPushConstant(variable.TypeId, types, memberOffsets, constants);
+                pushConstant = ReflectPushConstant(variable.TypeId, types, memberOffsets,
+                    arrayStrides, constants);
                 continue;
             }
             if (!entryInterfaces.Contains(id) || variable.StorageClass is not (StorageInput or StorageOutput))
@@ -254,7 +291,8 @@ internal static class SpirvReflection
             pushConstant,
             orderedDescriptors.Length,
             orderedDescriptors,
-            capabilities.Distinct().OrderBy(value => value).ToArray());
+            capabilities.Distinct().OrderBy(value => value).ToArray(),
+            extensions.Distinct(StringComparer.Ordinal).OrderBy(value => value, StringComparer.Ordinal).ToArray());
     }
 
     private static void ReadInstruction(
@@ -266,13 +304,21 @@ internal static class SpirvReflection
         Dictionary<uint, Variable> variables,
         Dictionary<uint, Decorations> decorations,
         Dictionary<(uint StructId, uint Member), int> memberOffsets,
+        Dictionary<uint, int> arrayStrides,
         Dictionary<uint, ulong> constants,
         List<EntryPoint> entryPoints,
-        List<uint> capabilities)
+        List<uint> capabilities,
+        List<string> extensions)
     {
         if (opcode == OpCapability)
         {
             capabilities.Add(words[cursor + 1]);
+            return;
+        }
+        if (opcode == OpExtension)
+        {
+            (string extension, _) = ReadString(words, cursor + 1, cursor + wordCount);
+            extensions.Add(extension);
             return;
         }
         if (opcode == OpEntryPoint)
@@ -299,6 +345,10 @@ internal static class SpirvReflection
             else if (decoration == DecorationDescriptorSet)
             {
                 value.DescriptorSet = checked((int)words[cursor + 3]);
+            }
+            else if (decoration == DecorationArrayStride)
+            {
+                arrayStrides[target] = checked((int)words[cursor + 3]);
             }
             return;
         }
@@ -330,10 +380,14 @@ internal static class SpirvReflection
         }
     }
 
-    private static (string Type, int Count) ReflectDescriptor(
+    private static SpirvDescriptor ReflectDescriptor(
+        int set,
+        int binding,
         uint pointerTypeId,
         uint storageClass,
         IReadOnlyDictionary<uint, TypeInfo> types,
+        IReadOnlyDictionary<(uint StructId, uint Member), int> memberOffsets,
+        IReadOnlyDictionary<uint, int> arrayStrides,
         IReadOnlyDictionary<uint, ulong> constants)
     {
         TypeInfo pointer = RequireType(types, pointerTypeId);
@@ -341,7 +395,92 @@ internal static class SpirvReflection
         {
             throw new InvalidOperationException("Descriptor variable has an invalid pointer type");
         }
-        return ReflectDescriptorPointee(pointer.Operands[1], storageClass, types, constants);
+        (string descriptorType, int descriptorCount) = ReflectDescriptorPointee(pointer.Operands[1], storageClass, types, constants);
+        (string? imageDimension, bool? imageArrayed) = ReflectImageShape(pointer.Operands[1], types);
+        int? storageStride = null;
+        IReadOnlyList<SpirvStorageMember> storageMembers = Array.Empty<SpirvStorageMember>();
+        if (storageClass == StorageStorageBuffer)
+        {
+            (storageStride, storageMembers) = ReflectStorageRecord(pointer.Operands[1], types, memberOffsets, arrayStrides, constants);
+        }
+        return new SpirvDescriptor(set, binding, descriptorType, descriptorCount, storageStride,
+            storageMembers, imageDimension, imageArrayed);
+    }
+
+    private static (string? Dimension, bool? Arrayed) ReflectImageShape(
+        uint typeId,
+        IReadOnlyDictionary<uint, TypeInfo> types)
+    {
+        TypeInfo type = RequireType(types, typeId);
+        while (type.Opcode == OpTypeArray)
+        {
+            type = RequireType(types, type.Operands[0]);
+        }
+        if (type.Opcode == OpTypeSampledImage)
+        {
+            type = RequireType(types, type.Operands[0]);
+        }
+        if (type.Opcode != OpTypeImage)
+        {
+            return (null, null);
+        }
+        string dimension = type.Operands[1] switch
+        {
+            0 => "1d",
+            1 => "2d",
+            2 => "3d",
+            3 => "cube",
+            4 => "rect",
+            5 => "buffer",
+            6 => "subpass-data",
+            _ => throw new InvalidOperationException($"Image type has unsupported dimension {type.Operands[1]}")
+        };
+        return (dimension, type.Operands[3] != 0);
+    }
+
+    private static (int? Stride, IReadOnlyList<SpirvStorageMember> Members) ReflectStorageRecord(
+        uint pointeeTypeId,
+        IReadOnlyDictionary<uint, TypeInfo> types,
+        IReadOnlyDictionary<(uint StructId, uint Member), int> memberOffsets,
+        IReadOnlyDictionary<uint, int> arrayStrides,
+        IReadOnlyDictionary<uint, ulong> constants)
+    {
+        TypeInfo block = RequireType(types, pointeeTypeId);
+        if (block.Opcode != OpTypeStruct)
+        {
+            return (null, Array.Empty<SpirvStorageMember>());
+        }
+        for (uint index = 0; index < block.Operands.Length; index++)
+        {
+            uint memberTypeId = block.Operands[index];
+            TypeInfo memberType = RequireType(types, memberTypeId);
+            if (memberType.Opcode != OpTypeRuntimeArray)
+            {
+                continue;
+            }
+            if (!arrayStrides.TryGetValue(memberTypeId, out int stride))
+            {
+                throw new InvalidOperationException($"Storage-buffer runtime array %{memberTypeId} lacks an ArrayStride");
+            }
+            uint elementTypeId = memberType.Operands[0];
+            TypeInfo elementType = RequireType(types, elementTypeId);
+            if (elementType.Opcode != OpTypeStruct)
+            {
+                return (stride, Array.Empty<SpirvStorageMember>());
+            }
+            List<SpirvStorageMember> members = new();
+            for (uint elementIndex = 0; elementIndex < elementType.Operands.Length; elementIndex++)
+            {
+                if (!memberOffsets.TryGetValue((elementTypeId, elementIndex), out int offset))
+                {
+                    throw new InvalidOperationException($"Storage-buffer member {elementIndex} lacks an offset");
+                }
+                string type = RenderType(elementType.Operands[elementIndex], types, constants);
+                members.Add(new SpirvStorageMember(offset, type));
+            }
+            return (stride, members);
+        }
+        return (null, Array.Empty<SpirvStorageMember>());
     }
 
     private static (string Type, int Count) ReflectDescriptorPointee(
@@ -401,6 +540,7 @@ internal static class SpirvReflection
         uint pointerTypeId,
         IReadOnlyDictionary<uint, TypeInfo> types,
         IReadOnlyDictionary<(uint StructId, uint Member), int> memberOffsets,
+        IReadOnlyDictionary<uint, int> arrayStrides,
         IReadOnlyDictionary<uint, ulong> constants)
     {
         TypeInfo pointer = RequireType(types, pointerTypeId);
@@ -422,13 +562,57 @@ internal static class SpirvReflection
             {
                 throw new InvalidOperationException($"Push-constant member {index} lacks an offset");
             }
-            uint memberTypeId = structure.Operands[index];
+            uint memberTypeId = UnwrapPushConstantMember(structure.Operands[index], types,
+                memberOffsets, arrayStrides, constants);
             string type = RenderType(memberTypeId, types, constants);
             int memberSize = SizeOf(memberTypeId, types, constants);
             members.Add(new SpirvPushConstantMember(offset, type));
             size = Math.Max(size, checked(offset + memberSize));
         }
         return new SpirvPushConstant(size, members);
+    }
+
+    private static uint UnwrapPushConstantMember(
+        uint typeId,
+        IReadOnlyDictionary<uint, TypeInfo> types,
+        IReadOnlyDictionary<(uint StructId, uint Member), int> memberOffsets,
+        IReadOnlyDictionary<uint, int> arrayStrides,
+        IReadOnlyDictionary<uint, ulong> constants)
+    {
+        TypeInfo wrapper = RequireType(types, typeId);
+        if (wrapper.Opcode != OpTypeStruct)
+        {
+            return typeId;
+        }
+        if (wrapper.Operands.Length != 1)
+        {
+            throw new InvalidOperationException(
+                $"Push-constant wrapper %{typeId} must contain exactly one member");
+        }
+        if (!memberOffsets.TryGetValue((typeId, 0), out int offset) || offset != 0)
+        {
+            throw new InvalidOperationException(
+                $"Push-constant wrapper %{typeId} member must have offset zero");
+        }
+        uint memberTypeId = wrapper.Operands[0];
+        TypeInfo member = RequireType(types, memberTypeId);
+        if (member.Opcode != OpTypeArray || member.Operands.Length != 2)
+        {
+            throw new InvalidOperationException(
+                $"Push-constant wrapper %{typeId} must contain one fixed array");
+        }
+        if (!arrayStrides.TryGetValue(memberTypeId, out int stride))
+        {
+            throw new InvalidOperationException(
+                $"Push-constant wrapper array %{memberTypeId} lacks an ArrayStride");
+        }
+        int elementSize = SizeOf(member.Operands[0], types, constants);
+        if (stride != elementSize)
+        {
+            throw new InvalidOperationException(
+                $"Push-constant wrapper array %{memberTypeId} has unsupported stride {stride}");
+        }
+        return memberTypeId;
     }
 
     private static string RenderVariableType(uint pointerTypeId, IReadOnlyDictionary<uint, TypeInfo> types, IReadOnlyDictionary<uint, ulong> constants)

@@ -3,6 +3,8 @@
 !/.gitignore
 !/.gitattributes
 !/AGENTS.md
+!/VULKAN-AUTHORING-LIBRARY.md
+!/SHADER-EFFECT-AUTHORING-AUDIT.md
 !/.agents/
 !/.agents/skills/
 !/.agents/skills/resolve-goo-issue/
@@ -34,6 +36,11 @@
 !/tests/**
 /tests/GooExtended.Tests/
 
+!/apps/
+/apps/*
+!/apps/Goo.Showcase/
+!/apps/Goo.Showcase/**
+
 !/docs/
 /docs/*
 !/docs/assets/
@@ -49,6 +56,11 @@
 !/docs/perf/
 /docs/perf/*
 !/docs/perf/2026-08-16-gsharp-0.4.1-skia-baseline-status.md
+!/docs/perf/2026-08-19-vulkan-async-readback-baseline.md
+!/docs/perf/2026-08-19-vulkan-aa-o16-linux.md
+!/docs/perf/2026-08-20-vulkan-s15-first-slice-linux.md
+!/docs/perf/2026-08-20-vulkan-s16-first-slice-linux.md
+!/docs/perf/2026-08-21-vulkan-s16-d02-linux-before.md
 !/docs/perf/q10-workloads-v1.json
 !/docs/plans/
 /docs/plans/*
@@ -56,16 +68,21 @@
 
 !/tools/
 /tools/*
+!/tools/merge_xml_docs.py
 !/tools/Goo.ApiDocs/
 !/tools/Goo.ApiDocs/**
 !/tools/Goo.VulkanGen/
 !/tools/Goo.VulkanGen/**
 !/tools/Goo.ShaderGen/
 !/tools/Goo.ShaderGen/**
+!/tools/Goo.ShaderEffectTool/
+!/tools/Goo.ShaderEffectTool/**
 !/tools/Goo.TextNative/
 !/tools/Goo.TextNative/**
 !/tools/Goo.UnicodeGen/
 !/tools/Goo.UnicodeGen/**
+!/tools/Goo.SvgCompiler/
+!/tools/Goo.SvgCompiler/**
 
 !/proofs/
 /proofs/*

@@ -2,9 +2,7 @@ package Goo
 
 import System
 import System.Collections.Generic
-import System.Diagnostics
 import System.Numerics
-import System.Text
 
 /// Identifies the requested state of a window.
 public enum WindowState { Normal; Minimized; Maximized; Fullscreen }
@@ -55,7 +53,9 @@ public partial class Window {
   /// Reports whether the window is open.
   public prop IsOpen bool { get; private set; }
   internal prop Tree Node? { get { return node } }
-  /// Gets or sets GPU vertical synchronization.
+  /// Gets or sets per-window GPU presentation synchronization.
+  /// True selects FIFO. False prefers Immediate, then Mailbox, then FIFO.
+  /// Window.Run applies internal display-rate pacing for either value.
   public prop VSync bool {
     get { return vsync }
     set(v) {
@@ -67,6 +67,7 @@ public partial class Window {
       if let native = host {
         native.SetVSync(v)
       }
+      windowTarget?.SetVSync(v)
     }
   }
 
@@ -311,6 +312,7 @@ public partial class Window {
   private var renderDirty bool
   private var hookInstalled bool
   private var paintResourceHook Action?
+  private var shaderEffectInvalidatedHook Action?
   private var imageCompletionHook ((Node, object) -> void)?
   private var retainedInvalidationHook Action[ReconcileEffects]?
   private var cellHook Action[Cell]?

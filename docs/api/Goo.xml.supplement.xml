@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <members>
+    <member name="T:Goo.CompiledVectorAsset">
+      <summary>Loads, caches, and renders a validated compiled vector asset.</summary>
+    </member>
+    <member name="M:Goo.CompiledVectorAsset.#ctor(System.Byte[])">
+      <summary>Creates an asset from compiled vector bytes.</summary>
+    </member>
+    <member name="M:Goo.CompiledVectorAsset.Load(System.Byte[])">
+      <summary>Loads a compiled vector asset and throws when the bytes are invalid.</summary>
+    </member>
+    <member name="M:Goo.CompiledVectorAsset.TryLoad(System.Byte[])">
+      <summary>Loads a compiled vector asset and returns nil when the bytes are invalid.</summary>
+    </member>
+    <member name="M:Goo.CompiledVectorAsset.PathForNode(System.Int32)">
+      <summary>Returns the cached path for one asset node.</summary>
+    </member>
+    <member name="M:Goo.CompiledVectorAsset.Render">
+      <summary>Creates a retained display cell for this asset.</summary>
+    </member>
+    <member name="M:Goo.CompiledVectorAsset.Render(System.String)">
+      <summary>Creates or updates a retained display cell using the supplied key.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.Version">
+      <summary>Gets the compiled asset format version.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.Flags">
+      <summary>Gets the compiled asset flags.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.ByteCount">
+      <summary>Gets the encoded asset byte count.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.ViewBoxX">
+      <summary>Gets the view box origin on the x axis.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.ViewBoxY">
+      <summary>Gets the view box origin on the y axis.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.ViewBoxWidth">
+      <summary>Gets the view box width.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.ViewBoxHeight">
+      <summary>Gets the view box height.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.NodeCount">
+      <summary>Gets the number of vector nodes.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.ContourCount">
+      <summary>Gets the number of vector contours.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.CurveCount">
+      <summary>Gets the number of vector curves.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.MorphCurveCount">
+      <summary>Gets the number of morph curves.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.PaintCount">
+      <summary>Gets the number of paints.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.StrokeCount">
+      <summary>Gets the number of strokes.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.ClipCount">
+      <summary>Gets the number of clip paths.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.TrackCount">
+      <summary>Gets the number of animation tracks.</summary>
+    </member>
+    <member name="P:Goo.CompiledVectorAsset.KeyframeCount">
+      <summary>Gets the number of animation keyframes.</summary>
+    </member>
+    <member name="T:Goo.FontSource">
+      <summary>Owns one font face and its registration state.</summary>
+    </member>
+    <member name="M:Goo.FontSource.#ctor(System.String,System.Int32,System.Boolean,System.Byte[])">
+      <summary>Creates a font source for the default face and variation set.</summary>
+    </member>
+    <member name="M:Goo.FontSource.#ctor(System.String,System.Int32,System.Boolean,System.Byte[],System.UInt32,Goo.FontVariation[])">
+      <summary>Creates a font source for a face and variation set.</summary>
+    </member>
+    <member name="P:Goo.FontSource.Family">
+      <summary>Gets the canonical family name.</summary>
+    </member>
+    <member name="P:Goo.FontSource.Weight">
+      <summary>Gets the font weight.</summary>
+    </member>
+    <member name="P:Goo.FontSource.Italic">
+      <summary>Gets whether the font is italic.</summary>
+    </member>
+    <member name="P:Goo.FontSource.FaceIndex">
+      <summary>Gets the face index in the font bytes.</summary>
+    </member>
+    <member name="P:Goo.FontSource.Variations">
+      <summary>Gets a copy of the validated font variations.</summary>
+    </member>
+    <member name="P:Goo.FontSource.IsRegistered">
+      <summary>Gets whether the source is registered and usable.</summary>
+    </member>
+    <member name="P:Goo.FontSource.IsDisposed">
+      <summary>Gets whether the source has been disposed.</summary>
+    </member>
+    <member name="M:Goo.FontSource.Register">
+      <summary>Registers the source with Goo's font registry.</summary>
+    </member>
+    <member name="M:Goo.FontSource.Dispose">
+      <summary>Releases the source and unregisters it when necessary.</summary>
+    </member>
+    <member name="T:Goo.FontVariation">
+      <summary>Stores one four-character font variation axis and value.</summary>
+    </member>
+    <member name="M:Goo.FontVariation.#ctor(System.String,System.Single)">
+      <summary>Creates a font variation value.</summary>
+    </member>
+    <member name="P:Goo.FontVariation.Tag">
+      <summary>Gets the four-character variation axis tag.</summary>
+    </member>
+    <member name="P:Goo.FontVariation.Value">
+      <summary>Gets the variation axis value.</summary>
+    </member>
+    <member name="M:Goo.FontVariation.Deconstruct(System.String@,System.Single@)">
+      <summary>Deconstructs the variation into its tag and value.</summary>
+    </member>
+    <member name="M:Goo.FontVariation.Equals(Goo.FontVariation)">
+      <summary>Tests equality with another variation.</summary>
+    </member>
+    <member name="M:Goo.FontVariation.Equals(System.Object)">
+      <summary>Tests equality with another value.</summary>
+    </member>
+    <member name="M:Goo.FontVariation.GetHashCode">
+      <summary>Gets the variation hash code.</summary>
+    </member>
+    <member name="M:Goo.FontVariation.ToString">
+      <summary>Returns the variation text representation.</summary>
+    </member>
+    <member name="M:Goo.FontVariation.op_Equality(Goo.FontVariation,Goo.FontVariation)">
+      <summary>Tests whether two variations are equal.</summary>
+    </member>
+    <member name="M:Goo.FontVariation.op_Inequality(Goo.FontVariation,Goo.FontVariation)">
+      <summary>Tests whether two variations are different.</summary>
+    </member>
+    <member name="P:Goo.ImageSourceProvider.ContentVersion">
+      <summary>Gets the content version used to invalidate mounted image bindings.</summary>
+    </member>
+    <member name="E:Goo.ImageSourceProvider.ContentChanged">
+      <summary>Occurs when provider-backed image content changes.</summary>
+    </member>
+    <member name="P:Goo.ImageSource.ContentVersion">
+      <summary>Gets the current image content version.</summary>
+    </member>
+    <member name="E:Goo.ImageSource.ContentChanged">
+      <summary>Occurs when the image content changes.</summary>
+    </member>
+    <member name="P:Goo.Style.ClipPathFillRule">
+      <summary>Sets the fill rule used by ClipPath.</summary>
+    </member>
+    <member name="T:Goo.ShaderEffect">
+      <summary>Owns one precompiled fragment SPIR-V program and its retained parameter state.</summary>
+    </member>
+    <member name="M:Goo.ShaderEffect.#ctor(System.Byte[],System.Boolean)">
+      <summary>Creates a retained fragment effect from precompiled SPIR-V.</summary>
+      <param name="fragmentSpirv">The complete fragment shader module bytes.</param>
+      <param name="samplesBackdrop">Whether Goo copies the existing target behind the element for shader sampling.</param>
+    </member>
+    <member name="M:Goo.ShaderEffect.#ctor(System.Byte[],System.Boolean,System.Single)">
+      <summary>Creates a retained fragment effect with bounded backdrop sampling beyond its visible bounds.</summary>
+      <param name="fragmentSpirv">The complete fragment shader module bytes.</param>
+      <param name="samplesBackdrop">Whether Goo copies the existing target behind the element for shader sampling.</param>
+      <param name="backdropOutset">The finite nonnegative logical-pixel distance captured around the element, up to 256.</param>
+    </member>
+    <member name="M:Goo.ShaderEffect.SetParameter(System.Int32,System.Numerics.Vector4)">
+      <summary>Updates one retained shader parameter slot without allocating on the warm path.</summary>
+      <param name="slot">The parameter slot from 0 through 7.</param>
+      <param name="value">The four finite parameter values.</param>
+      <returns>True when the retained value changed.</returns>
+    </member>
+    <member name="P:Goo.Style.ShaderEffect">
+      <summary>Sets a layout-neutral fragment effect over the element and its retained subtree.</summary>
+    </member>
+  </members>
+</doc>

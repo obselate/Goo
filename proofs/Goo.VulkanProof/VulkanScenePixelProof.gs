@@ -207,6 +207,27 @@ internal func PixelSceneSemanticDigest(frame SceneFrame) uint64 {
     return frame.SemanticDigest()
 }
 
+internal unsafe func PixelSceneReadbackDigest(readback *uint8, width uint32, height uint32) uint64 {
+    if readback == nil || width < PixelSceneContract.Width || height < PixelSceneContract.Height {
+        throw ArgumentException("invalid Vulkan scene readback")
+    }
+    var hash uint64 = 14695981039346656037uL
+    var y uint32 = 0u
+    while y < PixelSceneContract.Height {
+        var x uint32 = 0u
+        while x < PixelSceneContract.Width {
+            let offset = uint64(y) * uint64(width) * 4uL + uint64(x) * 4uL
+            hash = (hash ^ uint64(readback[offset])) * 1099511628211uL
+            hash = (hash ^ uint64(readback[offset + 1uL])) * 1099511628211uL
+            hash = (hash ^ uint64(readback[offset + 2uL])) * 1099511628211uL
+            hash = (hash ^ uint64(readback[offset + 3uL])) * 1099511628211uL
+            x++
+        }
+        y++
+    }
+    return hash
+}
+
 internal unsafe func VerifyPixelSceneReadback(
     readback *uint8,
     width uint32,
