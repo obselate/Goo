@@ -10,20 +10,15 @@ public open class Cell[TInput any] : Cell {
   private var hasInput bool
 
   /// Gets the current immutable input snapshot.
-  protected prop Input TInput { get { return input } }
+  protected prop Input TInput { get -> input }
 
   /// Decides whether a later post-mount snapshot needs a rebuild after Input stores next; default uses EqualityComparer[TInput].Default.
-  protected open func ShouldRebuild(previous TInput, next TInput) bool {
-    return !EqualityComparer[TInput].Default.Equals(previous, next)
-  }
+  protected open func ShouldRebuild(previous TInput, next TInput) bool ->
+    !EqualityComparer[TInput].Default.Equals(previous, next)
 
-  protected open func Build(input TInput) Blob {
-    return Build()
-  }
+  protected open func Build(input TInput) Blob -> Build()
 
-  internal override func BuildOutput() Blob {
-    return Build(input)
-  }
+  internal override func BuildOutput() Blob -> Build(input)
 
   internal func SetInput(value TInput) bool {
     let previous = input
@@ -42,10 +37,4 @@ public open class Cell[TInput any] : Cell {
     return true
   }
 
-  internal override func ApplyInput(value object?) bool {
-    if value is TInput {
-      return SetInput(value)
-    }
-    return false
-  }
 }

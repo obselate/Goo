@@ -11,6 +11,7 @@ internal open class ImageSourceBinding {
   private var sourceChangedRegistration Action?
   private var sourceChangedHandler Action?
   private var contentVersionSnapshot uint64
+  private var currentToken ImageSourceBindingToken?
   private var ownerPost ((Action) -> void)?
   private var ownerThreadId int32
 
@@ -78,6 +79,12 @@ internal open class ImageSourceBinding {
     Source = source
     Lease = lease
     contentVersionSnapshot = acceptedVersion
+    currentToken = nil
+    if acceptedVersion != 0uL {
+      if let currentLease = lease {
+        currentToken = ImageSourceBindingToken(this, source, currentLease, acceptedVersion)
+      }
+    }
     let registration = func() {
       dispatchToOwner(func() {
         if Object.ReferenceEquals(Source, source) {
@@ -123,29 +130,18 @@ internal open class ImageSourceBinding {
 
   internal func WatchSource(callback Action[ImageSourceBindingToken]) {
     SourceCompletion?.Dispose()
-    guard let source = Source else { return }
-    guard let lease = Lease else { return }
-    if contentVersionSnapshot == 0uL { return }
-    let token = ImageSourceBindingToken(this, source, lease, contentVersionSnapshot)
-    SourceCompletion = lease.OnCompleted(func() {
+    guard let token = currentToken else { return }
+    SourceCompletion = token.Lease.OnCompleted(func() {
       if IsCurrentToken(token) {
         callback(token)
       }
     })
   }
 
-  internal func IsCurrentToken(token ImageSourceBindingToken) bool {
-    return Object.ReferenceEquals(token.Binding, this)
-      && Object.ReferenceEquals(Source, token.Source) && Object.ReferenceEquals(Lease, token.Lease)
-      && contentVersionSnapshot == token.Version
-  }
+  internal func IsCurrentToken(token ImageSourceBindingToken) bool ->
+    Object.ReferenceEquals(currentToken, token)
 
-  internal func CurrentToken() ImageSourceBindingToken? {
-    guard let source = Source else { return nil }
-    guard let lease = Lease else { return nil }
-    if contentVersionSnapshot == 0uL { return nil }
-    return ImageSourceBindingToken(this, source, lease, contentVersionSnapshot)
-  }
+  internal func CurrentToken() ImageSourceBindingToken? -> currentToken
 
   internal func CompletedResult() DecodedImage? {
     SourceCompletion?.Dispose()
@@ -166,6 +162,7 @@ internal open class ImageSourceBinding {
     Lease = nil
     SourceCompletion = nil
     contentVersionSnapshot = 0uL
+    currentToken = nil
   }
 }
 
@@ -188,12 +185,11 @@ internal class ImageLayouts {
   shared {
     private var sourceValues ConditionalWeakTable[Node, ImageSourceBinding]?
 
-    internal func Source(n Node) ImageSourceProvider? { return sourceState(n)?.Source }
-    internal func Lease(n Node) ImageSourceLease? { return sourceState(n)?.Lease }
-    internal func SourceCompletion(n Node) ImageSourceCompletion? { return sourceState(n)?.SourceCompletion }
-    internal func CurrentToken(n Node) ImageSourceBindingToken? {
-      return sourceState(n)?.CurrentToken()
-    }
+    internal func Source(n Node) ImageSourceProvider? -> sourceState(n)?.Source
+    internal func Lease(n Node) ImageSourceLease? -> sourceState(n)?.Lease
+    internal func SourceCompletion(n Node) ImageSourceCompletion? ->
+      sourceState(n)?.SourceCompletion
+    internal func CurrentToken(n Node) ImageSourceBindingToken? -> sourceState(n)?.CurrentToken()
     internal func IsCurrent(n Node, token object) bool {
       if Object.ReferenceEquals(n.ImageRequest, token) {
         return true

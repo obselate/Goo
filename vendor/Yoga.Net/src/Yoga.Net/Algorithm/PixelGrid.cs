@@ -110,11 +110,12 @@ namespace Facebook.Yoga
                         absoluteNodeTop, pointScaleFactor, false, textRounding));
             }
 
-            foreach (Node child in node.GetChildren())
+            var childCount = node.GetChildCount();
+            for (nuint index = 0; index < childCount; index++)
             {
+                var child = node.GetChild(index)!;
                 RoundLayoutResultsToPixelGrid(child, absoluteNodeLeft, absoluteNodeTop);
             }
         }
     }
 }
-

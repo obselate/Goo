@@ -28,9 +28,7 @@ public open class Cell {
 
   /// Builds the component tree.
   /// @returns the root blob for this component
-  public open func Build() Blob {
-    return Container{}
-  }
+  public open func Build() Blob -> Container{}
 
   /// Requests a rebuild of this component.
   public func Rebuild() {
@@ -153,9 +151,7 @@ public open class Cell {
     }
   }
 
-  internal open func BuildOutput() Blob {
-    return Build()
-  }
+  internal open func BuildOutput() Blob -> Build()
 
   internal func HasDirty() bool {
     var selfDirty bool
@@ -225,60 +221,54 @@ public open class Cell {
   /// @typeparam T state value type
   /// @param initial initial value
   /// @returns tracked component state
-  public func Track[T](initial T) State[T] {
-    return State[T]{ raw: initial, invalidate: Rebuild }
-  }
+  public func Track[T](initial T) State[T] -> State[T]{ raw: initial, invalidate: Rebuild }
 
   /// Creates externally configured state owned by this component; prefer stable named or cached delegates for delegate values.
   /// @typeparam T state value type
   /// @param initial initial value
   /// @returns tracked component state
-  public func Prop[T](initial T) State[T] {
-    return Track(initial)
-  }
+  public func Prop[T](initial T) State[T] -> Track(initial)
 
   /// Creates a number animated by this component.
   /// @param initial initial value
   /// @returns an animation bridge owned by this component
-  public func Animate(initial float64) Anim[float64] {
-    return registerAnim[float64](AnimCore[float64](initial, MotionConverters.Float64, Rebuild))
-  }
+  public func Animate(initial float64) Anim[float64] ->
+    registerAnim[float64](AnimCore[float64](initial, MotionConverters.Float64, Rebuild))
 
   /// Creates a point animated by this component.
   /// @param initial initial value
   /// @returns an animation bridge owned by this component
-  public func Animate(initial Point) Anim[Point] {
-    return registerAnim[Point](AnimCore[Point](initial, MotionConverters.Point, Rebuild))
-  }
+  public func Animate(initial Point) Anim[Point] ->
+    registerAnim[Point](AnimCore[Point](initial, MotionConverters.Point, Rebuild))
 
   /// Creates a color animated by this component.
   /// @param initial initial value
   /// @returns an animation bridge owned by this component
-  public func Animate(initial Color) Anim[Color] {
-    return registerAnim[Color](AnimCore[Color](initial, MotionConverters.Color, Rebuild))
-  }
+  public func Animate(initial Color) Anim[Color] ->
+    registerAnim[Color](AnimCore[Color](initial, MotionConverters.Color, Rebuild))
 
   /// Creates a fixed-unit length animated by this component.
   /// @param initial pixel or percentage initial value
   /// @returns an animation bridge owned by this component
-  public func Animate(initial Length) Anim[Length] {
-    return registerAnim[Length](AnimCore[Length](initial, MotionConverters.ForLength(initial), Rebuild))
-  }
+  public func Animate(initial Length) Anim[Length] ->
+    registerAnim[Length](AnimCore[Length](initial, MotionConverters.ForLength(initial), Rebuild))
 
   /// Creates a value animated by this component with custom coordinates.
   /// @typeparam T animated value type
   /// @param initial initial value
   /// @param converter maps values to scalar simulation coordinates
   /// @returns an animation bridge owned by this component
-  public func Animate[T](initial T, converter MotionConverter[T]) Anim[T] {
-    return registerAnim[T](AnimCore[T](initial, converter, Rebuild))
-  }
+  public func Animate[T](initial T, converter MotionConverter[T]) Anim[T] ->
+    registerAnim[T](AnimCore[T](initial, converter, Rebuild))
 
   private func registerAnim[T](a Anim[T]) Anim[T] {
-    if anims == nil {
-      anims = List[MotionParticle]()
+    if let list = anims {
+      list.Add(a.Handle)
+    } else {
+      let list = List[MotionParticle]()
+      list.Add(a.Handle)
+      anims = list
     }
-    anims!!.Add(a.Handle)
     if !disposed {
       if let pump = motionPump {
         a.Handle.Bind(pump)
@@ -302,10 +292,13 @@ public open class Cell {
   }
 
   internal func OwnMotionParticle(p MotionParticle) {
-    if anims == nil {
-      anims = List[MotionParticle]()
+    if let list = anims {
+      list.Add(p)
+    } else {
+      let list = List[MotionParticle]()
+      list.Add(p)
+      anims = list
     }
-    anims!!.Add(p)
     if !disposed {
       if let pump = motionPump {
         p.Bind(pump)
@@ -344,13 +337,12 @@ public open class Cell {
     /// @typeparam TCell child component type
     /// @param key stable sibling key, or nil for positional identity
     /// @returns a blob that mounts the child component
-    public func Mount[TCell Cell init()](key string?) Blob {
-      return CellElement{
+    public func Mount[TCell Cell init()](key string?) Blob ->
+      CellElement{
         Key: key,
         CellType: typeof(TCell),
         Factory: () -> TCell(),
       }
-    }
 
     /// Describes a child component mount with an immutable input snapshot.
     /// @typeparam TInput component input type
@@ -358,24 +350,21 @@ public open class Cell {
     /// @param key stable sibling key, or nil for positional identity
     /// @param input immutable input snapshot
     /// @returns a blob that mounts the child component
-    public func Mount[TInput any, TCell Cell[TInput] init()](key string?, input TInput) Blob {
-      return CellElement{
+    public func Mount[TInput any, TCell Cell[TInput] init()](key string?, input TInput) Blob ->
+      CellInputElement[TInput]{
         Key: key,
         CellType: typeof(TCell),
         UseActivator: true,
-        HasInput: true,
         Input: input,
       }
-    }
 
     /// Describes a child component mount.
     /// @typeparam TCell child component type
     /// @param key stable sibling key, or nil for positional identity
     /// @param configure configuration applied during each parent diff; prefer stable named or cached delegates
     /// @returns a blob that mounts the child component
-    public func Mount[TCell Cell init()](key string?, configure Action[TCell]?) Blob {
-      return MountSeeded[TCell](key, nil, configure)
-    }
+    public func Mount[TCell Cell init()](key string?, configure Action[TCell]?) Blob ->
+      MountSeeded[TCell](key, nil, configure)
 
     /// Describes a child component mount with one-time initialization.
     /// @typeparam TCell child component type
@@ -383,15 +372,15 @@ public open class Cell {
     /// @param seed initialization applied only when the component mounts
     /// @param configure configuration applied during each parent diff; prefer stable named or cached delegates
     /// @returns a blob that mounts the child component
-    public func MountSeeded[TCell Cell init()](key string?, seed Action[TCell]?, configure Action[TCell]?) Blob {
-      return CellElement{
+    public func MountSeeded[TCell Cell init()](key string?, seed Action[TCell]?,
+      configure Action[TCell]?) Blob ->
+      CellElement{
         Key: key,
         CellType: typeof(TCell),
         Factory: () -> TCell(),
         Seed: wrapAction[TCell](seed),
         Configure: wrapAction[TCell](configure),
       }
-    }
 
     internal func wrapAction[TCell Cell](action Action[TCell]?) Action[Cell]? {
       guard let typed = action else { return nil }
@@ -403,7 +392,4 @@ public open class Cell {
     }
   }
 
-  internal open func ApplyInput(value object?) bool {
-    return false
-  }
 }

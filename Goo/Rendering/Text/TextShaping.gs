@@ -9,11 +9,44 @@ import System.Threading
 private data struct TextFontSelection(Family string, Path string?, Registration FontRegistration?) { }
 private data struct TextProviderShapeResult(Workspace VulkanTextShapingWorkspace, Count int32) { }
 
+private struct TextPrimaryFaceKey : IEquatable[TextPrimaryFaceKey] {
+  private let families string
+  private let weight int32
+  private let italic bool
+  private let registryGeneration uint64
+
+  internal init(families string, weight int32, italic bool, registryGeneration uint64) {
+    this.families = families
+    this.weight = weight
+    this.italic = italic
+    this.registryGeneration = registryGeneration
+  }
+
+  func Equals(other TextPrimaryFaceKey) bool ->
+    String.Equals(families, other.families, StringComparison.Ordinal)
+      && weight == other.weight && italic == other.italic
+      && registryGeneration == other.registryGeneration
+
+  override func Equals(value object?) bool -> switch value {
+    case other is TextPrimaryFaceKey: Equals(other)
+    case _: false
+  }
+
+  override func GetHashCode() int32 {
+    let hash = HashCode()
+    hash.Add(families, StringComparer.Ordinal)
+    hash.Add(weight)
+    hash.Add(italic)
+    hash.Add(registryGeneration)
+    return hash.ToHashCode()
+  }
+}
+
 internal class TextShaping {
   shared {
-    private let PrimaryFaces Dictionary[string, TypefaceResource] =
-      Dictionary[string, TypefaceResource]()
-    private let PrimaryFaceOrder Queue[string] = Queue[string]()
+    private let PrimaryFaces Dictionary[TextPrimaryFaceKey, TypefaceResource] =
+      Dictionary[TextPrimaryFaceKey, TypefaceResource]()
+    private let PrimaryFaceOrder Queue[TextPrimaryFaceKey] = Queue[TextPrimaryFaceKey]()
     private let PrimaryFacesLock object = Object()
     private var FontFilesCache []string = []string{}
     private var primaryFaceDisposals int32
@@ -37,9 +70,8 @@ internal class TextShaping {
     }
 
     internal func Measure(text string, families string, size float32, weight int32, italic bool,
-      letterSpacing float32, rtl bool) float32 {
-      return Measure(text, families, size, weight, italic, letterSpacing, if rtl { 2 } else { 1 })
-    }
+      letterSpacing float32, rtl bool) float32 ->
+      Measure(text, families, size, weight, italic, letterSpacing, if rtl { 2 } else { 1 })
 
     internal func Measure(text string, families string, size float32, weight int32, italic bool,
       letterSpacing float32, direction int32) float32 {
@@ -57,10 +89,9 @@ internal class TextShaping {
     }
 
     internal func Ellipsize(text string, families string, size float32, weight int32, italic bool,
-      letterSpacing float32, rtl bool, maxWidth float32) string {
-      return Ellipsize(text, families, size, weight, italic, letterSpacing,
+      letterSpacing float32, rtl bool, maxWidth float32) string ->
+      Ellipsize(text, families, size, weight, italic, letterSpacing,
         if rtl { 2 } else { 1 }, maxWidth)
-    }
 
     internal func Ellipsize(text string, families string, size float32, weight int32, italic bool,
       letterSpacing float32, direction int32, maxWidth float32) string {
@@ -88,22 +119,18 @@ internal class TextShaping {
     }
 
     internal func Shape(text string, families string, size float32, weight int32, italic bool,
-      letterSpacing float32, rtl bool) ShapedText {
-      return Shape(text, families, size, weight, italic, letterSpacing, if rtl { 2 } else { 1 })
-    }
+      letterSpacing float32, rtl bool) ShapedText ->
+      Shape(text, families, size, weight, italic, letterSpacing, if rtl { 2 } else { 1 })
 
     internal func Shape(text string, families string, size float32, weight int32, italic bool,
-      letterSpacing float32, direction int32) ShapedText {
-      return ShapeLine(text, 0, text.Length, families, size, weight, italic, letterSpacing,
+      letterSpacing float32, direction int32) ShapedText ->
+      ShapeLine(text, 0, text.Length, families, size, weight, italic, letterSpacing,
         direction, nil)
-    }
 
     internal func ShapeLine(paragraph string, start int32, length int32, families string,
       size float32, weight int32, italic bool, letterSpacing float32, direction int32)
-      ShapedText {
-      return ShapeLine(paragraph, start, length, families, size, weight, italic, letterSpacing,
-        direction, nil)
-    }
+      ShapedText -> ShapeLine(paragraph, start, length, families, size, weight, italic,
+        letterSpacing, direction, nil)
 
     internal func ShapeLine(paragraph string, start int32, length int32, families string,
       size float32, weight int32, italic bool, letterSpacing float32, direction int32,
@@ -113,34 +140,24 @@ internal class TextShaping {
         letterSpacing, direction, resolution)
     }
 
-    internal func ResolveParagraph(text string, direction int32) BidiResolution {
-      return ResolveBidi(text, direction)
-    }
+    internal func ResolveParagraph(text string, direction int32) BidiResolution ->
+      ResolveBidi(text, direction)
 
     internal func BaseDirection(text string, direction int32) int32 {
       if direction == 1 || direction == 2 { return direction }
       return if ResolveBidi(text, direction).RightToLeft { 2 } else { 1 }
     }
 
-    internal func Slice(shaped ShapedText, start int32, end int32) ShapedText {
-      return shaped.Slice(start, end)
-    }
+    internal func Slice(shaped ShapedText, start int32, end int32) ShapedText ->
+      shaped.Slice(start, end)
 
-    internal func GlyphCount(shaped ShapedText) int32 {
-      return shaped.GlyphCount
-    }
+    internal func GlyphCount(shaped ShapedText) int32 -> shaped.GlyphCount
 
-    internal func RunFamilies(shaped ShapedText) []string {
-      return shaped.Families
-    }
+    internal func RunFamilies(shaped ShapedText) []string -> shaped.Families
 
-    internal func RunTexts(shaped ShapedText) []string {
-      return shaped.Texts
-    }
+    internal func RunTexts(shaped ShapedText) []string -> shaped.Texts
 
-    internal func HasMissingGlyph(shaped ShapedText) bool {
-      return shaped.HasMissingGlyph
-    }
+    internal func HasMissingGlyph(shaped ShapedText) bool -> shaped.HasMissingGlyph
 
     internal func HasFamily(family string) bool {
       if family == nil { return false }
@@ -157,27 +174,20 @@ internal class TextShaping {
       lock (PrimaryFacesLock) { return PrimaryFaces.Count }
     }
 
-    internal func PrimaryFaceCacheCapacityForTests() int32 {
-      return PrimaryFaceCacheCapacity
-    }
+    internal func PrimaryFaceCacheCapacityForTests() int32 -> PrimaryFaceCacheCapacity
 
-    internal func PrimaryFaceCacheByteBudgetForTests() int64 {
-      return PrimaryFaceCacheByteBudget
-    }
+    internal func PrimaryFaceCacheByteBudgetForTests() int64 -> PrimaryFaceCacheByteBudget
 
     internal func PrimaryFaceCacheBytesForTests() int64 {
       lock (PrimaryFacesLock) { return primaryFaceCacheBytes }
     }
 
-    internal func PrimaryFaceDisposalsForTests() int32 {
-      return primaryFaceDisposals
-    }
+    internal func PrimaryFaceDisposalsForTests() int32 -> primaryFaceDisposals
 
     private func MeasureUncached(text string, families string, size float32, weight int32,
-      italic bool, letterSpacing float32, direction int32) float32 {
-      return MeasureLineUncached(text, 0, text.Length, families, size, weight, italic,
+      italic bool, letterSpacing float32, direction int32) float32 ->
+      MeasureLineUncached(text, 0, text.Length, families, size, weight, italic,
         letterSpacing, direction)
-    }
 
     private func ShapeUncached(paragraph string, lineStart int32, lineLength int32,
       families string, size float32, weight int32, italic bool, letterSpacing float32,
@@ -214,7 +224,9 @@ internal class TextShaping {
             direction == 2)
         }
 
-        let info = resolution.Info!!
+        guard let info = resolution.Info else {
+          throw InvalidOperationException("Bidi resolution has no paragraph information")
+        }
         let lineEnd = lineStart + lineLength
         var paragraphInfo Unicode.Bidi.ParagraphInfo
         var foundParagraph = false
@@ -569,18 +581,22 @@ internal class TextShaping {
             capacity = capacity * 2
           }
         }
-        shapingWorkspace = VulkanTextShapingWorkspace(capacity)
-        return shapingWorkspace!!
+        let created = VulkanTextShapingWorkspace(capacity)
+        shapingWorkspace = created
+        return created
       }
       let capacity = if required > 256 { required } else { 256 }
-      shapingWorkspace = VulkanTextShapingWorkspace(capacity)
-      return shapingWorkspace!!
+      let created = VulkanTextShapingWorkspace(capacity)
+      shapingWorkspace = created
+      return created
     }
     private func AnalysisScratch() UnicodeTextAnalysisScratch {
-      if textAnalysisScratch == nil {
-        textAnalysisScratch = UnicodeTextAnalysisScratch()
+      if let current = textAnalysisScratch {
+        return current
       }
-      return textAnalysisScratch!!
+      let created = UnicodeTextAnalysisScratch()
+      textAnalysisScratch = created
+      return created
     }
 
 
@@ -620,12 +636,11 @@ internal class TextShaping {
 
     private func ResolveCachedPrimary(families string, weight int32, italic bool) TypefaceLease {
       let registryGeneration = FontRegistry.Generation
+      let key = TextPrimaryFaceKey(families, weight, italic, registryGeneration)
+      lock (PrimaryFacesLock) {
+        if PrimaryFaces.TryGetValue(key, out var cached) { return cached.Lease() }
+      }
       let registration = ResolveRegisteredPrimary(families, weight, italic)
-      let sourceId = if let value = registration { value.SourceId } else { 0uL }
-      let sourceGeneration = if let value = registration { value.Generation } else { 0uL }
-      let key = families + "|" + weight.ToString() + "|" + (if italic { "1" } else { "0" })
-        + "|g" + registryGeneration.ToString() + "|s" + sourceId.ToString()
-        + "|r" + sourceGeneration.ToString()
       var evicted List[TypefaceResource]?
       var uncached TypefaceResource?
       var lease TypefaceLease
@@ -636,13 +651,7 @@ internal class TextShaping {
         } else {
           ResolveSystemPrimary(families, weight, italic)
         }
-        let resource = if let value = selection.Registration {
-          TypefaceResource(selection.Family, value.Bytes, value.FaceIndex, value.Variations,
-            value.SourceId, value.Generation)
-        } else {
-          TypefaceResource(selection.Family, File.ReadAllBytes(selection.Path!!), 0u, nil,
-            0uL, 0uL)
-        }
+        let resource = CreateTypefaceResource(selection)
         if resource.ByteSize > PrimaryFaceCacheByteBudget {
           lease = resource.Lease()
           uncached = resource
@@ -655,8 +664,13 @@ internal class TextShaping {
             let oldKey = PrimaryFaceOrder.Dequeue()
             if PrimaryFaces.Remove(oldKey, out var removed) {
               primaryFaceCacheBytes = primaryFaceCacheBytes - removed.ByteSize
-              if evicted == nil { evicted = List[TypefaceResource]() }
-              evicted!!.Add(removed)
+              if let values = evicted {
+                values.Add(removed)
+              } else {
+                let values = List[TypefaceResource]()
+                values.Add(removed)
+                evicted = values
+              }
             }
           }
           lease = resource.Lease()
@@ -670,6 +684,17 @@ internal class TextShaping {
         }
       }
       return lease
+    }
+
+    private func CreateTypefaceResource(selection TextFontSelection) TypefaceResource {
+      if let registration = selection.Registration {
+        return TypefaceResource(selection.Family, registration.Bytes, registration.FaceIndex,
+          registration.Variations, registration.SourceId, registration.Generation)
+      }
+      guard let path = selection.Path else {
+        throw InvalidOperationException("System font selection has no path")
+      }
+      return TypefaceResource(selection.Family, File.ReadAllBytes(path), 0u, nil, 0uL, 0uL)
     }
 
     private func ResolveFallbackCandidates(families string, weight int32, italic bool,
@@ -745,9 +770,8 @@ internal class TextShaping {
       var best string?
       var bestScore int32 = Int32.MinValue
       for file in files {
-        let fileName = Path.GetFileNameWithoutExtension(file)
-        if fileName == nil { continue }
-        let stem = normalizeName(fileName!!)
+        guard let fileName = Path.GetFileNameWithoutExtension(file) else { continue }
+        let stem = normalizeName(fileName)
         var familyScore int32 = 0
         if aliases {
           if stem.Contains("dejavusans") || stem.Contains("adwaitasans")
@@ -763,8 +787,13 @@ internal class TextShaping {
         else { score = score + (if bold { -10 } else { 10 }) }
         if italic { score = score + (if slanted { 20 } else { -15 }) }
         else { score = score + (if slanted { -10 } else { 10 }) }
-        if best == nil || score > bestScore
-          || (score == bestScore && String.CompareOrdinal(file, best!!) < 0) {
+        var shouldReplace = best == nil || score > bestScore
+        if !shouldReplace && score == bestScore {
+          if let current = best {
+            shouldReplace = String.CompareOrdinal(file, current) < 0
+          }
+        }
+        if shouldReplace {
           best = file
           bestScore = score
         }
@@ -797,12 +826,9 @@ internal class TextShaping {
       }
     }
 
-    private func normalizeName(value string) string {
-      return value.ToLowerInvariant().Replace(" ", "").Replace("-", "").Replace("_", "")
-    }
+    private func normalizeName(value string) string ->
+      value.ToLowerInvariant().Replace(" ", "").Replace("-", "").Replace("_", "")
 
-    private func normalizeFamily(value string) string {
-      return value.Trim().ToLowerInvariant()
-    }
+    private func normalizeFamily(value string) string -> value.Trim().ToLowerInvariant()
   }
 }

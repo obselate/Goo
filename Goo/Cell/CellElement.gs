@@ -13,13 +13,24 @@ internal open class CellElement : Blob {
 
   @DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)
   internal prop CellType Type {
-    get { return cellType }
-    init { cellType = value }
+    get -> cellType
+    init -> cellType = value
   }
   internal prop Factory (() -> Cell)? { get; init; }
   internal prop UseActivator bool { get; init; }
   internal prop Seed Action[Cell]? { get; init; }
   internal prop Configure Action[Cell]? { get; init; }
-  internal prop HasInput bool { get; init; }
-  internal prop Input object? { get; init; }
+
+  internal open func ApplyInput(cell Cell) {
+  }
+}
+
+internal class CellInputElement[TInput any] : CellElement {
+  internal prop Input TInput { get; init; }
+
+  internal override func ApplyInput(cell Cell) {
+    if cell is Cell[TInput] {
+      cell.SetInput(Input)
+    }
+  }
 }

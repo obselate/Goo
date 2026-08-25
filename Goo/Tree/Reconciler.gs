@@ -434,14 +434,15 @@ internal class Reconciler {
     for layerIndex in 0 ... layers.Length {
       let layer = layers[layerIndex]
       for projection in layer.ReadProjections() {
-        if (projection.Kind != TextProjectionKind.InlineSlot
-          && projection.Kind != TextProjectionKind.BlockSlot) || projection.Content == nil {
+        if projection.Kind != TextProjectionKind.InlineSlot
+          && projection.Kind != TextProjectionKind.BlockSlot {
           continue
         }
+        guard let content = projection.Content else { continue }
         result.Add(Container{
           Key: textEditorSlotKey(layer, projection),
           Position: PositionType.Absolute,
-          Children: { projection.Content!! },
+          Children: { content },
         })
       }
     }
@@ -525,8 +526,8 @@ internal class Reconciler {
 
   private func rememberStyleRetryRoot(n Node) {
     var root = n
-    while root.Parent != nil {
-      root = root.Parent!!
+    while let parent = root.Parent {
+      root = parent
     }
     if let current = styleRetryRoot {
       if current == root {
@@ -612,9 +613,8 @@ internal class Reconciler {
 
   // Reuse-or-replace the fiber, seed once, configure every time; detach the
   // hook before recursing so an inner kind-change teardown can't touch it.
-  internal func expandCell(existing Node?, e CellElement) Node {
-    return expandCellAt(existing, e, existing?.Fiber, nil)
-  }
+  internal func expandCell(existing Node?, e CellElement) Node ->
+    expandCellAt(existing, e, existing?.Fiber, nil)
 
   internal func createCell(e CellElement) Cell {
     if let factory = e.Factory {
@@ -635,9 +635,7 @@ internal class Reconciler {
       }
       cell.SetRetainedMotionInvalidation(RetainedInvalidated)
       cell.SetRebuildSubmission(nil)
-      if e.HasInput {
-        cell.ApplyInput(e.Input)
-      }
+      e.ApplyInput(cell)
       if let cfg = e.Configure { cfg(cell) }
       cell.SetRebuildSubmission(CellInvalidated)
 
@@ -666,9 +664,7 @@ internal class Reconciler {
     try {
       if let seed = e.Seed { seed(fresh) }
       fresh.SetRebuildSubmission(nil)
-      if e.HasInput {
-        fresh.ApplyInput(e.Input)
-      }
+      e.ApplyInput(fresh)
       if let cfg = e.Configure { cfg(fresh) }
       fresh.SetRebuildSubmission(CellInvalidated)
 
@@ -1176,8 +1172,7 @@ internal class Reconciler {
       }
       replacement.Cell.RefreshDirectMounts(replacement.Old)
       var child = replacement.Cell.directChild
-      while child != nil {
-        let descendant = child!!
+      while let descendant = child {
         descendant.MarkDirtyFromInput()
         child = descendant.directChild
       }
@@ -1217,7 +1212,9 @@ internal class Reconciler {
     while i < blobs.Count {
       let blob = blobs[i]
       if blob.HasElementHandle {
-        let handle = blob.Handle!!
+        guard let handle = blob.Handle else {
+          throw InvalidOperationException("Blob has no ElementHandle")
+        }
         var destination Node?
         if let key = blob.Key {
           if scratchScope.Keyed.TryGetValue(key, out var hit) {
@@ -1245,7 +1242,10 @@ internal class Reconciler {
     if fallbackChildScratch == nil {
       fallbackChildScratch = ChildDiffScratch()
     }
-    return fallbackChildScratch!!
+    guard let scratch = fallbackChildScratch else {
+      throw InvalidOperationException("Child diff scratch was not created")
+    }
+    return scratch
   }
 }
 
@@ -1278,7 +1278,10 @@ internal func validateChildren(blobs IList[Blob], scratchScope ChildDiffScratchS
       }
       if blobs[i].HasElementHandle {
         scratchScope.HasIncomingHandle = true
-        if !scratchScope.IncomingHandles.Add(blobs[i].Handle!!) {
+        guard let handle = blobs[i].Handle else {
+          throw InvalidOperationException("Blob has no ElementHandle")
+        }
+        if !scratchScope.IncomingHandles.Add(handle) {
           throw InvalidOperationException("A child list cannot assign one ElementHandle twice")
         }
       }
@@ -1320,13 +1323,12 @@ internal func sameStyleEntries(a StyleEntries?, b StyleEntries?) bool {
   return true
 }
 
-internal func sameStyleEntry(a StyleEntry, b StyleEntry) bool {
-  return a.A == b.A && a.B == b.B && a.C == b.C && a.D == b.D
+internal func sameStyleEntry(a StyleEntry, b StyleEntry) bool ->
+  a.A == b.A && a.B == b.B && a.C == b.C && a.D == b.D
     && entryText(a) == entryText(b) && sameGradient(entryGradient(a), entryGradient(b))
     && sameBoxShadows(entryShadows(a), entryShadows(b))
     && samePath(entryPath(a), entryPath(b))
     && entryImageSource(a) == entryImageSource(b)
-}
 
 internal func sameDashPattern(a DashPattern?, b DashPattern?) bool {
   if a == b {

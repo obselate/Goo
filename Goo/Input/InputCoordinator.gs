@@ -43,9 +43,9 @@ internal class InputCoordinator {
     }
   }
 
-  internal func Drain(root Node?, resolver Resolver, timeS float64, onKeyPress ((Key, KeyModifiers) -> void)?) bool {
-    return Drain(root, resolver, timeS, onKeyPress, 0)
-  }
+  internal func Drain(root Node?, resolver Resolver, timeS float64,
+    onKeyPress ((Key, KeyModifiers) -> void)?) bool ->
+    Drain(root, resolver, timeS, onKeyPress, 0)
 
   internal func Drain(root Node?, resolver Resolver, timeS float64,
     onKeyPress ((Key, KeyModifiers) -> void)?, repeatStartTicks int64) bool {
@@ -90,9 +90,8 @@ internal class InputCoordinator {
   }
 
   // Shortens idle waits to the next caret blink or key-repeat edge.
-  internal func NextTickDeadlineSeconds() float64 {
-    return Math.Min(text.BlinkDeadlineSeconds(), keyboard.RepeatDeadlineSeconds())
-  }
+  internal func NextTickDeadlineSeconds() float64 ->
+    Math.Min(text.BlinkDeadlineSeconds(), keyboard.RepeatDeadlineSeconds())
 
   internal func RefreshHover(root Node?, resolver Resolver) bool {
     try {
@@ -102,9 +101,7 @@ internal class InputCoordinator {
     }
   }
 
-  internal func CurrentCursor() Cursor {
-    return pointer.CurrentCursor()
-  }
+  internal func CurrentCursor() Cursor -> pointer.CurrentCursor()
 
   internal func FocusLost(resolver Resolver) {
     try {
@@ -124,9 +121,7 @@ internal class InputCoordinator {
     return text.FocusedNode() == target
   }
 
-  internal func FocusedNode() Node? {
-    return text.FocusedNode()
-  }
+  internal func FocusedNode() Node? -> text.FocusedNode()
 
   internal func BlurElement(resolver Resolver, target Node) bool {
     if target.Retired || text.FocusedNode() != target {
@@ -154,18 +149,14 @@ internal class InputCoordinator {
     text.Dispose()
   }
 
-  internal func HandleClick(root Node?, x float32, y float32) bool {
-    return pointer.HandleClick(root, x, y)
-  }
+  internal func HandleClick(root Node?, x float32, y float32) bool ->
+    pointer.HandleClick(root, x, y)
 
-  internal func HandleWheel(root Node?, x float32, y float32, dx float32, dy float32) bool {
-    return pointer.HandleWheel(root, x, y, dx, dy)
-  }
+  internal func HandleWheel(root Node?, x float32, y float32, dx float32, dy float32) bool ->
+    pointer.HandleWheel(root, x, y, dx, dy)
 
   internal func HandleWheel(root Node?, x float32, y float32, dx float32, dy float32,
-    modifiers KeyModifiers) bool {
-    return pointer.HandleWheel(root, x, y, dx, dy, modifiers)
-  }
+    modifiers KeyModifiers) bool -> pointer.HandleWheel(root, x, y, dx, dy, modifiers)
 
   internal func HandleMove(root Node?, resolver Resolver, x float32, y float32) bool {
     try {
@@ -191,9 +182,8 @@ internal class InputCoordinator {
     }
   }
 
-  internal func HandleKey(root Node?, resolver Resolver, key Key, shift bool, ctrl bool) bool {
-    return HandleKey(root, resolver, key, KeyModifiers{ Shift: shift, Ctrl: ctrl })
-  }
+  internal func HandleKey(root Node?, resolver Resolver, key Key, shift bool, ctrl bool) bool ->
+    HandleKey(root, resolver, key, KeyModifiers{ Shift: shift, Ctrl: ctrl })
 
   internal func HandleKey(root Node?, resolver Resolver, key Key, modifiers KeyModifiers) bool {
     try {
@@ -203,9 +193,7 @@ internal class InputCoordinator {
     }
   }
 
-  internal func HandleChar(root Node?, value string) bool {
-    return text.HandleChar(root, value)
-  }
+  internal func HandleChar(root Node?, value string) bool -> text.HandleChar(root, value)
 
   internal func SetClipboardFallback(value string) {
     text.SetClipboardFallback(value)
@@ -331,9 +319,8 @@ internal class InputCoordinator {
     keyboard.StartKeyRepeat(key, modifiers)
   }
 
-  internal func HitInfo(root Node?, x float32, y float32) InputHitInfo {
-    return pointer.HitInfo(root, x, y)
-  }
+  internal func HitInfo(root Node?, x float32, y float32) InputHitInfo ->
+    pointer.HitInfo(root, x, y)
 
   private func hasUnavailableFocus(n Node, hidden bool, disabled bool) bool {
     let nowHidden = hidden || n.PaintInputHidden
@@ -341,8 +328,8 @@ internal class InputCoordinator {
     if (nowHidden || nowDisabled) && n.Focused {
       return true
     }
-    for child in n.Children {
-      if hasUnavailableFocus(child, nowHidden, nowDisabled) {
+    for index in 0 ... n.Children.Count {
+      if hasUnavailableFocus(n.Children[index], nowHidden, nowDisabled) {
         return true
       }
     }
