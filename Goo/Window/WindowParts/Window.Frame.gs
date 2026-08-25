@@ -75,9 +75,7 @@ public partial class Window {
     host?.Wake()
   }
 
-  private func markReconcilePending() bool {
-    return Interlocked.Exchange(&pendingRebuild, 1) == 0
-  }
+  private func markReconcilePending() bool -> Interlocked.Exchange(&pendingRebuild, 1) == 0
 
   private func submitCell(cell Cell) {
     let generation = cell.TryQueue(this)
@@ -115,9 +113,7 @@ public partial class Window {
     UpdateTree(0.0)
   }
 
-  internal func UpdateTree(dt float64) bool {
-    return UpdateTreeCore(dt, dt)
-  }
+  internal func UpdateTree(dt float64) bool -> UpdateTreeCore(dt, dt)
 
   // wallDt/simDt split for Pump's post-idle-wait frame (Window.Host.gs):
   // wallDt is the real time since the last frame -- timeS and input
@@ -127,9 +123,7 @@ public partial class Window {
   // MotionPump/Resolver/scroll/input.Step, so a stale idle gap cannot make a
   // just-started animation jump straight to its end. Every other caller
   // passes the same value for both, unchanged from before this split.
-  internal func UpdateTree(wallDt float64, simDt float64) bool {
-    return UpdateTreeCore(wallDt, simDt)
-  }
+  internal func UpdateTree(wallDt float64, simDt float64) bool -> UpdateTreeCore(wallDt, simDt)
 
   private func UpdateTreeCore(wallDt float64, simDt float64) bool {
     validateDelta(wallDt, "wallDt")
@@ -204,8 +198,7 @@ public partial class Window {
           rec.ProfileBuildCalls,
           rec.ProfileResolveTicks,
           rec.ProfileResolveBytes,
-          rec.ProfileResolveCalls,
-        )
+          rec.ProfileResolveCalls,)
       }
       if hasEffect(effects, ReconcileEffects.Structure) {
         layout.MarkStructureDirty()
@@ -250,20 +243,20 @@ public partial class Window {
         || hasEffect(effects, ReconcileEffects.Content)
         || hasEffect(effects, ReconcileEffects.Layout)
         || hasEffect(effects, ReconcileEffects.Rect)
-        || layoutChanged {
-        let inputTreeProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-        input.AfterTreeUpdated(n, resolver, true)
-        if profiling {
-          profiler.Record(FrameProfileStage.InputTree, inputTreeProfile)
+        || layoutChanged{
+          let inputTreeProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+          input.AfterTreeUpdated(n, resolver, true)
+          if profiling {
+            profiler.Record(FrameProfileStage.InputTree, inputTreeProfile)
+          }
+          effects = combineEffects(effects, resolver.FlushEffects())
+          if layout.NeedsLayout(n, viewW, viewH) {
+            calculateLayout(n, viewW, viewH)
+            layoutChanged = true
+            accessibilityLayout = true
+            metricsChanged = true
+          }
         }
-        effects = combineEffects(effects, resolver.FlushEffects())
-        if layout.NeedsLayout(n, viewW, viewH) {
-          calculateLayout(n, viewW, viewH)
-          layoutChanged = true
-          accessibilityLayout = true
-          metricsChanged = true
-        }
-      }
       if simDt > 0.0 {
         let dtf = float32(simDt)
         let scrollers = layout.ScrollNodes(n)
@@ -305,8 +298,8 @@ public partial class Window {
       if accessibilityLayout || accessibilityScroll || hasEffect(effects, ReconcileEffects.Structure)
         || hasEffect(effects, ReconcileEffects.Content) || hasEffect(effects, ReconcileEffects.Input)
         || hasEffect(effects, ReconcileEffects.Rect) || hasEffect(effects, ReconcileEffects.Accessibility) {
-        semantics.MarkDirty()
-      }
+          semantics.MarkDirty()
+        }
       if semantics.Publish(node) { requestRender() }
     }
     if changed {
@@ -324,14 +317,9 @@ public partial class Window {
     }
   }
 
+  private func combineEffects(left ReconcileEffects, right ReconcileEffects) ReconcileEffects -> ReconcileEffects(int32(left) | int32(right))
 
-  private func combineEffects(left ReconcileEffects, right ReconcileEffects) ReconcileEffects {
-    return ReconcileEffects(int32(left) | int32(right))
-  }
-
-  private func hasEffect(effects ReconcileEffects, value ReconcileEffects) bool {
-    return (int32(effects) & int32(value)) != 0
-  }
+  private func hasEffect(effects ReconcileEffects, value ReconcileEffects) bool -> (int32(effects) & int32(value)) != 0
 
   private func calculateLayout(n Node, width float32, height float32) {
     if !profiler.Active {
@@ -523,9 +511,7 @@ public partial class Window {
     resolver.VisualDirty = false
   }
 
-  internal func RenderPending() bool {
-    return resolver.VisualDirty || renderDirty
-  }
+  internal func RenderPending() bool -> resolver.VisualDirty || renderDirty
 
   private func requestRender() {
     renderDirty = true

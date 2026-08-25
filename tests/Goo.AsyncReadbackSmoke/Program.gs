@@ -14,36 +14,34 @@ class S14ReadbackSmokeCell : Cell {
     let Root ElementHandle = ElementHandle{}
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: Length.Percent(100),
-      Height: Length.Percent(100),
-      Handle: S14ReadbackSmokeCell.Root,
-      Position: PositionType.Relative,
-      BackgroundColor: Color.Rgb(12, 20, 32),
-      Children: {
-        Container{
-          Position: PositionType.Absolute,
-          Left: 8,
-          Top: 8,
-          Width: 48,
-          Height: 40,
-          Opacity: 0.5,
-          Children: {
-            Container{
-              Width: Length.Percent(100),
-              Height: Length.Percent(100),
-              BackgroundColor: Color.Rgb(220, 40, 64),
-            },
-            Container{
-              Width: Length.Percent(100),
-              Height: Length.Percent(100),
-              BackgroundColor: Color.Rgb(40, 80, 220),
-            },
+  override func Build() Blob -> Container {
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
+    Handle: S14ReadbackSmokeCell.Root,
+    Position: PositionType.Relative,
+    BackgroundColor: Color.Rgb(12, 20, 32),
+    Children: {
+      Container{
+        Position: PositionType.Absolute,
+        Left: 8,
+        Top: 8,
+        Width: 48,
+        Height: 40,
+        Opacity: 0.5,
+        Children: {
+          Container{
+            Width: Length.Percent(100),
+            Height: Length.Percent(100),
+            BackgroundColor: Color.Rgb(220, 40, 64),
+          },
+          Container{
+            Width: Length.Percent(100),
+            Height: Length.Percent(100),
+            BackgroundColor: Color.Rgb(40, 80, 220),
           },
         },
       },
-    }
+    },
   }
 }
 
@@ -239,49 +237,47 @@ class S17ProtectedTextCell : Cell {
     CompositionText = ""
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: 320,
-      Height: 96,
-      Position: PositionType.Relative,
-      BackgroundColor: Color.Rgb(12, 20, 32),
-      Children: {
-        TextEntry{
-          Handle: S17ProtectedTextCell.Entry,
-          Position: PositionType.Absolute,
-          Left: 0,
-          Top: 0,
-          Width: 320,
-          Height: 44,
-          Padding: 6,
-          FontFamily: "S17GateFont",
-          FontSize: 20,
-          Color: Color.Rgb(240, 244, 248),
-          Value: "a\u0301👨‍👩‍👧‍👦b",
-          Password: true,
-          Accessibility: Accessibility{ Value: "metadata-secret" },
-          OnChange: func(value string) { LastValue = value },
-          OnTextComposition: func(value TextCompositionEvent) {
-            CompositionText = value.Text
-            CompositionCount++
-          },
-        },
-        TextEntry{
-          Handle: S17ProtectedTextCell.Control,
-          Position: PositionType.Absolute,
-          Left: 0,
-          Top: 48,
-          Width: 320,
-          Height: 44,
-          Padding: 6,
-          FontFamily: "S17GateFont",
-          FontSize: 20,
-          Color: Color.Rgb(240, 244, 248),
-          Value: "•••",
-          Accessibility: Accessibility{ Hidden: true },
+  override func Build() Blob -> Container {
+    Width: 320,
+    Height: 96,
+    Position: PositionType.Relative,
+    BackgroundColor: Color.Rgb(12, 20, 32),
+    Children: {
+      TextEntry{
+        Handle: S17ProtectedTextCell.Entry,
+        Position: PositionType.Absolute,
+        Left: 0,
+        Top: 0,
+        Width: 320,
+        Height: 44,
+        Padding: 6,
+        FontFamily: "S17GateFont",
+        FontSize: 20,
+        Color: Color.Rgb(240, 244, 248),
+        Value: "a\u0301👨‍👩‍👧‍👦b",
+        Password: true,
+        Accessibility: Accessibility{ Value: "metadata-secret" },
+        OnChange: func(value string) { LastValue = value },
+        OnTextComposition: func(value TextCompositionEvent) {
+          CompositionText = value.Text
+          CompositionCount++
         },
       },
-    }
+      TextEntry{
+        Handle: S17ProtectedTextCell.Control,
+        Position: PositionType.Absolute,
+        Left: 0,
+        Top: 48,
+        Width: 320,
+        Height: 44,
+        Padding: 6,
+        FontFamily: "S17GateFont",
+        FontSize: 20,
+        Color: Color.Rgb(240, 244, 248),
+        Value: "•••",
+        Accessibility: Accessibility{ Hidden: true },
+      },
+    },
   }
 }
 
@@ -321,81 +317,79 @@ class S17CoreBehaviorCell : Cell {
     motion.To(64.0)
   }
 
-  internal prop MotionRunning bool { get { return motion.Running } }
+  internal prop MotionRunning bool{ get { return motion.Running } }
 
-  override func Build() Blob {
-    return Container{
-      Width: 320,
-      Height: 176,
-      Position: PositionType.Relative,
-      BackgroundColor: Color.Rgb(12, 20, 32),
-      Children: {
-        Button{
-          Handle: S17CoreBehaviorCell.Target,
-          Position: PositionType.Absolute,
-          Left: 8,
-          Top: 8,
-          Width: 96,
-          Height: 64,
-          Focusable: true,
-          Disabled: disabled.Value,
-          BackgroundColor: Color.Rgb(208, 48, 64),
-          BorderWidth: 4,
-          BorderColor: Color.Rgb(24, 32, 48),
-          Hover: Style{ BackgroundColor: Color.Rgb(48, 208, 96) },
-          Active: Style{ BackgroundColor: Color.Rgb(64, 96, 232) },
-          Focus: Style{ BorderColor: Color.Rgb(248, 196, 48) },
-          DisabledStyle: Style{
-            BackgroundColor: Color.Rgb(112, 120, 132),
-            BorderColor: Color.Rgb(80, 88, 100),
-          },
-          TransitionMs: 100,
-          TransitionProperties: []TransitionProperty{ TransitionProperty.BackgroundColor },
-          Accessibility: Accessibility{
-            Role: AccessibilityRole.Button,
-            Name: "S17 action",
-          },
-          OnPointerEnter: func(value PointerEvent) { PointerEnterCount++ },
-          OnPointerLeave: func(value PointerEvent) { PointerLeaveCount++ },
-          OnPointerDown: func(value PointerEvent) { PointerDownCount++ },
-          OnPointerUp: func(value PointerEvent) { PointerUpCount++ },
-          OnClick: func() { ClickCount++ },
-          OnFocus: func(value FocusEvent) { FocusCount++ },
-          OnBlur: func(value FocusEvent) { BlurCount++ },
-          OnKeyDown: func(value KeyEvent) { KeyDownCount++ },
-          OnKeyUp: func(value KeyEvent) { KeyUpCount++ },
-          OnWheel: func(value WheelEvent) { TargetWheelCount++ },
+  override func Build() Blob -> Container {
+    Width: 320,
+    Height: 176,
+    Position: PositionType.Relative,
+    BackgroundColor: Color.Rgb(12, 20, 32),
+    Children: {
+      Button{
+        Handle: S17CoreBehaviorCell.Target,
+        Position: PositionType.Absolute,
+        Left: 8,
+        Top: 8,
+        Width: 96,
+        Height: 64,
+        Focusable: true,
+        Disabled: disabled.Value,
+        BackgroundColor: Color.Rgb(208, 48, 64),
+        BorderWidth: 4,
+        BorderColor: Color.Rgb(24, 32, 48),
+        Hover: Style{ BackgroundColor: Color.Rgb(48, 208, 96) },
+        Active: Style{ BackgroundColor: Color.Rgb(64, 96, 232) },
+        Focus: Style{ BorderColor: Color.Rgb(248, 196, 48) },
+        DisabledStyle: Style{
+          BackgroundColor: Color.Rgb(112, 120, 132),
+          BorderColor: Color.Rgb(80, 88, 100),
         },
-        Container{
-          Handle: S17CoreBehaviorCell.MotionBox,
-          Position: PositionType.Absolute,
-          Left: 144.0 + motion.Value,
-          Top: 8,
-          Width: 32,
-          Height: 32,
-          BackgroundColor: Color.Rgb(72, 144, 232),
+        TransitionMs: 100,
+        TransitionProperties: []TransitionProperty{ TransitionProperty.BackgroundColor },
+        Accessibility: Accessibility{
+          Role: AccessibilityRole.Button,
+          Name: "S17 action",
         },
-        Container{
-          Handle: S17CoreBehaviorCell.ScrollViewport,
-          Position: PositionType.Absolute,
-          Left: 8,
-          Top: 88,
-          Width: 120,
-          Height: 72,
-          OverflowY: Overflow.Scroll,
-          BackgroundColor: Color.Rgb(24, 32, 48),
-          Children: {
-            Container{
-              Handle: S17CoreBehaviorCell.ScrollLeaf,
-              Width: 120,
-              Height: 176,
-              BackgroundColor: Color.Rgb(96, 176, 216),
-              OnWheel: func(value WheelEvent) { ScrollWheelCount++ },
-            },
+        OnPointerEnter: func(value PointerEvent) { PointerEnterCount++ },
+        OnPointerLeave: func(value PointerEvent) { PointerLeaveCount++ },
+        OnPointerDown: func(value PointerEvent) { PointerDownCount++ },
+        OnPointerUp: func(value PointerEvent) { PointerUpCount++ },
+        OnClick: func() { ClickCount++ },
+        OnFocus: func(value FocusEvent) { FocusCount++ },
+        OnBlur: func(value FocusEvent) { BlurCount++ },
+        OnKeyDown: func(value KeyEvent) { KeyDownCount++ },
+        OnKeyUp: func(value KeyEvent) { KeyUpCount++ },
+        OnWheel: func(value WheelEvent) { TargetWheelCount++ },
+      },
+      Container{
+        Handle: S17CoreBehaviorCell.MotionBox,
+        Position: PositionType.Absolute,
+        Left: 144.0 + motion.Value,
+        Top: 8,
+        Width: 32,
+        Height: 32,
+        BackgroundColor: Color.Rgb(72, 144, 232),
+      },
+      Container{
+        Handle: S17CoreBehaviorCell.ScrollViewport,
+        Position: PositionType.Absolute,
+        Left: 8,
+        Top: 88,
+        Width: 120,
+        Height: 72,
+        OverflowY: Overflow.Scroll,
+        BackgroundColor: Color.Rgb(24, 32, 48),
+        Children: {
+          Container{
+            Handle: S17CoreBehaviorCell.ScrollLeaf,
+            Width: 120,
+            Height: 176,
+            BackgroundColor: Color.Rgb(96, 176, 216),
+            OnWheel: func(value WheelEvent) { ScrollWheelCount++ },
           },
         },
       },
-    }
+    },
   }
 }
 
@@ -477,9 +471,7 @@ func S14EnvCount(name string, fallback int32, maximum int32) int32 {
   return value
 }
 
-func S14TicksToNs(ticks int64) int64 {
-  return int64(float64(ticks) * 1000000000.0 / float64(Stopwatch.Frequency))
-}
+func S14TicksToNs(ticks int64) int64 -> int64(float64(ticks) * 1000000000.0 / float64(Stopwatch.Frequency))
 
 func S14Percentile(values []int64, percentile float64) int64 {
   let sorted = [values.Length]int64
@@ -545,15 +537,15 @@ func S14RequestReadbackUntilAccepted(window Window, width uint32, height uint32)
   let start = Stopwatch.GetTimestamp()
   var status = WindowReadbackTestFixture.Request(window, width, height)
   while status == VulkanReadbackRequestStatus.Busy
-      || status == VulkanReadbackRequestStatus.NotReady {
-    if Stopwatch.GetTimestamp() - start >= timeoutTicks {
-      throw InvalidOperationException(
-        "S14 readback request did not become accepted within the timeout")
+    || status == VulkanReadbackRequestStatus.NotReady{
+      if Stopwatch.GetTimestamp() - start >= timeoutTicks {
+        throw InvalidOperationException(
+          "S14 readback request did not become accepted within the timeout")
+      }
+      WindowReadbackTestFixture.Pump(window, 0.0)
+      Thread.Yield()
+      status = WindowReadbackTestFixture.Request(window, width, height)
     }
-    WindowReadbackTestFixture.Pump(window, 0.0)
-    Thread.Yield()
-    status = WindowReadbackTestFixture.Request(window, width, height)
-  }
   S14Require(status == VulkanReadbackRequestStatus.Accepted,
     "S14 readback request was not accepted: " + status.ToString())
 }
@@ -600,23 +592,23 @@ func S14ValidateReadbackResult(result VulkanReadbackResult) {
   S14Require(pixels.Length == 16384,
     "S14 readback result byte count is not 64x64 RGBA8")
   let topLeft = S14Pixel(pixels, 0, 0, 0).ToString()
-    + "/" + S14Pixel(pixels, 0, 0, 1).ToString()
-    + "/" + S14Pixel(pixels, 0, 0, 2).ToString()
-    + "/" + S14Pixel(pixels, 0, 0, 3).ToString()
+  +"/" + S14Pixel(pixels, 0, 0, 1).ToString()
+  +"/" + S14Pixel(pixels, 0, 0, 2).ToString()
+  +"/" + S14Pixel(pixels, 0, 0, 3).ToString()
   S14Require((S14Pixel(pixels, 0, 0, 0) == uint8(12)
       || S14Pixel(pixels, 0, 0, 0) == uint8(13))
-    && S14Pixel(pixels, 0, 0, 1) == uint8(20)
-    && S14Pixel(pixels, 0, 0, 2) == uint8(32)
-    && S14Pixel(pixels, 0, 0, 3) == uint8(255),
+      && S14Pixel(pixels, 0, 0, 1) == uint8(20)
+      && S14Pixel(pixels, 0, 0, 2) == uint8(32)
+      && S14Pixel(pixels, 0, 0, 3) == uint8(255),
     "S14 readback top-left pixel is incorrect: " + topLeft)
   let center = S14Pixel(pixels, 32, 32, 0).ToString()
-    + "/" + S14Pixel(pixels, 32, 32, 1).ToString()
-    + "/" + S14Pixel(pixels, 32, 32, 2).ToString()
-    + "/" + S14Pixel(pixels, 32, 32, 3).ToString()
+  +"/" + S14Pixel(pixels, 32, 32, 1).ToString()
+  +"/" + S14Pixel(pixels, 32, 32, 2).ToString()
+  +"/" + S14Pixel(pixels, 32, 32, 3).ToString()
   S14Require(Math.Abs(int32(S14Pixel(pixels, 32, 32, 0)) - 161) <= 1
-    && Math.Abs(int32(S14Pixel(pixels, 32, 32, 1)) - 32) <= 1
-    && Math.Abs(int32(S14Pixel(pixels, 32, 32, 2)) - 51) <= 1
-    && S14Pixel(pixels, 32, 32, 3) == uint8(255),
+      && Math.Abs(int32(S14Pixel(pixels, 32, 32, 1)) - 32) <= 1
+      && Math.Abs(int32(S14Pixel(pixels, 32, 32, 2)) - 51) <= 1
+      && S14Pixel(pixels, 32, 32, 3) == uint8(255),
     "S14 readback center pixel is incorrect: " + center)
 }
 
@@ -627,16 +619,16 @@ func S14ValidateCommonDiagnostics(diagnostics string) {
 func S14ValidateCommonDiagnostics(diagnostics string, expectedResultFailureCount uint64) {
   S14Require(!diagnostics.Contains("\"kind\":\"fatal\""),
     "S14 render emitted a fatal diagnostic: "
-      + S14DiagnosticExcerpt(diagnostics, "fatal")
-      + " validation=" + S14DiagnosticExcerpt(diagnostics, "validation")
-      + " validationError=" + S14DiagnosticExcerpt(diagnostics, "\"severity\":4096"))
+    +S14DiagnosticExcerpt(diagnostics, "fatal")
+    +" validation=" + S14DiagnosticExcerpt(diagnostics, "validation")
+    +" validationError=" + S14DiagnosticExcerpt(diagnostics, "\"severity\":4096"))
   S14Require(S14Counter(diagnostics, "validationErrorCount") == 0uL,
     "S14 render validation error counter is nonzero: "
-      + S14DiagnosticExcerpt(diagnostics, "validation"))
+    +S14DiagnosticExcerpt(diagnostics, "validation"))
   let resultFailureCount = S14Counter(diagnostics, "resultFailureCount")
   S14Require(resultFailureCount == expectedResultFailureCount,
     "S14 render result failure count is " + resultFailureCount.ToString()
-      + ", expected " + expectedResultFailureCount.ToString())
+    +", expected " + expectedResultFailureCount.ToString())
   S14Require(S14Counter(diagnostics, "vulkanObjectCount") == 0uL,
     "S14 render leaked Vulkan objects")
 }
@@ -661,8 +653,8 @@ func RunS14ReadbackSmoke() {
       frame = frame + 1
     }
     S14Require(S14ReadbackSmokeCell.Root.IsMounted
-      && S14ReadbackSmokeCell.Root.BorderBox.Width == 64.0
-      && S14ReadbackSmokeCell.Root.BorderBox.Height == 64.0,
+        && S14ReadbackSmokeCell.Root.BorderBox.Width == 64.0
+        && S14ReadbackSmokeCell.Root.BorderBox.Height == 64.0,
       "S14 render smoke did not retain 64x64 geometry")
     let requestStart = S14BeginReadback(opened)
     S14AwaitReadbackReady(opened, 1000)
@@ -672,7 +664,7 @@ func RunS14ReadbackSmoke() {
     requestReadyNs = S14TicksToNs(readyTicks - requestStart)
     S14Require(requestReadyNs > 0L, "S14 readback request-to-ready latency is not positive")
     S14Require(WindowReadbackTestFixture.RequestCount(opened) == 1uL
-      && WindowReadbackTestFixture.CompletionCount(opened) == 1uL,
+        && WindowReadbackTestFixture.CompletionCount(opened) == 1uL,
       "S14 readback request and completion counts are incorrect")
     residentBeforeClose = WindowReadbackTestFixture.ResidentResourceBytes(opened)
     S14Require(residentBeforeClose >= 16384uL,
@@ -692,9 +684,9 @@ func RunS14ReadbackSmoke() {
   let diagnostics = capturedError.ToString()
   S14ValidateCommonDiagnostics(diagnostics)
   Console.WriteLine("s14-readback: frames=9 width=64 height=64 row_bytes=256"
-    + " bytes=16384 origin=top-left premultiplied=1 request_ready_ns="
-    + requestReadyNs.ToString() + " resource_resident_before_close="
-    + residentBeforeClose.ToString() + " resource_resident_after_close=0 cleanup=1 close=1")
+    +" bytes=16384 origin=top-left premultiplied=1 request_ready_ns="
+    +requestReadyNs.ToString() + " resource_resident_before_close="
+    +residentBeforeClose.ToString() + " resource_resident_after_close=0 cleanup=1 close=1")
 }
 
 func RunD02OffscreenFailureGate() {
@@ -760,9 +752,9 @@ func RunD02OffscreenFailureGate() {
   let diagnostics = capturedError.ToString()
   S14ValidateCommonDiagnostics(diagnostics, 1uL)
   Console.WriteLine("d02-offscreen-failure-gate: accepted=" + (if accepted { "1" } else { "0" })
-    + " device_loss=" + (if deviceLoss { "1" } else { "0" })
-    + " storage_cleared=" + (if storageCleared { "1" } else { "0" })
-    + " close=" + (if close { "1" } else { "0" }))
+    +" device_loss=" + (if deviceLoss { "1" } else { "0" })
+    +" storage_cleared=" + (if storageCleared { "1" } else { "0" })
+    +" close=" + (if close { "1" } else { "0" }))
 }
 
 func S14RunCalibration(values []int64) {
@@ -868,11 +860,11 @@ func RunS14ReadbackMeasure() {
         takeCountAfterSamples = takeCountAfterSamples + 1uL
         let timing = WindowReadbackTestFixture.Timing(opened)
         S14Require(timing.ReadyTicks >= timing.RequestStartTicks
-          && timing.RecordTicks >= timing.RequestStartTicks
-          && timing.SubmitTicks >= timing.RecordTicks
-          && timing.CpuCopyStartTicks >= timing.SubmitTicks
-          && timing.CpuCopyEndTicks >= timing.CpuCopyStartTicks
-          && timing.ReadyTicks >= timing.CpuCopyEndTicks,
+            && timing.RecordTicks >= timing.RequestStartTicks
+            && timing.SubmitTicks >= timing.RecordTicks
+            && timing.CpuCopyStartTicks >= timing.SubmitTicks
+            && timing.CpuCopyEndTicks >= timing.CpuCopyStartTicks
+            && timing.ReadyTicks >= timing.CpuCopyEndTicks,
           "S14 active measurement timing snapshot is invalid")
         normalRecordTicks[sampleIndex] = timing.RecordTicks - timing.RequestStartTicks
         requestCpuTicks[sampleIndex] = timing.SubmitTicks - timing.RequestStartTicks
@@ -886,7 +878,7 @@ func RunS14ReadbackMeasure() {
         requestedBytes = uint64(timing.RequestedByteSize)
         if timing.GpuTimingAvailable {
           gpuSceneReplayValues[gpuTimingSampleCount] =
-            int64(timing.GpuSceneReplayNanoseconds)
+          int64(timing.GpuSceneReplayNanoseconds)
           gpuCopyValues[gpuTimingSampleCount] = int64(timing.GpuCopyNanoseconds)
           gpuTimingSampleCount = gpuTimingSampleCount + 1
         }
@@ -1030,180 +1022,174 @@ func RunS14ReadbackMeasure() {
       "S14 disabled warm frame allocated managed memory")
   }
   Console.WriteLine("s14-readback-measure: arm=" + arm
-    + " warmup=" + warmup.ToString()
-    + " samples=" + samplesCount.ToString()
-    + " frame_p50_ns=" + frameP50.ToString()
-    + " frame_p95_ns=" + frameP95.ToString()
-    + " frame_p99_ns=" + frameP99.ToString()
-    + " frame_p999_ns=" + frameP999.ToString()
-    + " frame_max_ns=" + S14Max(frameNs).ToString()
-    + " harness_p95_ns=" + overheadP95.ToString()
-    + " alloc_p95_B=" + allocationP95.ToString()
-    + " alloc_max_B=" + allocationMax.ToString()
-    + " request_alloc_p95_B=" + requestAllocationP95.ToString()
-    + " completion_alloc_p95_B=" + completionAllocationP95.ToString()
-    + " total_request_alloc_p95_B=" + totalAllocationP95.ToString()
-    + " warm_alloc_B=" + warmAllocated.ToString()
-    + " readback_request_delta=" + requestDelta.ToString()
-    + " readback_completion_delta=" + completionDelta.ToString()
-    + " readback_take_delta=" + takeDelta.ToString()
-    + " normal_scene_record_cpu_p95_ns=" + normalRecordP95.ToString()
-    + " normal_scene_record_cpu_max_ns=" + normalRecordMax.ToString()
-    + " request_submit_cpu_p95_ns=" + requestCpuP95.ToString()
-    + " request_submit_cpu_max_ns=" + requestCpuMax.ToString()
-    + " completion_observed_before_copy_p95_ns=" + completionObservedP95.ToString()
-    + " completion_observed_before_copy_max_ns=" + completionObservedMax.ToString()
-    + " request_ready_after_copy_p95_ns=" + requestReadyP95.ToString()
-    + " request_ready_after_copy_max_ns=" + requestReadyMax.ToString()
-    + " cpu_copy_p95_ns=" + cpuCopyP95.ToString()
-    + " cpu_copy_max_ns=" + cpuCopyMax.ToString()
-    + " gpu_timing_available=" + (if gpuTimingAvailable { "1" } else { "0" })
-    + " gpu_timing_samples=" + gpuTimingSampleCount.ToString()
-    + " gpu_scene_replay_p95_ns=" + gpuSceneReplayP95.ToString()
-    + " gpu_scene_replay_max_ns=" + gpuSceneReplayMax.ToString()
-    + " gpu_copy_p95_ns=" + gpuCopyP95.ToString()
-    + " gpu_copy_max_ns=" + gpuCopyMax.ToString()
-    + " requested_bytes=" + (if arm == "active" { "16384" } else { "0" })
-    + " requested_bytes_snapshot=" + requestedBytes.ToString()
-    + " resource_create_delta=" + objectCreateDeltaTotal.ToString()
-    + " resource_destroy_delta=" + objectDestroyDeltaTotal.ToString()
-    + " resource_resident_peak_B=" + residentPeak.ToString()
-    + " resource_resident_before_close_B=" + residentBeforeClose.ToString()
-    + " resource_resident_after_close_B=0"
-    + " render_path=" + (if arm == "active" { "readback_request" } else { "forced" }))
+    +" warmup=" + warmup.ToString()
+    +" samples=" + samplesCount.ToString()
+    +" frame_p50_ns=" + frameP50.ToString()
+    +" frame_p95_ns=" + frameP95.ToString()
+    +" frame_p99_ns=" + frameP99.ToString()
+    +" frame_p999_ns=" + frameP999.ToString()
+    +" frame_max_ns=" + S14Max(frameNs).ToString()
+    +" harness_p95_ns=" + overheadP95.ToString()
+    +" alloc_p95_B=" + allocationP95.ToString()
+    +" alloc_max_B=" + allocationMax.ToString()
+    +" request_alloc_p95_B=" + requestAllocationP95.ToString()
+    +" completion_alloc_p95_B=" + completionAllocationP95.ToString()
+    +" total_request_alloc_p95_B=" + totalAllocationP95.ToString()
+    +" warm_alloc_B=" + warmAllocated.ToString()
+    +" readback_request_delta=" + requestDelta.ToString()
+    +" readback_completion_delta=" + completionDelta.ToString()
+    +" readback_take_delta=" + takeDelta.ToString()
+    +" normal_scene_record_cpu_p95_ns=" + normalRecordP95.ToString()
+    +" normal_scene_record_cpu_max_ns=" + normalRecordMax.ToString()
+    +" request_submit_cpu_p95_ns=" + requestCpuP95.ToString()
+    +" request_submit_cpu_max_ns=" + requestCpuMax.ToString()
+    +" completion_observed_before_copy_p95_ns=" + completionObservedP95.ToString()
+    +" completion_observed_before_copy_max_ns=" + completionObservedMax.ToString()
+    +" request_ready_after_copy_p95_ns=" + requestReadyP95.ToString()
+    +" request_ready_after_copy_max_ns=" + requestReadyMax.ToString()
+    +" cpu_copy_p95_ns=" + cpuCopyP95.ToString()
+    +" cpu_copy_max_ns=" + cpuCopyMax.ToString()
+    +" gpu_timing_available=" + (if gpuTimingAvailable { "1" } else { "0" })
+    +" gpu_timing_samples=" + gpuTimingSampleCount.ToString()
+    +" gpu_scene_replay_p95_ns=" + gpuSceneReplayP95.ToString()
+    +" gpu_scene_replay_max_ns=" + gpuSceneReplayMax.ToString()
+    +" gpu_copy_p95_ns=" + gpuCopyP95.ToString()
+    +" gpu_copy_max_ns=" + gpuCopyMax.ToString()
+    +" requested_bytes=" + (if arm == "active" { "16384" } else { "0" })
+    +" requested_bytes_snapshot=" + requestedBytes.ToString()
+    +" resource_create_delta=" + objectCreateDeltaTotal.ToString()
+    +" resource_destroy_delta=" + objectDestroyDeltaTotal.ToString()
+    +" resource_resident_peak_B=" + residentPeak.ToString()
+    +" resource_resident_before_close_B=" + residentBeforeClose.ToString()
+    +" resource_resident_after_close_B=0"
+    +" render_path=" + (if arm == "active" { "readback_request" } else { "forced" }))
 }
 
-func S09RPixelIndex(width uint32, x int32, y int32) int32 {
-  return int32((uint64(y) * uint64(width) + uint64(x)) * 4uL)
-}
+func S09RPixelIndex(width uint32, x int32, y int32) int32 -> int32((uint64(y) * uint64(width) + uint64(x)) * 4uL)
 
 func S09RLogicalPixel(pixels []uint8, width uint32, metrics WindowMetrics,
-    x float64, y float64) []uint8 {
-  let scaleX = if metrics.DisplayScaleX > 0.0 { metrics.DisplayScaleX } else { 1.0 }
-  let scaleY = if metrics.DisplayScaleY > 0.0 { metrics.DisplayScaleY } else { 1.0 }
-  let px = int32(Math.Floor(x * scaleX))
-  let py = int32(Math.Floor(y * scaleY))
-  let index = S09RPixelIndex(width, px, py)
-  return []uint8{
-    pixels[index],
-    pixels[index + 1],
-    pixels[index + 2],
-    pixels[index + 3],
+  x float64, y float64) []uint8{
+    let scaleX = if metrics.DisplayScaleX > 0.0 { metrics.DisplayScaleX } else { 1.0 }
+    let scaleY = if metrics.DisplayScaleY > 0.0 { metrics.DisplayScaleY } else { 1.0 }
+    let px = int32(Math.Floor(x * scaleX))
+    let py = int32(Math.Floor(y * scaleY))
+    let index = S09RPixelIndex(width, px, py)
+    return []uint8{
+      pixels[index],
+      pixels[index + 1],
+      pixels[index + 2],
+      pixels[index + 3],
+    }
   }
-}
 
-func S09RPixelText(pixel []uint8) string {
-  return pixel[0].ToString() + "/" + pixel[1].ToString() + "/"
-    + pixel[2].ToString() + "/" + pixel[3].ToString()
-}
+func S09RPixelText(pixel []uint8) string -> pixel[0].ToString() + "/" + pixel[1].ToString() + "/"
++pixel[2].ToString() + "/" + pixel[3].ToString()
 
 func S09RNear(pixel []uint8, red uint8, green uint8, blue uint8,
-    tolerance int32) bool {
-  return Math.Abs(int32(pixel[0]) - int32(red)) <= tolerance
-    && Math.Abs(int32(pixel[1]) - int32(green)) <= tolerance
-    && Math.Abs(int32(pixel[2]) - int32(blue)) <= tolerance
-    && pixel[3] >= uint8(240)
-}
+  tolerance int32) bool -> Math.Abs(int32(pixel[0]) - int32(red)) <= tolerance
+  && Math.Abs(int32(pixel[1]) - int32(green)) <= tolerance
+  && Math.Abs(int32(pixel[2]) - int32(blue)) <= tolerance
+  && pixel[3] >= uint8(240)
 
 func S09RRequirePixelNear(pixels []uint8, width uint32, metrics WindowMetrics,
-    x float64, y float64, red uint8, green uint8, blue uint8, tolerance int32,
-    name string) {
-  let pixel = S09RLogicalPixel(pixels, width, metrics, x, y)
-  if !S09RNear(pixel, red, green, blue, tolerance) {
-    throw InvalidOperationException("S09R pixel " + name + " at "
-      + x.ToString() + "," + y.ToString() + " was "
-      + S09RPixelText(pixel))
+  x float64, y float64, red uint8, green uint8, blue uint8, tolerance int32,
+  name string) {
+    let pixel = S09RLogicalPixel(pixels, width, metrics, x, y)
+    if !S09RNear(pixel, red, green, blue, tolerance) {
+      throw InvalidOperationException("S09R pixel " + name + " at "
+        +x.ToString() + "," + y.ToString() + " was "
+        +S09RPixelText(pixel))
+    }
   }
-}
 
 func S09RRequirePixelDifferent(pixels []uint8, width uint32, metrics WindowMetrics,
-    x float64, y float64, red uint8, green uint8, blue uint8, tolerance int32,
-    name string) {
-  let pixel = S09RLogicalPixel(pixels, width, metrics, x, y)
-  let distance = Math.Abs(int32(pixel[0]) - int32(red))
-    + Math.Abs(int32(pixel[1]) - int32(green))
-    + Math.Abs(int32(pixel[2]) - int32(blue))
-  if distance <= tolerance {
-    throw InvalidOperationException("S09R pixel " + name
-      + " did not change: " + S09RPixelText(pixel))
+  x float64, y float64, red uint8, green uint8, blue uint8, tolerance int32,
+  name string) {
+    let pixel = S09RLogicalPixel(pixels, width, metrics, x, y)
+    let distance = Math.Abs(int32(pixel[0]) - int32(red))
+    +Math.Abs(int32(pixel[1]) - int32(green))
+    +Math.Abs(int32(pixel[2]) - int32(blue))
+    if distance <= tolerance {
+      throw InvalidOperationException("S09R pixel " + name
+        +" did not change: " + S09RPixelText(pixel))
+    }
   }
-}
 
 func S09RRequireBorderPattern(pixels []uint8, width uint32,
-    metrics WindowMetrics, left int32, right int32, name string) {
-  var painted int32 = 0
-  var gaps int32 = 0
-  var x = left
-  while x <= right {
-    let pixel = S09RLogicalPixel(pixels, width, metrics, float64(x), 11.0)
-    if S09RNear(pixel, uint8(232), uint8(96), uint8(72), 24) {
-      painted = painted + 1
-    } else if S09RNear(pixel, uint8(12), uint8(20), uint8(32), 16) {
-      gaps = gaps + 1
+  metrics WindowMetrics, left int32, right int32, name string) {
+    var painted int32 = 0
+    var gaps int32 = 0
+    var x = left
+    while x <= right {
+      let pixel = S09RLogicalPixel(pixels, width, metrics, float64(x), 11.0)
+      if S09RNear(pixel, uint8(232), uint8(96), uint8(72), 24) {
+        painted = painted + 1
+      } else if S09RNear(pixel, uint8(12), uint8(20), uint8(32), 16) {
+        gaps = gaps + 1
+      }
+      x = x + 1
     }
-    x = x + 1
+    if painted == 0 || gaps == 0 {
+      throw InvalidOperationException("S09R " + name
+        +" did not contain both painted coverage and gaps")
+    }
   }
-  if painted == 0 || gaps == 0 {
-    throw InvalidOperationException("S09R " + name
-      + " did not contain both painted coverage and gaps")
-  }
-}
 
 func S09RRequireBlended(pixels []uint8, width uint32,
-    metrics WindowMetrics, x float64, y float64, name string) {
-  let pixel = S09RLogicalPixel(pixels, width, metrics, x, y)
-  if pixel[0] <= uint8(12) || pixel[0] >= uint8(232)
+  metrics WindowMetrics, x float64, y float64, name string) {
+    let pixel = S09RLogicalPixel(pixels, width, metrics, x, y)
+    if pixel[0] <= uint8(12) || pixel[0] >= uint8(232)
       || pixel[1] <= uint8(20) || pixel[1] >= uint8(196)
       || pixel[2] <= uint8(32) || pixel[2] >= uint8(48)
       || pixel[3] != uint8(255) {
-    throw InvalidOperationException("S09R pixel " + name + " was "
-      + S09RPixelText(pixel))
+        throw InvalidOperationException("S09R pixel " + name + " was "
+          +S09RPixelText(pixel))
+      }
   }
-}
 
 func S14RequireTextCoverage(pixels []uint8, width uint32, metrics WindowMetrics,
-    left int32, top int32, right int32, bottom int32, name string) {
-  var covered int32 = 0
-  var y = top
-  while y <= bottom {
-    var x = left
-    while x <= right {
-      let pixel = S09RLogicalPixel(pixels, width, metrics, float64(x), float64(y))
-      if pixel[0] >= uint8(180) && pixel[1] >= uint8(180)
+  left int32, top int32, right int32, bottom int32, name string) {
+    var covered int32 = 0
+    var y = top
+    while y <= bottom {
+      var x = left
+      while x <= right {
+        let pixel = S09RLogicalPixel(pixels, width, metrics, float64(x), float64(y))
+        if pixel[0] >= uint8(180) && pixel[1] >= uint8(180)
           && pixel[2] >= uint8(180) && pixel[3] >= uint8(240) {
-        covered = covered + 1
+            covered = covered + 1
+          }
+        x = x + 1
       }
-      x = x + 1
+      y = y + 1
     }
-    y = y + 1
+    if covered < 3 {
+      throw InvalidOperationException("S14 text " + name
+        +" did not produce white coverage: " + covered.ToString())
+    }
   }
-  if covered < 3 {
-    throw InvalidOperationException("S14 text " + name
-      + " did not produce white coverage: " + covered.ToString())
-  }
-}
 
 func S14RequireColorCoverage(pixels []uint8, width uint32, metrics WindowMetrics,
-    left int32, top int32, right int32, bottom int32, name string) {
-  var covered int32 = 0
-  var y = top
-  while y <= bottom {
-    var x = left
-    while x <= right {
-      let pixel = S09RLogicalPixel(pixels, width, metrics, float64(x), float64(y))
-      if pixel[3] >= uint8(240)
+  left int32, top int32, right int32, bottom int32, name string) {
+    var covered int32 = 0
+    var y = top
+    while y <= bottom {
+      var x = left
+      while x <= right {
+        let pixel = S09RLogicalPixel(pixels, width, metrics, float64(x), float64(y))
+        if pixel[3] >= uint8(240)
           && (pixel[0] > uint8(48) || pixel[1] > uint8(48) || pixel[2] > uint8(48)) {
-        covered = covered + 1
+            covered = covered + 1
+          }
+        x = x + 1
       }
-      x = x + 1
+      y = y + 1
     }
-    y = y + 1
+    if covered < 3 {
+      throw InvalidOperationException("S14 color glyph " + name
+        +" did not produce coverage: " + covered.ToString())
+    }
   }
-  if covered < 3 {
-    throw InvalidOperationException("S14 color glyph " + name
-      + " did not produce coverage: " + covered.ToString())
-  }
-}
 
 func S09RValidateResult(result VulkanReadbackResult, metrics WindowMetrics) {
   let expectedBytes = uint64(result.Width) * uint64(result.Height) * 4uL
@@ -1233,56 +1219,56 @@ func S09RReadback(window Window, metrics WindowMetrics) VulkanReadbackResult {
 }
 
 func S15RequireOutsideStable(before []uint8, after []uint8, width uint32,
-    height uint32, left int32, top int32, right int32, bottom int32) {
-  var y uint32 = 0u
-  while y < height {
-    var x uint32 = 0u
-    while x < width {
-      let outside = int32(x) < left || int32(x) >= right
-        || int32(y) < top || int32(y) >= bottom
-      if outside {
-        let index = int32((y * width + x) * 4u)
-        var channel int32 = 0
-        while channel < 4 {
-          if Math.Abs(int32(before[index + channel])
-              - int32(after[index + channel])) > 1 {
-            throw InvalidOperationException("S15 retained scene changed a pixel outside the mutation")
+  height uint32, left int32, top int32, right int32, bottom int32) {
+    var y uint32 = 0u
+    while y < height {
+      var x uint32 = 0u
+      while x < width {
+        let outside = int32(x) < left || int32(x) >= right
+          || int32(y) < top || int32(y) >= bottom
+        if outside {
+          let index = int32((y * width + x) * 4u)
+          var channel int32 = 0
+          while channel < 4 {
+            if Math.Abs(int32(before[index + channel])
+              -int32(after[index + channel])) > 1 {
+                throw InvalidOperationException("S15 retained scene changed a pixel outside the mutation")
+              }
+            channel = channel + 1
           }
-          channel = channel + 1
         }
+        x = x + 1u
       }
-      x = x + 1u
+      y = y + 1u
     }
-    y = y + 1u
   }
-}
 
 func S15RequireBorderPayload(state VulkanSceneRetentionTestSnapshot,
-    bounds ElementRect, scaleX float64, scaleY float64, radiusScale float64,
-    topWidth float64, rightWidth float64, bottomWidth float64, leftWidth float64,
-    radius float64, topColor uint32, rightColor uint32, bottomColor uint32,
-    leftColor uint32, style uint32, name string) {
-  S14Require(state.BorderLeafFound && state.BorderLeafCount == 1u
-      && Math.Abs(float64(state.BorderLeafBoundsX) - bounds.X * scaleX) <= 0.01
-      && Math.Abs(float64(state.BorderLeafBoundsY) - bounds.Y * scaleY) <= 0.01
-      && Math.Abs(float64(state.BorderLeafBoundsWidth) - bounds.Width * scaleX) <= 0.01
-      && Math.Abs(float64(state.BorderLeafBoundsHeight) - bounds.Height * scaleY) <= 0.01
-      && Math.Abs(float64(state.BorderLeafTopWidth) - topWidth * scaleY) <= 0.01
-      && Math.Abs(float64(state.BorderLeafRightWidth) - rightWidth * scaleX) <= 0.01
-      && Math.Abs(float64(state.BorderLeafBottomWidth) - bottomWidth * scaleY) <= 0.01
-      && Math.Abs(float64(state.BorderLeafLeftWidth) - leftWidth * scaleX) <= 0.01
-      && Math.Abs(float64(state.BorderLeafRadiusTopLeft) - radius * radiusScale) <= 0.01
-      && Math.Abs(float64(state.BorderLeafRadiusTopRight) - radius * radiusScale) <= 0.01
-      && Math.Abs(float64(state.BorderLeafRadiusBottomRight) - radius * radiusScale) <= 0.01
-      && Math.Abs(float64(state.BorderLeafRadiusBottomLeft) - radius * radiusScale) <= 0.01
-      && state.BorderLeafTopColor == topColor
-      && state.BorderLeafRightColor == rightColor
-      && state.BorderLeafBottomColor == bottomColor
-      && state.BorderLeafLeftColor == leftColor
-      && state.BorderLeafStyle == style
-      && state.BorderLeafTransformIndex == -1,
-    "S15 " + name + " did not preserve the exact per-edge border payload")
-}
+  bounds ElementRect, scaleX float64, scaleY float64, radiusScale float64,
+  topWidth float64, rightWidth float64, bottomWidth float64, leftWidth float64,
+  radius float64, topColor uint32, rightColor uint32, bottomColor uint32,
+  leftColor uint32, style uint32, name string) {
+    S14Require(state.BorderLeafFound && state.BorderLeafCount == 1u
+        && Math.Abs(float64(state.BorderLeafBoundsX) - bounds.X * scaleX) <= 0.01
+        && Math.Abs(float64(state.BorderLeafBoundsY) - bounds.Y * scaleY) <= 0.01
+        && Math.Abs(float64(state.BorderLeafBoundsWidth) - bounds.Width * scaleX) <= 0.01
+        && Math.Abs(float64(state.BorderLeafBoundsHeight) - bounds.Height * scaleY) <= 0.01
+        && Math.Abs(float64(state.BorderLeafTopWidth) - topWidth * scaleY) <= 0.01
+        && Math.Abs(float64(state.BorderLeafRightWidth) - rightWidth * scaleX) <= 0.01
+        && Math.Abs(float64(state.BorderLeafBottomWidth) - bottomWidth * scaleY) <= 0.01
+        && Math.Abs(float64(state.BorderLeafLeftWidth) - leftWidth * scaleX) <= 0.01
+        && Math.Abs(float64(state.BorderLeafRadiusTopLeft) - radius * radiusScale) <= 0.01
+        && Math.Abs(float64(state.BorderLeafRadiusTopRight) - radius * radiusScale) <= 0.01
+        && Math.Abs(float64(state.BorderLeafRadiusBottomRight) - radius * radiusScale) <= 0.01
+        && Math.Abs(float64(state.BorderLeafRadiusBottomLeft) - radius * radiusScale) <= 0.01
+        && state.BorderLeafTopColor == topColor
+        && state.BorderLeafRightColor == rightColor
+        && state.BorderLeafBottomColor == bottomColor
+        && state.BorderLeafLeftColor == leftColor
+        && state.BorderLeafStyle == style
+        && state.BorderLeafTransformIndex == -1,
+      "S15 " + name + " did not preserve the exact per-edge border payload")
+  }
 
 func RunS15RetentionGate() {
   S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
@@ -1343,44 +1329,44 @@ func RunS15RetentionGate() {
     let roundedBounds = S15RetentionCell.RoundedBox.BorderBox
     let borderBounds = S15RetentionCell.BorderLeaf.BorderBox
     let roundedColor = (uint32(72) << 24) | (uint32(180) << 16)
-      | (uint32(212) << 8) | uint32(255)
+    | (uint32(212) << 8) | uint32(255)
     let initialMutatedColor = (uint32(220) << 24) | (uint32(40) << 16)
-      | (uint32(64) << 8) | uint32(255)
+    | (uint32(64) << 8) | uint32(255)
     let changedMutatedColor = (uint32(40) << 24) | (uint32(220) << 16)
-      | (uint32(96) << 8) | uint32(255)
+    | (uint32(96) << 8) | uint32(255)
     let initialBorderTopColor = (uint32(232) << 24) | (uint32(96) << 16)
-      | (uint32(72) << 8) | uint32(255)
+    | (uint32(72) << 8) | uint32(255)
     let changedBorderTopColor = (uint32(248) << 24) | (uint32(196) << 16)
-      | (uint32(48) << 8) | uint32(255)
+    | (uint32(48) << 8) | uint32(255)
     let borderRightColor = (uint32(96) << 24) | (uint32(224) << 16)
-      | (uint32(128) << 8) | uint32(255)
+    | (uint32(128) << 8) | uint32(255)
     let borderBottomColor = (uint32(72) << 24) | (uint32(144) << 16)
-      | (uint32(232) << 8) | uint32(255)
+    | (uint32(232) << 8) | uint32(255)
     let borderLeftColor = (uint32(224) << 24) | (uint32(184) << 16)
-      | (uint32(72) << 8) | uint32(255)
+    | (uint32(72) << 8) | uint32(255)
     let solidBorderStyle = uint32(int32(BorderStyle.Solid))
     S14Require(S15RetentionCell.Root.IsMounted
-      && S15RetentionCell.MutatedBox.IsMounted
-      && S15RetentionCell.RoundedBox.IsMounted
-      && S15RetentionCell.BorderLeaf.IsMounted,
+        && S15RetentionCell.MutatedBox.IsMounted
+        && S15RetentionCell.RoundedBox.IsMounted
+        && S15RetentionCell.BorderLeaf.IsMounted,
       "S15 retained scene did not mount the mutation box")
     initialState = WindowReadbackTestFixture.SceneRetention(opened)
     S14Require(initialState.ActiveSceneVersion > 0uL
-      && initialState.SceneVersion == initialState.ActiveSceneVersion
-      && initialState.AcquiredImageState
-      && initialState.FullRedraw
-      && !initialState.PartialRedraw
-      && initialState.DamageWidth == metrics.FramebufferWidth
-      && initialState.DamageHeight == metrics.FramebufferHeight,
+        && initialState.SceneVersion == initialState.ActiveSceneVersion
+        && initialState.AcquiredImageState
+        && initialState.FullRedraw
+        && !initialState.PartialRedraw
+        && initialState.DamageWidth == metrics.FramebufferWidth
+        && initialState.DamageHeight == metrics.FramebufferHeight,
       "S15 first use did not force a full redraw")
     S14Require(initialState.DirtyChunkCount > 0u
-      && initialState.PendingImageCount == 1u
-      && initialState.ActivePendingSceneVersion == initialState.ActiveSceneVersion
-      && initialState.PendingSceneVersion == initialState.ActiveSceneVersion,
+        && initialState.PendingImageCount == 1u
+        && initialState.ActivePendingSceneVersion == initialState.ActiveSceneVersion
+        && initialState.PendingSceneVersion == initialState.ActiveSceneVersion,
       "S15 first use did not publish the scene to the acquired image")
     S14Require(initialState.AppliedImageCount == 0u
-      && initialState.PromotedImageCount == 0u
-      && initialState.ActiveAppliedSceneVersion == 0uL,
+        && initialState.PromotedImageCount == 0u
+        && initialState.ActiveAppliedSceneVersion == 0uL,
       "S15 first use promoted a scene before presentation")
     S14Require(initialState.RetainedLeafTotalCount == 4uL
         && initialState.RetainedLeafHitCount == 0uL
@@ -1402,13 +1388,13 @@ func RunS15RetentionGate() {
       "S15 first use did not rebuild the exact solid border leaf")
     S14Require(initialState.RoundedLeafCount == 1u
         && Math.Abs(float64(initialState.RoundedLeafBoundsX)
-          - roundedBounds.X * scaleX) <= 0.01
+          -roundedBounds.X * scaleX) <= 0.01
         && Math.Abs(float64(initialState.RoundedLeafBoundsY)
-          - roundedBounds.Y * scaleY) <= 0.01
+          -roundedBounds.Y * scaleY) <= 0.01
         && Math.Abs(float64(initialState.RoundedLeafBoundsWidth)
-          - roundedBounds.Width * scaleX) <= 0.01
+          -roundedBounds.Width * scaleX) <= 0.01
         && Math.Abs(float64(initialState.RoundedLeafBoundsHeight)
-          - roundedBounds.Height * scaleY) <= 0.01
+          -roundedBounds.Height * scaleY) <= 0.01
         && Math.Abs(float64(initialState.RoundedLeafRadiusTopLeft) - 4.0 * radiusScale) <= 0.01
         && Math.Abs(float64(initialState.RoundedLeafRadiusTopRight) - 8.0 * radiusScale) <= 0.01
         && Math.Abs(float64(initialState.RoundedLeafRadiusBottomRight) - 12.0 * radiusScale) <= 0.01
@@ -1432,7 +1418,7 @@ func RunS15RetentionGate() {
       "S15 first primitive frame used an invalid slot")
     S14Require(initialPrimitive.RecordCount > 1
         && initialPrimitive.ByteCount
-          == uint64(initialPrimitive.RecordCount) * 128uL
+      == uint64(initialPrimitive.RecordCount) * 128uL
         && initialPrimitive.FullUpload
         && initialPrimitive.DirtyRecordCount == initialPrimitive.RecordCount
         && initialPrimitive.UploadRangeCount == 1
@@ -1462,12 +1448,12 @@ func RunS15RetentionGate() {
     var sawPrimitiveSlot1Clean bool = false
     var primitiveWarmupFrame int32 = 0
     while primitiveWarmupFrame < 12
-        && (!sawPrimitiveSlot0Clean || !sawPrimitiveSlot1Clean) {
-      WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
-      let nextPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
-      warmPrimitive = nextPrimitive
-      if nextPrimitive.RecordCount > 0 {
-        let clean = !nextPrimitive.FullUpload
+      && (!sawPrimitiveSlot0Clean || !sawPrimitiveSlot1Clean) {
+        WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+        let nextPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
+        warmPrimitive = nextPrimitive
+        if nextPrimitive.RecordCount > 0 {
+          let clean = !nextPrimitive.FullUpload
             && nextPrimitive.WrittenBytes == 0uL
             && nextPrimitive.SkippedBytes == nextPrimitive.ByteCount
             && nextPrimitive.DirtyRecordCount == 0
@@ -1475,21 +1461,21 @@ func RunS15RetentionGate() {
             && nextPrimitive.MappedWrites == 1uL
             && nextPrimitive.Flushes == 0uL
             && nextPrimitive.RetainedReuse
-              == uint64(nextPrimitive.RecordCount)
-        if nextPrimitive.SlotIndex == 0 {
-          sawPrimitiveSlot0 = true
-          if clean {
-            sawPrimitiveSlot0Clean = true
-          }
-        } else if nextPrimitive.SlotIndex == 1 {
-          sawPrimitiveSlot1 = true
-          if clean {
-            sawPrimitiveSlot1Clean = true
+          == uint64(nextPrimitive.RecordCount)
+          if nextPrimitive.SlotIndex == 0 {
+            sawPrimitiveSlot0 = true
+            if clean {
+              sawPrimitiveSlot0Clean = true
+            }
+          } else if nextPrimitive.SlotIndex == 1 {
+            sawPrimitiveSlot1 = true
+            if clean {
+              sawPrimitiveSlot1Clean = true
+            }
           }
         }
+        primitiveWarmupFrame = primitiveWarmupFrame + 1
       }
-      primitiveWarmupFrame = primitiveWarmupFrame + 1
-    }
     S14Require(sawPrimitiveSlot0 && sawPrimitiveSlot1
         && sawPrimitiveSlot0Clean && sawPrimitiveSlot1Clean
         && warmPrimitive.RecordCount == initialPrimitive.RecordCount
@@ -1497,56 +1483,56 @@ func RunS15RetentionGate() {
       "S15 unchanged primitive content did not retain both frame slots")
     warmState = WindowReadbackTestFixture.SceneRetention(opened)
     let warmLeafTotal = warmState.RetainedLeafTotalCount
-      - initialState.RetainedLeafTotalCount
+    -initialState.RetainedLeafTotalCount
     let warmLeafHits = warmState.RetainedLeafHitCount
-      - initialState.RetainedLeafHitCount
+    -initialState.RetainedLeafHitCount
     S14Require(warmLeafTotal > 0uL
         && warmLeafHits == warmLeafTotal
         && warmState.RetainedLeafRebuildCount
-          == initialState.RetainedLeafRebuildCount
+      == initialState.RetainedLeafRebuildCount
         && warmState.RetainedLeafFallbackCount
-          == initialState.RetainedLeafFallbackCount
+      == initialState.RetainedLeafFallbackCount
         && warmState.RetainedLeafInvalidationCount
-          == initialState.RetainedLeafInvalidationCount,
+      == initialState.RetainedLeafInvalidationCount,
       "S15 unchanged leaves did not produce exact warm solid and rounded hits")
     let warmParentTotal = warmState.RetainedParentBoxTotalCount
-      - initialState.RetainedParentBoxTotalCount
+    -initialState.RetainedParentBoxTotalCount
     let warmParentHits = warmState.RetainedParentBoxHitCount
-      - initialState.RetainedParentBoxHitCount
+    -initialState.RetainedParentBoxHitCount
     S14Require(warmParentTotal > 0uL
         && warmParentHits == warmParentTotal
         && warmState.RetainedParentBoxRebuildCount
-          == initialState.RetainedParentBoxRebuildCount
+      == initialState.RetainedParentBoxRebuildCount
         && warmState.RetainedParentBoxFallbackCount
-          == initialState.RetainedParentBoxFallbackCount
+      == initialState.RetainedParentBoxFallbackCount
         && warmState.RetainedParentBoxInvalidationCount
-          == initialState.RetainedParentBoxInvalidationCount,
+      == initialState.RetainedParentBoxInvalidationCount,
       "S15 warm parent box did not hit while continuing into generic children")
     let warmBorderTotal = warmState.RetainedBorderTotalCount
-      - initialState.RetainedBorderTotalCount
+    -initialState.RetainedBorderTotalCount
     let warmBorderHits = warmState.RetainedBorderHitCount
-      - initialState.RetainedBorderHitCount
+    -initialState.RetainedBorderHitCount
     S14Require(warmBorderTotal > 0uL
         && warmBorderHits == warmBorderTotal
         && warmState.RetainedBorderRebuildCount
-          == initialState.RetainedBorderRebuildCount
+      == initialState.RetainedBorderRebuildCount
         && warmState.RetainedBorderFallbackCount
-          == initialState.RetainedBorderFallbackCount
+      == initialState.RetainedBorderFallbackCount
         && warmState.RetainedBorderInvalidationCount
-          == initialState.RetainedBorderInvalidationCount,
+      == initialState.RetainedBorderInvalidationCount,
       "S15 unchanged border leaf did not produce exact warm hits")
     S15RequireBorderPayload(warmState, borderBounds, scaleX, scaleY, radiusScale,
       2.0, 3.0, 4.0, 5.0, 0.0, initialBorderTopColor, borderRightColor,
       borderBottomColor, borderLeftColor, solidBorderStyle, "warm border")
     S14Require(warmState.RoundedLeafCount == initialState.RoundedLeafCount
         && Math.Abs(float64(warmState.RoundedLeafBoundsX)
-          - roundedBounds.X * scaleX) <= 0.01
+          -roundedBounds.X * scaleX) <= 0.01
         && Math.Abs(float64(warmState.RoundedLeafBoundsY)
-          - roundedBounds.Y * scaleY) <= 0.01
+          -roundedBounds.Y * scaleY) <= 0.01
         && Math.Abs(float64(warmState.RoundedLeafBoundsWidth)
-          - roundedBounds.Width * scaleX) <= 0.01
+          -roundedBounds.Width * scaleX) <= 0.01
         && Math.Abs(float64(warmState.RoundedLeafBoundsHeight)
-          - roundedBounds.Height * scaleY) <= 0.01
+          -roundedBounds.Height * scaleY) <= 0.01
         && Math.Abs(float64(warmState.RoundedLeafRadiusTopLeft) - 4.0 * radiusScale) <= 0.01
         && Math.Abs(float64(warmState.RoundedLeafRadiusTopRight) - 8.0 * radiusScale) <= 0.01
         && Math.Abs(float64(warmState.RoundedLeafRadiusBottomRight) - 12.0 * radiusScale) <= 0.01
@@ -1568,23 +1554,23 @@ func RunS15RetentionGate() {
         && mutatedPrimitive.MappedWrites == 1uL
         && mutatedPrimitive.Flushes == 1uL
         && mutatedPrimitive.RetainedReuse
-          == uint64(mutatedPrimitive.RecordCount - 1),
+      == uint64(mutatedPrimitive.RecordCount - 1),
       "S15 one-box mutation did not upload one dirty primitive record")
     mutatedState = WindowReadbackTestFixture.SceneRetention(opened)
     let colorLeafTotal = mutatedState.RetainedLeafTotalCount
-      - warmState.RetainedLeafTotalCount
+    -warmState.RetainedLeafTotalCount
     let colorLeafHits = mutatedState.RetainedLeafHitCount
-      - warmState.RetainedLeafHitCount
+    -warmState.RetainedLeafHitCount
     let colorLeafRebuilds = mutatedState.RetainedLeafRebuildCount
-      - warmState.RetainedLeafRebuildCount
+    -warmState.RetainedLeafRebuildCount
     let colorLeafInvalidations = mutatedState.RetainedLeafInvalidationCount
-      - warmState.RetainedLeafInvalidationCount
+    -warmState.RetainedLeafInvalidationCount
     S14Require(colorLeafTotal > 0uL
         && colorLeafRebuilds == 1uL
         && colorLeafHits == colorLeafTotal - 1uL
         && colorLeafInvalidations == 1uL
         && mutatedState.RetainedLeafFallbackCount
-          == warmState.RetainedLeafFallbackCount,
+      == warmState.RetainedLeafFallbackCount,
       "S15 color mutation did not miss exactly one leaf with clean siblings retained")
     S14Require(mutatedState.MutatedSolidLeafFound
         && Math.Abs(float64(mutatedState.MutatedSolidLeafBoundsX) - 88.0 * scaleX) <= 0.01
@@ -1599,45 +1585,45 @@ func RunS15RetentionGate() {
     let changedRight = int32(Math.Ceiling(152.0 * scaleX))
     let changedBottom = int32(Math.Ceiling(40.0 * scaleY))
     S14Require(mutatedState.ActiveSceneVersion > initialState.ActiveSceneVersion
-      && mutatedState.SceneVersion == mutatedState.ActiveSceneVersion
-      && mutatedState.AcquiredImageState
-      && mutatedState.ActiveAppliedSceneVersion < mutatedState.ActiveSceneVersion
-      && mutatedState.PartialRedraw
-      && !mutatedState.FullRedraw
-      && mutatedState.DamageWidth < metrics.FramebufferWidth
-      && mutatedState.DamageHeight < metrics.FramebufferHeight
-      && mutatedState.DamageX <= changedLeft
-      && mutatedState.DamageY <= changedTop
-      && mutatedState.DamageX + mutatedState.DamageWidth >= changedRight
-      && mutatedState.DamageY + mutatedState.DamageHeight >= changedBottom,
+        && mutatedState.SceneVersion == mutatedState.ActiveSceneVersion
+        && mutatedState.AcquiredImageState
+        && mutatedState.ActiveAppliedSceneVersion < mutatedState.ActiveSceneVersion
+        && mutatedState.PartialRedraw
+        && !mutatedState.FullRedraw
+        && mutatedState.DamageWidth < metrics.FramebufferWidth
+        && mutatedState.DamageHeight < metrics.FramebufferHeight
+        && mutatedState.DamageX <= changedLeft
+        && mutatedState.DamageY <= changedTop
+        && mutatedState.DamageX + mutatedState.DamageWidth >= changedRight
+        && mutatedState.DamageY + mutatedState.DamageHeight >= changedBottom,
       "S15 box mutation did not produce bounded partial damage: scene="
-        + mutatedState.SceneVersion.ToString() + " active="
-        + mutatedState.ActiveSceneVersion.ToString() + " acquired="
-        + mutatedState.AcquiredImageState.ToString() + " applied="
-        + mutatedState.ActiveAppliedSceneVersion.ToString() + " partial="
-        + mutatedState.PartialRedraw.ToString() + " full="
-        + mutatedState.FullRedraw.ToString() + " damage="
-        + mutatedState.DamageX.ToString() + ","
-        + mutatedState.DamageY.ToString() + ","
-        + mutatedState.DamageWidth.ToString() + ","
-        + mutatedState.DamageHeight.ToString() + " framebuffer="
-        + metrics.FramebufferWidth.ToString() + "x"
-        + metrics.FramebufferHeight.ToString() + " warmPartial="
-        + warmState.PartialRedraw.ToString() + " warmFull="
-        + warmState.FullRedraw.ToString() + " warmDamage="
-        + warmState.DamageX.ToString() + "," + warmState.DamageY.ToString() + ","
-        + warmState.DamageWidth.ToString() + ","
-        + warmState.DamageHeight.ToString() + " warmDirty="
-        + warmState.DirtyChunkCount.ToString() + " warmReused="
-        + warmState.ReusedChunkCount.ToString() + " mutatedDirty="
-        + mutatedState.DirtyChunkCount.ToString() + " mutatedReused="
-        + mutatedState.ReusedChunkCount.ToString())
+      +mutatedState.SceneVersion.ToString() + " active="
+      +mutatedState.ActiveSceneVersion.ToString() + " acquired="
+      +mutatedState.AcquiredImageState.ToString() + " applied="
+      +mutatedState.ActiveAppliedSceneVersion.ToString() + " partial="
+      +mutatedState.PartialRedraw.ToString() + " full="
+      +mutatedState.FullRedraw.ToString() + " damage="
+      +mutatedState.DamageX.ToString() + ","
+      +mutatedState.DamageY.ToString() + ","
+      +mutatedState.DamageWidth.ToString() + ","
+      +mutatedState.DamageHeight.ToString() + " framebuffer="
+      +metrics.FramebufferWidth.ToString() + "x"
+      +metrics.FramebufferHeight.ToString() + " warmPartial="
+      +warmState.PartialRedraw.ToString() + " warmFull="
+      +warmState.FullRedraw.ToString() + " warmDamage="
+      +warmState.DamageX.ToString() + "," + warmState.DamageY.ToString() + ","
+      +warmState.DamageWidth.ToString() + ","
+      +warmState.DamageHeight.ToString() + " warmDirty="
+      +warmState.DirtyChunkCount.ToString() + " warmReused="
+      +warmState.ReusedChunkCount.ToString() + " mutatedDirty="
+      +mutatedState.DirtyChunkCount.ToString() + " mutatedReused="
+      +mutatedState.ReusedChunkCount.ToString())
     S14Require(mutatedState.DirtyChunkCount > 0u
-      && mutatedState.ReusedChunkCount > 0u,
+        && mutatedState.ReusedChunkCount > 0u,
       "S15 box mutation did not retain clean chunks")
     S14Require(mutatedState.PendingImageCount == 1u
-      && mutatedState.ActivePendingSceneVersion == mutatedState.ActiveSceneVersion
-      && mutatedState.PendingSceneVersion == mutatedState.ActiveSceneVersion,
+        && mutatedState.ActivePendingSceneVersion == mutatedState.ActiveSceneVersion
+        && mutatedState.PendingSceneVersion == mutatedState.ActiveSceneVersion,
       "S15 box mutation did not publish its scene version to the acquired image")
     mutatedResult = S09RReadback(opened, metrics)
     S09RRequirePixelNear(mutatedResult!!.Pixels, mutatedResult!!.Width, metrics,
@@ -1650,19 +1636,19 @@ func RunS15RetentionGate() {
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     boundsState = WindowReadbackTestFixture.SceneRetention(opened)
     let boundsLeafTotal = boundsState.RetainedLeafTotalCount
-      - mutatedState.RetainedLeafTotalCount
+    -mutatedState.RetainedLeafTotalCount
     let boundsLeafHits = boundsState.RetainedLeafHitCount
-      - mutatedState.RetainedLeafHitCount
+    -mutatedState.RetainedLeafHitCount
     let boundsLeafRebuilds = boundsState.RetainedLeafRebuildCount
-      - mutatedState.RetainedLeafRebuildCount
+    -mutatedState.RetainedLeafRebuildCount
     let boundsLeafInvalidations = boundsState.RetainedLeafInvalidationCount
-      - mutatedState.RetainedLeafInvalidationCount
+    -mutatedState.RetainedLeafInvalidationCount
     S14Require(boundsLeafTotal > 0uL
         && boundsLeafRebuilds == 1uL
         && boundsLeafHits == boundsLeafTotal - 1uL
         && boundsLeafInvalidations == 1uL
         && boundsState.RetainedLeafFallbackCount
-          == mutatedState.RetainedLeafFallbackCount,
+      == mutatedState.RetainedLeafFallbackCount,
       "S15 bounds mutation did not rebuild exactly one leaf with clean siblings retained")
     S14Require(boundsState.MutatedSolidLeafFound
         && Math.Abs(float64(boundsState.MutatedSolidLeafBoundsX) - 104.0 * scaleX) <= 0.01
@@ -1694,28 +1680,28 @@ func RunS15RetentionGate() {
       unionBottom
     }
     S14Require(boundsState.ActiveSceneVersion > mutatedState.ActiveSceneVersion
-      && boundsState.SceneVersion == boundsState.ActiveSceneVersion
-      && boundsState.AcquiredImageState
-      && boundsState.ActiveAppliedSceneVersion < boundsState.ActiveSceneVersion
-      && boundsState.PartialRedraw
-      && !boundsState.FullRedraw
-      && boundsState.DamageWidth < metrics.FramebufferWidth
-      && boundsState.DamageHeight < metrics.FramebufferHeight
-      && boundsState.DamageX <= damageLeft
-      && boundsState.DamageY <= damageTop
-      && boundsState.DamageX + boundsState.DamageWidth >= damageRight
-      && boundsState.DamageY + boundsState.DamageHeight >= damageBottom,
+        && boundsState.SceneVersion == boundsState.ActiveSceneVersion
+        && boundsState.AcquiredImageState
+        && boundsState.ActiveAppliedSceneVersion < boundsState.ActiveSceneVersion
+        && boundsState.PartialRedraw
+        && !boundsState.FullRedraw
+        && boundsState.DamageWidth < metrics.FramebufferWidth
+        && boundsState.DamageHeight < metrics.FramebufferHeight
+        && boundsState.DamageX <= damageLeft
+        && boundsState.DamageY <= damageTop
+        && boundsState.DamageX + boundsState.DamageWidth >= damageRight
+        && boundsState.DamageY + boundsState.DamageHeight >= damageBottom,
       "S15 bounds mutation did not damage both old and new bounds: x="
-        + boundsState.DamageX.ToString() + " y=" + boundsState.DamageY.ToString()
-        + " w=" + boundsState.DamageWidth.ToString() + " h="
-        + boundsState.DamageHeight.ToString() + " oldLeft=" + changedLeft.ToString()
-        + " oldRight=" + changedRight.ToString() + " newLeft=" + movedLeft.ToString()
-        + " newRight=" + movedRight.ToString() + " unionLeft=" + damageLeft.ToString()
-        + " unionRight=" + unionRight.ToString() + " clippedRight="
-        + damageRight.ToString() + " unionTop=" + damageTop.ToString()
-        + " unionBottom=" + unionBottom.ToString() + " clippedBottom="
-        + damageBottom.ToString() + " partial="
-        + boundsState.PartialRedraw.ToString())
+      +boundsState.DamageX.ToString() + " y=" + boundsState.DamageY.ToString()
+      +" w=" + boundsState.DamageWidth.ToString() + " h="
+      +boundsState.DamageHeight.ToString() + " oldLeft=" + changedLeft.ToString()
+      +" oldRight=" + changedRight.ToString() + " newLeft=" + movedLeft.ToString()
+      +" newRight=" + movedRight.ToString() + " unionLeft=" + damageLeft.ToString()
+      +" unionRight=" + unionRight.ToString() + " clippedRight="
+      +damageRight.ToString() + " unionTop=" + damageTop.ToString()
+      +" unionBottom=" + unionBottom.ToString() + " clippedBottom="
+      +damageBottom.ToString() + " partial="
+      +boundsState.PartialRedraw.ToString())
     boundsResult = S09RReadback(opened, metrics)
     S09RRequirePixelNear(boundsResult!!.Pixels, boundsResult!!.Width, metrics,
       136.0, 24.0, uint8(40), uint8(220), uint8(96), 4, "bounds_mutated_box")
@@ -1729,87 +1715,87 @@ func RunS15RetentionGate() {
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     unsupportedState = WindowReadbackTestFixture.SceneRetention(opened)
     let unsupportedLeafFallbacks = unsupportedState.RetainedLeafFallbackCount
-      - boundsState.RetainedLeafFallbackCount
+    -boundsState.RetainedLeafFallbackCount
     let unsupportedLeafInvalidations = unsupportedState.RetainedLeafInvalidationCount
-      - boundsState.RetainedLeafInvalidationCount
+    -boundsState.RetainedLeafInvalidationCount
     S14Require(unsupportedLeafFallbacks == 1uL
         && unsupportedLeafInvalidations == 1uL
         && unsupportedState.AcquiredImageState
         && unsupportedState.FullRedraw
         && !unsupportedState.PartialRedraw
-      && unsupportedState.DamageWidth == metrics.FramebufferWidth
+        && unsupportedState.DamageWidth == metrics.FramebufferWidth
         && unsupportedState.DamageHeight == metrics.FramebufferHeight,
       "S15 unsupported leaf feature did not force one generic fallback and full damage"
-        + " fallbackDelta=" + unsupportedLeafFallbacks.ToString()
-        + " invalidationDelta=" + unsupportedLeafInvalidations.ToString()
-        + " acquired=" + unsupportedState.AcquiredImageState.ToString()
-        + " full=" + unsupportedState.FullRedraw.ToString()
-        + " partial=" + unsupportedState.PartialRedraw.ToString()
-        + " damageX=" + unsupportedState.DamageX.ToString()
-        + " damageY=" + unsupportedState.DamageY.ToString()
-        + " damageWidth=" + unsupportedState.DamageWidth.ToString()
-        + " damageHeight=" + unsupportedState.DamageHeight.ToString()
-        + " framebufferWidth=" + metrics.FramebufferWidth.ToString()
-        + " framebufferHeight=" + metrics.FramebufferHeight.ToString())
+      +" fallbackDelta=" + unsupportedLeafFallbacks.ToString()
+      +" invalidationDelta=" + unsupportedLeafInvalidations.ToString()
+      +" acquired=" + unsupportedState.AcquiredImageState.ToString()
+      +" full=" + unsupportedState.FullRedraw.ToString()
+      +" partial=" + unsupportedState.PartialRedraw.ToString()
+      +" damageX=" + unsupportedState.DamageX.ToString()
+      +" damageY=" + unsupportedState.DamageY.ToString()
+      +" damageWidth=" + unsupportedState.DamageWidth.ToString()
+      +" damageHeight=" + unsupportedState.DamageHeight.ToString()
+      +" framebufferWidth=" + metrics.FramebufferWidth.ToString()
+      +" framebufferHeight=" + metrics.FramebufferHeight.ToString())
 
     root.ToggleUnsupportedFeature()
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     recapturedState = WindowReadbackTestFixture.SceneRetention(opened)
     let recapturedLeafRebuilds = recapturedState.RetainedLeafRebuildCount
-      - unsupportedState.RetainedLeafRebuildCount
+    -unsupportedState.RetainedLeafRebuildCount
     let recapturedLeafInvalidations = recapturedState.RetainedLeafInvalidationCount
-      - unsupportedState.RetainedLeafInvalidationCount
+    -unsupportedState.RetainedLeafInvalidationCount
     S14Require(recapturedLeafRebuilds == 1uL
         && recapturedLeafInvalidations == 0uL
         && recapturedState.RetainedLeafFallbackCount
-          == unsupportedState.RetainedLeafFallbackCount,
+      == unsupportedState.RetainedLeafFallbackCount,
       "S15 unsupported leaf removal did not safely recapture the rounded leaf")
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     recapturedWarmState = WindowReadbackTestFixture.SceneRetention(opened)
     let recapturedWarmLeafTotal = recapturedWarmState.RetainedLeafTotalCount
-      - recapturedState.RetainedLeafTotalCount
+    -recapturedState.RetainedLeafTotalCount
     let recapturedWarmLeafHits = recapturedWarmState.RetainedLeafHitCount
-      - recapturedState.RetainedLeafHitCount
+    -recapturedState.RetainedLeafHitCount
     S14Require(recapturedWarmLeafTotal > 0uL
         && recapturedWarmLeafHits == recapturedWarmLeafTotal
         && recapturedWarmState.RetainedLeafRebuildCount
-          == recapturedState.RetainedLeafRebuildCount,
+      == recapturedState.RetainedLeafRebuildCount,
       "S15 rounded leaf did not return to exact warm retention after fallback"
-        + " warmTotalDelta=" + recapturedWarmLeafTotal.ToString()
-        + " warmHitDelta=" + recapturedWarmLeafHits.ToString()
-        + " recapturedRebuilds="
-        + recapturedState.RetainedLeafRebuildCount.ToString()
-        + " warmRebuilds="
-        + recapturedWarmState.RetainedLeafRebuildCount.ToString()
-        + " recapturedFallbacks="
-        + recapturedState.RetainedLeafFallbackCount.ToString()
-        + " warmFallbacks="
-        + recapturedWarmState.RetainedLeafFallbackCount.ToString()
-        + " recapturedInvalidations="
-        + recapturedState.RetainedLeafInvalidationCount.ToString()
-        + " warmInvalidations="
-        + recapturedWarmState.RetainedLeafInvalidationCount.ToString()
-        + " dirty=" + recapturedWarmState.DirtyChunkCount.ToString()
-        + " reused=" + recapturedWarmState.ReusedChunkCount.ToString()
-        + " acquired=" + recapturedWarmState.AcquiredImageState.ToString()
-        + " full=" + recapturedWarmState.FullRedraw.ToString()
-        + " partial=" + recapturedWarmState.PartialRedraw.ToString()
-        + " damageX=" + recapturedWarmState.DamageX.ToString()
-        + " damageY=" + recapturedWarmState.DamageY.ToString()
-        + " damageWidth=" + recapturedWarmState.DamageWidth.ToString()
-        + " damageHeight=" + recapturedWarmState.DamageHeight.ToString()
-        + " framebufferWidth=" + metrics.FramebufferWidth.ToString()
-        + " framebufferHeight=" + metrics.FramebufferHeight.ToString())
+      +" warmTotalDelta=" + recapturedWarmLeafTotal.ToString()
+      +" warmHitDelta=" + recapturedWarmLeafHits.ToString()
+      +" recapturedRebuilds="
+      +recapturedState.RetainedLeafRebuildCount.ToString()
+      +" warmRebuilds="
+      +recapturedWarmState.RetainedLeafRebuildCount.ToString()
+      +" recapturedFallbacks="
+      +recapturedState.RetainedLeafFallbackCount.ToString()
+      +" warmFallbacks="
+      +recapturedWarmState.RetainedLeafFallbackCount.ToString()
+      +" recapturedInvalidations="
+      +recapturedState.RetainedLeafInvalidationCount.ToString()
+      +" warmInvalidations="
+      +recapturedWarmState.RetainedLeafInvalidationCount.ToString()
+      +" dirty=" + recapturedWarmState.DirtyChunkCount.ToString()
+      +" reused=" + recapturedWarmState.ReusedChunkCount.ToString()
+      +" acquired=" + recapturedWarmState.AcquiredImageState.ToString()
+      +" full=" + recapturedWarmState.FullRedraw.ToString()
+      +" partial=" + recapturedWarmState.PartialRedraw.ToString()
+      +" damageX=" + recapturedWarmState.DamageX.ToString()
+      +" damageY=" + recapturedWarmState.DamageY.ToString()
+      +" damageWidth=" + recapturedWarmState.DamageWidth.ToString()
+      +" damageHeight=" + recapturedWarmState.DamageHeight.ToString()
+      +" framebufferWidth=" + metrics.FramebufferWidth.ToString()
+      +" framebufferHeight=" + metrics.FramebufferHeight.ToString())
     S14Require(recapturedWarmState.RoundedLeafCount == initialState.RoundedLeafCount
         && recapturedWarmState.RoundedLeafColor == roundedColor
         && Math.Abs(float64(recapturedWarmState.RoundedLeafRadiusTopLeft)
-          - 4.0 * radiusScale) <= 0.01
+          -4.0 * radiusScale) <= 0.01
         && Math.Abs(float64(recapturedWarmState.RoundedLeafRadiusTopRight)
-          - 8.0 * radiusScale) <= 0.01
+          -8.0 * radiusScale) <= 0.01
         && Math.Abs(float64(recapturedWarmState.RoundedLeafRadiusBottomRight)
-          - 12.0 * radiusScale) <= 0.01
+          -12.0 * radiusScale) <= 0.01
         && Math.Abs(float64(recapturedWarmState.RoundedLeafRadiusBottomLeft)
-          - 16.0 * radiusScale) <= 0.01,
+          -16.0 * radiusScale) <= 0.01,
       "S15 rounded leaf recapture did not restore its exact payload")
 
     root.ToggleExtra()
@@ -1817,7 +1803,7 @@ func RunS15RetentionGate() {
     topologyAddPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
     S14Require(topologyAddPrimitive.RecordCount != mutatedPrimitive.RecordCount
         && topologyAddPrimitive.ByteCount
-          == uint64(topologyAddPrimitive.RecordCount) * 128uL
+      == uint64(topologyAddPrimitive.RecordCount) * 128uL
         && topologyAddPrimitive.FullUpload
         && topologyAddPrimitive.DirtyRecordCount == topologyAddPrimitive.RecordCount
         && topologyAddPrimitive.UploadRangeCount == 1
@@ -1834,11 +1820,11 @@ func RunS15RetentionGate() {
         && topologyAddState.DamageWidth == metrics.FramebufferWidth
         && topologyAddState.DamageHeight == metrics.FramebufferHeight
         && topologyAddState.RetainedLeafTotalCount
-          - recapturedWarmState.RetainedLeafTotalCount == 5uL
+      -recapturedWarmState.RetainedLeafTotalCount == 5uL
         && topologyAddState.RetainedLeafHitCount
-          - recapturedWarmState.RetainedLeafHitCount == 4uL
+      -recapturedWarmState.RetainedLeafHitCount == 4uL
         && topologyAddState.RetainedLeafRebuildCount
-          - recapturedWarmState.RetainedLeafRebuildCount == 1uL,
+      -recapturedWarmState.RetainedLeafRebuildCount == 1uL,
       "S15 topology add did not force full damage")
     topologyAddResult = S09RReadback(opened, metrics)
     S09RRequirePixelNear(topologyAddResult!!.Pixels, topologyAddResult!!.Width, metrics,
@@ -1849,7 +1835,7 @@ func RunS15RetentionGate() {
     topologyRemovePrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
     S14Require(topologyRemovePrimitive.RecordCount == mutatedPrimitive.RecordCount
         && topologyRemovePrimitive.ByteCount
-          == uint64(topologyRemovePrimitive.RecordCount) * 128uL
+      == uint64(topologyRemovePrimitive.RecordCount) * 128uL
         && topologyRemovePrimitive.FullUpload
         && topologyRemovePrimitive.DirtyRecordCount == topologyRemovePrimitive.RecordCount
         && topologyRemovePrimitive.UploadRangeCount == 1
@@ -1866,19 +1852,19 @@ func RunS15RetentionGate() {
         && topologyRemoveState.DamageWidth == metrics.FramebufferWidth
         && topologyRemoveState.DamageHeight == metrics.FramebufferHeight,
       "S15 topology remove did not force full damage: partial="
-        + topologyRemoveState.PartialRedraw.ToString() + " x="
-        + topologyRemoveState.DamageX.ToString() + " y="
-        + topologyRemoveState.DamageY.ToString() + " w="
-        + topologyRemoveState.DamageWidth.ToString() + " h="
-        + topologyRemoveState.DamageHeight.ToString())
+      +topologyRemoveState.PartialRedraw.ToString() + " x="
+      +topologyRemoveState.DamageX.ToString() + " y="
+      +topologyRemoveState.DamageY.ToString() + " w="
+      +topologyRemoveState.DamageWidth.ToString() + " h="
+      +topologyRemoveState.DamageHeight.ToString())
     S14Require(topologyRemoveState.RetainedLeafTotalCount
-          - topologyAddState.RetainedLeafTotalCount > 0uL
+      -topologyAddState.RetainedLeafTotalCount > 0uL
         && topologyRemoveState.RetainedLeafHitCount
-          - topologyAddState.RetainedLeafHitCount
-          == topologyRemoveState.RetainedLeafTotalCount
-            - topologyAddState.RetainedLeafTotalCount
+      -topologyAddState.RetainedLeafHitCount
+      == topologyRemoveState.RetainedLeafTotalCount
+      -topologyAddState.RetainedLeafTotalCount
         && topologyRemoveState.RetainedLeafRebuildCount
-          == topologyAddState.RetainedLeafRebuildCount,
+      == topologyAddState.RetainedLeafRebuildCount,
       "S15 topology remove did not retain the unchanged leaves")
 
     topologyRemoveResult = S09RReadback(opened, metrics)
@@ -1892,32 +1878,32 @@ func RunS15RetentionGate() {
     var borderSawSlot1Clean bool = false
     var borderWarmupFrame int32 = 0
     while borderWarmupFrame < 12
-        && (!borderSawSlot0Clean || !borderSawSlot1Clean) {
-      WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
-      borderWarmPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
-      if borderWarmPrimitive.RecordCount > 0 {
-        let clean = !borderWarmPrimitive.FullUpload
+      && (!borderSawSlot0Clean || !borderSawSlot1Clean) {
+        WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+        borderWarmPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
+        if borderWarmPrimitive.RecordCount > 0 {
+          let clean = !borderWarmPrimitive.FullUpload
             && borderWarmPrimitive.RecordCount >= 9
             && borderWarmPrimitive.WrittenBytes == 0uL
             && borderWarmPrimitive.SkippedBytes == borderWarmPrimitive.ByteCount
             && borderWarmPrimitive.DirtyRecordCount == 0
             && borderWarmPrimitive.UploadRangeCount == 0
             && borderWarmPrimitive.RetainedReuse
-              == uint64(borderWarmPrimitive.RecordCount)
-        if borderWarmPrimitive.SlotIndex == 0 {
-          borderSawSlot0 = true
-          if clean {
-            borderSawSlot0Clean = true
-          }
-        } else if borderWarmPrimitive.SlotIndex == 1 {
-          borderSawSlot1 = true
-          if clean {
-            borderSawSlot1Clean = true
+          == uint64(borderWarmPrimitive.RecordCount)
+          if borderWarmPrimitive.SlotIndex == 0 {
+            borderSawSlot0 = true
+            if clean {
+              borderSawSlot0Clean = true
+            }
+          } else if borderWarmPrimitive.SlotIndex == 1 {
+            borderSawSlot1 = true
+            if clean {
+              borderSawSlot1Clean = true
+            }
           }
         }
+        borderWarmupFrame = borderWarmupFrame + 1
       }
-      borderWarmupFrame = borderWarmupFrame + 1
-    }
     borderWarmReady = borderSawSlot0 && borderSawSlot1
       && borderSawSlot0Clean && borderSawSlot1Clean
     S14Require(borderWarmReady,
@@ -1935,49 +1921,49 @@ func RunS15RetentionGate() {
         && borderMutatedPrimitive.UploadRangeCount == 1
         && borderMutatedPrimitive.WrittenBytes == 128uL
         && borderMutatedPrimitive.SkippedBytes
-          == borderMutatedPrimitive.ByteCount - 128uL
+      == borderMutatedPrimitive.ByteCount - 128uL
         && borderMutatedPrimitive.RetainedReuse
-          == uint64(borderMutatedPrimitive.RecordCount - 1),
+      == uint64(borderMutatedPrimitive.RecordCount - 1),
       "S15 one-edge border mutation did not upload one expanded solid-border record")
     borderMutationState = WindowReadbackTestFixture.SceneRetention(opened)
     let borderMutationTotal = borderMutationState.RetainedBorderTotalCount
-      - borderWarmState.RetainedBorderTotalCount
+    -borderWarmState.RetainedBorderTotalCount
     let borderMutationHits = borderMutationState.RetainedBorderHitCount
-      - borderWarmState.RetainedBorderHitCount
+    -borderWarmState.RetainedBorderHitCount
     let borderMutationRebuilds = borderMutationState.RetainedBorderRebuildCount
-      - borderWarmState.RetainedBorderRebuildCount
+    -borderWarmState.RetainedBorderRebuildCount
     let borderMutationInvalidations = borderMutationState.RetainedBorderInvalidationCount
-      - borderWarmState.RetainedBorderInvalidationCount
+    -borderWarmState.RetainedBorderInvalidationCount
     let borderMutationLeafTotal = borderMutationState.RetainedLeafTotalCount
-      - borderWarmState.RetainedLeafTotalCount
+    -borderWarmState.RetainedLeafTotalCount
     let borderMutationLeafHits = borderMutationState.RetainedLeafHitCount
-      - borderWarmState.RetainedLeafHitCount
+    -borderWarmState.RetainedLeafHitCount
     S14Require(borderMutationTotal > 0uL
         && borderMutationRebuilds == 1uL
         && borderMutationHits == borderMutationTotal - 1uL
         && borderMutationInvalidations == 1uL
         && borderMutationState.RetainedBorderFallbackCount
-          == borderWarmState.RetainedBorderFallbackCount
+      == borderWarmState.RetainedBorderFallbackCount
         && borderMutationLeafTotal > 0uL
         && borderMutationLeafHits == borderMutationLeafTotal
         && borderMutationState.RetainedLeafRebuildCount
-          == borderWarmState.RetainedLeafRebuildCount
+      == borderWarmState.RetainedLeafRebuildCount
         && borderMutationState.RetainedLeafFallbackCount
-          == borderWarmState.RetainedLeafFallbackCount
+      == borderWarmState.RetainedLeafFallbackCount
         && borderMutationState.RetainedLeafInvalidationCount
-          == borderWarmState.RetainedLeafInvalidationCount
+      == borderWarmState.RetainedLeafInvalidationCount
         && borderMutationState.RetainedParentBoxTotalCount
-          > borderWarmState.RetainedParentBoxTotalCount
+      > borderWarmState.RetainedParentBoxTotalCount
         && borderMutationState.RetainedParentBoxHitCount
-          - borderWarmState.RetainedParentBoxHitCount
-          == borderMutationState.RetainedParentBoxTotalCount
-            - borderWarmState.RetainedParentBoxTotalCount
+      -borderWarmState.RetainedParentBoxHitCount
+      == borderMutationState.RetainedParentBoxTotalCount
+      -borderWarmState.RetainedParentBoxTotalCount
         && borderMutationState.RetainedParentBoxRebuildCount
-          == borderWarmState.RetainedParentBoxRebuildCount
+      == borderWarmState.RetainedParentBoxRebuildCount
         && borderMutationState.RetainedParentBoxFallbackCount
-          == borderWarmState.RetainedParentBoxFallbackCount
+      == borderWarmState.RetainedParentBoxFallbackCount
         && borderMutationState.RetainedParentBoxInvalidationCount
-          == borderWarmState.RetainedParentBoxInvalidationCount,
+      == borderWarmState.RetainedParentBoxInvalidationCount,
       "S15 border color mutation did not isolate one exact border rebuild")
     S15RequireBorderPayload(borderMutationState, borderBounds, scaleX, scaleY, radiusScale,
       2.0, 3.0, 4.0, 5.0, 0.0, changedBorderTopColor, borderRightColor,
@@ -1996,31 +1982,31 @@ func RunS15RetentionGate() {
         && borderMutationState.DamageX <= borderDamageLeft
         && borderMutationState.DamageY <= borderDamageTop
         && borderMutationState.DamageX + borderMutationState.DamageWidth
-          >= borderDamageRight
+      >= borderDamageRight
         && borderMutationState.DamageY + borderMutationState.DamageHeight
-          >= borderDamageBottom,
+      >= borderDamageBottom,
       "S15 border color mutation did not produce bounded acquired-image damage"
-        + " acquired=" + borderMutationState.AcquiredImageState.ToString()
-        + " partial=" + borderMutationState.PartialRedraw.ToString()
-        + " full=" + borderMutationState.FullRedraw.ToString()
-        + " sceneVersion=" + borderMutationState.SceneVersion.ToString()
-        + " activeVersion=" + borderMutationState.ActiveSceneVersion.ToString()
-        + " appliedVersion="
-        + borderMutationState.ActiveAppliedSceneVersion.ToString()
-        + " pendingVersion="
-        + borderMutationState.ActivePendingSceneVersion.ToString()
-        + " damageX=" + borderMutationState.DamageX.ToString()
-        + " damageY=" + borderMutationState.DamageY.ToString()
-        + " damageWidth=" + borderMutationState.DamageWidth.ToString()
-        + " damageHeight=" + borderMutationState.DamageHeight.ToString()
-        + " expectedX=" + borderDamageLeft.ToString()
-        + " expectedY=" + borderDamageTop.ToString()
-        + " expectedRight=" + borderDamageRight.ToString()
-        + " expectedBottom=" + borderDamageBottom.ToString()
-        + " framebufferWidth=" + metrics.FramebufferWidth.ToString()
-        + " framebufferHeight=" + metrics.FramebufferHeight.ToString()
-        + " dirty=" + borderMutationState.DirtyChunkCount.ToString()
-        + " reused=" + borderMutationState.ReusedChunkCount.ToString())
+      +" acquired=" + borderMutationState.AcquiredImageState.ToString()
+      +" partial=" + borderMutationState.PartialRedraw.ToString()
+      +" full=" + borderMutationState.FullRedraw.ToString()
+      +" sceneVersion=" + borderMutationState.SceneVersion.ToString()
+      +" activeVersion=" + borderMutationState.ActiveSceneVersion.ToString()
+      +" appliedVersion="
+      +borderMutationState.ActiveAppliedSceneVersion.ToString()
+      +" pendingVersion="
+      +borderMutationState.ActivePendingSceneVersion.ToString()
+      +" damageX=" + borderMutationState.DamageX.ToString()
+      +" damageY=" + borderMutationState.DamageY.ToString()
+      +" damageWidth=" + borderMutationState.DamageWidth.ToString()
+      +" damageHeight=" + borderMutationState.DamageHeight.ToString()
+      +" expectedX=" + borderDamageLeft.ToString()
+      +" expectedY=" + borderDamageTop.ToString()
+      +" expectedRight=" + borderDamageRight.ToString()
+      +" expectedBottom=" + borderDamageBottom.ToString()
+      +" framebufferWidth=" + metrics.FramebufferWidth.ToString()
+      +" framebufferHeight=" + metrics.FramebufferHeight.ToString()
+      +" dirty=" + borderMutationState.DirtyChunkCount.ToString()
+      +" reused=" + borderMutationState.ReusedChunkCount.ToString())
     borderMutationResult = S09RReadback(opened, metrics)
     S09RRequirePixelNear(borderMutationResult!!.Pixels, borderMutationResult!!.Width, metrics,
       200.0, 9.0, uint8(248), uint8(196), uint8(48), 8, "mutated_border_top")
@@ -2039,9 +2025,9 @@ func RunS15RetentionGate() {
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     borderUnsupportedState = WindowReadbackTestFixture.SceneRetention(opened)
     let borderFallbacks = borderUnsupportedState.RetainedBorderFallbackCount
-      - borderMutationState.RetainedBorderFallbackCount
+    -borderMutationState.RetainedBorderFallbackCount
     let borderFallbackInvalidations = borderUnsupportedState.RetainedBorderInvalidationCount
-      - borderMutationState.RetainedBorderInvalidationCount
+    -borderMutationState.RetainedBorderInvalidationCount
     S14Require(borderFallbacks == 1uL
         && borderFallbackInvalidations == 1uL
         && borderUnsupportedState.AcquiredImageState
@@ -2059,13 +2045,13 @@ func RunS15RetentionGate() {
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     borderRecapturedState = WindowReadbackTestFixture.SceneRetention(opened)
     let borderRecapturedRebuilds = borderRecapturedState.RetainedBorderRebuildCount
-      - borderUnsupportedState.RetainedBorderRebuildCount
+    -borderUnsupportedState.RetainedBorderRebuildCount
     let borderRecapturedInvalidations = borderRecapturedState.RetainedBorderInvalidationCount
-      - borderUnsupportedState.RetainedBorderInvalidationCount
+    -borderUnsupportedState.RetainedBorderInvalidationCount
     S14Require(borderRecapturedRebuilds == 1uL
         && borderRecapturedInvalidations == 0uL
         && borderRecapturedState.RetainedBorderFallbackCount
-          == borderUnsupportedState.RetainedBorderFallbackCount,
+      == borderUnsupportedState.RetainedBorderFallbackCount,
       "S15 rounded border removal did not recapture the exact border leaf")
     S15RequireBorderPayload(borderRecapturedState, borderBounds, scaleX, scaleY,
       radiusScale, 2.0, 3.0, 4.0, 5.0, 0.0, changedBorderTopColor,
@@ -2074,17 +2060,17 @@ func RunS15RetentionGate() {
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     borderWarmState = WindowReadbackTestFixture.SceneRetention(opened)
     let recapturedBorderTotal = borderWarmState.RetainedBorderTotalCount
-      - borderRecapturedState.RetainedBorderTotalCount
+    -borderRecapturedState.RetainedBorderTotalCount
     let recapturedBorderHits = borderWarmState.RetainedBorderHitCount
-      - borderRecapturedState.RetainedBorderHitCount
+    -borderRecapturedState.RetainedBorderHitCount
     S14Require(recapturedBorderTotal > 0uL
         && recapturedBorderHits == recapturedBorderTotal
         && borderWarmState.RetainedBorderRebuildCount
-          == borderRecapturedState.RetainedBorderRebuildCount
+      == borderRecapturedState.RetainedBorderRebuildCount
         && borderWarmState.RetainedBorderFallbackCount
-          == borderRecapturedState.RetainedBorderFallbackCount
+      == borderRecapturedState.RetainedBorderFallbackCount
         && borderWarmState.RetainedBorderInvalidationCount
-          == borderRecapturedState.RetainedBorderInvalidationCount,
+      == borderRecapturedState.RetainedBorderInvalidationCount,
       "S15 recaptured border leaf did not return to exact warm hits")
     S15RequireBorderPayload(borderWarmState, borderBounds, scaleX, scaleY, radiusScale,
       2.0, 3.0, 4.0, 5.0, 0.0, changedBorderTopColor, borderRightColor,
@@ -2094,21 +2080,21 @@ func RunS15RetentionGate() {
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     parentMutatedState = WindowReadbackTestFixture.SceneRetention(opened)
     let parentMutationTotal = parentMutatedState.RetainedParentBoxTotalCount
-      - borderWarmState.RetainedParentBoxTotalCount
+    -borderWarmState.RetainedParentBoxTotalCount
     let parentMutationHits = parentMutatedState.RetainedParentBoxHitCount
-      - borderWarmState.RetainedParentBoxHitCount
+    -borderWarmState.RetainedParentBoxHitCount
     let parentMutationRebuilds = parentMutatedState.RetainedParentBoxRebuildCount
-      - borderWarmState.RetainedParentBoxRebuildCount
+    -borderWarmState.RetainedParentBoxRebuildCount
     let parentMutationInvalidations = parentMutatedState.RetainedParentBoxInvalidationCount
-      - borderWarmState.RetainedParentBoxInvalidationCount
+    -borderWarmState.RetainedParentBoxInvalidationCount
     let parentMutationLeafTotal = parentMutatedState.RetainedLeafTotalCount
-      - borderWarmState.RetainedLeafTotalCount
+    -borderWarmState.RetainedLeafTotalCount
     let parentMutationLeafHits = parentMutatedState.RetainedLeafHitCount
-      - borderWarmState.RetainedLeafHitCount
+    -borderWarmState.RetainedLeafHitCount
     let parentMutationBorderTotal = parentMutatedState.RetainedBorderTotalCount
-      - borderWarmState.RetainedBorderTotalCount
+    -borderWarmState.RetainedBorderTotalCount
     let parentMutationBorderHits = parentMutatedState.RetainedBorderHitCount
-      - borderWarmState.RetainedBorderHitCount
+    -borderWarmState.RetainedBorderHitCount
     S14Require(parentMutationTotal > 0uL
         && parentMutationRebuilds == 1uL
         && parentMutationInvalidations == 1uL
@@ -2118,11 +2104,11 @@ func RunS15RetentionGate() {
         && parentMutationBorderTotal > 0uL
         && parentMutationBorderHits == parentMutationBorderTotal
         && parentMutatedState.RetainedBorderRebuildCount
-          == borderWarmState.RetainedBorderRebuildCount
+      == borderWarmState.RetainedBorderRebuildCount
         && parentMutatedState.RetainedBorderFallbackCount
-          == borderWarmState.RetainedBorderFallbackCount
+      == borderWarmState.RetainedBorderFallbackCount
         && parentMutatedState.RetainedBorderInvalidationCount
-          == borderWarmState.RetainedBorderInvalidationCount,
+      == borderWarmState.RetainedBorderInvalidationCount,
       "S15 parent mutation did not rebuild one own box and continue exact children")
     parentMutationResult = S09RReadback(opened, metrics)
     S09RRequirePixelNear(parentMutationResult!!.Pixels, parentMutationResult!!.Width, metrics,
@@ -2140,15 +2126,15 @@ func RunS15RetentionGate() {
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     parentUnsupportedState = WindowReadbackTestFixture.SceneRetention(opened)
     let parentFallbacks = parentUnsupportedState.RetainedParentBoxFallbackCount
-      - parentMutatedState.RetainedParentBoxFallbackCount
+    -parentMutatedState.RetainedParentBoxFallbackCount
     let parentFallbackInvalidations = parentUnsupportedState.RetainedParentBoxInvalidationCount
-      - parentMutatedState.RetainedParentBoxInvalidationCount
+    -parentMutatedState.RetainedParentBoxInvalidationCount
     let genericChildFallbacks = parentUnsupportedState.RetainedLeafFallbackCount
-      - parentMutatedState.RetainedLeafFallbackCount
+    -parentMutatedState.RetainedLeafFallbackCount
     let genericBorderFallbacks = parentUnsupportedState.RetainedBorderFallbackCount
-      - parentMutatedState.RetainedBorderFallbackCount
+    -parentMutatedState.RetainedBorderFallbackCount
     let genericBorderInvalidations = parentUnsupportedState.RetainedBorderInvalidationCount
-      - parentMutatedState.RetainedBorderInvalidationCount
+    -parentMutatedState.RetainedBorderInvalidationCount
     S14Require(parentFallbacks == 1uL
         && parentFallbackInvalidations == 1uL
         && genericChildFallbacks == 4uL
@@ -2163,21 +2149,21 @@ func RunS15RetentionGate() {
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     parentRecapturedState = WindowReadbackTestFixture.SceneRetention(opened)
     let parentRecapturedRebuilds = parentRecapturedState.RetainedParentBoxRebuildCount
-      - parentUnsupportedState.RetainedParentBoxRebuildCount
+    -parentUnsupportedState.RetainedParentBoxRebuildCount
     let parentRecapturedLeafRebuilds = parentRecapturedState.RetainedLeafRebuildCount
-      - parentUnsupportedState.RetainedLeafRebuildCount
+    -parentUnsupportedState.RetainedLeafRebuildCount
     let parentRecapturedBorderRebuilds = parentRecapturedState.RetainedBorderRebuildCount
-      - parentUnsupportedState.RetainedBorderRebuildCount
+    -parentUnsupportedState.RetainedBorderRebuildCount
     let parentRecapturedBorderInvalidations = parentRecapturedState.RetainedBorderInvalidationCount
-      - parentUnsupportedState.RetainedBorderInvalidationCount
+    -parentUnsupportedState.RetainedBorderInvalidationCount
     S14Require(parentRecapturedRebuilds == 1uL
         && parentRecapturedLeafRebuilds == 4uL
         && parentRecapturedBorderRebuilds == 1uL
         && parentRecapturedBorderInvalidations == 0uL
         && parentRecapturedState.RetainedParentBoxFallbackCount
-          == parentUnsupportedState.RetainedParentBoxFallbackCount
+      == parentUnsupportedState.RetainedParentBoxFallbackCount
         && parentRecapturedState.RetainedParentBoxInvalidationCount
-          == parentUnsupportedState.RetainedParentBoxInvalidationCount,
+      == parentUnsupportedState.RetainedParentBoxInvalidationCount,
       "S15 parent fallback did not recapture the own box and children")
 
     finalState = mutatedState
@@ -2192,15 +2178,15 @@ func RunS15RetentionGate() {
         && finalState.ActiveAppliedSceneVersion > 0uL,
       "S15 acquired swapchain image scene version was never promoted")
     S14Require(finalState.PendingImageCount == 1u
-      && finalState.ActivePendingSceneVersion == finalState.ActiveSceneVersion
-      && finalState.PendingSceneVersion == finalState.ActiveSceneVersion,
+        && finalState.ActivePendingSceneVersion == finalState.ActiveSceneVersion
+        && finalState.PendingSceneVersion == finalState.ActiveSceneVersion,
       "S15 acquired image scene version was not left pending after presentation")
     S14Require(WindowReadbackTestFixture.RequestCount(opened) == 7uL
         && WindowReadbackTestFixture.CompletionCount(opened) == 7uL,
       "S15 readback lifecycle counts are incorrect")
 
     var clipFrame VulkanClipMaskRetentionTestSnapshot =
-      WindowReadbackTestFixture.ClipMaskRetention(opened)
+    WindowReadbackTestFixture.ClipMaskRetention(opened)
     var priorClipSlot int32 = -1
     var alternatedClipSlots bool = false
     var sawClipSlot0 bool = false
@@ -2210,28 +2196,28 @@ func RunS15RetentionGate() {
     var warmupFlushes uint64 = 0uL
     var clipWarmupFrame int32 = 0
     while clipWarmupFrame < 12
-        && (!warmupBoundReady || !alternatedClipSlots || !clipFrame.Retained) {
-      WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
-      let nextClipFrame = WindowReadbackTestFixture.ClipMaskRetention(opened)
-      if nextClipFrame.ByteCount > 0uL {
-        if priorClipSlot >= 0 && priorClipSlot != nextClipFrame.SlotIndex {
-          alternatedClipSlots = true
+      && (!warmupBoundReady || !alternatedClipSlots || !clipFrame.Retained) {
+        WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+        let nextClipFrame = WindowReadbackTestFixture.ClipMaskRetention(opened)
+        if nextClipFrame.ByteCount > 0uL {
+          if priorClipSlot >= 0 && priorClipSlot != nextClipFrame.SlotIndex {
+            alternatedClipSlots = true
+          }
+          priorClipSlot = nextClipFrame.SlotIndex
+          if nextClipFrame.SlotIndex == 0 {
+            sawClipSlot0 = true
+          } else if nextClipFrame.SlotIndex == 1 {
+            sawClipSlot1 = true
+          }
+          if sawClipSlot0 && sawClipSlot1 && !warmupBoundReady {
+            warmupBoundReady = true
+            warmupMappedWrites = nextClipFrame.TotalMappedWrites
+            warmupFlushes = nextClipFrame.TotalFlushes
+          }
         }
-        priorClipSlot = nextClipFrame.SlotIndex
-        if nextClipFrame.SlotIndex == 0 {
-          sawClipSlot0 = true
-        } else if nextClipFrame.SlotIndex == 1 {
-          sawClipSlot1 = true
-        }
-        if sawClipSlot0 && sawClipSlot1 && !warmupBoundReady {
-          warmupBoundReady = true
-          warmupMappedWrites = nextClipFrame.TotalMappedWrites
-          warmupFlushes = nextClipFrame.TotalFlushes
-        }
+        clipFrame = nextClipFrame
+        clipWarmupFrame = clipWarmupFrame + 1
       }
-      clipFrame = nextClipFrame
-      clipWarmupFrame = clipWarmupFrame + 1
-    }
     S14Require(warmupBoundReady && alternatedClipSlots
         && sawClipSlot0 && sawClipSlot1 && clipFrame.RetentionEligible
         && clipFrame.Retained && clipFrame.RetentionValid,
@@ -2246,9 +2232,9 @@ func RunS15RetentionGate() {
         && clipFrame.ClipChainCount == 1
         && clipFrame.LayerCount == 0,
       "S15 retained clip frame payload evidence is invalid: slot="
-        + clipFrame.SlotIndex.ToString() + " bytes="
-        + clipFrame.ByteCount.ToString() + " skipped="
-        + clipFrame.SkippedBytes.ToString())
+      +clipFrame.SlotIndex.ToString() + " bytes="
+      +clipFrame.ByteCount.ToString() + " skipped="
+      +clipFrame.SkippedBytes.ToString())
     S14Require(clipFrame.TotalMappedWrites > 0uL
         && clipFrame.TotalFlushes > 0uL
         && clipFrame.TotalMappedWrites <= warmupMappedWrites
@@ -2257,10 +2243,10 @@ func RunS15RetentionGate() {
         && clipFrame.TotalSkippedBytes > 0uL
         && clipFrame.TotalRetainedReuse > 0uL,
       "S15 clip frame cumulative retention evidence is invalid: mapped="
-        + clipFrame.TotalMappedWrites.ToString() + " flushes="
-        + clipFrame.TotalFlushes.ToString() + " warmupMapped="
-        + warmupMappedWrites.ToString() + " warmupFlushes="
-        + warmupFlushes.ToString())
+      +clipFrame.TotalMappedWrites.ToString() + " flushes="
+      +clipFrame.TotalFlushes.ToString() + " warmupMapped="
+      +warmupMappedWrites.ToString() + " warmupFlushes="
+      +warmupFlushes.ToString())
     opened.RequestClose()
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
     S14Require(!opened.IsOpen, "S15 retained scene window did not close")
@@ -2298,39 +2284,39 @@ func RunS15RetentionGate() {
       && clipFrameRetainedReuse > 0uL
       && clipFrameRetained == 1uL,
     "S15 diagnostics did not emit clip payload retention evidence: written="
-      + clipFrameWrittenBytes.ToString() + " skipped="
-      + clipFrameSkippedBytes.ToString() + " mapped="
-      + clipFrameMappedWrites.ToString() + " flushes="
-      + clipFrameFlushes.ToString() + " reuse="
-      + clipFrameRetainedReuse.ToString() + " retained="
-      + clipFrameRetained.ToString())
+    +clipFrameWrittenBytes.ToString() + " skipped="
+    +clipFrameSkippedBytes.ToString() + " mapped="
+    +clipFrameMappedWrites.ToString() + " flushes="
+    +clipFrameFlushes.ToString() + " reuse="
+    +clipFrameRetainedReuse.ToString() + " retained="
+    +clipFrameRetained.ToString())
   S14Require(damageCount >= 2uL && drawCount > 0uL && recordCount > 0uL
       && reusedChunkCount > 0uL,
     "S15 diagnostics did not retain render and damage evidence: damage="
-      + damageCount.ToString() + " dirty=" + dirtyChunkCount.ToString()
-      + " reused=" + reusedChunkCount.ToString() + " draw=" + drawCount.ToString()
-      + " record=" + recordCount.ToString())
+    +damageCount.ToString() + " dirty=" + dirtyChunkCount.ToString()
+    +" reused=" + reusedChunkCount.ToString() + " draw=" + drawCount.ToString()
+    +" record=" + recordCount.ToString())
   Console.WriteLine("s15-retention-gate: first_use_full=1 box_mutation=1 partial_damage=1"
-    + " parent_own_box=1"
-    + " bounds_old_background=1 topology_add_full=1 topology_remove_full=1"
-    + " exact_leaf_solid_rounded=1 exact_color_miss=1 exact_bounds_miss=1"
-    + " exact_border_leaf=1"
-    + " unsupported_fallback_recapture=1"
-    + " primitive_first_full=1 primitive_slots=2 primitive_warm_copy_zero=1"
-    + " primitive_staging_candidate=1"
-    + " primitive_mutation_dirty=1 primitive_mutation_written="
-    + mutatedPrimitive.WrittenBytes.ToString()
-    + " primitive_topology_full=1 image_version_promotion=1 damageCount="
-    + damageCount.ToString() + " dirtyChunkCount=" + dirtyChunkCount.ToString()
-      + " reusedChunkCount=" + reusedChunkCount.ToString()
-      + " drawCount=" + drawCount.ToString() + " recordCount="
-    + recordCount.ToString() + " clipWritten="
-    + clipFrameWrittenBytes.ToString() + " clipSkipped="
-    + clipFrameSkippedBytes.ToString() + " clipMapped="
-    + clipFrameMappedWrites.ToString() + " clipFlushes="
-    + clipFrameFlushes.ToString() + " clipReuse="
-    + clipFrameRetainedReuse.ToString() + " clipRetained="
-    + clipFrameRetained.ToString() + " close=1")
+    +" parent_own_box=1"
+    +" bounds_old_background=1 topology_add_full=1 topology_remove_full=1"
+    +" exact_leaf_solid_rounded=1 exact_color_miss=1 exact_bounds_miss=1"
+    +" exact_border_leaf=1"
+    +" unsupported_fallback_recapture=1"
+    +" primitive_first_full=1 primitive_slots=2 primitive_warm_copy_zero=1"
+    +" primitive_staging_candidate=1"
+    +" primitive_mutation_dirty=1 primitive_mutation_written="
+    +mutatedPrimitive.WrittenBytes.ToString()
+    +" primitive_topology_full=1 image_version_promotion=1 damageCount="
+    +damageCount.ToString() + " dirtyChunkCount=" + dirtyChunkCount.ToString()
+    +" reusedChunkCount=" + reusedChunkCount.ToString()
+    +" drawCount=" + drawCount.ToString() + " recordCount="
+    +recordCount.ToString() + " clipWritten="
+    +clipFrameWrittenBytes.ToString() + " clipSkipped="
+    +clipFrameSkippedBytes.ToString() + " clipMapped="
+    +clipFrameMappedWrites.ToString() + " clipFlushes="
+    +clipFrameFlushes.ToString() + " clipReuse="
+    +clipFrameRetainedReuse.ToString() + " clipRetained="
+    +clipFrameRetained.ToString() + " close=1")
 }
 
 func RunS09RPixelGate() {
@@ -2363,8 +2349,8 @@ func RunS09RPixelGate() {
     S14Require(metrics.LogicalWidth == 400 && metrics.LogicalHeight == 220,
       "S09R logical window metrics are incorrect")
     S14Require(S09RSmokeCell.Root.IsMounted
-      && S09RSmokeCell.ScrollViewport.IsMounted
-      && S09RSmokeCell.ScrollLeaf.IsMounted,
+        && S09RSmokeCell.ScrollViewport.IsMounted
+        && S09RSmokeCell.ScrollLeaf.IsMounted,
       "S09R pixel gate did not mount required handles")
     initialResult = S09RReadback(opened, metrics)
     let initialPixels = initialResult!!.Pixels
@@ -2460,11 +2446,11 @@ func RunS09RPixelGate() {
       && readbackCount == 2uL,
     "S09R pixel gate did not record the expected render and readback work")
   Console.WriteLine("s09r-pixel-gate: boxes=1 borders=solid,dashed,dotted gradients=2,4"
-    + " transforms=1 clips=1 scroll=1 visibility=1 opacity=1 stacking=1"
-    + " drawCount=" + drawCount.ToString()
-    + " planCompileCount=" + planCompileCount.ToString()
-    + " recordCount=" + recordCount.ToString()
-    + " readbackCount=" + readbackCount.ToString() + " close=1")
+    +" transforms=1 clips=1 scroll=1 visibility=1 opacity=1 stacking=1"
+    +" drawCount=" + drawCount.ToString()
+    +" planCompileCount=" + planCompileCount.ToString()
+    +" recordCount=" + recordCount.ToString()
+    +" readbackCount=" + readbackCount.ToString() + " close=1")
 }
 
 func RunS14RoundedOverflowGate() {
@@ -2502,28 +2488,28 @@ func RunS14RoundedOverflowGate() {
     S14Require(metrics.LogicalWidth == 400 && metrics.LogicalHeight == 190,
       "S14 mixed-axis clip logical window metrics are incorrect")
     S14Require(S14RoundedOverflowCell.Root.IsMounted
-      && S14RoundedOverflowCell.HorizontalViewport.IsMounted
-      && S14RoundedOverflowCell.HorizontalContent.IsMounted
-      && S14RoundedOverflowCell.HorizontalStripe.IsMounted
-      && S14RoundedOverflowCell.VerticalViewport.IsMounted
-      && S14RoundedOverflowCell.VerticalContent.IsMounted
-      && S14RoundedOverflowCell.VerticalStripe.IsMounted
-      && S14RoundedOverflowCell.RoundedHidden.IsMounted
-      && S14RoundedOverflowCell.RoundedText.IsMounted
-      && S14RoundedOverflowCell.RoundedImage.IsMounted
-      && S14RoundedOverflowCell.RoundedScroll.IsMounted
-      && S14RoundedOverflowCell.RoundedScrollContent.IsMounted
-      && S14RoundedOverflowCell.RoundedScrollStripe.IsMounted
-      && S14RoundedOverflowCell.ClipOuter.IsMounted
-      && S14RoundedOverflowCell.ClipInner.IsMounted
-      && S14RoundedOverflowCell.TransformLeaf.IsMounted,
+        && S14RoundedOverflowCell.HorizontalViewport.IsMounted
+        && S14RoundedOverflowCell.HorizontalContent.IsMounted
+        && S14RoundedOverflowCell.HorizontalStripe.IsMounted
+        && S14RoundedOverflowCell.VerticalViewport.IsMounted
+        && S14RoundedOverflowCell.VerticalContent.IsMounted
+        && S14RoundedOverflowCell.VerticalStripe.IsMounted
+        && S14RoundedOverflowCell.RoundedHidden.IsMounted
+        && S14RoundedOverflowCell.RoundedText.IsMounted
+        && S14RoundedOverflowCell.RoundedImage.IsMounted
+        && S14RoundedOverflowCell.RoundedScroll.IsMounted
+        && S14RoundedOverflowCell.RoundedScrollContent.IsMounted
+        && S14RoundedOverflowCell.RoundedScrollStripe.IsMounted
+        && S14RoundedOverflowCell.ClipOuter.IsMounted
+        && S14RoundedOverflowCell.ClipInner.IsMounted
+        && S14RoundedOverflowCell.TransformLeaf.IsMounted,
       "S14 mixed-axis clip gate did not mount required handles")
     S14Require(S14RoundedOverflowCell.HorizontalContent.BorderBox.Width
-        > S14RoundedOverflowCell.HorizontalViewport.BorderBox.Width
-      && S14RoundedOverflowCell.VerticalContent.BorderBox.Height
-        > S14RoundedOverflowCell.VerticalViewport.BorderBox.Height
-      && S14RoundedOverflowCell.RoundedScrollContent.BorderBox.Width
-        > S14RoundedOverflowCell.RoundedScroll.BorderBox.Width,
+      > S14RoundedOverflowCell.HorizontalViewport.BorderBox.Width
+        && S14RoundedOverflowCell.VerticalContent.BorderBox.Height
+      > S14RoundedOverflowCell.VerticalViewport.BorderBox.Height
+        && S14RoundedOverflowCell.RoundedScrollContent.BorderBox.Width
+      > S14RoundedOverflowCell.RoundedScroll.BorderBox.Width,
       "S14 mixed-axis clip gate did not retain overflowing child geometry")
     initialResult = S09RReadback(opened, metrics)
     let initialPixels = initialResult!!.Pixels
@@ -2595,23 +2581,23 @@ func RunS14RoundedOverflowGate() {
     let horizontalViewportBoundsAfter = S14RoundedOverflowCell.HorizontalViewport.BorderBox
     let horizontalStripeBoundsAfter = S14RoundedOverflowCell.HorizontalStripe.BorderBox
     let horizontalStripeSampleX = if horizontalStripeBoundsAfter.X
-        > horizontalViewportBoundsAfter.X {
+    > horizontalViewportBoundsAfter.X{
       horizontalStripeBoundsAfter.X + 4.0
     } else {
       horizontalViewportBoundsAfter.X + 4.0
     }
     let horizontalStripeSampleY = horizontalViewportBoundsAfter.Y
-      + horizontalViewportBoundsAfter.Height * 0.5
+    +horizontalViewportBoundsAfter.Height * 0.5
     let roundedStripeBoundsAfter = S14RoundedOverflowCell.RoundedScrollStripe.BorderBox
     let roundedViewportBoundsAfter = S14RoundedOverflowCell.RoundedScroll.BorderBox
     let roundedStripeSampleX = if roundedStripeBoundsAfter.X
-        > roundedViewportBoundsAfter.X {
+    > roundedViewportBoundsAfter.X{
       roundedStripeBoundsAfter.X + 4.0
     } else {
       roundedViewportBoundsAfter.X + 4.0
     }
     let roundedStripeSampleY = roundedViewportBoundsAfter.Y
-      + roundedViewportBoundsAfter.Height * 0.5
+    +roundedViewportBoundsAfter.Height * 0.5
     S09RRequirePixelNear(axisScrolledPixels, axisScrolledResult!!.Width, metrics,
       horizontalStripeSampleX, horizontalStripeSampleY,
       uint8(72), uint8(128), uint8(224), 8, "horizontal_scrolled")
@@ -2632,9 +2618,9 @@ func RunS14RoundedOverflowGate() {
     let verticalViewportBoundsAfter = S14RoundedOverflowCell.VerticalViewport.BorderBox
     let verticalStripeBoundsAfter = S14RoundedOverflowCell.VerticalStripe.BorderBox
     let verticalStripeSampleX = verticalViewportBoundsAfter.X
-      + verticalViewportBoundsAfter.Width * 0.5
+    +verticalViewportBoundsAfter.Width * 0.5
     let verticalStripeSampleY = if verticalStripeBoundsAfter.Y
-        > verticalViewportBoundsAfter.Y {
+    > verticalViewportBoundsAfter.Y{
       verticalStripeBoundsAfter.Y + 4.0
     } else {
       verticalViewportBoundsAfter.Y + 4.0
@@ -2678,11 +2664,11 @@ func RunS14RoundedOverflowGate() {
       && readbackCount == 3uL,
     "S14 mixed-axis clip gate did not record expected render and readback work")
   Console.WriteLine("s14-mixed-axis-clip-gate: horizontal=1 vertical=1 nested_clip=1"
-    + " transform=1 text=1 image=1 rounded_hidden=1 rounded_scroll=1 corners=8"
-    + " readbackCount=" + readbackCount.ToString()
-    + " drawCount=" + drawCount.ToString()
-    + " planCompileCount=" + planCompileCount.ToString()
-    + " recordCount=" + recordCount.ToString() + " close=1")
+    +" transform=1 text=1 image=1 rounded_hidden=1 rounded_scroll=1 corners=8"
+    +" readbackCount=" + readbackCount.ToString()
+    +" drawCount=" + drawCount.ToString()
+    +" planCompileCount=" + planCompileCount.ToString()
+    +" recordCount=" + recordCount.ToString() + " close=1")
 }
 
 func RunS14EffectsGate() {
@@ -2789,9 +2775,9 @@ func RunS14EffectsGate() {
         && overlayPixel[2] > uint8(40)
         && differencePixel[0] > uint8(70),
       "S14 blend overlap matrix is incorrect: multiply=" + S09RPixelText(multiplyPixel)
-        + " screen=" + S09RPixelText(screenPixel)
-        + " overlay=" + S09RPixelText(overlayPixel)
-        + " difference=" + S09RPixelText(differencePixel))
+      +" screen=" + S09RPixelText(screenPixel)
+      +" overlay=" + S09RPixelText(overlayPixel)
+      +" difference=" + S09RPixelText(differencePixel))
     WindowReadbackTestFixture.ForceRender(opened, 0.05)
     secondResult = S09RReadback(opened, metrics)
     S14Require(secondResult!!.Pixels.Length == firstResult!!.Pixels.Length,
@@ -2845,15 +2831,15 @@ func RunS14EffectsGate() {
   S14Require(layerResidentBytes == 0uL && layerTargetCount == 0uL && layerLeasedCount == 0uL,
     "S14 effects gate left layer pool resources resident after close")
   Console.WriteLine("s14-effects-gate: shadows=container,button,text,shape,outer,inset,stacked=1"
-    + " text_shadow_blur=plain,colr=1 outline=1 group_opacity=nested=1"
-    + " blend=multiply,screen,overlay,difference=1"
-    + " clip=rounded,arbitrary transform=1 colr=1 readbackCount=" + readbackCount.ToString()
-    + " layerPassCount=" + layerPassCount.ToString()
-    + " layerCompositeCount=" + layerCompositeCount.ToString()
-    + " layerCreateCount=" + layerCreateCount.ToString()
-    + " drawCount=" + drawCount.ToString()
-    + " planCompileCount=" + planCompileCount.ToString()
-    + " recordCount=" + recordCount.ToString() + " close=1")
+    +" text_shadow_blur=plain,colr=1 outline=1 group_opacity=nested=1"
+    +" blend=multiply,screen,overlay,difference=1"
+    +" clip=rounded,arbitrary transform=1 colr=1 readbackCount=" + readbackCount.ToString()
+    +" layerPassCount=" + layerPassCount.ToString()
+    +" layerCompositeCount=" + layerCompositeCount.ToString()
+    +" layerCreateCount=" + layerCreateCount.ToString()
+    +" drawCount=" + drawCount.ToString()
+    +" planCompileCount=" + planCompileCount.ToString()
+    +" recordCount=" + recordCount.ToString() + " close=1")
 }
 
 func S17ValidateVisual(result VulkanReadbackResult, metrics WindowMetrics) {
@@ -2876,16 +2862,16 @@ func S17ValidateVisual(result VulkanReadbackResult, metrics WindowMetrics) {
       var channel int32
       while channel < 4 {
         if Math.Abs(int32(result.Pixels[firstIndex + channel])
-            - int32(result.Pixels[secondIndex + channel])) > 1 {
-          throw InvalidOperationException("S17 protected Vulkan presentation differs from its mask")
-        }
+          -int32(result.Pixels[secondIndex + channel])) > 1 {
+            throw InvalidOperationException("S17 protected Vulkan presentation differs from its mask")
+          }
         channel++
       }
       if Math.Abs(int32(result.Pixels[firstIndex]) - 12) > 8
         || Math.Abs(int32(result.Pixels[firstIndex + 1]) - 20) > 8
         || Math.Abs(int32(result.Pixels[firstIndex + 2]) - 32) > 8 {
-        coverage++
-      }
+          coverage++
+        }
       x++
     }
     y++
@@ -2956,7 +2942,7 @@ func RunS17CoreBehaviorGate() {
     S14Require(!S09RNear(hoverMidPixel, uint8(208), uint8(48), uint8(64), 3)
         && !S09RNear(hoverMidPixel, uint8(48), uint8(208), uint8(96), 3),
       "S17 hover transition did not produce an intermediate frame: "
-        + S09RPixelText(hoverMidPixel))
+      +S09RPixelText(hoverMidPixel))
     S17Advance(window, 0.06)
     let hovered = S09RReadback(window, metrics)
     S09RRequirePixelNear(hovered.Pixels, hovered.Width, metrics, targetX, targetY,
@@ -3006,7 +2992,7 @@ func RunS17CoreBehaviorGate() {
       throw InvalidOperationException("S17 action semantic node is missing")
     }
     S14Require(window.PerformAccessibilityAction(actionSemantic.Id,
-        AccessibilityActionRequest(AccessibilityAction.Activate))
+      AccessibilityActionRequest(AccessibilityAction.Activate))
         && cell.ClickCount == 3,
       "S17 neutral activation did not route through public behavior")
     WindowReadbackTestFixture.ForceRender(window, 0.0)
@@ -3100,7 +3086,7 @@ func RunS17CoreBehaviorGate() {
       && !diagnostics.Contains("\"event\":326"),
     "S17 core behavior gate emitted unsupported-scene diagnostics")
   Console.WriteLine("s17-core-behavior-gate: pointer=1 focus=1 hover=1 active=1 disabled=1"
-    + " keyboard=1 wheel=1 scroll=1 motion=1 transitions=1 handles=1 semantics=1 close=1")
+    +" keyboard=1 wheel=1 scroll=1 motion=1 transitions=1 handles=1 semantics=1 close=1")
 }
 
 func RunS17ProtectedTextGate() {
@@ -3130,7 +3116,7 @@ func RunS17ProtectedTextGate() {
     let visual = S09RReadback(window, metrics)
     S17ValidateVisual(visual, metrics)
     S14Require(WindowReadbackTestFixture.S17ValidateInitial(window,
-        S17ProtectedTextCell.Entry, source),
+      S17ProtectedTextCell.Entry, source),
       "S17 protected grapheme mapping or geometry is incorrect")
 
     guard let initialSemantic = adapter.Tree?.Root else {
@@ -3139,14 +3125,14 @@ func RunS17ProtectedTextGate() {
     S14Require(initialSemantic.Value == "•••",
       "S17 protected semantic value was not redacted")
     S14Require(window.PerformAccessibilityAction(initialSemantic.Id,
-        AccessibilityActionRequest.SetSelection(1, 1)),
+      AccessibilityActionRequest.SetSelection(1, 1)),
       "S17 protected semantic selection action failed")
     WindowReadbackTestFixture.UpdateTree(window)
     guard let selectedSemantic = adapter.Tree?.Root else {
       throw InvalidOperationException("S17 protected semantic selection was not published")
     }
     S14Require(WindowReadbackTestFixture.S17SelectionMapped(window,
-        S17ProtectedTextCell.Entry)
+      S17ProtectedTextCell.Entry)
         && selectedSemantic.SelectionStart == 1
         && selectedSemantic.SelectionLength == 1
         && selectedSemantic.Caret == 2,
@@ -3157,7 +3143,7 @@ func RunS17ProtectedTextGate() {
     window.SetClipboardText("safe")
     clipboardChanged = true
     S14Require(WindowReadbackTestFixture.S17ExerciseInput(window,
-        S17ProtectedTextCell.Entry, source)
+      S17ProtectedTextCell.Entry, source)
         && cell.CompositionCount == 1
         && cell.CompositionText == "z\u0301"
         && cell.LastValue == source + "safe" + "z\u0301",
@@ -3198,110 +3184,115 @@ func RunS17ProtectedTextGate() {
       && !diagnostics.Contains("\"event\":326"),
     "S17 protected gate emitted unsupported-scene diagnostics")
   Console.WriteLine("s17-protected-text-gate: graphemes=3,8 visual=1 geometry=1 clipboard=1"
-    + " ime=1 semantics=1 close=1")
+    +" ime=1 semantics=1 close=1")
 }
 
-  let managedEntryTimestamp = Stopwatch.GetTimestamp()
-  Window.ConfigureApplication("Goo S14 async readback smoke", "0.1.0", "io.github.obselate.goo.s14.readback")
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_Q10_LATENCY_GATE") == "1" {
-    RunS15Q10LatencyBenchmark(managedEntryTimestamp)
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_Q10_STAGE_TIMESTAMP_GATE") == "1" {
-    RunS15Q10StageTimestampGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_Q10_GATE") == "1" {
-    RunS15Q10Benchmark()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S19_IDLE_GATE") == "1" {
-    RunS19IdleGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_Q10_GATE") == "1" {
-    RunS15Q10Benchmark()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_D02_OFFSCREEN_FAILURE_GATE") == "1" {
-    RunD02OffscreenFailureGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S20_SHADER_EFFECT_GATE") == "1" {
-    RunS20ShaderEffectGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S20_SHADER_EFFECT_BENCHMARK") == "1" {
-    RunS20ShaderEffectBenchmark()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S17_CORE_BEHAVIOR_GATE") == "1" {
-    RunS17CoreBehaviorGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S17_PROTECTED_TEXT_GATE") == "1" {
-    RunS17ProtectedTextGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_TEXT_EDITOR_SLOTS_GATE") == "1" {
-    RunTextEditorSlotsGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S16_LIVE_FRAME_PACING_GATE") == "1" {
-    RunS16LiveFramePacingGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S16_FRAME_PACING_GATE") == "1" {
-    RunS16FramePacingGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S16_VSYNC_GATE") == "1" {
-    RunS16VSyncTransitionGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S16_QUEUE_ISOLATION_GATE") == "1" {
-    RunS16QueueIsolationGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_STOCKS_VIRTUALIZATION_GATE") == "1" {
-    RunS15StocksGridVirtualizationGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_STOCKS_GRID") == "1" {
-    RunS15StocksGridBenchmark()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_PRIMITIVE_STAGING_BENCHMARK") == "1" {
-    RunS15PrimitiveStagingBenchmark()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_TEXT_VIEWPORT_CULL_GATE") == "1" {
-    RunS15TextViewportCullGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_TEXT_TRANSPORT_GATE") == "1" {
-    RunS15TextTransportGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_RETENTION_GATE") == "1" {
-    RunS15RetentionGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S14_EFFECTS_GATE") == "1" {
-    RunS14EffectsGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S14_ROUNDED_OVERFLOW_GATE") == "1" {
-    RunS14RoundedOverflowGate()
-    return
-  }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S09R_PIXEL_GATE") == "1" {
-    RunS09RPixelGate()
-    return
-  }
-  let mode = Environment.GetEnvironmentVariable("GOO_S14_READBACK_MODE")
-  if mode == "measure" {
-    RunS14ReadbackMeasure()
-  } else {
-    RunS14ReadbackSmoke()
-  }
+let managedEntryTimestamp = Stopwatch.GetTimestamp()
+Window.ConfigureApplication("Goo S14 async readback smoke", "0.1.0", "io.github.obselate.goo.s14.readback")
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_Q10_LATENCY_GATE") == "1" {
+  RunS15Q10LatencyBenchmark(managedEntryTimestamp)
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_Q10_STAGE_TIMESTAMP_GATE") == "1" {
+  RunS15Q10StageTimestampGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_SDL_ACCEPTANCE_GATE") == "1" {
+  RunS15SdlAcceptanceGate()
+  return
+}
+
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_Q10_GATE") == "1" {
+  RunS15Q10Benchmark()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S19_IDLE_GATE") == "1" {
+  RunS19IdleGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_Q10_GATE") == "1" {
+  RunS15Q10Benchmark()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_D02_OFFSCREEN_FAILURE_GATE") == "1" {
+  RunD02OffscreenFailureGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S20_SHADER_EFFECT_GATE") == "1" {
+  RunS20ShaderEffectGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S20_SHADER_EFFECT_BENCHMARK") == "1" {
+  RunS20ShaderEffectBenchmark()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S17_CORE_BEHAVIOR_GATE") == "1" {
+  RunS17CoreBehaviorGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S17_PROTECTED_TEXT_GATE") == "1" {
+  RunS17ProtectedTextGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_TEXT_EDITOR_SLOTS_GATE") == "1" {
+  RunTextEditorSlotsGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S16_LIVE_FRAME_PACING_GATE") == "1" {
+  RunS16LiveFramePacingGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S16_FRAME_PACING_GATE") == "1" {
+  RunS16FramePacingGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S16_VSYNC_GATE") == "1" {
+  RunS16VSyncTransitionGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S16_QUEUE_ISOLATION_GATE") == "1" {
+  RunS16QueueIsolationGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_STOCKS_VIRTUALIZATION_GATE") == "1" {
+  RunS15StocksGridVirtualizationGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_STOCKS_GRID") == "1" {
+  RunS15StocksGridBenchmark()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_PRIMITIVE_STAGING_BENCHMARK") == "1" {
+  RunS15PrimitiveStagingBenchmark()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_TEXT_VIEWPORT_CULL_GATE") == "1" {
+  RunS15TextViewportCullGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_TEXT_TRANSPORT_GATE") == "1" {
+  RunS15TextTransportGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_RETENTION_GATE") == "1" {
+  RunS15RetentionGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S14_EFFECTS_GATE") == "1" {
+  RunS14EffectsGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S14_ROUNDED_OVERFLOW_GATE") == "1" {
+  RunS14RoundedOverflowGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S09R_PIXEL_GATE") == "1" {
+  RunS09RPixelGate()
+  return
+}
+let mode = Environment.GetEnvironmentVariable("GOO_S14_READBACK_MODE")
+if mode == "measure" {
+  RunS14ReadbackMeasure()
+} else {
+  RunS14ReadbackSmoke()
+}

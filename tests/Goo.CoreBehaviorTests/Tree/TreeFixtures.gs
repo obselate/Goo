@@ -28,8 +28,8 @@ internal class TreeFixtures {
     guard let inserted = window.Tree else { return false }
     if inserted.Children.Count != 3 || inserted.Children[0].Content != "b:B"
       || inserted.Children[1].Content != "c:initial" || inserted.Children[2].Content != "a:A" {
-      return false
-    }
+        return false
+      }
 
     parent.Mode.Value = 3
     window.UpdateTree()
@@ -43,15 +43,15 @@ internal class TreeFixtures {
     guard let replaced = window.Tree else { return false }
     if replaced.Children.Count != 2 || replaced.Children[0].Content != "b:B"
       || replaced.Children[1].Content != "replacement" || TreeKeyedCell.DisposedA != 1 {
-      return false
-    }
+        return false
+      }
     a.Value.Value = "stale"
     window.UpdateTree()
     guard let afterStaleUpdate = window.Tree else { return false }
     if afterStaleUpdate.Children.Count != 2 || afterStaleUpdate.Children[0].Content != "b:B"
       || afterStaleUpdate.Children[1].Content != "replacement" || TreeKeyedCell.DisposedA != 1 {
-      return false
-    }
+        return false
+      }
     return freshSubtreeOnCellReplacement()
   }
 
@@ -176,8 +176,6 @@ internal class TreeFixtures {
     return after.Children.Count == 1 && after.Children[0].Content == "empty"
   }
 
-
-
   func DisplayNonePointerContract() bool {
     var visibleHits = 0
     var hiddenHits = 0
@@ -231,8 +229,6 @@ internal class TreeFixtures {
     guard let shown = window.Tree else { return false }
     return shown.Children[0].Children[0].Children[0].Content == "1" && !TreeDisplayRetainedCell.Disposed
   }
-
-
 
   func VisibilityPointerContract() bool {
     var visibleHits = 0
@@ -315,8 +311,8 @@ internal class TreeFixtures {
       || node.Children[0].Kind != NodeKind.Shape || node.Children[1].Content != "Hi"
       || node.Children[1].Color != Color.Rgb(200, 20, 10)
       || node.HoverStyle == nil {
-      return false
-    }
+        return false
+      }
     node.Hovered = true
     resolver.Invalidate(node, false)
     resolver.Flush()
@@ -390,19 +386,15 @@ internal class TreeKeyedParent : Cell {
 
   init() { Mode = Track(0) }
 
-  override func Build() Blob {
-    return switch Mode.Value {
-      case 0: Container{ Children: { keyedCell("a"), keyedCell("b") } }
-      case 1: Container{ Children: { keyedCell("b"), keyedCell("a") } }
-      case 2: Container{ Children: { keyedCell("b"), keyedCell("c"), keyedCell("a") } }
-      case 3: Container{ Children: { keyedCell("b"), keyedCell("a") } }
-      case _: Container{ Children: { keyedCell("b"), Text{ Key: "a", Content: "replacement" } } }
-    }
+  override func Build() Blob -> switch Mode.Value {
+    case 0: Container { Children: { keyedCell("a"), keyedCell("b") } }
+    case 1: Container { Children: { keyedCell("b"), keyedCell("a") } }
+    case 2: Container { Children: { keyedCell("b"), keyedCell("c"), keyedCell("a") } }
+    case 3: Container { Children: { keyedCell("b"), keyedCell("a") } }
+    case _: Container { Children: { keyedCell("b"), Text{ Key: "a", Content: "replacement" } } }
   }
 
-  internal func keyedCell(label string) Blob {
-    return Cell.Mount[TreeKeyedCell](label, (cell TreeKeyedCell) -> { cell.Label = label })
-  }
+  internal func keyedCell(label string) Blob -> Cell.Mount[TreeKeyedCell](label, (cell TreeKeyedCell) -> { cell.Label = label })
 }
 
 internal class TreeKeyedCell : Cell, IDisposable {
@@ -415,7 +407,7 @@ internal class TreeKeyedCell : Cell, IDisposable {
     Value = Track("initial")
   }
 
-  override func Build() Blob { return Text{ Content: "$Label:${Value.Value}" } }
+  override func Build() Blob -> Text { Content: "$Label:${Value.Value}" }
 
   func Dispose() {
     if Label == "a" { DisposedA = DisposedA + 1 }
@@ -423,11 +415,9 @@ internal class TreeKeyedCell : Cell, IDisposable {
 }
 
 internal class TreeContainerCell : Cell {
-  override func Build() Blob {
-    return Container{ Children: {
-      TextEntry{ Key: "entry", Value: "old" },
-    } }
-  }
+  override func Build() Blob -> Container { Children: {
+    TextEntry{ Key: "entry", Value: "old" },
+  } }
 }
 
 internal class TreePositionalParent : Cell {
@@ -435,13 +425,11 @@ internal class TreePositionalParent : Cell {
 
   init() { Label = Track("before") }
 
-  override func Build() Blob {
-    return Container{ Children: {
-      Text{ Content: Label.Value },
-      Cell.Mount[TreePositionalCell](nil),
-      Text{ Content: "tail" },
-    } }
-  }
+  override func Build() Blob -> Container { Children: {
+    Text{ Content: Label.Value },
+    Cell.Mount[TreePositionalCell](nil),
+    Text{ Content: "tail" },
+  } }
 }
 
 internal class TreePositionalCell : Cell {
@@ -449,7 +437,7 @@ internal class TreePositionalCell : Cell {
 
   init() { Value = Track("initial") }
 
-  override func Build() Blob { return Text{ Content: "slot:${Value.Value}" } }
+  override func Build() Blob -> Text { Content: "slot:${Value.Value}" }
 }
 
 internal class TreeIncrementalParent : Cell {
@@ -457,12 +445,10 @@ internal class TreeIncrementalParent : Cell {
 
   init() { Title = Track("old") }
 
-  override func Build() Blob {
-    return Container{ Children: {
-      Text{ Key: "title", Content: Title.Value },
-      Cell.Mount[TreeIncrementalChild]("child", (child TreeIncrementalChild) -> { child.Label.Value = Title.Value }),
-    } }
-  }
+  override func Build() Blob -> Container { Children: {
+    Text{ Key: "title", Content: Title.Value },
+    Cell.Mount[TreeIncrementalChild]("child", (child TreeIncrementalChild) -> { child.Label.Value = Title.Value }),
+  } }
 }
 
 internal class TreeBuildCountingParent : Cell {
@@ -516,15 +502,13 @@ internal class TreeDisplayFocusCell : Cell {
 
   func Hide() { Hidden.Value = true }
 
-  override func Build() Blob {
-    return Container{ Width: 300.0, Height: 100.0, Children: {
-      TextEntry{ Key: "a", Width: 100.0, Height: 30.0 },
-      Container{ Key: "hidden", Display: Hidden.Value ? Display.None : Display.Flex, Children: {
-        TextEntry{ Key: "hidden-entry", Width: 100.0, Height: 30.0 },
-      } },
-      TextEntry{ Key: "c", Width: 100.0, Height: 30.0 },
-    } }
-  }
+  override func Build() Blob -> Container { Width: 300.0, Height: 100.0, Children: {
+    TextEntry{ Key: "a", Width: 100.0, Height: 30.0 },
+    Container{ Key: "hidden", Display: Hidden.Value ? Display.None : Display.Flex, Children: {
+      TextEntry{ Key: "hidden-entry", Width: 100.0, Height: 30.0 },
+    } },
+    TextEntry{ Key: "c", Width: 100.0, Height: 30.0 },
+  } }
 }
 
 internal class TreeDisplayRetainedParent : Cell {
@@ -536,13 +520,11 @@ internal class TreeDisplayRetainedParent : Cell {
 
   func Show() { Hidden.Value = false }
 
-  override func Build() Blob {
-    return Container{ Width: 200.0, Height: 100.0, Children: {
-      Container{ Key: "wrapper", Display: Hidden.Value ? Display.None : Display.Flex, Children: {
-        Cell.Mount[TreeDisplayRetainedCell]("retained", nil),
-      } },
-    } }
-  }
+  override func Build() Blob -> Container { Width: 200.0, Height: 100.0, Children: {
+    Container{ Key: "wrapper", Display: Hidden.Value ? Display.None : Display.Flex, Children: {
+      Cell.Mount[TreeDisplayRetainedCell]("retained", nil),
+    } },
+  } }
 }
 
 internal class TreeVisibilityFocusCell : Cell {
@@ -552,21 +534,19 @@ internal class TreeVisibilityFocusCell : Cell {
 
   func Hide() { Hidden.Value = true }
 
-  override func Build() Blob {
-    return Container{ Width: 300.0, Height: 100.0, Children: {
-      TextEntry{ Key: "a", Width: 100.0, Height: 30.0 },
-      Container{
-        Key: "hidden", Visibility: Hidden.Value ? Visibility.Hidden : Visibility.Visible,
-        Children: {
-          TextEntry{
-            Key: "hidden-entry", Width: 100.0, Height: 30.0,
-            Visibility: Visibility.Visible,
-          },
+  override func Build() Blob -> Container { Width: 300.0, Height: 100.0, Children: {
+    TextEntry{ Key: "a", Width: 100.0, Height: 30.0 },
+    Container{
+      Key: "hidden", Visibility: Hidden.Value ? Visibility.Hidden : Visibility.Visible,
+      Children: {
+        TextEntry{
+          Key: "hidden-entry", Width: 100.0, Height: 30.0,
+          Visibility: Visibility.Visible,
         },
       },
-      TextEntry{ Key: "c", Width: 100.0, Height: 30.0 },
-    } }
-  }
+    },
+    TextEntry{ Key: "c", Width: 100.0, Height: 30.0 },
+  } }
 }
 
 internal class TreeVisibilityRetainedParent : Cell {
@@ -578,14 +558,12 @@ internal class TreeVisibilityRetainedParent : Cell {
 
   func Show() { Hidden.Value = false }
 
-  override func Build() Blob {
-    return Container{ Width: 200.0, Height: 100.0, Children: {
-      Container{
-        Key: "wrapper", Visibility: Hidden.Value ? Visibility.Hidden : Visibility.Visible,
-        Children: { Cell.Mount[TreeDisplayRetainedCell]("retained", nil) },
-      },
-    } }
-  }
+  override func Build() Blob -> Container { Width: 200.0, Height: 100.0, Children: {
+    Container{
+      Key: "wrapper", Visibility: Hidden.Value ? Visibility.Hidden : Visibility.Visible,
+      Children: { Cell.Mount[TreeDisplayRetainedCell]("retained", nil) },
+    },
+  } }
 }
 
 internal class TreeDisplayRetainedCell : Cell, IDisposable {
@@ -598,5 +576,5 @@ internal class TreeDisplayRetainedCell : Cell, IDisposable {
 
   func Dispose() { Disposed = true }
 
-  override func Build() Blob { return Container{ Children: { Text{ Content: "${Count.Value}" } } } }
+  override func Build() Blob -> Container { Children: { Text{ Content: "${Count.Value}" } } }
 }

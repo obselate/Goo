@@ -3,6 +3,7 @@
 !/.gitignore
 !/.gitattributes
 !/AGENTS.md
+!/gslint.json
 !/VULKAN-AUTHORING-LIBRARY.md
 !/SHADER-EFFECT-AUTHORING-AUDIT.md
 !/.agents/

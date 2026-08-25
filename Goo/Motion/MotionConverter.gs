@@ -6,14 +6,14 @@ import System
 /// @typeparam T animated value type
 public class MotionConverter[T] {
   private let dimensions int32
-  private let readValue (T, []float64) -> void
-  private let writeValue ([]float64) -> T
+  private let readValue(T, []float64) -> void
+  private let writeValue([]float64) -> T
 
   /// Creates a converter with a fixed coordinate count and conversion callbacks.
   /// @param dimensions positive coordinate count
   /// @param read writes a value into an Anim-owned coordinate buffer
   /// @param write creates a value from an Anim-owned coordinate buffer
-  public init(dimensions int32, read (T, []float64) -> void, write ([]float64) -> T) {
+  public init(dimensions int32, read(T, []float64) -> void, write([]float64) -> T) {
     if dimensions < 1 {
       throw ArgumentOutOfRangeException("dimensions")
     }
@@ -29,9 +29,7 @@ public class MotionConverter[T] {
   }
 
   /// Gets the fixed number of scalar coordinates.
-  public func Dimensions() int32 {
-    return dimensions
-  }
+  public func Dimensions() int32 -> dimensions
 
   /// Writes a value into the supplied coordinate buffer.
   /// @param value value to convert
@@ -43,18 +41,12 @@ public class MotionConverter[T] {
   /// Builds a value from the supplied coordinate buffer.
   /// @param dims source buffer with Dimensions elements
   /// @returns converted value
-  public func Write(dims []float64) T {
-    return writeValue(dims)
-  }
+  public func Write(dims []float64) T -> writeValue(dims)
 }
 
-internal func motionFinite(value float64) bool {
-  return !Double.IsNaN(value) && !Double.IsInfinity(value)
-}
+internal func motionFinite(value float64) bool -> !Double.IsNaN(value) && !Double.IsInfinity(value)
 
-internal func motionFiniteFloat32(value float64) bool {
-  return motionFinite(value) && !Single.IsInfinity(float32(value))
-}
+internal func motionFiniteFloat32(value float64) bool -> motionFinite(value) && !Single.IsInfinity(float32(value))
 
 internal func readFloat64Motion(value float64, into []float64) {
   if !motionFinite(value) {
@@ -92,25 +84,19 @@ internal func readColorMotion(value Color, into []float64) {
   into[3] = float64(value.A)
 }
 
-internal func writeColorMotion(dims []float64) Color {
-  return Color.FromNormalized(float32(dims[0]), float32(dims[1]), float32(dims[2]), float32(dims[3]))
-}
+internal func writeColorMotion(dims []float64) Color -> Color.FromNormalized(float32(dims[0]), float32(dims[1]), float32(dims[2]), float32(dims[3]))
 
 internal func readPixelLengthMotion(value Length, into []float64) {
   into[0] = readLength(value, LengthUnit.Px)
 }
 
-internal func writePixelLengthMotion(dims []float64) Length {
-  return writeLength(dims[0], LengthUnit.Px)
-}
+internal func writePixelLengthMotion(dims []float64) Length -> writeLength(dims[0], LengthUnit.Px)
 
 internal func readPercentLengthMotion(value Length, into []float64) {
   into[0] = readLength(value, LengthUnit.Percent)
 }
 
-internal func writePercentLengthMotion(dims []float64) Length {
-  return writeLength(dims[0], LengthUnit.Percent)
-}
+internal func writePercentLengthMotion(dims []float64) Length -> writeLength(dims[0], LengthUnit.Percent)
 
 internal func readLength(value Length, expected LengthUnit) float64 {
   let magnitude = float64(value.Value)

@@ -2,4 +2,4 @@ package Goo
 
 import System.Runtime.CompilerServices
 
-@assembly:InternalsVisibleTo("Goo.Tests")
+@assembly: InternalsVisibleTo("Goo.Tests")

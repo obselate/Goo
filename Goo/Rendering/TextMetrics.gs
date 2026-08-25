@@ -1,20 +1,19 @@
 package Goo
 
-
 /// Specifies the visual side of a text position at a directional boundary.
 public enum TextAffinity { Upstream; Downstream }
 
 internal class EntryShapeState {
-  internal prop Content string { get; init; }
-  internal prop Display string { get; init; }
-  internal prop SourceStarts []int32 { get; init; }
-  internal prop FontFamily string { get; init; }
-  internal prop FontSize float32 { get; init; }
-  internal prop FontWeight float64 { get; init; }
-  internal prop Italic bool { get; init; }
-  internal prop Spacing float32 { get; init; }
-  internal prop Direction int32 { get; init; }
-  internal prop Password bool { get; init; }
+  internal prop Content string{ get; init; }
+  internal prop Display string{ get; init; }
+  internal prop SourceStarts []int32{ get; init; }
+  internal prop FontFamily string{ get; init; }
+  internal prop FontSize float32{ get; init; }
+  internal prop FontWeight float64{ get; init; }
+  internal prop Italic bool{ get; init; }
+  internal prop Spacing float32{ get; init; }
+  internal prop Direction int32{ get; init; }
+  internal prop Password bool{ get; init; }
   internal prop Shape ShapedText? { get; init; }
   internal var Placeholder string
   internal var PlaceholderShape ShapedText?
@@ -28,24 +27,18 @@ internal class EntryShapeState {
   }
 }
 
-internal func protectedTextMask(value string) string {
-  return String('•', UnicodeGraphemes.Starts(value).Length)
-}
+internal func protectedTextMask(value string) string -> String('•', UnicodeGraphemes.Starts(value).Length)
 
 internal func protectedTextDisplayOffset(value string, source int32,
-  affinity TextAffinity) int32 {
-  return mappedDisplayOffset(value, UnicodeGraphemes.Starts(value), source, affinity)
-}
+  affinity TextAffinity) int32 -> mappedDisplayOffset(value, UnicodeGraphemes.Starts(value), source, affinity)
 
-internal func protectedTextSourceOffset(value string, display int32) int32 {
-  return mappedSourceOffset(value, UnicodeGraphemes.Starts(value), display)
-}
+internal func protectedTextSourceOffset(value string, display int32) int32 -> mappedSourceOffset(value, UnicodeGraphemes.Starts(value), display)
 
 internal func entryDisplayOffset(state EntryShapeState, source int32,
-  affinity TextAffinity) int32 {
-  if !state.Password { return source }
-  return mappedDisplayOffset(state.Content, state.SourceStarts, source, affinity)
-}
+  affinity TextAffinity) int32{
+    if !state.Password { return source }
+    return mappedDisplayOffset(state.Content, state.SourceStarts, source, affinity)
+  }
 
 internal func entrySourceOffset(state EntryShapeState, display int32) int32 {
   if !state.Password { return display }
@@ -53,17 +46,17 @@ internal func entrySourceOffset(state EntryShapeState, display int32) int32 {
 }
 
 private func mappedDisplayOffset(value string, starts []int32, source int32,
-  affinity TextAffinity) int32 {
-  if source <= 0 { return 0 }
-  if source >= value.Length { return starts.Length }
-  for index in 0 ... starts.Length {
-    if starts[index] == source { return index }
-    if starts[index] > source {
-      return affinity == TextAffinity.Upstream ? index - 1 : index
+  affinity TextAffinity) int32{
+    if source <= 0 { return 0 }
+    if source >= value.Length { return starts.Length }
+    for index in 0 ... starts.Length {
+      if starts[index] == source { return index }
+      if starts[index] > source {
+        return affinity == TextAffinity.Upstream ? index - 1 : index
+      }
     }
+    return starts.Length
   }
-  return starts.Length
-}
 
 private func mappedSourceOffset(value string, starts []int32, display int32) int32 {
   if display <= 0 { return 0 }
@@ -72,13 +65,9 @@ private func mappedSourceOffset(value string, starts []int32, display int32) int
 }
 
 internal class TextMetrics {
-  internal func Spacing(n Node) float32 {
-    return n.LetterSpacing.Unit == LengthUnit.Px ? n.LetterSpacing.Value : 0.0F
-  }
+  internal func Spacing(n Node) float32 -> n.LetterSpacing.Unit == LengthUnit.Px ? n.LetterSpacing.Value : 0.0F
 
-  internal func Shape(n Node, text string) ShapedText {
-    return TextAnalyses.ShapeEntry(n, text)
-  }
+  internal func Shape(n Node, text string) ShapedText -> TextAnalyses.ShapeEntry(n, text)
 
   internal func BufferShape(n Node) ShapedText {
     if let cached = n.EntryShape {
@@ -87,12 +76,12 @@ internal class TextMetrics {
           && cached.FontSize == TextLayouts.fontSize(n) && cached.FontWeight == n.FontWeight
           && cached.Italic == (n.FontStyle == FontStyle.Italic)
           && cached.Spacing == Spacing(n) && cached.Direction == int32(n.Direction)
-          && cached.Password == n.Password {
-          if n.HasElementHandle {
-            shape.PrepareGeometry()
+          && cached.Password == n.Password{
+            if n.HasElementHandle {
+              shape.PrepareGeometry()
+            }
+            return shape
           }
-          return shape
-        }
         shape.Dispose()
       }
       cached.PlaceholderShape?.Dispose()
@@ -139,9 +128,9 @@ internal class TextMetrics {
       || cached.FontSize != TextLayouts.fontSize(n) || cached.FontWeight != n.FontWeight
       || cached.Italic != (n.FontStyle == FontStyle.Italic)
       || cached.Spacing != Spacing(n) || cached.Direction != int32(n.Direction)
-      || cached.Password != n.Password {
-      return nil
-    }
+      || cached.Password != n.Password{
+        return nil
+      }
     return shape
   }
 
@@ -157,9 +146,7 @@ internal class TextMetrics {
     }
   }
 
-  internal func EntryOriginX(n Node, shaped ShapedText) float32 {
-    return TextLayouts.ContentLeft(n) + EntryOffset(n, shaped) - n.EditScrollX
-  }
+  internal func EntryOriginX(n Node, shaped ShapedText) float32 -> TextLayouts.ContentLeft(n) + EntryOffset(n, shaped) - n.EditScrollX
 
   internal func CaretX(n Node, index int32) float32 {
     let shaped = BufferShape(n)

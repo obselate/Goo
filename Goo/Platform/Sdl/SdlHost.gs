@@ -13,7 +13,7 @@ internal unsafe partial class SdlHost : IDisposable {
   private const MouseTouchId int64 = -1L
   private const PenTouchId int64 = -2L
 
-  private let hitTest ((int32, int32) -> SdlHitResult)
+  private let hitTest((int32, int32) -> SdlHitResult)
   private let hitTestRawDelegate SdlHostRawHitTest
   private let hitTestCallbackAddress nint
   private var window SDLWindowPtr = SDLWindowPtr.Null
@@ -29,47 +29,47 @@ internal unsafe partial class SdlHost : IDisposable {
   private var hitTestEnabled bool
   private var pointerButtons SdlHostPointerButtons
   private let touchPointers Dictionary[TouchContactKey, int64] =
-    Dictionary[TouchContactKey, int64]()
+  Dictionary[TouchContactKey, int64]()
   private var penPressures Dictionary[int64, float32]?
   private var nextTouchPointerId int64 = Int64.MinValue
 
   internal init(title string, width int32, height int32, x int32, y int32,
     positionSet bool, state SdlHostState, decorated bool, resizable bool,
-    transparent bool, vsync bool, hitTest ((int32, int32) -> SdlHitResult)) {
-    this.hitTest = hitTest
-    hitTestRawDelegate = HitTest
-    hitTestCallbackAddress = Marshal.GetFunctionPointerForDelegate(hitTestRawDelegate)
-    SdlRuntime.Acquire()
-    runtimeOwned = true
-    try {
-      if !SdlRuntime.AcquireVulkan() {
-        throw InvalidOperationException("SDL Vulkan loader initialization failed")
+    transparent bool, vsync bool, hitTest((int32, int32) -> SdlHitResult)) {
+      this.hitTest = hitTest
+      hitTestRawDelegate = HitTest
+      hitTestCallbackAddress = Marshal.GetFunctionPointerForDelegate(hitTestRawDelegate)
+      SdlRuntime.Acquire()
+      runtimeOwned = true
+      try {
+        if !SdlRuntime.AcquireVulkan() {
+          throw InvalidOperationException("SDL Vulkan loader initialization failed")
+        }
+        vulkanOwned = true
+        CreateWindow(title, width, height, transparent)
+        windowId = SDL.GetWindowID(window)
+        if windowId == 0u {
+          ThrowSdl("SDL_GetWindowID")
+        }
+        windowHandle = SDL_GetWindowFromIdRaw(windowId)
+        if windowHandle == nint(0) {
+          ThrowSdl("SDL_GetWindowFromID")
+        }
+        SdlRuntime.Register(windowId, Dispatch)
+        if positionSet && CanMove {
+          Require(SDL.SetWindowPosition(window, x, y), "SDL_SetWindowPosition")
+        }
+        SetBorder(decorated, resizable)
+        SetState(state)
+        SetVSync(vsync)
+        RefreshMetrics()
+        RefreshPosition()
+        RefreshDisplayPacing(true)
+      } catch (e Exception) {
+        Dispose()
+        throw e
       }
-      vulkanOwned = true
-      CreateWindow(title, width, height, transparent)
-      windowId = SDL.GetWindowID(window)
-      if windowId == 0u {
-        ThrowSdl("SDL_GetWindowID")
-      }
-      windowHandle = SDL_GetWindowFromIdRaw(windowId)
-      if windowHandle == nint(0) {
-        ThrowSdl("SDL_GetWindowFromID")
-      }
-      SdlRuntime.Register(windowId, Dispatch)
-      if positionSet && CanMove {
-        Require(SDL.SetWindowPosition(window, x, y), "SDL_SetWindowPosition")
-      }
-      SetBorder(decorated, resizable)
-      SetState(state)
-      SetVSync(vsync)
-      RefreshMetrics()
-      RefreshPosition()
-      RefreshDisplayPacing(true)
-    } catch (e Exception) {
-      Dispose()
-      throw e
     }
-  }
 
   public event MetricsChanged Action[int32, int32, int32, int32]
   public event Moved Action[int32, int32]
@@ -92,19 +92,19 @@ internal unsafe partial class SdlHost : IDisposable {
   public event TextEditingCandidates Action[IReadOnlyList[string], int32, bool]
   public event TextCompositionCanceled Action
 
-  public prop LogicalWidth int32 { get; private set }
-  public prop LogicalHeight int32 { get; private set }
-  public prop FramebufferWidth int32 { get; private set }
-  public prop FramebufferHeight int32 { get; private set }
-  public prop X int32 { get; private set }
-  public prop Y int32 { get; private set }
-  public prop IsClosing bool { get; private set }
-  internal prop IsTextInputActive bool { get { return textInputActive } }
-  internal prop NativeWindow SDLWindowPtr { get { return window } }
-  internal prop VSync bool { get { return vsync } }
-  internal prop FramePacing SdlFramePacing { get { return pacing } }
-  internal prop HasPendingEvents bool { get { return pendingEvents } }
-  internal prop SchedulerPacingAvailable bool {
+  public prop LogicalWidth int32{ get; private set }
+  public prop LogicalHeight int32{ get; private set }
+  public prop FramebufferWidth int32{ get; private set }
+  public prop FramebufferHeight int32{ get; private set }
+  public prop X int32{ get; private set }
+  public prop Y int32{ get; private set }
+  public prop IsClosing bool{ get; private set }
+  internal prop IsTextInputActive bool{ get { return textInputActive } }
+  internal prop NativeWindow SDLWindowPtr{ get { return window } }
+  internal prop VSync bool{ get { return vsync } }
+  internal prop FramePacing SdlFramePacing{ get { return pacing } }
+  internal prop HasPendingEvents bool{ get { return pendingEvents } }
+  internal prop SchedulerPacingAvailable bool{
     get {
       if disposed || IsClosing || FramebufferWidth <= 0 || FramebufferHeight <= 0 {
         return false
@@ -115,13 +115,13 @@ internal unsafe partial class SdlHost : IDisposable {
       return (flags & unavailable) == 0uL
     }
   }
-  internal prop WindowHandle nint {
+  internal prop WindowHandle nint{
     get {
       ThrowIfDisposed()
       return windowHandle
     }
   }
-  internal prop NativeResizable bool {
+  internal prop NativeResizable bool{
     get {
       ThrowIfDisposed()
       return (SDL.GetWindowFlags(window) & uint64(SDLWindowFlags.Resizable)) != 0uL
@@ -129,37 +129,35 @@ internal unsafe partial class SdlHost : IDisposable {
   }
 
   shared {
-    internal func IsWayland() bool {
-      return String.Equals(SDL.GetCurrentVideoDriverS(), "wayland",
-        StringComparison.OrdinalIgnoreCase)
-    }
+    internal func IsWayland() bool -> String.Equals(SDL.GetCurrentVideoDriverS(), "wayland",
+      StringComparison.OrdinalIgnoreCase)
 
     internal func BuildWindowFlags(transparent bool) SDLWindowFlags {
       let baseFlags = SDLWindowFlags.HighPixelDensity |
-        SDLWindowFlags.Hidden | SDLWindowFlags.Resizable | SDLWindowFlags.Vulkan
+      SDLWindowFlags.Hidden | SDLWindowFlags.Resizable | SDLWindowFlags.Vulkan
       return transparent ? baseFlags | SDLWindowFlags.Transparent : baseFlags
     }
 
-    internal func EvaluateHitTest(hitTest ((int32, int32) -> SdlHitResult),
-      x int32, y int32) SDLHitTestResult {
-      try {
-        return switch hitTest(x, y) {
-          case SdlHitResult.Normal: SDLHitTestResult.Normal
-          case SdlHitResult.Draggable: SDLHitTestResult.Draggable
-          case SdlHitResult.TopLeft: SDLHitTestResult.ResizeTopleft
-          case SdlHitResult.Top: SDLHitTestResult.ResizeTop
-          case SdlHitResult.TopRight: SDLHitTestResult.ResizeTopright
-          case SdlHitResult.Right: SDLHitTestResult.ResizeRight
-          case SdlHitResult.BottomRight: SDLHitTestResult.ResizeBottomright
-          case SdlHitResult.Bottom: SDLHitTestResult.ResizeBottom
-          case SdlHitResult.BottomLeft: SDLHitTestResult.ResizeBottomleft
-          case SdlHitResult.Left: SDLHitTestResult.ResizeLeft
-          case _: SDLHitTestResult.Normal
+    internal func EvaluateHitTest(hitTest((int32, int32) -> SdlHitResult),
+      x int32, y int32) SDLHitTestResult{
+        try {
+          return switch hitTest(x, y) {
+            case SdlHitResult.Normal: SDLHitTestResult.Normal
+            case SdlHitResult.Draggable: SDLHitTestResult.Draggable
+            case SdlHitResult.TopLeft: SDLHitTestResult.ResizeTopleft
+            case SdlHitResult.Top: SDLHitTestResult.ResizeTop
+            case SdlHitResult.TopRight: SDLHitTestResult.ResizeTopright
+            case SdlHitResult.Right: SDLHitTestResult.ResizeRight
+            case SdlHitResult.BottomRight: SDLHitTestResult.ResizeBottomright
+            case SdlHitResult.Bottom: SDLHitTestResult.ResizeBottom
+            case SdlHitResult.BottomLeft: SDLHitTestResult.ResizeBottomleft
+            case SdlHitResult.Left: SDLHitTestResult.ResizeLeft
+            case _: SDLHitTestResult.Normal
+          }
+        } catch (e Exception) {
+          return SDLHitTestResult.Normal
         }
-      } catch (e Exception) {
-        return SDLHitTestResult.Normal
       }
-    }
   }
 
   public func PollEvents() {
@@ -205,7 +203,7 @@ internal unsafe partial class SdlHost : IDisposable {
     }
     let currentDisplay = SDL.GetDisplayForWindow(window)
     if displayId == 0u || currentDisplay == 0u || currentDisplay == displayId ||
-        pacing.DisplayId == displayId {
+    pacing.DisplayId == displayId{
       RefreshDisplayPacing(true)
     }
   }
@@ -237,7 +235,7 @@ internal unsafe partial class SdlHost : IDisposable {
   public func SetState(value SdlHostState) {
     ThrowIfDisposed()
     if value == SdlHostState.Normal || value == SdlHostState.Minimized ||
-        value == SdlHostState.Maximized {
+    value == SdlHostState.Maximized{
       Require(SDL.SetWindowFullscreen(window, false), "SDL_SetWindowFullscreen")
     }
     switch value {
@@ -357,7 +355,7 @@ internal unsafe partial class SdlHost : IDisposable {
     }
   }
 
-  internal prop CanMove bool {
+  internal prop CanMove bool{
     get {
       ThrowIfDisposed()
       return !IsWayland()
@@ -403,7 +401,7 @@ internal unsafe partial class SdlHost : IDisposable {
     RefreshMetrics()
     RefreshDisplayPacing(false)
     if logicalWidth != LogicalWidth || logicalHeight != LogicalHeight ||
-        framebufferWidth != FramebufferWidth || framebufferHeight != FramebufferHeight {
+    framebufferWidth != FramebufferWidth || framebufferHeight != FramebufferHeight{
       RaiseMetrics()
     }
   }
@@ -448,7 +446,7 @@ internal unsafe partial class SdlHost : IDisposable {
       return SDLHitTestResult.Normal
     }
     let point = *SdlHostPoint(pointAddress)
-    return EvaluateHitTest(hitTest, point->X, point->Y)
+    return EvaluateHitTest(hitTest, point -> X, point -> Y)
   }
 
   private func ThrowIfDisposed() {

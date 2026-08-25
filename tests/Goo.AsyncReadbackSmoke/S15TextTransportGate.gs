@@ -16,37 +16,35 @@ class S15TextTransportCell : Cell {
     Rebuild()
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: 96,
-      Height: 64,
-      Children: {
-        Text{
-          Content: Mutated.Value ? "BCDA" : "ABCD",
-          Position: PositionType.Absolute,
-          Left: 8,
-          Top: 12,
-          Width: 48,
-          Height: 24,
-          FontSize: 16,
-          TextWrap: TextWrap.NoWrap,
-          TextTrimming: TextTrimming.Ellipsis,
-          Color: Color.Rgb(220, 64, 48),
-        },
-        Text{
-          Content: "WXYZ",
-          Position: PositionType.Absolute,
-          Left: 8,
-          Top: 36,
-          Width: 48,
-          Height: 24,
-          FontSize: 16,
-          TextWrap: TextWrap.NoWrap,
-          TextTrimming: TextTrimming.Ellipsis,
-          Color: Color.Rgb(48, 144, 220),
-        },
+  override func Build() Blob -> Container {
+    Width: 96,
+    Height: 64,
+    Children: {
+      Text{
+        Content: Mutated.Value ? "BCDA" : "ABCD",
+        Position: PositionType.Absolute,
+        Left: 8,
+        Top: 12,
+        Width: 48,
+        Height: 24,
+        FontSize: 16,
+        TextWrap: TextWrap.NoWrap,
+        TextTrimming: TextTrimming.Ellipsis,
+        Color: Color.Rgb(220, 64, 48),
       },
-    }
+      Text{
+        Content: "WXYZ",
+        Position: PositionType.Absolute,
+        Left: 8,
+        Top: 36,
+        Width: 48,
+        Height: 24,
+        FontSize: 16,
+        TextWrap: TextWrap.NoWrap,
+        TextTrimming: TextTrimming.Ellipsis,
+        Color: Color.Rgb(48, 144, 220),
+      },
+    },
   }
 }
 
@@ -87,19 +85,19 @@ func RunS15TextTransportGate() {
       WindowReadbackTestFixture.ForceRender(opened, 0.0)
       let nextText = WindowReadbackTestFixture.TextFrameRetention(opened)
       if nextText.SegmentCount >= 2
-          && nextText.RecordCount > 0
-          && nextText.ByteCount > 0uL
-          && nextText.FullUpload
-          && nextText.WrittenBytes == nextText.ByteCount
-          && nextText.DirtySegmentCount == nextText.SegmentCount
-          && nextText.UploadRangeCount == 1
-          && nextText.MappedWrites == 1uL {
-        initialText = nextText
-        initialPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
-        initialClip = WindowReadbackTestFixture.ClipMaskRetention(opened)
-        initialScene = WindowReadbackTestFixture.SceneRetention(opened)
-        sawInitial = true
-      }
+        && nextText.RecordCount > 0
+        && nextText.ByteCount > 0uL
+        && nextText.FullUpload
+        && nextText.WrittenBytes == nextText.ByteCount
+        && nextText.DirtySegmentCount == nextText.SegmentCount
+        && nextText.UploadRangeCount == 1
+        && nextText.MappedWrites == 1uL {
+          initialText = nextText
+          initialPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
+          initialClip = WindowReadbackTestFixture.ClipMaskRetention(opened)
+          initialScene = WindowReadbackTestFixture.SceneRetention(opened)
+          sawInitial = true
+        }
       initialFrame = initialFrame + 1
     }
     S14Require(sawInitial,
@@ -139,15 +137,15 @@ func RunS15TextTransportGate() {
         && warmText.RetainedReuse == uint64(warmText.RecordCount),
       "S15 unchanged text transport did not retain the warmed slot")
     let warmTextTotal = warmScene.RetainedTextTotalCount
-      - initialScene.RetainedTextTotalCount
+    -initialScene.RetainedTextTotalCount
     let warmTextHits = warmScene.RetainedTextHitCount
-      - initialScene.RetainedTextHitCount
+    -initialScene.RetainedTextHitCount
     S14Require(warmTextTotal >= 2uL
         && warmTextHits == warmTextTotal
         && warmScene.RetainedTextRebuildCount == initialScene.RetainedTextRebuildCount
         && warmScene.RetainedTextFallbackCount == initialScene.RetainedTextFallbackCount
         && warmScene.RetainedTextInvalidationCount
-          == initialScene.RetainedTextInvalidationCount,
+      == initialScene.RetainedTextInvalidationCount,
       "S15 unchanged text did not retain without rebuild or invalidation")
 
     root.Mutate()
@@ -176,19 +174,19 @@ func RunS15TextTransportGate() {
         && partialText.MappedWrites == 1uL,
       "S15 mutated text transport did not produce one dirty segment")
     let partialTextTotal = partialScene.RetainedTextTotalCount
-      - warmScene.RetainedTextTotalCount
+    -warmScene.RetainedTextTotalCount
     let partialTextHits = partialScene.RetainedTextHitCount
-      - warmScene.RetainedTextHitCount
+    -warmScene.RetainedTextHitCount
     let partialTextRebuilds = partialScene.RetainedTextRebuildCount
-      - warmScene.RetainedTextRebuildCount
+    -warmScene.RetainedTextRebuildCount
     let partialTextInvalidations = partialScene.RetainedTextInvalidationCount
-      - warmScene.RetainedTextInvalidationCount
+    -warmScene.RetainedTextInvalidationCount
     S14Require(partialTextTotal >= 2uL
         && partialTextRebuilds == 1uL
         && partialTextInvalidations == 1uL
         && partialTextHits == partialTextTotal - 1uL
         && partialScene.RetainedTextFallbackCount
-          == warmScene.RetainedTextFallbackCount,
+      == warmScene.RetainedTextFallbackCount,
       "S15 mutated text did not rebuild exactly one retained text node")
 
     opened.RequestClose()
@@ -205,25 +203,25 @@ func RunS15TextTransportGate() {
   }
   S14ValidateCommonDiagnostics(capturedError.ToString())
   Console.WriteLine("s15-text-transport-gate: segments=" + initialText.SegmentCount.ToString()
-    + " records=" + initialText.RecordCount.ToString()
-    + " bytes=" + initialText.ByteCount.ToString()
-    + " warm_written=" + warmText.WrittenBytes.ToString()
-    + " warm_skipped=" + warmText.SkippedBytes.ToString()
-    + " warm_dirty=" + warmText.DirtySegmentCount.ToString()
-    + " warm_ranges=" + warmText.UploadRangeCount.ToString()
-    + " warm_mapped=" + warmText.MappedWrites.ToString()
-    + " warm_flushes=" + warmText.Flushes.ToString()
-    + " warm_reuse=" + warmText.RetainedReuse.ToString()
-    + " partial_written=" + partialText.WrittenBytes.ToString()
-    + " partial_dirty=" + partialText.DirtySegmentCount.ToString()
-    + " partial_ranges=" + partialText.UploadRangeCount.ToString()
-    + " partial_mapped=" + partialText.MappedWrites.ToString()
-    + " analytic_records=" + initialPrimitive.RecordCount.ToString()
-    + " clip_bytes=" + initialClip.ByteCount.ToString()
-    + " retained_text_hits=" + partialScene.RetainedTextHitCount.ToString()
-    + " retained_text_rebuilds=" + partialScene.RetainedTextRebuildCount.ToString()
-    + " retained_text_fallbacks=" + partialScene.RetainedTextFallbackCount.ToString()
-    + " retained_text_invalidations="
-    + partialScene.RetainedTextInvalidationCount.ToString()
-    + " close=1")
+    +" records=" + initialText.RecordCount.ToString()
+    +" bytes=" + initialText.ByteCount.ToString()
+    +" warm_written=" + warmText.WrittenBytes.ToString()
+    +" warm_skipped=" + warmText.SkippedBytes.ToString()
+    +" warm_dirty=" + warmText.DirtySegmentCount.ToString()
+    +" warm_ranges=" + warmText.UploadRangeCount.ToString()
+    +" warm_mapped=" + warmText.MappedWrites.ToString()
+    +" warm_flushes=" + warmText.Flushes.ToString()
+    +" warm_reuse=" + warmText.RetainedReuse.ToString()
+    +" partial_written=" + partialText.WrittenBytes.ToString()
+    +" partial_dirty=" + partialText.DirtySegmentCount.ToString()
+    +" partial_ranges=" + partialText.UploadRangeCount.ToString()
+    +" partial_mapped=" + partialText.MappedWrites.ToString()
+    +" analytic_records=" + initialPrimitive.RecordCount.ToString()
+    +" clip_bytes=" + initialClip.ByteCount.ToString()
+    +" retained_text_hits=" + partialScene.RetainedTextHitCount.ToString()
+    +" retained_text_rebuilds=" + partialScene.RetainedTextRebuildCount.ToString()
+    +" retained_text_fallbacks=" + partialScene.RetainedTextFallbackCount.ToString()
+    +" retained_text_invalidations="
+    +partialScene.RetainedTextInvalidationCount.ToString()
+    +" close=1")
 }

@@ -51,7 +51,5 @@ internal class LinearTimed : Simulation {
     return (to - from) / duration
   }
 
-  public override func Done(elapsed float64) bool {
-    return elapsed >= duration
-  }
+  public override func Done(elapsed float64) bool -> elapsed >= duration
 }

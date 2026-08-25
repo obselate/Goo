@@ -82,13 +82,13 @@ internal unsafe partial class SdlHost {
     if eventType == SDLEventType.FingerMotion {
       if nativeEvent.Tfinger.WindowID == windowId && !IsSyntheticTouch(nativeEvent.Tfinger.TouchID) {
         if touchPointers.TryGetValue(
-            TouchContactKey(nativeEvent.Tfinger.TouchID, nativeEvent.Tfinger.FingerID),
-            out var pointerId) {
-          PointerMoved?.Invoke(pointerId, SdlHostPointerDevice.Touch,
-            TouchX(nativeEvent.Tfinger.X), TouchY(nativeEvent.Tfinger.Y),
-            SdlHostPointerButtons.Primary, NormalizePressure(nativeEvent.Tfinger.Pressure),
-            MapModifiers(SDL.GetModState()))
-        }
+          TouchContactKey(nativeEvent.Tfinger.TouchID, nativeEvent.Tfinger.FingerID),
+          out var pointerId) {
+            PointerMoved?.Invoke(pointerId, SdlHostPointerDevice.Touch,
+              TouchX(nativeEvent.Tfinger.X), TouchY(nativeEvent.Tfinger.Y),
+              SdlHostPointerButtons.Primary, NormalizePressure(nativeEvent.Tfinger.Pressure),
+              MapModifiers(SDL.GetModState()))
+          }
       }
       return
     }
@@ -139,7 +139,7 @@ internal unsafe partial class SdlHost {
         if penPressures == nil {
           penPressures = Dictionary[int64, float32]()
         }
-        penPressures!![int64(nativeEvent.Paxis.Which)] = NormalizePressure(nativeEvent.Paxis.Value)
+        penPressures!! [int64(nativeEvent.Paxis.Which)] = NormalizePressure(nativeEvent.Paxis.Value)
       }
       return
     }
@@ -230,7 +230,7 @@ internal unsafe partial class SdlHost {
       RefreshLogical()
       RaiseMetrics()
     } else if eventType == SDLEventType.WindowDisplayChanged ||
-        eventType == SDLEventType.WindowDisplayScaleChanged {
+    eventType == SDLEventType.WindowDisplayScaleChanged{
       RefreshDisplayPacing(true)
       RefreshMetrics()
       RaiseMetrics()
@@ -262,13 +262,9 @@ internal unsafe partial class SdlHost {
     }
   }
 
-  private func IsSyntheticMouse(which uint32) bool {
-    return which == TouchMouseId || which == PenMouseId
-  }
+  private func IsSyntheticMouse(which uint32) bool -> which == TouchMouseId || which == PenMouseId
 
-  private func IsSyntheticTouch(touchId int64) bool {
-    return touchId == MouseTouchId || touchId == PenTouchId
-  }
+  private func IsSyntheticTouch(touchId int64) bool -> touchId == MouseTouchId || touchId == PenTouchId
 
   private func MapModifiers(value uint16) SdlHostModifiers {
     let alt = uint16(SDL.SDL_KMOD_LALT | SDL.SDL_KMOD_RALT)
@@ -282,15 +278,13 @@ internal unsafe partial class SdlHost {
     return SdlHostModifiers(altDown, shiftDown, ctrlDown, superDown)
   }
 
-  private func MapPointerButton(button uint8) SdlHostPointerButton {
-    return switch button {
-      case SDL.SDL_BUTTON_LEFT: SdlHostPointerButton.Primary
-      case SDL.SDL_BUTTON_RIGHT: SdlHostPointerButton.Secondary
-      case SDL.SDL_BUTTON_MIDDLE: SdlHostPointerButton.Middle
-      case SDL.SDL_BUTTON_X1: SdlHostPointerButton.Back
-      case SDL.SDL_BUTTON_X2: SdlHostPointerButton.Forward
-      case _: SdlHostPointerButton.None
-    }
+  private func MapPointerButton(button uint8) SdlHostPointerButton -> switch button {
+    case SDL.SDL_BUTTON_LEFT: SdlHostPointerButton.Primary
+    case SDL.SDL_BUTTON_RIGHT: SdlHostPointerButton.Secondary
+    case SDL.SDL_BUTTON_MIDDLE: SdlHostPointerButton.Middle
+    case SDL.SDL_BUTTON_X1: SdlHostPointerButton.Back
+    case SDL.SDL_BUTTON_X2: SdlHostPointerButton.Forward
+    case _: SdlHostPointerButton.None
   }
 
   private func MapPointerButtons(state uint32) SdlHostPointerButtons {
@@ -313,9 +307,7 @@ internal unsafe partial class SdlHost {
     return buttons
   }
 
-  private func NativePointerMask(button uint8) uint32 {
-    return uint32(1) << int32(uint32(button) - 1u)
-  }
+  private func NativePointerMask(button uint8) uint32 -> uint32(1) << int32(uint32(button) - 1u)
 
   private func PenButtons(state uint32) SdlHostPointerButtons {
     var buttons = SdlHostPointerButtons.None
@@ -345,28 +337,24 @@ internal unsafe partial class SdlHost {
     return SdlHostPointerButton.None
   }
 
-  private func ToPointerButtons(button SdlHostPointerButton) SdlHostPointerButtons {
-    return switch button {
-      case SdlHostPointerButton.Primary: SdlHostPointerButtons.Primary
-      case SdlHostPointerButton.Secondary: SdlHostPointerButtons.Secondary
-      case SdlHostPointerButton.Middle: SdlHostPointerButtons.Middle
-      case SdlHostPointerButton.Back: SdlHostPointerButtons.Back
-      case SdlHostPointerButton.Forward: SdlHostPointerButtons.Forward
-      case _: SdlHostPointerButtons.None
-    }
+  private func ToPointerButtons(button SdlHostPointerButton) SdlHostPointerButtons -> switch button {
+    case SdlHostPointerButton.Primary: SdlHostPointerButtons.Primary
+    case SdlHostPointerButton.Secondary: SdlHostPointerButtons.Secondary
+    case SdlHostPointerButton.Middle: SdlHostPointerButtons.Middle
+    case SdlHostPointerButton.Back: SdlHostPointerButtons.Back
+    case SdlHostPointerButton.Forward: SdlHostPointerButtons.Forward
+    case _: SdlHostPointerButtons.None
   }
 
-  private func MousePressure(buttons SdlHostPointerButtons) float32 {
-    return (int32(buttons) & int32(SdlHostPointerButtons.Primary)) != 0 ? 1.0F : 0.0F
-  }
+  private func MousePressure(buttons SdlHostPointerButtons) float32 -> (int32(buttons) & int32(SdlHostPointerButtons.Primary)) != 0 ? 1.0F : 0.0F
 
   private func NormalizePressure(pressure float32) float32 {
     if Single.IsNaN(pressure) || pressure <= 0.0F { return 0.0F }
     return pressure >= 1.0F ? 1.0F : pressure
   }
 
-  private func TouchX(normalizedX float32) float32 { return normalizedX * float32(LogicalWidth) }
-  private func TouchY(normalizedY float32) float32 { return normalizedY * float32(LogicalHeight) }
+  private func TouchX(normalizedX float32) float32 -> normalizedX * float32(LogicalWidth)
+  private func TouchY(normalizedY float32) float32 -> normalizedY * float32(LogicalHeight)
 
   private func GetTouchPointerId(touchId int64, fingerId int64) int64 {
     let key = TouchContactKey(touchId, fingerId)
@@ -432,25 +420,25 @@ internal unsafe partial class SdlHost {
 
   private func ConvertCompositionRange(text string, characterStart int32,
     characterLength int32, out utf16Start int32, out utf16Length int32) {
-    if characterStart < 0 || characterLength < 0 {
-      utf16Start = 0
-      utf16Length = 0
-      return
+      if characterStart < 0 || characterLength < 0 {
+        utf16Start = 0
+        utf16Length = 0
+        return
+      }
+      var scalarCount int32 = 0
+      var cursor int32 = 0
+      while cursor < text.Length {
+        cursor += IsSurrogatePair(text, cursor) ? 2 : 1
+        scalarCount++
+      }
+      if characterStart > scalarCount || characterLength > scalarCount - characterStart {
+        utf16Start = 0
+        utf16Length = 0
+        return
+      }
+      utf16Start = Utf16Offset(text, characterStart)
+      utf16Length = Utf16Offset(text, characterStart + characterLength) - utf16Start
     }
-    var scalarCount int32 = 0
-    var cursor int32 = 0
-    while cursor < text.Length {
-      cursor += IsSurrogatePair(text, cursor) ? 2 : 1
-      scalarCount++
-    }
-    if characterStart > scalarCount || characterLength > scalarCount - characterStart {
-      utf16Start = 0
-      utf16Length = 0
-      return
-    }
-    utf16Start = Utf16Offset(text, characterStart)
-    utf16Length = Utf16Offset(text, characterStart + characterLength) - utf16Start
-  }
 
   private func Utf16Offset(text string, characterOffset int32) int32 {
     if characterOffset <= 0 { return 0 }

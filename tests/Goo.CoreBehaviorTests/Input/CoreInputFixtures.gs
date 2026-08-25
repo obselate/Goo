@@ -58,17 +58,15 @@ internal class InputFixtures {
 
     let shape = Reconciler{ Res: Resolver{} }.Mount(Shape{
       Width: 100, Height: 100,
-      Path: PathBuilder().MoveTo(0.5, 0.0)
-        .ArcTo(0.5, 0.5, 0.0, false, true, 0.5, 1.0)
-        .ArcTo(0.5, 0.5, 0.0, false, true, 0.5, 0.0).Close().Build(),
+      Path: PathBuilder().MoveTo(0.5, 0.0).ArcTo(0.5, 0.5, 0.0, false, true, 0.5, 1.0).ArcTo(0.5, 0.5, 0.0, false, true, 0.5, 0.0).Close().Build(),
       Transform: PanelTransform{ TranslateX: 50 },
       TransformOriginX: Length.Percent(0), TransformOriginY: Length.Percent(0),
     })
     Layout().Calculate(shape, 200.0F, 100.0F)
     if Hit().Topmost(shape, 100.0F, 50.0F) != shape
       || Hit().Topmost(shape, 55.0F, 5.0F) != nil {
-      return false
-    }
+        return false
+      }
 
     let capturedEvents = List[string]()
     let captured = Reconciler{ Res: Resolver{} }.Mount(Container{
@@ -121,8 +119,8 @@ internal class InputFixtures {
       || Math.Abs(rotatedEvent.Position.Y - 5.0) > 0.001
       || Math.Abs(rotatedEvent.Delta.X - 10.0) > 0.001
       || Math.Abs(rotatedEvent.Delta.Y) > 0.001 {
-      return false
-    }
+        return false
+      }
 
     let entry = Reconciler{ Res: Resolver{} }.Mount(TextEntry{
       Value: "WW", Width: 200, Height: 30, FontSize: 20,
@@ -194,7 +192,7 @@ internal class InputFixtures {
     let text = TextInput()
     let seen = List[Key]()
     var throwNext = true
-    let onKeyPress (Key, KeyModifiers) -> void = (key Key, modifiers KeyModifiers) -> {
+    let onKeyPress(Key, KeyModifiers) -> void = (key Key, modifiers KeyModifiers) -> {
       seen.Add(key)
       if throwNext {
         throwNext = false
@@ -328,9 +326,9 @@ internal class InputFixtures {
     driver.Drain()
     guard let canceled = driver.Window.Tree else { return false }
     if !canceled.Pressed || !canceled.Children[0].Pressed || canceled.Children[1].Pressed
-      || !canceled.Children[0].Focused {
-      return false
-    }
+      || !canceled.Children[0].Focused{
+        return false
+      }
     driver.Input.QueuePointerMove(101, PointerDevice.Touch, 175.0F, 25.0F, modifiers)
     driver.Input.QueuePointerRelease(101, PointerDevice.Touch, 175.0F, 25.0F,
       PointerButton.Primary, modifiers)
@@ -423,8 +421,8 @@ internal class InputFixtures {
     if cell.LeftClicks != 1 || cell.RightClicks != 0 || !tree.Children[0].Focused
       || !containsPointerEvent(events, "down:right:3:Touch")
       || !containsPointerEvent(events, "up:right:3:Touch") {
-      return false
-    }
+        return false
+      }
     driver.Input.QueuePointerPress(4, PointerDevice.Touch, 125.0F, 25.0F,
       PointerButton.Primary, modifiers)
     driver.Input.QueuePointerRelease(4, PointerDevice.Touch, 125.0F, 25.0F,
@@ -532,8 +530,8 @@ internal class InputFixtures {
   func PointerHoverLifecycleOrderAndFailureContract() bool {
     if !hoverSiblingOrder() || !hoverUnavailableOrder(1, false) || !hoverUnavailableOrder(2, true)
       || !hoverUnavailableOrder(3, false) || !hoverFocusLossOrder() || !hoverTransformOrder() {
-      return false
-    }
+        return false
+      }
     let events = List[string]()
     let cell = InputPointerHoverLifecycleCell{ Events: events, ThrowOnEnter: true }
     let driver = InputFixtureDriver(cell, 200, 100)
@@ -619,10 +617,8 @@ internal class InputFixtures {
   }
 
   private func pointerState(event PointerEvent, id int64, device PointerDevice, primary bool,
-    expectedPressure float64) bool {
-    return event.PointerId == id && event.Device == device && event.IsPrimary == primary
-      && Math.Abs(event.Pressure - expectedPressure) < 0.001
-  }
+    expectedPressure float64) bool -> event.PointerId == id && event.Device == device && event.IsPrimary == primary
+    && Math.Abs(event.Pressure - expectedPressure) < 0.001
 
   func PointerAndKeyboardPressesShareStateSafely() bool {
     let driver = InputFixtureDriver(InputPressedOwnershipCell{}, 100, 50)
@@ -656,17 +652,15 @@ internal class InputFixtures {
     return false
   }
 
-  func PointerCancelBalancesAnActiveRouteOnFocusLossAndInvalidation() bool {
-    return cancelAfterFocusLoss()
-      && cancelAfterInvalidation(1)
-      && cancelAfterInvalidation(2)
-      && cancelAfterInvalidation(3)
-      && cancelAfterInvalidation(4)
-      && cancelAfterInvalidation(5)
-      && completedPointerRouteDoesNotCancel()
-      && throwingCancelStillCleansUp()
-      && throwingUpStillCleansUp()
-  }
+  func PointerCancelBalancesAnActiveRouteOnFocusLossAndInvalidation() bool -> cancelAfterFocusLoss()
+    && cancelAfterInvalidation(1)
+    && cancelAfterInvalidation(2)
+    && cancelAfterInvalidation(3)
+    && cancelAfterInvalidation(4)
+    && cancelAfterInvalidation(5)
+    && completedPointerRouteDoesNotCancel()
+    && throwingCancelStillCleansUp()
+    && throwingUpStillCleansUp()
 
   private func cancelAfterFocusLoss() bool {
     let events = List[string]()
@@ -694,30 +688,30 @@ internal class InputFixtures {
   }
 
   private func cancelledPointerRouteIsBalanced(cell InputPointerCancelCell,
-    driver InputFixtureDriver, events List[string]) bool {
-    let expected = []string{
-      "down:child:1:1:15:15:25:25:0:0:1111",
-      "down:root:1:1:25:25:25:25:0:0:1111",
-      "cancel:child:0:0:15:15:25:25:0:0:1111",
-      "cancel:root:0:0:25:25:25:25:0:0:1111",
-    }
-    if events.Count != expected.Length {
-      return false
-    }
-    for i in 0 ... expected.Length {
-      if events[i] != expected[i] {
+    driver InputFixtureDriver, events List[string]) bool{
+      let expected = []string{
+        "down:child:1:1:15:15:25:25:0:0:1111",
+        "down:root:1:1:25:25:25:25:0:0:1111",
+        "cancel:child:0:0:15:15:25:25:0:0:1111",
+        "cancel:root:0:0:25:25:25:25:0:0:1111",
+      }
+      if events.Count != expected.Length {
         return false
       }
+      for i in 0 ... expected.Length {
+        if events[i] != expected[i] {
+          return false
+        }
+      }
+      if cell.Cause != 1 {
+        guard let tree = driver.Window.Tree else { return false }
+        if tree.Children[0].Hovered || tree.Children[0].Pressed { return false }
+      }
+      driver.PointerUp(25.0F, 25.0F, PointerButton.Primary)
+      driver.Drain()
+      driver.Update()
+      return events.Count == expected.Length && cell.Clicks == 0
     }
-    if cell.Cause != 1 {
-      guard let tree = driver.Window.Tree else { return false }
-      if tree.Children[0].Hovered || tree.Children[0].Pressed { return false }
-    }
-    driver.PointerUp(25.0F, 25.0F, PointerButton.Primary)
-    driver.Drain()
-    driver.Update()
-    return events.Count == expected.Length && cell.Clicks == 0
-  }
 
   private func completedPointerRouteDoesNotCancel() bool {
     let events = List[string]()
@@ -897,9 +891,9 @@ internal class InputFixtures {
     guard let button = findByKey(disabledRoot, "button") else { return false }
     guard let disabledEntry = findByKey(disabledRoot, "entry") else { return false }
     if !button.Disabled || button.Focusable || button.Opacity != 0.5
-      || !disabledEntry.Disabled || disabledEntry.Focusable {
-      return false
-    }
+      || !disabledEntry.Disabled || disabledEntry.Focusable{
+        return false
+      }
 
     disabledDriver.Move(25.0F, 15.0F)
     disabledDriver.Press(25.0F, 15.0F)
@@ -1010,8 +1004,8 @@ internal class InputFixtures {
       || edit.WordRight(EditState{ Text: words.Text, Caret: 2, Anchor: 2 }, false).Caret != 14
       || edit.WordLeft(EditState{ Text: words.Text, Caret: 14, Anchor: 14 }, false).Caret != 13
       || edit.WordLeft(EditState{ Text: words.Text, Caret: 13, Anchor: 13 }, false).Caret != 0 {
-      return false
-    }
+        return false
+      }
     let killRight = edit.KillWordRight(EditState{ Text: words.Text, Caret: 2, Anchor: 2 })
     if killRight.Text != "é" || killRight.Caret != 2 || killRight.Anchor != 2 {
       return false
@@ -1056,7 +1050,7 @@ internal class InputFixtures {
 
     let words = InputEntryCell{}
     let wordDriver = entryDriver(words)
-    for value in []string{ "a", "b", " ", "c", "d" } {
+    for value in []string { "a", "b", " ", "c", "d" } {
       wordDriver.Char(value)
     }
     wordDriver.Key(Key.Backspace, false, true)
@@ -1290,8 +1284,8 @@ internal class InputFixtures {
     guard let cancelledSpace = findByKey(cancelledRoot, "space") else { return false }
     if cancelledCell.spaceClicks != 0 || cancelledSpace.Pressed
       || focusedKey(cancelled.Window.Tree) != "generic" {
-      return false
-    }
+        return false
+      }
 
     let hiddenCell = InputButtonCell{}
     let hidden = InputFixtureDriver(hiddenCell, 300, 100)
@@ -1423,7 +1417,7 @@ internal class InputFixtures {
     regularDriver.PointerDown(150.0F, 50.0F, PointerButton.Primary)
     regularDriver.PointerUp(150.0F, 50.0F, PointerButton.Primary)
     regularDriver.Drain()
-    if !wheelEventsMatch(regularEvents, []string{
+    if !wheelEventsMatch(regularEvents, []string {
       "item:50:50:0:-3:1", "scroll:50:50:0:-3:1",
     }) || regular.CaptureMoves != 1 || regular.FirstClicks != 0 || regular.SecondClicks != 1 {
       return false
@@ -1442,7 +1436,7 @@ internal class InputFixtures {
     preventedDriver.PointerDown(150.0F, 50.0F, PointerButton.Primary)
     preventedDriver.PointerUp(150.0F, 50.0F, PointerButton.Primary)
     preventedDriver.Drain()
-    if !wheelEventsMatch(preventedEvents, []string{
+    if !wheelEventsMatch(preventedEvents, []string {
       "item:50:50:0:-3:1", "scroll:50:50:0:-3:1",
     }) || prevented.CaptureMoves != 1 || prevented.FirstClicks != 1 || prevented.SecondClicks != 0 {
       return false
@@ -1508,8 +1502,8 @@ internal class InputFixtures {
     guard let reset = driver.Window.Tree else { return false }
     if reset.OverflowX != Overflow.Hidden || reset.ScrollX != 0.0F
       || reset.ScrollTargetX != 0.0F || reset.ScrollBarAlpha != 0.0F {
-      return false
-    }
+        return false
+      }
 
     var sideClicks = 0
     var bottomClicks = 0
@@ -1539,8 +1533,8 @@ internal class InputFixtures {
       || !hit.DispatchClick(root, 125.0F, 25.0F)
       || hit.DispatchClick(root, 25.0F, 125.0F)
       || sideClicks != 1 || bottomClicks != 0 {
-      return false
-    }
+        return false
+      }
 
     root.OverflowX = Overflow.Hidden
     root.OverflowY = Overflow.Visible
@@ -1606,9 +1600,7 @@ internal class InputFixtures {
     return hitKey(root, 20.0F, 20.0F)
   }
 
-  private func hitKey(root Node, x float32, y float32) string {
-    return Hit().Topmost(root, x, y)?.Key ?? ""
-  }
+  private func hitKey(root Node, x float32, y float32) string -> Hit().Topmost(root, x, y)?.Key ?? ""
 
   private func zIndexRuntimeHits() []string {
     let window = Window{ Root: ZIndexRuntimeRootCell{}, Width: 40, Height: 40 }
@@ -1623,7 +1615,6 @@ internal class InputFixtures {
     guard let updated = window.Tree else { return []string{ before, "" } }
     return []string{ before, hitKey(updated, 20.0F, 20.0F) }
   }
-
 
   func MacShortcutPolicyRoutesCommandAndOptionWord() bool {
     let saved = InputPolicy.Mac
@@ -1673,9 +1664,7 @@ internal class InputFixtures {
     return driver
   }
 
-  private func entry(driver InputFixtureDriver) Node {
-    return driver.Window.Tree!!.Children[0]
-  }
+  private func entry(driver InputFixtureDriver) Node -> driver.Window.Tree!!.Children[0]
 
   private func focusLossClearsInputState() bool {
     let cell = InputEntryCell{ value: "ab" }
@@ -1742,7 +1731,7 @@ internal class InputFixtures {
       OnBlur: (e FocusEvent) -> { events.Add("blur:root") },
       OnKeyDown: (e KeyEvent) -> {
         events.Add("down:root:" + e.Key.ToString() + ":" + (e.Modifiers.Ctrl ? "1" : "0")
-          + ":" + (e.Repeat ? "1" : "0"))
+          +":" + (e.Repeat ? "1" : "0"))
       },
       OnKeyUp: (e KeyEvent) -> {
         events.Add("up:root:" + e.Key.ToString() + ":" + (e.Modifiers.Alt ? "1" : "0"))
@@ -1754,7 +1743,7 @@ internal class InputFixtures {
           OnBlur: (e FocusEvent) -> { events.Add("blur:leaf") },
           OnKeyDown: (e KeyEvent) -> {
             events.Add("down:leaf:" + e.Key.ToString() + ":" + (e.Modifiers.Ctrl ? "1" : "0")
-              + ":" + (e.Repeat ? "1" : "0"))
+              +":" + (e.Repeat ? "1" : "0"))
             if e.Key == Key.A { stale = e }
             if e.Key == Key.B { e.StopPropagation() }
           },
@@ -2178,9 +2167,7 @@ internal class InputFixtures {
     return threw && !failing.Children[0].Focused && failing.Children[1].Focused
   }
 
-  private func sameRect(a Rect, b Rect) bool {
-    return a.X == b.X && a.Y == b.Y && a.W == b.W && a.H == b.H
-  }
+  private func sameRect(a Rect, b Rect) bool -> a.X == b.X && a.Y == b.Y && a.W == b.W && a.H == b.H
 
   private func findByKey(n Node, key string) Node? {
     if n.Key == key {
@@ -2197,13 +2184,11 @@ internal class InputFixtures {
 }
 
 internal class ZIndexRuntimeRootCell : Cell {
-  override func Build() Blob {
-    return Container{ Width: 40, Height: 40, Children: {
-      Cell.Mount[ZIndexRuntimeChildCell]("dynamic"),
-      Container{ Key: "sibling", Position: PositionType.Absolute,
-        Width: 40, Height: 40, ZIndex: 1 },
-    } }
-  }
+  override func Build() Blob -> Container { Width: 40, Height: 40, Children: {
+    Cell.Mount[ZIndexRuntimeChildCell]("dynamic"),
+    Container{ Key: "sibling", Position: PositionType.Absolute,
+      Width: 40, Height: 40, ZIndex: 1 },
+  } }
 }
 
 internal class ZIndexRuntimeChildCell : Cell {
@@ -2295,101 +2280,89 @@ internal class InputFixtureDriver {
 }
 
 internal class InputStaticCell : Cell {
-  override func Build() Blob {
-    return Container{
-      Width: 200.0,
-      Height: 200.0,
-      Hover: Style{ Opacity: 0.5 },
-      Children: {
-        Container{ Width: 50.0, Height: 50.0, Hover: Style{ Opacity: 0.25 } },
-      },
-    }
+  override func Build() Blob -> Container {
+    Width: 200.0,
+    Height: 200.0,
+    Hover: Style{ Opacity: 0.5 },
+    Children: {
+      Container{ Width: 50.0, Height: 50.0, Hover: Style{ Opacity: 0.25 } },
+    },
   }
 }
 
 internal class InputCursorCell : Cell {
-  override func Build() Blob {
-    return Container{
-      Width: 200.0,
-      Height: 200.0,
-      Cursor: Cursor.Move,
-      Children: {
-        Container{
-          Width: 50.0,
-          Height: 50.0,
-          Cursor: Cursor.Pointer,
-          Hover: Style{ Cursor: Cursor.Text },
-        },
+  override func Build() Blob -> Container {
+    Width: 200.0,
+    Height: 200.0,
+    Cursor: Cursor.Move,
+    Children: {
+      Container{
+        Width: 50.0,
+        Height: 50.0,
+        Cursor: Cursor.Pointer,
+        Hover: Style{ Cursor: Cursor.Text },
       },
-    }
+    },
   }
 }
 
 internal class InputTwoCardsCell : Cell {
-  override func Build() Blob {
-    return Container{
-      Width: 200.0,
-      Height: 200.0,
-      FlexDirection: FlexDirection.Row,
-      Children: {
-        Container{ Width: 50.0, Height: 50.0, Hover: Style{ Opacity: 0.5 } },
-        Container{ Width: 50.0, Height: 50.0, Hover: Style{ Opacity: 0.5 } },
-      },
-    }
+  override func Build() Blob -> Container {
+    Width: 200.0,
+    Height: 200.0,
+    FlexDirection: FlexDirection.Row,
+    Children: {
+      Container{ Width: 50.0, Height: 50.0, Hover: Style{ Opacity: 0.5 } },
+      Container{ Width: 50.0, Height: 50.0, Hover: Style{ Opacity: 0.5 } },
+    },
   }
 }
 
 internal class InputFocusCell : Cell {
-  override func Build() Blob {
-    return Container{
-      Width: 200.0,
-      Height: 200.0,
-      Children: {
-        Container{
-          Width: 50.0,
-          Height: 50.0,
-          Focusable: true,
-          Focus: Style{ Opacity: 0.5 },
-        },
+  override func Build() Blob -> Container {
+    Width: 200.0,
+    Height: 200.0,
+    Children: {
+      Container{
+        Width: 50.0,
+        Height: 50.0,
+        Focusable: true,
+        Focus: Style{ Opacity: 0.5 },
       },
-    }
+    },
   }
 }
 
 internal class InputTwoFocusCell : Cell {
-  override func Build() Blob {
-    return Container{
-      Width: 200.0,
-      Height: 200.0,
-      FlexDirection: FlexDirection.Row,
-      Children: {
-        Container{ Width: 50.0, Height: 50.0, Focusable: true },
-        Container{ Width: 50.0, Height: 50.0, Focusable: true },
-      },
-    }
+  override func Build() Blob -> Container {
+    Width: 200.0,
+    Height: 200.0,
+    FlexDirection: FlexDirection.Row,
+    Children: {
+      Container{ Width: 50.0, Height: 50.0, Focusable: true },
+      Container{ Width: 50.0, Height: 50.0, Focusable: true },
+    },
   }
 }
 
 internal class InputAutoFocusCell : Cell {
-  override func Build() Blob {
-    return Container{
-      Width: 200.0,
-      Height: 160.0,
-      Children: {
-        Container{
-          Key: "hidden-root",
-          Visibility: Visibility.Hidden,
-          Children: { TextEntry{ Key: "hidden", AutoFocus: true, Height: 30.0 } },
-        },
-        Container{
-          Key: "disabled-root",
-          Disabled: true,
-          Children: { TextEntry{ Key: "disabled", AutoFocus: true, Height: 30.0 } },
-        },
-        TextEntry{ Key: "first", AutoFocus: true, Height: 30.0 },
-        TextEntry{ Key: "second", Height: 30.0 },
+  override func Build() Blob -> Container {
+    Width: 200.0,
+    Height: 160.0,
+    Children: {
+      Container{
+        Key: "hidden-root",
+        Visibility: Visibility.Hidden,
+        Children: { TextEntry{ Key: "hidden", AutoFocus: true, Height: 30.0 } },
       },
-    }
+      Container{
+        Key: "disabled-root",
+        Disabled: true,
+        Children: { TextEntry{ Key: "disabled", AutoFocus: true, Height: 30.0 } },
+      },
+      TextEntry{ Key: "first", AutoFocus: true, Height: 30.0 },
+      TextEntry{ Key: "second", Height: 30.0 },
+    },
   }
 }
 
@@ -2401,38 +2374,34 @@ internal class InputHoverReplacementCell : Cell {
     Rebuild()
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: 200.0,
-      Height: 200.0,
-      Children: {
-        Container{
-          Key: "hover-$count",
-          Width: 50.0,
-          Height: 50.0,
-          Hover: Style{ Opacity: 0.5 },
-        },
+  override func Build() Blob -> Container {
+    Width: 200.0,
+    Height: 200.0,
+    Children: {
+      Container{
+        Key: "hover-$count",
+        Width: 50.0,
+        Height: 50.0,
+        Hover: Style{ Opacity: 0.5 },
       },
-    }
+    },
   }
 }
 
 internal class InputHoverHidesCell : Cell {
   internal var Clicks int32
 
-  override func Build() Blob {
-    return Container{
-      Width: 200.0,
-      Height: 200.0,
-      Children: {
-        Container{
-          Width: 50.0,
-          Height: 50.0,
-          Hover: Style{ Display: Display.None },
-          OnClick: func() { Clicks++ },
-        },
+  override func Build() Blob -> Container {
+    Width: 200.0,
+    Height: 200.0,
+    Children: {
+      Container{
+        Width: 50.0,
+        Height: 50.0,
+        Hover: Style{ Display: Display.None },
+        OnClick: func() { Clicks++ },
       },
-    }
+    },
   }
 }
 
@@ -2444,19 +2413,17 @@ internal class InputFocusReplacementCell : Cell {
     Rebuild()
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: 200.0,
-      Height: 200.0,
-      Children: {
-        Container{
-          Key: "focus-$count",
-          Width: 50.0,
-          Height: 50.0,
-          Focusable: true,
-        },
+  override func Build() Blob -> Container {
+    Width: 200.0,
+    Height: 200.0,
+    Children: {
+      Container{
+        Key: "focus-$count",
+        Width: 50.0,
+        Height: 50.0,
+        Focusable: true,
       },
-    }
+    },
   }
 }
 
@@ -2468,20 +2435,18 @@ internal class InputEntryReplacementCell : Cell {
     Rebuild()
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: 300.0,
-      Height: 100.0,
-      Children: {
-        TextEntry{
-          Key: "entry-$count",
-          Value: "abcdef",
-          Width: 200.0,
-          Height: 30.0,
-          FontSize: 16.0,
-        },
+  override func Build() Blob -> Container {
+    Width: 300.0,
+    Height: 100.0,
+    Children: {
+      TextEntry{
+        Key: "entry-$count",
+        Value: "abcdef",
+        Width: 200.0,
+        Height: 30.0,
+        FontSize: 16.0,
       },
-    }
+    },
   }
 }
 
@@ -2497,44 +2462,40 @@ internal class InputEntryCell : Cell {
     submitted = ""
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: 300.0,
-      Height: 100.0,
-      Children: {
-        TextEntry{
-          Key: "entry",
-          Value: value,
-          Placeholder: "hint",
-          Width: 200.0,
-          Height: 30.0,
-          FontSize: 16.0,
-          LineHeight: 1.5,
-          Color: Color.White,
-          OnChange: (next string) -> {
-            changed = next
-            if writeBack {
-              value = next
-            }
-          },
-          OnSubmit: (next string) -> { submitted = next },
+  override func Build() Blob -> Container {
+    Width: 300.0,
+    Height: 100.0,
+    Children: {
+      TextEntry{
+        Key: "entry",
+        Value: value,
+        Placeholder: "hint",
+        Width: 200.0,
+        Height: 30.0,
+        FontSize: 16.0,
+        LineHeight: 1.5,
+        Color: Color.White,
+        OnChange: (next string) -> {
+          changed = next
+          if writeBack {
+            value = next
+          }
         },
+        OnSubmit: (next string) -> { submitted = next },
       },
-    }
+    },
   }
 }
 
 internal class InputTabCell : Cell {
-  override func Build() Blob {
-    return Container{
-      Width: 300.0,
-      Height: 200.0,
-      Children: {
-        TextEntry{ Key: "a", Width: 100.0, Height: 30.0 },
-        Container{ Key: "b", Width: 100.0, Height: 30.0, Focusable: true },
-        TextEntry{ Key: "c", Width: 100.0, Height: 30.0 },
-      },
-    }
+  override func Build() Blob -> Container {
+    Width: 300.0,
+    Height: 200.0,
+    Children: {
+      TextEntry{ Key: "a", Width: 100.0, Height: 30.0 },
+      Container{ Key: "b", Width: 100.0, Height: 30.0, Focusable: true },
+      TextEntry{ Key: "c", Width: 100.0, Height: 30.0 },
+    },
   }
 }
 
@@ -2546,200 +2507,192 @@ internal class InputButtonCell : Cell {
 
   init() { HideSpace = Track(false) }
 
-  override func Build() Blob {
-    return Container{
-      Width: 300.0,
-      Height: 100.0,
-      FlexDirection: FlexDirection.Row,
-      Children: {
-        Button{
-          Key: "enter",
-          Width: 100.0,
-          Height: 30.0,
-          Active: Style{ Opacity: 0.5 },
-          OnClick: func() { enterClicks++ },
-          Children: { Text{ Content: "Enter" } },
-        },
-        Button{
-          Key: "space",
-          Width: 100.0,
-          Height: 30.0,
-          Visibility: HideSpace.Value ? Visibility.Hidden : Visibility.Visible,
-          Active: Style{ Opacity: 0.5 },
-          OnClick: func() { spaceClicks++ },
-          Children: { Text{ Content: "Space" } },
-        },
-        Container{
-          Key: "generic",
-          Width: 100.0,
-          Height: 30.0,
-          Focusable: true,
-          OnClick: func() { genericClicks++ },
-        },
+  override func Build() Blob -> Container {
+    Width: 300.0,
+    Height: 100.0,
+    FlexDirection: FlexDirection.Row,
+    Children: {
+      Button{
+        Key: "enter",
+        Width: 100.0,
+        Height: 30.0,
+        Active: Style{ Opacity: 0.5 },
+        OnClick: func() { enterClicks++ },
+        Children: { Text{ Content: "Enter" } },
       },
-    }
+      Button{
+        Key: "space",
+        Width: 100.0,
+        Height: 30.0,
+        Visibility: HideSpace.Value ? Visibility.Hidden : Visibility.Visible,
+        Active: Style{ Opacity: 0.5 },
+        OnClick: func() { spaceClicks++ },
+        Children: { Text{ Content: "Space" } },
+      },
+      Container{
+        Key: "generic",
+        Width: 100.0,
+        Height: 30.0,
+        Focusable: true,
+        OnClick: func() { genericClicks++ },
+      },
+    },
   }
 }
 
 internal class InputPointerLifecycleCell : Cell {
-  internal prop Events List[string] { get; init; }
+  internal prop Events List[string]{ get; init; }
   internal var Clicks int32
   internal var Stale PointerEvent?
 
-  override func Build() Blob {
-    return Container{
-      Width: 100.0,
-      Height: 100.0,
-      OnClick: () -> { Clicks++ },
-      OnPointerDown: (e PointerEvent) -> {
-        pointerRecord("down", "root", e)
-        if e.Button == PointerButton.Primary { e.PreventDefault() }
-      },
-      OnPointerMove: (e PointerEvent) -> { pointerRecord("move", "root", e) },
-      OnPointerUp: (e PointerEvent) -> {
-        pointerRecord("up", "root", e)
-        if e.Button == PointerButton.Primary { e.PreventDefault() }
-      },
-      Children: {
-        Container{
-          Position: PositionType.Absolute,
-          Left: 10,
-          Top: 10,
-          Width: 80,
-          Height: 80,
-          OnPointerDown: (e PointerEvent) -> { pointerRecord("down", "mid", e) },
-          OnPointerMove: (e PointerEvent) -> { pointerRecord("move", "mid", e) },
-          OnPointerUp: (e PointerEvent) -> { pointerRecord("up", "mid", e) },
-          Children: {
-            Container{
-              Position: PositionType.Absolute,
-              Left: 5,
-              Top: 7,
-              Width: 60,
-              Height: 60,
-              OnPointerDown: (e PointerEvent) -> {
-                pointerRecord("down", "leaf", e)
-                if e.Button == PointerButton.Primary { Stale = e }
-                if e.Button == PointerButton.Middle {
-                  if let stale = Stale { stale.StopPropagation() }
-                }
-                if e.Button == PointerButton.Secondary { e.StopPropagation() }
-              },
-              OnPointerMove: (e PointerEvent) -> { pointerRecord("move", "leaf", e) },
-              OnPointerUp: (e PointerEvent) -> { pointerRecord("up", "leaf", e) },
+  override func Build() Blob -> Container {
+    Width: 100.0,
+    Height: 100.0,
+    OnClick: () -> { Clicks++ },
+    OnPointerDown: (e PointerEvent) -> {
+      pointerRecord("down", "root", e)
+      if e.Button == PointerButton.Primary { e.PreventDefault() }
+    },
+    OnPointerMove: (e PointerEvent) -> { pointerRecord("move", "root", e) },
+    OnPointerUp: (e PointerEvent) -> {
+      pointerRecord("up", "root", e)
+      if e.Button == PointerButton.Primary { e.PreventDefault() }
+    },
+    Children: {
+      Container{
+        Position: PositionType.Absolute,
+        Left: 10,
+        Top: 10,
+        Width: 80,
+        Height: 80,
+        OnPointerDown: (e PointerEvent) -> { pointerRecord("down", "mid", e) },
+        OnPointerMove: (e PointerEvent) -> { pointerRecord("move", "mid", e) },
+        OnPointerUp: (e PointerEvent) -> { pointerRecord("up", "mid", e) },
+        Children: {
+          Container{
+            Position: PositionType.Absolute,
+            Left: 5,
+            Top: 7,
+            Width: 60,
+            Height: 60,
+            OnPointerDown: (e PointerEvent) -> {
+              pointerRecord("down", "leaf", e)
+              if e.Button == PointerButton.Primary { Stale = e }
+              if e.Button == PointerButton.Middle {
+                if let stale = Stale { stale.StopPropagation() }
+              }
+              if e.Button == PointerButton.Secondary { e.StopPropagation() }
             },
+            OnPointerMove: (e PointerEvent) -> { pointerRecord("move", "leaf", e) },
+            OnPointerUp: (e PointerEvent) -> { pointerRecord("up", "leaf", e) },
           },
         },
       },
-    }
+    },
   }
 
   private func pointerRecord(phase string, name string, e PointerEvent) {
     let modifiers = (e.Modifiers.Alt ? "1" : "0") + (e.Modifiers.Shift ? "1" : "0")
-      + (e.Modifiers.Ctrl ? "1" : "0") + (e.Modifiers.Super ? "1" : "0")
+    +(e.Modifiers.Ctrl ? "1" : "0") + (e.Modifiers.Super ? "1" : "0")
     Events.Add(phase + ":" + name + ":" + int32(e.Button).ToString()
-      + ":" + int32(e.Buttons).ToString() + ":" + e.Position.X.ToString()
-      + ":" + e.Position.Y.ToString() + ":" + e.WindowPosition.X.ToString()
-      + ":" + e.WindowPosition.Y.ToString() + ":" + e.Delta.X.ToString()
-      + ":" + e.Delta.Y.ToString() + ":" + modifiers)
+      +":" + int32(e.Buttons).ToString() + ":" + e.Position.X.ToString()
+      +":" + e.Position.Y.ToString() + ":" + e.WindowPosition.X.ToString()
+      +":" + e.WindowPosition.Y.ToString() + ":" + e.Delta.X.ToString()
+      +":" + e.Delta.Y.ToString() + ":" + modifiers)
   }
 }
 
 internal class InputPointerCaptureCell : Cell {
-  internal prop Events List[string] { get; init; }
+  internal prop Events List[string]{ get; init; }
   internal var ReleaseOnCapturedMove bool
 
-  override func Build() Blob {
-    return Container{
-      Width: 200.0,
-      Height: 100.0,
-      FlexDirection: FlexDirection.Row,
-      OnPointerDown: (e PointerEvent) -> { Events.Add("down:root") },
-      OnPointerMove: (e PointerEvent) -> {
-        Events.Add("move:root")
-        e.ReleaseCapture()
-      },
-      OnPointerUp: (e PointerEvent) -> { Events.Add("up:root") },
-      Children: {
-        Container{
-          Key: "child",
-          Width: 100.0,
-          Height: 100.0,
-          Focusable: true,
-          OnClick: () -> { Clicks++ },
-          OnPointerDown: (e PointerEvent) -> {
-            Events.Add("down:child")
-            if e.Button == PointerButton.Middle { e.Capture() }
-          },
-          OnPointerMove: (e PointerEvent) -> {
-            Events.Add("move:child")
-            if ReleaseOnCapturedMove {
-              ReleaseOnCapturedMove = false
-              e.ReleaseCapture()
-            }
-          },
-          OnPointerUp: (e PointerEvent) -> { Events.Add("up:child") },
+  override func Build() Blob -> Container {
+    Width: 200.0,
+    Height: 100.0,
+    FlexDirection: FlexDirection.Row,
+    OnPointerDown: (e PointerEvent) -> { Events.Add("down:root") },
+    OnPointerMove: (e PointerEvent) -> {
+      Events.Add("move:root")
+      e.ReleaseCapture()
+    },
+    OnPointerUp: (e PointerEvent) -> { Events.Add("up:root") },
+    Children: {
+      Container{
+        Key: "child",
+        Width: 100.0,
+        Height: 100.0,
+        Focusable: true,
+        OnClick: () -> { Clicks++ },
+        OnPointerDown: (e PointerEvent) -> {
+          Events.Add("down:child")
+          if e.Button == PointerButton.Middle { e.Capture() }
         },
-        Container{
-          Key: "sibling",
-          Width: 100.0,
-          Height: 100.0,
-          OnPointerDown: (e PointerEvent) -> { Events.Add("down:sibling") },
-          OnPointerMove: (e PointerEvent) -> { Events.Add("move:sibling") },
-          OnPointerUp: (e PointerEvent) -> { Events.Add("up:sibling") },
+        OnPointerMove: (e PointerEvent) -> {
+          Events.Add("move:child")
+          if ReleaseOnCapturedMove {
+            ReleaseOnCapturedMove = false
+            e.ReleaseCapture()
+          }
         },
+        OnPointerUp: (e PointerEvent) -> { Events.Add("up:child") },
       },
-    }
+      Container{
+        Key: "sibling",
+        Width: 100.0,
+        Height: 100.0,
+        OnPointerDown: (e PointerEvent) -> { Events.Add("down:sibling") },
+        OnPointerMove: (e PointerEvent) -> { Events.Add("move:sibling") },
+        OnPointerUp: (e PointerEvent) -> { Events.Add("up:sibling") },
+      },
+    },
   }
 
   internal var Clicks int32
 }
 
 internal class InputMultiPointerCell : Cell {
-  internal prop Events List[string] { get; init; }
+  internal prop Events List[string]{ get; init; }
   internal var LeftClicks int32
   internal var RightClicks int32
 
-  override func Build() Blob {
-    return Container{
-      Width: 200.0,
-      Height: 100.0,
-      FlexDirection: FlexDirection.Row,
-      OnPointerDown: (e PointerEvent) -> { record("down", "root", e) },
-      OnPointerMove: (e PointerEvent) -> { record("move", "root", e) },
-      OnPointerUp: (e PointerEvent) -> { record("up", "root", e) },
-      OnPointerCancel: (e PointerEvent) -> { record("cancel", "root", e) },
-      Children: {
-        Container{
-          Key: "left",
-          Width: 100.0,
-          Height: 100.0,
-          Focusable: true,
-          OnClick: () -> { LeftClicks++ },
-          OnPointerDown: (e PointerEvent) -> {
-            record("down", "left", e)
-            e.Capture()
-          },
-          OnPointerMove: (e PointerEvent) -> { record("move", "left", e) },
-          OnPointerUp: (e PointerEvent) -> { record("up", "left", e) },
-          OnPointerCancel: (e PointerEvent) -> { record("cancel", "left", e) },
+  override func Build() Blob -> Container {
+    Width: 200.0,
+    Height: 100.0,
+    FlexDirection: FlexDirection.Row,
+    OnPointerDown: (e PointerEvent) -> { record("down", "root", e) },
+    OnPointerMove: (e PointerEvent) -> { record("move", "root", e) },
+    OnPointerUp: (e PointerEvent) -> { record("up", "root", e) },
+    OnPointerCancel: (e PointerEvent) -> { record("cancel", "root", e) },
+    Children: {
+      Container{
+        Key: "left",
+        Width: 100.0,
+        Height: 100.0,
+        Focusable: true,
+        OnClick: () -> { LeftClicks++ },
+        OnPointerDown: (e PointerEvent) -> {
+          record("down", "left", e)
+          e.Capture()
         },
-        Container{
-          Key: "right",
-          Width: 100.0,
-          Height: 100.0,
-          Focusable: true,
-          OnClick: () -> { RightClicks++ },
-          OnPointerDown: (e PointerEvent) -> {
-            record("down", "right", e)
-            e.Capture()
-          },
-          OnPointerMove: (e PointerEvent) -> { record("move", "right", e) },
-          OnPointerUp: (e PointerEvent) -> { record("up", "right", e) },
-          OnPointerCancel: (e PointerEvent) -> { record("cancel", "right", e) },
-        },
+        OnPointerMove: (e PointerEvent) -> { record("move", "left", e) },
+        OnPointerUp: (e PointerEvent) -> { record("up", "left", e) },
+        OnPointerCancel: (e PointerEvent) -> { record("cancel", "left", e) },
       },
-    }
+      Container{
+        Key: "right",
+        Width: 100.0,
+        Height: 100.0,
+        Focusable: true,
+        OnClick: () -> { RightClicks++ },
+        OnPointerDown: (e PointerEvent) -> {
+          record("down", "right", e)
+          e.Capture()
+        },
+        OnPointerMove: (e PointerEvent) -> { record("move", "right", e) },
+        OnPointerUp: (e PointerEvent) -> { record("up", "right", e) },
+        OnPointerCancel: (e PointerEvent) -> { record("cancel", "right", e) },
+      },
+    },
   }
 
   private func record(phase string, target string, e PointerEvent) {
@@ -2748,37 +2701,33 @@ internal class InputMultiPointerCell : Cell {
 }
 
 internal class InputPenHoverCell : Cell {
-  internal prop Events List[string] { get; init; }
+  internal prop Events List[string]{ get; init; }
 
-  override func Build() Blob {
-    return Container{
-      Width: 100.0,
-      Height: 100.0,
-      OnPointerMove: (e PointerEvent) -> {
-        Events.Add(e.PointerId.ToString() + ":" + e.Device.ToString() + ":"
-          + e.Delta.X.ToString() + ":" + e.Delta.Y.ToString() + ":"
-          + int32(e.Buttons).ToString())
-      },
-    }
+  override func Build() Blob -> Container {
+    Width: 100.0,
+    Height: 100.0,
+    OnPointerMove: (e PointerEvent) -> {
+      Events.Add(e.PointerId.ToString() + ":" + e.Device.ToString() + ":"
+        +e.Delta.X.ToString() + ":" + e.Delta.Y.ToString() + ":"
+        +int32(e.Buttons).ToString())
+    },
   }
 }
 
 internal class InputPointerPressureCell : Cell {
-  internal prop Events List[PointerEvent] { get; init; }
+  internal prop Events List[PointerEvent]{ get; init; }
 
-  override func Build() Blob {
-    return Container{
-      Width: 100.0,
-      Height: 100.0,
-      OnPointerDown: (e PointerEvent) -> { Events.Add(e) },
-      OnPointerMove: (e PointerEvent) -> { Events.Add(e) },
-      OnPointerUp: (e PointerEvent) -> { Events.Add(e) },
-    }
+  override func Build() Blob -> Container {
+    Width: 100.0,
+    Height: 100.0,
+    OnPointerDown: (e PointerEvent) -> { Events.Add(e) },
+    OnPointerMove: (e PointerEvent) -> { Events.Add(e) },
+    OnPointerUp: (e PointerEvent) -> { Events.Add(e) },
   }
 }
 
 internal class InputPointerHoverLifecycleCell : Cell {
-  internal prop Events List[string] { get; init; }
+  internal prop Events List[string]{ get; init; }
   internal var Cause int32
   internal var ThrowOnEnter bool
 
@@ -2831,17 +2780,15 @@ internal class InputPointerHoverLifecycleCell : Cell {
 }
 
 internal class InputPressedOwnershipCell : Cell {
-  override func Build() Blob {
-    return Button{ Width: 100.0, Height: 50.0 }
-  }
+  override func Build() Blob -> Button { Width: 100.0, Height: 50.0 }
 }
 
 internal class InputPointerCancelCell : Cell {
-  internal prop Events List[string] { get; init; }
+  internal prop Events List[string]{ get; init; }
   internal var Clicks int32
   internal var Cause int32
-  internal prop ThrowOnCancel bool { get; init; }
-  internal prop ThrowOnUp bool { get; init; }
+  internal prop ThrowOnCancel bool{ get; init; }
+  internal prop ThrowOnUp bool{ get; init; }
 
   override func Build() Blob {
     let root = Container{
@@ -2890,12 +2837,12 @@ internal class InputPointerCancelCell : Cell {
 
   private func record(phase string, target string, e PointerEvent) {
     let modifiers = (e.Modifiers.Alt ? "1" : "0") + (e.Modifiers.Shift ? "1" : "0")
-      + (e.Modifiers.Ctrl ? "1" : "0") + (e.Modifiers.Super ? "1" : "0")
+    +(e.Modifiers.Ctrl ? "1" : "0") + (e.Modifiers.Super ? "1" : "0")
     Events.Add(phase + ":" + target + ":" + int32(e.Button).ToString()
-      + ":" + int32(e.Buttons).ToString() + ":" + e.Position.X.ToString()
-      + ":" + e.Position.Y.ToString() + ":" + e.WindowPosition.X.ToString()
-      + ":" + e.WindowPosition.Y.ToString() + ":" + e.Delta.X.ToString()
-      + ":" + e.Delta.Y.ToString() + ":" + modifiers)
+      +":" + int32(e.Buttons).ToString() + ":" + e.Position.X.ToString()
+      +":" + e.Position.Y.ToString() + ":" + e.WindowPosition.X.ToString()
+      +":" + e.WindowPosition.Y.ToString() + ":" + e.Delta.X.ToString()
+      +":" + e.Delta.Y.ToString() + ":" + modifiers)
   }
 }
 
@@ -2904,52 +2851,50 @@ internal class InputDisabledCell : Cell {
   internal var GroupClicks int32
   internal var EnabledClicks int32
 
-  override func Build() Blob {
-    return Container{
-      Width: 400.0,
-      Height: 100.0,
-      FlexDirection: FlexDirection.Row,
-      Children: {
-        Button{
-          Key: "button",
-          Width: 100.0,
-          Height: 30.0,
-          Disabled: true,
-          DisabledStyle: Style{ Opacity: 0.5 },
-          Hover: Style{ Opacity: 0.8 },
-          Active: Style{ Opacity: 0.6 },
-          OnClick: func() { ButtonClicks++ },
-          Children: { Text{ Content: "Disabled" } },
-        },
-        TextEntry{
-          Key: "entry",
-          Width: 100.0,
-          Height: 30.0,
-          Disabled: true,
-        },
-        Container{
-          Key: "group",
-          Width: 100.0,
-          Height: 30.0,
-          Disabled: true,
-          Children: {
-            Button{
-              Width: 100.0,
-              Height: 30.0,
-              OnClick: func() { GroupClicks++ },
-              Children: { Text{ Content: "Group" } },
-            },
+  override func Build() Blob -> Container {
+    Width: 400.0,
+    Height: 100.0,
+    FlexDirection: FlexDirection.Row,
+    Children: {
+      Button{
+        Key: "button",
+        Width: 100.0,
+        Height: 30.0,
+        Disabled: true,
+        DisabledStyle: Style{ Opacity: 0.5 },
+        Hover: Style{ Opacity: 0.8 },
+        Active: Style{ Opacity: 0.6 },
+        OnClick: func() { ButtonClicks++ },
+        Children: { Text{ Content: "Disabled" } },
+      },
+      TextEntry{
+        Key: "entry",
+        Width: 100.0,
+        Height: 30.0,
+        Disabled: true,
+      },
+      Container{
+        Key: "group",
+        Width: 100.0,
+        Height: 30.0,
+        Disabled: true,
+        Children: {
+          Button{
+            Width: 100.0,
+            Height: 30.0,
+            OnClick: func() { GroupClicks++ },
+            Children: { Text{ Content: "Group" } },
           },
         },
-        Button{
-          Key: "enabled",
-          Width: 100.0,
-          Height: 30.0,
-          OnClick: func() { EnabledClicks++ },
-          Children: { Text{ Content: "Enabled" } },
-        },
       },
-    }
+      Button{
+        Key: "enabled",
+        Width: 100.0,
+        Height: 30.0,
+        OnClick: func() { EnabledClicks++ },
+        Children: { Text{ Content: "Enabled" } },
+      },
+    },
   }
 }
 
@@ -2964,18 +2909,16 @@ internal class InputDisableFocusedEntryCell : Cell {
     Off.Value = true
   }
 
-  override func Build() Blob {
-    return TextEntry{
-      Value: "hello",
-      Width: 200.0,
-      Height: 30.0,
-      Disabled: Off.Value,
-    }
+  override func Build() Blob -> TextEntry {
+    Value: "hello",
+    Width: 200.0,
+    Height: 30.0,
+    Disabled: Off.Value,
   }
 }
 
 internal class InputKeyboardFocusLifecycleCell : Cell {
-  internal prop Events List[string] { get; init; }
+  internal prop Events List[string]{ get; init; }
   private var mode int32
 
   internal func Disable() {
@@ -3024,72 +2967,62 @@ internal class InputKeyboardFocusLifecycleCell : Cell {
 }
 
 internal class InputTwoEntryCell : Cell {
-  override func Build() Blob {
-    return Container{
-      Width: 300.0,
-      Height: 100.0,
-      Children: {
-        TextEntry{ Key: "a", Value: "hello", Width: 200.0, Height: 30.0, FontSize: 16.0 },
-        TextEntry{ Key: "b", Value: "hello", Width: 200.0, Height: 30.0, FontSize: 16.0 },
-      },
-    }
+  override func Build() Blob -> Container {
+    Width: 300.0,
+    Height: 100.0,
+    Children: {
+      TextEntry{ Key: "a", Value: "hello", Width: 200.0, Height: 30.0, FontSize: 16.0 },
+      TextEntry{ Key: "b", Value: "hello", Width: 200.0, Height: 30.0, FontSize: 16.0 },
+    },
   }
 }
 
 internal class InputNestedScrollCell : Cell {
-  internal prop InnerFits bool { get; init; }
+  internal prop InnerFits bool{ get; init; }
 
-  override func Build() Blob {
-    return Container{
-      Width: 200.0,
-      Height: 200.0,
-      Overflow: Overflow.Scroll,
-      Children: {
-        Container{
-          Key: "inner",
-          Width: 200.0,
-          Height: 100.0,
-          Overflow: Overflow.Scroll,
-          Children: { Container{ Height: InnerFits ? 80.0 : 300.0 } },
-        },
-        Container{ Key: "tail", Height: 300.0 },
+  override func Build() Blob -> Container {
+    Width: 200.0,
+    Height: 200.0,
+    Overflow: Overflow.Scroll,
+    Children: {
+      Container{
+        Key: "inner",
+        Width: 200.0,
+        Height: 100.0,
+        Overflow: Overflow.Scroll,
+        Children: { Container{ Height: InnerFits ? 80.0 : 300.0 } },
       },
-    }
+      Container{ Key: "tail", Height: 300.0 },
+    },
   }
 }
 
 internal class InputWheelQuietCell : Cell {
-  override func Build() Blob {
-    return Container{ Width: 100, Height: 100 }
-  }
+  override func Build() Blob -> Container { Width: 100, Height: 100 }
 }
 
 internal class InputRoutedCallbackCell : Cell {
   internal var Calls int32
 
-  override func Build() Blob {
-    return Container{
-      Width: 100, Height: 30, Focusable: true,
-      OnKeyDown: (e KeyEvent) -> { Calls++ },
-    }
+  override func Build() Blob -> Container {
+    Width: 100, Height: 30, Focusable: true,
+    OnKeyDown: (e KeyEvent) -> { Calls++ },
   }
 }
 
 internal class InputGenericTextCallbackCell : Cell {
   internal var Calls int32
 
-  override func Build() Blob {
-    return Container{
-      Width: 100, Height: 30, Focusable: true,
-      OnTextInput: (value string) -> { Calls++ },
-    }
+  override func Build() Blob -> Container {
+    Width: 100, Height: 30, Focusable: true,
+    OnTextInput: (value string) -> { Calls++ },
   }
 }
 
 internal class InputWheelCell : Cell {
-  internal prop Events List[string] { get; init; }
-  internal prop PreventDefault bool { get; init; }
-  internal prop StopPropagation bool { get; init; }
+  internal prop Events List[string]{ get; init; }
+  internal prop PreventDefault bool{ get; init; }
+  internal prop StopPropagation bool{ get; init; }
   internal var CaptureMoves int32
   internal var FirstClicks int32
   internal var SecondClicks int32
@@ -3144,8 +3077,8 @@ internal class InputWheelCell : Cell {
 
   private func record(name string, e WheelEvent) {
     Events.Add(name + ":" + e.Position.X.ToString() + ":" + e.Position.Y.ToString()
-      + ":" + e.Delta.X.ToString() + ":" + e.Delta.Y.ToString()
-      + ":" + (e.Modifiers.Ctrl ? "1" : "0"))
+      +":" + e.Delta.X.ToString() + ":" + e.Delta.Y.ToString()
+      +":" + (e.Modifiers.Ctrl ? "1" : "0"))
   }
 }
 
@@ -3190,15 +3123,13 @@ internal class InputAxisScrollCell : Cell {
     hiddenX.Value = true
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: 100.0,
-      Height: 100.0,
-      OverflowX: hiddenX.Value ? Overflow.Hidden : Overflow.Scroll,
-      OverflowY: Overflow.Hidden,
-      Children: {
-        Container{ Width: 300.0, Height: 300.0, FlexShrink: 0.0 },
-      },
-    }
+  override func Build() Blob -> Container {
+    Width: 100.0,
+    Height: 100.0,
+    OverflowX: hiddenX.Value ? Overflow.Hidden : Overflow.Scroll,
+    OverflowY: Overflow.Hidden,
+    Children: {
+      Container{ Width: 300.0, Height: 300.0, FlexShrink: 0.0 },
+    },
   }
 }

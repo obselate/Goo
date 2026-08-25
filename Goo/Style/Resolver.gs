@@ -29,9 +29,7 @@ internal class Resolver {
   shared {
     private var nextStylePass int64
 
-    private func newStylePass() int64 {
-      return Interlocked.Increment(&nextStylePass)
-    }
+    private func newStylePass() int64 -> Interlocked.Increment(&nextStylePass)
 
     internal let inheritableFields []StyleField = []StyleField{
       StyleField.Direction, StyleField.Color, StyleField.FontFamily, StyleField.FontSize,
@@ -45,7 +43,7 @@ internal class Resolver {
       StyleField.PaddingLeft, StyleField.PaddingTop, StyleField.PaddingRight, StyleField.PaddingBottom }
   }
 
-  internal prop Animating List[Node] { get; init; }
+  internal prop Animating List[Node]{ get; init; }
   internal prop PaintResourceInvalidated Action? { get; set; }
   internal prop ShaderEffectInvalidated Action? { get; set; }
   private let pending List[Node]
@@ -290,24 +288,24 @@ internal class Resolver {
   }
 
   private func applyCanonicalBoxEdges(n Node, source StyleEntry, mask StyleMask,
-    initial bool, shadow StyleMask, edges []StyleField) StyleMask {
-    var m = mask
-    for f in edges {
-      m = applyCanonicalBoxEdge(n, source, m, initial, shadow, f)
+    initial bool, shadow StyleMask, edges []StyleField) StyleMask{
+      var m = mask
+      for f in edges {
+        m = applyCanonicalBoxEdge(n, source, m, initial, shadow, f)
+      }
+      return m
     }
-    return m
-  }
 
   private func applyCanonicalBoxEdge(n Node, source StyleEntry, mask StyleMask,
-    initial bool, shadow StyleMask, field StyleField) StyleMask {
-    var e = source
-    e.Field = field
-    let m = styleMaskWith(mask, field)
-    if !styleMaskHas(shadow, field) {
-      writeField(n, e, initial)
+    initial bool, shadow StyleMask, field StyleField) StyleMask{
+      var e = source
+      e.Field = field
+      let m = styleMaskWith(mask, field)
+      if !styleMaskHas(shadow, field) {
+        writeField(n, e, initial)
+      }
+      return m
     }
-    return m
-  }
 
   internal func styleFieldForNode(n Node, f StyleField) StyleField {
     if isLogicalStyleField(f) {
@@ -368,16 +366,16 @@ internal class Resolver {
     }
     if initial || n.TransitionMs <= 0.0 || !lerpable(e.Field)
       || !transitionSelected(n.TransitionSelection, e.Field) {
-      if sameEntry(readField(n, e.Field), e) {
+        if sameEntry(readField(n, e.Field), e) {
+          finishTransition(n, e.Field)
+          return
+        }
         finishTransition(n, e.Field)
+        if writeDirectWithInvalidation(n, e, invalidationFor(e.Field)) {
+          recordResolvedChange(e.Field)
+        }
         return
       }
-      finishTransition(n, e.Field)
-      if writeDirectWithInvalidation(n, e, invalidationFor(e.Field)) {
-        recordResolvedChange(e.Field)
-      }
-      return
-    }
     let cur = readField(n, e.Field)
     if cur.A == e.A && cur.B == e.B && cur.C == e.C && cur.D == e.D {
       finishTransition(n, e.Field)
@@ -413,13 +411,13 @@ internal class Resolver {
     if initial || n.TransitionMs <= 0.0
       || !transitionSelected(n.TransitionSelection, StyleField.BoxShadows)
       || !boxShadowListsCompatible(entryShadows(cur), entryShadows(e)) {
-      finishTransition(n, StyleField.BoxShadows)
-      if writeDirectWithInvalidation(n, e, PaintResourceInvalidated) {
-        if n.Kind == NodeKind.Shape { ShapeGeometry.ClearShadowArtifacts(n) }
-        recordResolvedChange(StyleField.BoxShadows)
+        finishTransition(n, StyleField.BoxShadows)
+        if writeDirectWithInvalidation(n, e, PaintResourceInvalidated) {
+          if n.Kind == NodeKind.Shape { ShapeGeometry.ClearShadowArtifacts(n) }
+          recordResolvedChange(StyleField.BoxShadows)
+        }
+        return
       }
-      return
-    }
     startOrRetargetBoxShadows(n, e, cur)
   }
 
@@ -526,13 +524,13 @@ internal class Resolver {
           if n.Kind == NodeKind.Shape { ShapeGeometry.ClearShadowArtifacts(n) }
           recordResolvedChange(StyleField.BoxShadows)
         } else {
-          if writeDirectWithInvalidation(n, StyleEntry{ Field: tr.Field,
+          if writeDirectWithInvalidation(n, StyleEntry { Field: tr.Field,
             A: tr.FromA + (tr.ToA - tr.FromA) * ft,
             B: tr.FromB + (tr.ToB - tr.FromB) * ft,
             C: tr.FromC + (tr.ToC - tr.FromC) * ft,
             D: tr.FromD + (tr.ToD - tr.FromD) * ft }, PaintResourceInvalidated) {
-            recordResolvedChange(tr.Field)
-          }
+              recordResolvedChange(tr.Field)
+            }
         }
         if inheritable(tr.Field) {
           propagateInherited(n, tr.Field)
@@ -566,10 +564,8 @@ internal class Resolver {
     VisualDirty = true
   }
 
-  private func invalidationFor(f StyleField) Action? {
-    return if f == StyleField.ShaderEffect { ShaderEffectInvalidated }
-      else { PaintResourceInvalidated }
-  }
+  private func invalidationFor(f StyleField) Action ? -> if f == StyleField.ShaderEffect { ShaderEffectInvalidated }
+  else { PaintResourceInvalidated }
 }
 
 internal func styleFieldApplies(n Node, f StyleField) bool {
@@ -584,37 +580,33 @@ internal func styleFieldApplies(n Node, f StyleField) bool {
     && f != StyleField.BorderStartColor && f != StyleField.BorderEndColor
 }
 
-internal func isLogicalStyleField(f StyleField) bool {
-  return f == StyleField.MarginStart || f == StyleField.MarginEnd
-    || f == StyleField.PaddingStart || f == StyleField.PaddingEnd
-    || f == StyleField.Start || f == StyleField.End
-    || f == StyleField.BorderStartWidth || f == StyleField.BorderEndWidth
-    || f == StyleField.BorderStartColor || f == StyleField.BorderEndColor
-}
+internal func isLogicalStyleField(f StyleField) bool -> f == StyleField.MarginStart || f == StyleField.MarginEnd
+  || f == StyleField.PaddingStart || f == StyleField.PaddingEnd
+  || f == StyleField.Start || f == StyleField.End
+  || f == StyleField.BorderStartWidth || f == StyleField.BorderEndWidth
+  || f == StyleField.BorderStartColor || f == StyleField.BorderEndColor
 
 internal func makeBoxShadowTransition(from BoxShadowStack?, target BoxShadowStack?,
-  easing Easing, duration float64, delay float64) Transition {
-  let count = Math.Max(boxShadowCount(from), boxShadowCount(target))
-  return Transition{
-    Field: StyleField.BoxShadows,
-    FromShadows: paddedBoxShadows(from, target, count),
-    ToShadows: paddedBoxShadows(target, from, count),
-    TargetShadows: target,
-    WorkingShadows: newBoxShadowWork(count),
-    Easing: easing,
-    Elapsed: -delay,
-    Duration: duration,
+  easing Easing, duration float64, delay float64) Transition{
+    let count = Math.Max(boxShadowCount(from), boxShadowCount(target))
+    return Transition{
+      Field: StyleField.BoxShadows,
+      FromShadows: paddedBoxShadows(from, target, count),
+      ToShadows: paddedBoxShadows(target, from, count),
+      TargetShadows: target,
+      WorkingShadows: newBoxShadowWork(count),
+      Easing: easing,
+      Elapsed: -delay,
+      Duration: duration,
+    }
   }
-}
 
-internal func sameEntry(cur StyleEntry, e StyleEntry) bool {
-  return cur.A == e.A && cur.B == e.B && cur.C == e.C && cur.D == e.D
-    && entryText(cur) == entryText(e) && sameGradient(entryGradient(cur), entryGradient(e))
-    && sameBoxShadows(entryShadows(cur), entryShadows(e))
-    && samePath(entryPath(cur), entryPath(e))
-    && entryImageSource(cur) == entryImageSource(e)
-    && entryShaderEffect(cur) == entryShaderEffect(e)
-}
+internal func sameEntry(cur StyleEntry, e StyleEntry) bool -> cur.A == e.A && cur.B == e.B && cur.C == e.C && cur.D == e.D
+  && entryText(cur) == entryText(e) && sameGradient(entryGradient(cur), entryGradient(e))
+  && sameBoxShadows(entryShadows(cur), entryShadows(e))
+  && samePath(entryPath(cur), entryPath(e))
+  && entryImageSource(cur) == entryImageSource(e)
+  && entryShaderEffect(cur) == entryShaderEffect(e)
 
 // Quadratic curves: raw progress in, shaped progress out.
 internal func ease(e Easing, t float64) float64 {
@@ -630,22 +622,18 @@ internal func ease(e Easing, t float64) float64 {
 internal func lerpable(f StyleField) bool {
   if f == StyleField.OutlineWidth || f == StyleField.OutlineColor || f == StyleField.OutlineOffset
     || f == StyleField.TextShadows || f == StyleField.TextStrokeWidth
-    || f == StyleField.TextStrokeColor {
-    return false
-  }
+    || f == StyleField.TextStrokeColor{
+      return false
+    }
   let kind = fieldKind(f)
   return kind != FieldKind.KEnum && kind != FieldKind.KString
     && kind != FieldKind.KGradient && kind != FieldKind.KPath && kind != FieldKind.KImageSource
     && kind != FieldKind.KShaderEffect
 }
 
-internal func inheritable(f StyleField) bool {
-  return Array.IndexOf(Resolver.inheritableFields, f) >= 0
-}
+internal func inheritable(f StyleField) bool -> Array.IndexOf(Resolver.inheritableFields, f) >= 0
 
-internal func writeDirect(n Node, e StyleEntry) bool {
-  return writeDirectWithInvalidation(n, e, nil)
-}
+internal func writeDirect(n Node, e StyleEntry) bool -> writeDirectWithInvalidation(n, e, nil)
 
 internal func writeDirectWithInvalidation(n Node, e StyleEntry, invalidated Action?) bool {
   if !styleFieldApplies(n, e.Field) {
@@ -1044,9 +1032,7 @@ internal func defaultStyleEntry(f StyleField) StyleEntry {
   return result
 }
 
-internal func applyDefault(n Node, f StyleField) bool {
-  return writeDirect(n, defaultStyleEntry(f))
-}
+internal func applyDefault(n Node, f StyleField) bool -> writeDirect(n, defaultStyleEntry(f))
 
 internal func styleEffects(f StyleField) ReconcileEffects {
   switch f {

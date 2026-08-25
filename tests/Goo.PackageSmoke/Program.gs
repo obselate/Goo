@@ -254,55 +254,53 @@ class S13CompiledVectorSmokeCell : Cell {
     morphAsset = morphValue
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: Length.Percent(100),
-      Height: Length.Percent(100),
-      Handle: S13CompiledVectorSmokeCell.Root,
-      Position: PositionType.Relative,
-      BackgroundColor: Color.Rgb(12, 20, 32),
-      Children: {
-        Container{
-          Key: "static-host",
-          Position: PositionType.Absolute,
-          Left: 12,
-          Top: 12,
-          Width: 280,
-          Height: 220,
-          Handle: S13CompiledVectorSmokeCell.StaticHost,
-          BackgroundColor: Color.Rgb(24, 48, 76),
-          Children: {
-            staticAsset.Render("static")
-          },
-        },
-        Container{
-          Key: "animated-host",
-          Position: PositionType.Absolute,
-          Left: 308,
-          Top: 12,
-          Width: 280,
-          Height: 220,
-          Handle: S13CompiledVectorSmokeCell.AnimatedHost,
-          BackgroundColor: Color.Rgb(38, 48, 76),
-          Children: {
-            animatedAsset.Render("animated")
-          },
-        },
-        Container{
-          Key: "morph-host",
-          Position: PositionType.Absolute,
-          Left: 604,
-          Top: 12,
-          Width: 280,
-          Height: 220,
-          Handle: S13CompiledVectorSmokeCell.MorphHost,
-          BackgroundColor: Color.Rgb(48, 38, 76),
-          Children: {
-            morphAsset.Render("morph")
-          },
+  override func Build() Blob -> Container {
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
+    Handle: S13CompiledVectorSmokeCell.Root,
+    Position: PositionType.Relative,
+    BackgroundColor: Color.Rgb(12, 20, 32),
+    Children: {
+      Container{
+        Key: "static-host",
+        Position: PositionType.Absolute,
+        Left: 12,
+        Top: 12,
+        Width: 280,
+        Height: 220,
+        Handle: S13CompiledVectorSmokeCell.StaticHost,
+        BackgroundColor: Color.Rgb(24, 48, 76),
+        Children: {
+          staticAsset.Render("static")
         },
       },
-    }
+      Container{
+        Key: "animated-host",
+        Position: PositionType.Absolute,
+        Left: 308,
+        Top: 12,
+        Width: 280,
+        Height: 220,
+        Handle: S13CompiledVectorSmokeCell.AnimatedHost,
+        BackgroundColor: Color.Rgb(38, 48, 76),
+        Children: {
+          animatedAsset.Render("animated")
+        },
+      },
+      Container{
+        Key: "morph-host",
+        Position: PositionType.Absolute,
+        Left: 604,
+        Top: 12,
+        Width: 280,
+        Height: 220,
+        Handle: S13CompiledVectorSmokeCell.MorphHost,
+        BackgroundColor: Color.Rgb(48, 38, 76),
+        Children: {
+          morphAsset.Render("morph")
+        },
+      },
+    },
   }
 }
 
@@ -315,34 +313,9 @@ class S13PathSmokeCell : Cell {
     let EvenOddShape ElementHandle = ElementHandle{}
     let RoundedFillShape ElementHandle = ElementHandle{}
     let RoundedStrokeShape ElementHandle = ElementHandle{}
-    let NonZeroPath VectorPath = PathBuilder(0.0, 0.0, 100.0, 100.0)
-      .MoveTo(10.0, 10.0)
-      .LineTo(90.0, 10.0)
-      .QuadraticTo(96.0, 24.0, 90.0, 36.0)
-      .CubicTo(84.0, 52.0, 84.0, 72.0, 90.0, 90.0)
-      .ArcTo(40.0, 40.0, 0.0, false, true, 10.0, 90.0)
-      .LineTo(10.0, 10.0)
-      .Close()
-      .Build()
-    let EvenOddPath VectorPath = PathBuilder(0.0, 0.0, 100.0, 100.0)
-      .MoveTo(8.0, 8.0)
-      .LineTo(92.0, 8.0)
-      .LineTo(92.0, 92.0)
-      .LineTo(8.0, 92.0)
-      .Close()
-      .MoveTo(30.0, 30.0)
-      .LineTo(70.0, 30.0)
-      .LineTo(70.0, 70.0)
-      .LineTo(30.0, 70.0)
-      .Close()
-      .Build()
-    let RoundedPath VectorPath = PathBuilder(0.0, 0.0, 100.0, 100.0)
-      .MoveTo(8.0, 8.0)
-      .LineTo(92.0, 8.0)
-      .LineTo(92.0, 92.0)
-      .LineTo(8.0, 92.0)
-      .Close()
-      .Build()
+    let NonZeroPath VectorPath = PathBuilder(0.0, 0.0, 100.0, 100.0).MoveTo(10.0, 10.0).LineTo(90.0, 10.0).QuadraticTo(96.0, 24.0, 90.0, 36.0).CubicTo(84.0, 52.0, 84.0, 72.0, 90.0, 90.0).ArcTo(40.0, 40.0, 0.0, false, true, 10.0, 90.0).LineTo(10.0, 10.0).Close().Build()
+    let EvenOddPath VectorPath = PathBuilder(0.0, 0.0, 100.0, 100.0).MoveTo(8.0, 8.0).LineTo(92.0, 8.0).LineTo(92.0, 92.0).LineTo(8.0, 92.0).Close().MoveTo(30.0, 30.0).LineTo(70.0, 30.0).LineTo(70.0, 70.0).LineTo(30.0, 70.0).Close().Build()
+    let RoundedPath VectorPath = PathBuilder(0.0, 0.0, 100.0, 100.0).MoveTo(8.0, 8.0).LineTo(92.0, 8.0).LineTo(92.0, 92.0).LineTo(8.0, 92.0).Close().Build()
     let RadialPaint RadialGradient = RadialGradient(0.5, 0.5, 0.5, []GradientStop{
       GradientStop{ Offset: 0.0, Color: Color.Rgb(244, 220, 108) },
       GradientStop{ Offset: 1.0, Color: Color.Rgb(88, 96, 196) },
@@ -374,69 +347,67 @@ class S13PathSmokeCell : Cell {
     Phase.Value = value
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: Length.Percent(100),
-      Height: Length.Percent(100),
-      Handle: S13PathSmokeCell.Root,
-      Padding: 12,
-      Gap: 12,
-      FlexDirection: FlexDirection.Row,
-      BackgroundColor: Color.Rgb(12, 20, 32),
-      Children: {
-        Shape{
-          Width: 220,
-          Height: 170,
-          Handle: S13PathSmokeCell.NonZeroShape,
-          PaddingLeft: 14,
-          PaddingTop: 10,
-          PaddingRight: 18,
-          PaddingBottom: 6,
-          Path: if Phase.Value == 0 {
-            S13PathSmokeCell.NonZeroPath
-          } else {
-            S13PathSmokeCell.ChurnPath(Phase.Value)
-          },
-          Fit: ShapeFit.Contain,
-          FillRule: FillRule.NonZero,
-          BackgroundColor: Color.Rgb(40, 132, 224),
+  override func Build() Blob -> Container {
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
+    Handle: S13PathSmokeCell.Root,
+    Padding: 12,
+    Gap: 12,
+    FlexDirection: FlexDirection.Row,
+    BackgroundColor: Color.Rgb(12, 20, 32),
+    Children: {
+      Shape{
+        Width: 220,
+        Height: 170,
+        Handle: S13PathSmokeCell.NonZeroShape,
+        PaddingLeft: 14,
+        PaddingTop: 10,
+        PaddingRight: 18,
+        PaddingBottom: 6,
+        Path: if Phase.Value == 0 {
+          S13PathSmokeCell.NonZeroPath
+        } else {
+          S13PathSmokeCell.ChurnPath(Phase.Value)
         },
-        Shape{
-          Width: 220,
-          Height: 170,
-          Handle: S13PathSmokeCell.EvenOddShape,
-          Path: S13PathSmokeCell.EvenOddPath,
-          Fit: ShapeFit.Fill,
-          FillRule: FillRule.EvenOdd,
-          BackgroundImageSource: SmokeCell.SharedImageSource,
-        },
-        Shape{
-          Width: 220,
-          Height: 170,
-          Handle: S13PathSmokeCell.RoundedFillShape,
-          Path: S13PathSmokeCell.RoundedPath,
-          Fit: ShapeFit.Contain,
-          FillRule: FillRule.NonZero,
-          CornerRadius: 12,
-          BackgroundGradient: S13PathSmokeCell.RadialPaint,
-        },
-        Shape{
-          Width: 220,
-          Height: 170,
-          Handle: S13PathSmokeCell.RoundedStrokeShape,
-          Path: S13PathSmokeCell.RoundedPath,
-          Fit: ShapeFit.Contain,
-          FillRule: FillRule.NonZero,
-          CornerRadius: 10,
-          BackgroundColor: Color.Rgba(0, 0, 0, 0),
-          BorderWidth: 6,
-          BorderColor: Color.White,
-          StrokeCap: StrokeCap.Round,
-          StrokeJoin: StrokeJoin.Round,
-          Dashes: DashPattern([]float64{ 14.0, 7.0 }, 3.0),
-        },
+        Fit: ShapeFit.Contain,
+        FillRule: FillRule.NonZero,
+        BackgroundColor: Color.Rgb(40, 132, 224),
       },
-    }
+      Shape{
+        Width: 220,
+        Height: 170,
+        Handle: S13PathSmokeCell.EvenOddShape,
+        Path: S13PathSmokeCell.EvenOddPath,
+        Fit: ShapeFit.Fill,
+        FillRule: FillRule.EvenOdd,
+        BackgroundImageSource: SmokeCell.SharedImageSource,
+      },
+      Shape{
+        Width: 220,
+        Height: 170,
+        Handle: S13PathSmokeCell.RoundedFillShape,
+        Path: S13PathSmokeCell.RoundedPath,
+        Fit: ShapeFit.Contain,
+        FillRule: FillRule.NonZero,
+        CornerRadius: 12,
+        BackgroundGradient: S13PathSmokeCell.RadialPaint,
+      },
+      Shape{
+        Width: 220,
+        Height: 170,
+        Handle: S13PathSmokeCell.RoundedStrokeShape,
+        Path: S13PathSmokeCell.RoundedPath,
+        Fit: ShapeFit.Contain,
+        FillRule: FillRule.NonZero,
+        CornerRadius: 10,
+        BackgroundColor: Color.Rgba(0, 0, 0, 0),
+        BorderWidth: 6,
+        BorderColor: Color.White,
+        StrokeCap: StrokeCap.Round,
+        StrokeJoin: StrokeJoin.Round,
+        Dashes: DashPattern([]float64{ 14.0, 7.0 }, 3.0),
+      },
+    },
   }
 }
 
@@ -444,37 +415,28 @@ class S13StaticPathSmokeCell : Cell {
   shared {
     let Root ElementHandle = ElementHandle{}
     let ShapeHandle ElementHandle = ElementHandle{}
-    let Path VectorPath = PathBuilder(0.0, 0.0, 100.0, 100.0)
-      .MoveTo(10.0, 12.0)
-      .LineTo(90.0, 12.0)
-      .QuadraticTo(96.0, 48.0, 82.0, 86.0)
-      .CubicTo(64.0, 72.0, 36.0, 72.0, 18.0, 86.0)
-      .ArcTo(40.0, 40.0, 0.0, false, true, 10.0, 12.0)
-      .Close()
-      .Build()
+    let Path VectorPath = PathBuilder(0.0, 0.0, 100.0, 100.0).MoveTo(10.0, 12.0).LineTo(90.0, 12.0).QuadraticTo(96.0, 48.0, 82.0, 86.0).CubicTo(64.0, 72.0, 36.0, 72.0, 18.0, 86.0).ArcTo(40.0, 40.0, 0.0, false, true, 10.0, 12.0).Close().Build()
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: Length.Percent(100),
-      Height: Length.Percent(100),
-      Handle: S13StaticPathSmokeCell.Root,
-      ClipPath: S13StaticPathSmokeCell.Path,
-      ClipPathFit: ShapeFit.Fill,
-      Padding: 12,
-      BackgroundColor: Color.Rgb(12, 20, 32),
-      Children: {
-        Shape{
-          Width: 260,
-          Height: 190,
-          Handle: S13StaticPathSmokeCell.ShapeHandle,
-          Path: S13StaticPathSmokeCell.Path,
-          Fit: ShapeFit.Contain,
-          FillRule: FillRule.NonZero,
-          BackgroundColor: Color.Rgb(76, 188, 224),
-        },
+  override func Build() Blob -> Container {
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
+    Handle: S13StaticPathSmokeCell.Root,
+    ClipPath: S13StaticPathSmokeCell.Path,
+    ClipPathFit: ShapeFit.Fill,
+    Padding: 12,
+    BackgroundColor: Color.Rgb(12, 20, 32),
+    Children: {
+      Shape{
+        Width: 260,
+        Height: 190,
+        Handle: S13StaticPathSmokeCell.ShapeHandle,
+        Path: S13StaticPathSmokeCell.Path,
+        Fit: ShapeFit.Contain,
+        FillRule: FillRule.NonZero,
+        BackgroundColor: Color.Rgb(76, 188, 224),
       },
-    }
+    },
   }
 }
 
@@ -491,121 +453,119 @@ class RegisteredFontCorpusSmokeCell : Cell {
     let Fallback ElementHandle = ElementHandle{}
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: Length.Percent(100),
-      Height: Length.Percent(100),
-      Padding: 8,
-      Gap: 3,
-      AlignItems: AlignItems.FlexStart,
-      Handle: RegisteredFontCorpusSmokeCell.Root,
-      BackgroundColor: Color.Rgb(12, 20, 32),
-      Children: {
-        Text{
-          Content: "A a registered fallback",
-          FontFamily: "GooSmokePrimary,GooSmokeFallback",
-          FontSize: 18,
-          Color: Color.White,
-        },
-        Text{
-          Content: "!",
-          FontFamily: "GooSmokeCff",
-          FontSize: 18,
-          Handle: RegisteredFontCorpusSmokeCell.Cff,
-          Color: Color.White,
-        },
-        Text{
-          Content: "Aa",
-          FontFamily: "GooSmokeCffSecond",
-          FontSize: 18,
-          Color: Color.White,
-        },
-        Text{
-          Content: "A",
-          FontFamily: "GooSmokeStyle",
-          FontSize: 18,
-          FontWeight: 400,
-          Handle: RegisteredFontCorpusSmokeCell.StyleRegular,
-          Color: Color.White,
-        },
-        Text{
-          Content: "A",
-          FontFamily: "GooSmokeStyle",
-          FontSize: 18,
-          FontWeight: 700,
-          Handle: RegisteredFontCorpusSmokeCell.StyleBold,
-          Color: Color.White,
-        },
-        Text{
-          Content: "A",
-          FontFamily: "GooSmokeStyle",
-          FontSize: 18,
-          FontStyle: FontStyle.Italic,
-          Handle: RegisteredFontCorpusSmokeCell.StyleItalic,
-          Color: Color.White,
-        },
-        Text{
-          Content: "A",
-          FontFamily: "GooSmokeStyle",
-          FontSize: 18,
-          FontWeight: 700,
-          FontStyle: FontStyle.Italic,
-          Handle: RegisteredFontCorpusSmokeCell.StyleBoldItalic,
-          Color: Color.White,
-        },
-        Text{
-          Content: ".",
-          FontFamily: "GooSmokeTtc",
-          FontSize: 18,
-          FontWeight: 400,
-          Color: Color.White,
-        },
-        Text{
-          Content: ".",
-          FontFamily: "GooSmokeTtc",
-          FontSize: 18,
-          FontWeight: 700,
-          Color: Color.White,
-        },
-        Text{
-          Content: "A",
-          FontFamily: "GooSmokeOtc",
-          FontSize: 18,
-          FontWeight: 400,
-          Color: Color.White,
-        },
-        Text{
-          Content: "A",
-          FontFamily: "GooSmokeOtc",
-          FontSize: 18,
-          FontWeight: 700,
-          Color: Color.White,
-        },
-        Text{
-          Content: "A",
-          FontFamily: "GooSmokeVariable",
-          FontSize: 18,
-          FontWeight: 400,
-          Handle: RegisteredFontCorpusSmokeCell.VariableRegular,
-          Color: Color.White,
-        },
-        Text{
-          Content: "A",
-          FontFamily: "GooSmokeVariable",
-          FontSize: 18,
-          FontWeight: 700,
-          Handle: RegisteredFontCorpusSmokeCell.VariableBold,
-          Color: Color.White,
-        },
-        Text{
-          Content: "!",
-          FontFamily: "GooSmokeTtc,GooSmokeCff",
-          FontSize: 18,
-          Handle: RegisteredFontCorpusSmokeCell.Fallback,
-          Color: Color.White,
-        },
+  override func Build() Blob -> Container {
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
+    Padding: 8,
+    Gap: 3,
+    AlignItems: AlignItems.FlexStart,
+    Handle: RegisteredFontCorpusSmokeCell.Root,
+    BackgroundColor: Color.Rgb(12, 20, 32),
+    Children: {
+      Text{
+        Content: "A a registered fallback",
+        FontFamily: "GooSmokePrimary,GooSmokeFallback",
+        FontSize: 18,
+        Color: Color.White,
       },
-    }
+      Text{
+        Content: "!",
+        FontFamily: "GooSmokeCff",
+        FontSize: 18,
+        Handle: RegisteredFontCorpusSmokeCell.Cff,
+        Color: Color.White,
+      },
+      Text{
+        Content: "Aa",
+        FontFamily: "GooSmokeCffSecond",
+        FontSize: 18,
+        Color: Color.White,
+      },
+      Text{
+        Content: "A",
+        FontFamily: "GooSmokeStyle",
+        FontSize: 18,
+        FontWeight: 400,
+        Handle: RegisteredFontCorpusSmokeCell.StyleRegular,
+        Color: Color.White,
+      },
+      Text{
+        Content: "A",
+        FontFamily: "GooSmokeStyle",
+        FontSize: 18,
+        FontWeight: 700,
+        Handle: RegisteredFontCorpusSmokeCell.StyleBold,
+        Color: Color.White,
+      },
+      Text{
+        Content: "A",
+        FontFamily: "GooSmokeStyle",
+        FontSize: 18,
+        FontStyle: FontStyle.Italic,
+        Handle: RegisteredFontCorpusSmokeCell.StyleItalic,
+        Color: Color.White,
+      },
+      Text{
+        Content: "A",
+        FontFamily: "GooSmokeStyle",
+        FontSize: 18,
+        FontWeight: 700,
+        FontStyle: FontStyle.Italic,
+        Handle: RegisteredFontCorpusSmokeCell.StyleBoldItalic,
+        Color: Color.White,
+      },
+      Text{
+        Content: ".",
+        FontFamily: "GooSmokeTtc",
+        FontSize: 18,
+        FontWeight: 400,
+        Color: Color.White,
+      },
+      Text{
+        Content: ".",
+        FontFamily: "GooSmokeTtc",
+        FontSize: 18,
+        FontWeight: 700,
+        Color: Color.White,
+      },
+      Text{
+        Content: "A",
+        FontFamily: "GooSmokeOtc",
+        FontSize: 18,
+        FontWeight: 400,
+        Color: Color.White,
+      },
+      Text{
+        Content: "A",
+        FontFamily: "GooSmokeOtc",
+        FontSize: 18,
+        FontWeight: 700,
+        Color: Color.White,
+      },
+      Text{
+        Content: "A",
+        FontFamily: "GooSmokeVariable",
+        FontSize: 18,
+        FontWeight: 400,
+        Handle: RegisteredFontCorpusSmokeCell.VariableRegular,
+        Color: Color.White,
+      },
+      Text{
+        Content: "A",
+        FontFamily: "GooSmokeVariable",
+        FontSize: 18,
+        FontWeight: 700,
+        Handle: RegisteredFontCorpusSmokeCell.VariableBold,
+        Color: Color.White,
+      },
+      Text{
+        Content: "!",
+        FontFamily: "GooSmokeTtc,GooSmokeCff",
+        FontSize: 18,
+        Handle: RegisteredFontCorpusSmokeCell.Fallback,
+        Color: Color.White,
+      },
+    },
   }
 }
 
@@ -661,73 +621,71 @@ class TextControlsSmokeCell : Cell {
     presentation.Dispose()
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: Length.Percent(100),
-      Height: Length.Percent(100),
-      Handle: TextControlsSmokeCell.Root,
-      Padding: 12,
-      Gap: 10,
-      BackgroundColor: Color.Rgb(12, 20, 32),
-      Children: {
-        TextEntry{
-          Width: 296,
-          Height: 32,
-          Handle: TextControlsSmokeCell.Entry,
-          Value: "focused entry",
-          BackgroundColor: Color.Rgb(28, 42, 62),
-          Color: Color.White,
-          FontSize: 16,
-          TextDecoration: TextDecoration.Underline,
+  override func Build() Blob -> Container {
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
+    Handle: TextControlsSmokeCell.Root,
+    Padding: 12,
+    Gap: 10,
+    BackgroundColor: Color.Rgb(12, 20, 32),
+    Children: {
+      TextEntry{
+        Width: 296,
+        Height: 32,
+        Handle: TextControlsSmokeCell.Entry,
+        Value: "focused entry",
+        BackgroundColor: Color.Rgb(28, 42, 62),
+        Color: Color.White,
+        FontSize: 16,
+        TextDecoration: TextDecoration.Underline,
+      },
+      TextEditor(document, controller, []TextPresentationLayer{ presentation }) {
+        Width = 296,
+        Height = 120,
+        Handle = TextControlsSmokeCell.Editor,
+        BackgroundColor = Color.Rgb(20, 32, 50),
+        Color = Color.Rgb(224, 232, 244),
+        FontSize = 16,
+        TextDecoration = TextDecoration.LineThrough,
+      },
+      Text{
+        Content: richContent,
+        Width: 296,
+        Height: 72,
+        Handle: TextControlsSmokeCell.Rich,
+        Color: Color.Rgb(224, 232, 244),
+        FontSize: 16,
+        TextWrap: TextWrap.Wrap,
+        TextStrokeWidth: 2,
+        TextStrokeColor: Color.Rgb(56, 112, 176),
+        TextShadow: TextShadow{
+          OffsetX: 1,
+          OffsetY: 1,
+          Blur: 0,
+          Color: Color.Rgba(0, 0, 0, 160),
         },
-        TextEditor(document, controller, []TextPresentationLayer{ presentation }){
-          Width = 296,
-          Height = 120,
-          Handle = TextControlsSmokeCell.Editor,
-          BackgroundColor = Color.Rgb(20, 32, 50),
-          Color = Color.Rgb(224, 232, 244),
-          FontSize = 16,
-          TextDecoration = TextDecoration.LineThrough,
-        },
-        Text{
-          Content: richContent,
-          Width: 296,
-          Height: 72,
-          Handle: TextControlsSmokeCell.Rich,
-          Color: Color.Rgb(224, 232, 244),
-          FontSize: 16,
-          TextWrap: TextWrap.Wrap,
-          TextStrokeWidth: 2,
-          TextStrokeColor: Color.Rgb(56, 112, 176),
-          TextShadow: TextShadow{
-            OffsetX: 1,
-            OffsetY: 1,
-            Blur: 0,
-            Color: Color.Rgba(0, 0, 0, 160),
-          },
-          TextDecoration: TextDecoration.LineThrough,
-          StyleRanges: []TextStyleRange{
-            TextStyleRange{
-              Range: TextRange{ Start: 0, Length: 4 },
-              Style: Style{
-                Color: Color.Rgb(252, 190, 72),
-                FontSize: 22,
-                FontWeight: 700,
-                TextDecoration: TextDecoration.Underline,
-              },
+        TextDecoration: TextDecoration.LineThrough,
+        StyleRanges: []TextStyleRange{
+          TextStyleRange{
+            Range: TextRange{ Start: 0, Length: 4 },
+            Style: Style{
+              Color: Color.Rgb(252, 190, 72),
+              FontSize: 22,
+              FontWeight: 700,
+              TextDecoration: TextDecoration.Underline,
             },
-            TextStyleRange{
-              Range: TextRange{ Start: 5, Length: 2 },
-              Style: Style{
-                FontFamily: "GooSmokeCjk",
-                Color: Color.Rgb(108, 224, 196),
-                FontWeight: 700,
-              },
+          },
+          TextStyleRange{
+            Range: TextRange{ Start: 5, Length: 2 },
+            Style: Style{
+              FontFamily: "GooSmokeCjk",
+              Color: Color.Rgb(108, 224, 196),
+              FontWeight: 700,
             },
           },
         },
       },
-    }
+    },
   }
 }
 
@@ -736,21 +694,19 @@ class TextReopenSmokeCell : Cell {
     let Root ElementHandle = ElementHandle{}
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: Length.Percent(100),
-      Height: Length.Percent(100),
-      Padding: 12,
-      BackgroundColor: Color.Rgb(12, 20, 32),
-      Children: {
-        Text{
-          Content: "Goo reopened text",
-          Handle: TextReopenSmokeCell.Root,
-          FontSize: 18,
-          Color: Color.White,
-        },
+  override func Build() Blob -> Container {
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
+    Padding: 12,
+    BackgroundColor: Color.Rgb(12, 20, 32),
+    Children: {
+      Text{
+        Content: "Goo reopened text",
+        Handle: TextReopenSmokeCell.Root,
+        FontSize: 18,
+        Color: Color.White,
       },
-    }
+    },
   }
 }
 
@@ -771,28 +727,24 @@ class TextAtlasSmokeCell : Cell {
     phase.Value = value
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: Length.Percent(100),
-      Height: Length.Percent(100),
-      Handle: TextAtlasSmokeCell.Root,
-      Padding: 8,
-      BackgroundColor: Color.Rgb(12, 20, 32),
-      Children: {
-        Text{
-          Content: content,
-          FontSize: 18,
-          Color: Color.White,
-          StyleRanges: AtlasStyleRanges(phase.Value),
-        },
+  override func Build() Blob -> Container {
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
+    Handle: TextAtlasSmokeCell.Root,
+    Padding: 8,
+    BackgroundColor: Color.Rgb(12, 20, 32),
+    Children: {
+      Text{
+        Content: content,
+        FontSize: 18,
+        Color: Color.White,
+        StyleRanges: AtlasStyleRanges(phase.Value),
       },
-    }
+    },
   }
 }
 
-func AtlasFontFamily(group int32, index int32) string {
-  return "GooAtlas" + group.ToString() + "_" + index.ToString()
-}
+func AtlasFontFamily(group int32, index int32) string -> "GooAtlas" + group.ToString() + "_" + index.ToString()
 
 func AtlasStyleRanges(group int32) []TextStyleRange {
   let length int32 = 4
@@ -848,7 +800,6 @@ func CloseWindow(window Window) bool {
   return !window.IsOpen
 }
 
-
 func RunS13CompiledVectorSmoke() {
   if Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") != "1" {
     throw InvalidOperationException("GOO_VK_DIAGNOSTICS=1 is required")
@@ -857,109 +808,109 @@ func RunS13CompiledVectorSmoke() {
   let originalError = Console.Error
   Console.SetError(capturedError)
   try {
-  let staticAsset = CompiledVectorAsset.Load(Convert.FromBase64String("R0NWMQEArADcBQAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAIBDAAAAQ6wAAACQAQAABQAAADwCAABAAAAABAAAAHwCAAAoAgAAFwAAAKQEAACgAAAABAAAAEQFAAAwAAAABAAAAHQFAABQAAAAAgAAAMQFAAAIAAAAAgAAAMwFAAAQAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8BAAAAAQAAAAAAAAAAAAAAAAAAAP///////////////////////////////wAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAIAAAADAAAAAAAAAAAAAAAAAAAA////////////////////////////////AACAPwAAAAAAAAAAAACAPwAAgEAAAIBAZmZmPwAAAAABAAAA/////wAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAD///////////////8AAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAEAAAD/////AAAAAAEAAAACAAAAAQAAAAIAAAD//////////////////////////wAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAQAAAP////8AAAAAAAAAAAMAAAABAAAA/////wEAAAD/////////////////////AACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAACAAAAAEAAAAAAAAACAAAAAgAAAABAAAAAAAAABAAAAAEAAAAAQAAAAAAAAAUAAAAAwAAAAEAAAAAAAAAAABAQQAAAAAAAGBCAAAAAAAAyEIAAAAAAADIQgAAAAAAAOBCAAAAAAAA4EIAAEBBAADgQgAAQEEAAOBCAABAQgAA4EIAAKhCAADgQgAAqEIAAOBCAADAQgAAyEIAAMBCAADIQgAAwEIAAGBCAADAQgAAQEEAAMBCAABAQQAAwEIAAAAAAADAQgAAAAAAAKhCAAAAAAAAqEIAAAAAAABAQgAAAAAAAEBBAAAAAAAAQEEAAAAAAAAAAAAAQEEAAAAAAACgQQAAAEEAAIBCAAAAQQAA2EIAAABBAADYQgAAAEEAAPBCAAAAQQAA8EIAAKBBAADwQgAAoEEAAPBCAABgQgAA8EIAALhCAADwQgAAuEIAAPBCAADQQgAA2EIAANBCAADYQgAA0EIAAIBCAADQQgAAoEEAANBCAACgQQAA0EIAAABBAADQQgAAAEEAALhCAAAAQQAAuEIAAABBAABgQgAAAEEAAKBBAAAAQQAAoEEAAABBAAAAQQAAoEEAAABBAAAMQwAAgEEAAEBDAABQwQAAaEMAABBCAABoQwAAEEIAAH1DAACqQgAAOEMAANBCAAA4QwAA0EIAACBDAADYQgAAEEMAALBCAAAQQwAAsEIAAA5DAABQQgAADEMAAIBBAAAUQwAAmEIAACBDAABwQgAALEMAADBCAAAsQwAAMEIAADhDAABwQgAAREMAAJhCAABEQwAAmEIAACxDAACYQgAAFEMAAJhCAQAAAAAAAAAAAIA/AAAAAAAAAAAAAOBCAAAAAP////8AAAAAAgAAAAAAAAD/////AACAPwAAAAAAAAAAAAAAAAAAAAD/////AgAAAAAAAAACAAAAAAAAAAAAgD8zczxD7MRbQmbmbENVVdFC/////wIAAAACAAAAAAAAAP9s3PQAAIA/AAAAAAAAAAAAAAAAAAAAAP////8EAAAAAAAAAAAAAAD/4GgoAAAAAAAAgD//gFjgAAAAAAAAAAD/bNz0AAAAAAAAgD//XDaAAAAAAAAAQEAAAIBAAAAAAAAAAAAAAAAAAQAAAP////8AAAAAAgAAAAAAAAAAAIBAAACAQAEAAAABAAAAAAAAAAMAAAD/////AgAAAAAAAAAAAAAAAADAQAAAQEABAAAAAQAAAAAAAAD/////"))
-  let animatedAsset = CompiledVectorAsset.Load(Convert.FromBase64String("R0NWMQEArABsCAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAHBDAADwQqwAAABAAQAABAAAAOwBAAAgAAAAAgAAAAwCAAAIAQAACwAAABQDAACgAAAABAAAAAAAAAAAAAAAAAAAALQDAABQAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEAACoAAAABwAAAKwEAADAAwAAFAAAAAAAAAAAAAAAAAAAAP////8BAAAAAgAAAAAAAAAAAAAAAAAAAP///////////////////////////////wAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAMAAAABAAAAAAAAAAAAAAAAAAAA////////////////AAAAAP//////////AACAPwAAAAAAAAAAAACAPwAAIEEAAABBAACAPwAAAAAAAAAA/////wAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAP////8BAAAA//////////8AAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAEAAAD/////AAAAAAAAAAABAAAAAQAAAAIAAAABAAAA//////////8EAAAA/////wAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAMAAAABAAAAAAAAAAMAAAAIAAAAAQAAAAAAAAAAAAJDAADAQQAAKkMAAMBBAABSQwAAwEEAAFJDAADAQQAAPkMAAHBCAAAqQwAAwEIAACpDAADAQgAAFkMAAHBCAAACQwAAwEEAAABBAAAAAAAAMEIAAAAAAACgQgAAAAAAAKBCAAAAAAAAsEIAAAAAAACwQgAAAEEAALBCAAAAQQAAsEIAANBBAACwQgAAMEIAALBCAAAwQgAAsEIAAFBCAACgQgAAUEIAAKBCAABQQgAAMEIAAFBCAAAAQQAAUEIAAABBAABQQgAAAAAAAFBCAAAAAAAAMEIAAAAAAAAwQgAAAAAAANBBAAAAAAAAAEEAAAAAAAAAQQAAAAAAAAAAAAAAQQAAAAAAAAAA/4e7XAAAgD8AAAAAAAAAAAAAAAAAAAAA/////wAAAAAAAAAAAAAAAP////8AAIA/AAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAD/4GgoAACAPwAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAA/2zc9AAAgD8AAAAAAAAAAAAAAAAAAAAA/////wAAAAAAAAAAAABAQAAAgEAAAAAAAAAAAAAAAAABAAAAAwAAAAAAAAAAAAAAAAAAAAAAAEAAAIBAAAAAAAAAAAAAAAAAAwAAAAYAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAQAAAAAAIBAAAAAAAAAAAAAAAIABAAAAAIAAAAAAMA/AQAAAAAAAAACAAEABgAAAAQAAAAAAABAAAAAAAAAAAADAAMACgAAAAIAAAAAAIA/AAAAAAAAAAABAAAADAAAAAQAAAAAAIA/AAAAAAAAAAACAAEAEAAAAAIAAAAAAIA/AQAAAAAAAAADAAMAEgAAAAIAAAAAAIA/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAACAPwAAAAAAAAAAAACAPwAAoEEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIBAAACAPwAAAAAAAAAAAACAPwAAoEEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMA/NYJ9P2WDDj5lgw6+NYJ9P0xDDkEYOrnBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/gYAAP9nYWD65uLg+AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAgYAAP9nYWD65uLg+AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQAAAgEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AABAQAAAgEAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAZmbmPgAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAgD7NzMw9AACAPgAAgD8AAAA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/ZmbmPgAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAgD7NzMw9AACAPgAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAoaAgPtHQ0D7h4GA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/4eBgP7GwsD6BgAA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAgEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AADAQAAAgEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="))
-  let morphAsset = CompiledVectorAsset.Load(Convert.FromBase64String("R0NWMQEArAAUBAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAPBCAADIQqwAAACgAAAAAgAAAEwBAAAQAAAAAQAAAFwBAABIAAAAAwAAAKQBAABQAAAAAgAAAAAAAAAAAAAAAAAAAPQBAAAoAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwCAAAYAAAAAQAAADQCAADAAAAABAAAAPQCAAAgAQAADAAAAP////8BAAAAAQAAAAAAAAAAAAAAAAAAAP///////////////////////////////wAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAP////8AAAAAAAAAAAAAAAABAAAAAAAAAAAAAAD///////////////8AAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAwAAAAEAAAAAAAAAAACQQQAAkEEAAHBCAACQQQAAzEIAAJBBAADMQgAAkEEAAKJCAABIQgAAcEIAAKRCAABwQgAApEIAABxCAABIQgAAkEEAAJBBAAAAAP+Hu1wAAIA/AAAAAAAAAAAAAAAAAAAAAP////8AAAAAAAAAAAAAAAD/////AACAPwAAAAAAAAAAAAAAAAAAAAD/////AAAAAAAAAAAAAEBAAACAQAAAAAAAAAAAAAAAAAEAAAD/////AAAAAAAAAAAAAAAABAAEAAAAAAAEAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAIA+zczMPQAAgD4AAIA/AACAPwMAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwYAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAIA+zczMPQAAgD4AAIA/AAAAQAkAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQQQAAkEEAAHBCAACQQQAAzEIAAJBBAADMQgAAkEEAAKJCAABIQgAAcEIAAKRCAABwQgAApEIAABxCAABIQgAAkEEAAJBBAADAQQAA4EEAAHBCAADAQQAAwEIAAKBBAADAQgAAoEEAAJxCAAA8QgAAcEIAAJRCAABwQgAAlEIAAChCAABMQgAAwEEAAOBBAACQQQAAkEEAAHBCAACQQQAAzEIAAJBBAADMQgAAkEEAAKJCAABIQgAAcEIAAKRCAABwQgAApEIAABxCAABIQgAAkEEAAJBBAADAQQAA4EEAAHBCAADAQQAAwEIAAKBBAADAQgAAoEEAAJxCAAA8QgAAcEIAAJRCAABwQgAAlEIAAChCAABMQgAAwEEAAOBB"))
-  if staticAsset.NodeCount == 0 || staticAsset.CurveCount == 0 || staticAsset.TrackCount != 0
-    || staticAsset.MorphCurveCount != 0 {
-    throw InvalidOperationException("S13 static compiled vector asset failed the public load contract")
-  }
-  if animatedAsset.NodeCount == 0 || animatedAsset.TrackCount == 0
-    || animatedAsset.KeyframeCount == 0 || animatedAsset.MorphCurveCount != 0 {
-    throw InvalidOperationException("S13 retained animation asset failed the public load contract")
-  }
-  if morphAsset.NodeCount == 0 || morphAsset.TrackCount == 0
-    || morphAsset.KeyframeCount == 0 || morphAsset.MorphCurveCount == 0 {
-    throw InvalidOperationException("S13 morph animation asset failed the public load contract")
-  }
-  let morphPath = morphAsset.PathForNode(0)
-  if morphPath.ViewBoxWidth <= 0.0 || morphPath.ViewBoxHeight <= 0.0 {
-    throw InvalidOperationException("S13 morph animation path failed the public geometry contract")
-  }
+    let staticAsset = CompiledVectorAsset.Load(Convert.FromBase64String("R0NWMQEArADcBQAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAIBDAAAAQ6wAAACQAQAABQAAADwCAABAAAAABAAAAHwCAAAoAgAAFwAAAKQEAACgAAAABAAAAEQFAAAwAAAABAAAAHQFAABQAAAAAgAAAMQFAAAIAAAAAgAAAMwFAAAQAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8BAAAAAQAAAAAAAAAAAAAAAAAAAP///////////////////////////////wAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAIAAAADAAAAAAAAAAAAAAAAAAAA////////////////////////////////AACAPwAAAAAAAAAAAACAPwAAgEAAAIBAZmZmPwAAAAABAAAA/////wAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAD///////////////8AAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAEAAAD/////AAAAAAEAAAACAAAAAQAAAAIAAAD//////////////////////////wAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAQAAAP////8AAAAAAAAAAAMAAAABAAAA/////wEAAAD/////////////////////AACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAACAAAAAEAAAAAAAAACAAAAAgAAAABAAAAAAAAABAAAAAEAAAAAQAAAAAAAAAUAAAAAwAAAAEAAAAAAAAAAABAQQAAAAAAAGBCAAAAAAAAyEIAAAAAAADIQgAAAAAAAOBCAAAAAAAA4EIAAEBBAADgQgAAQEEAAOBCAABAQgAA4EIAAKhCAADgQgAAqEIAAOBCAADAQgAAyEIAAMBCAADIQgAAwEIAAGBCAADAQgAAQEEAAMBCAABAQQAAwEIAAAAAAADAQgAAAAAAAKhCAAAAAAAAqEIAAAAAAABAQgAAAAAAAEBBAAAAAAAAQEEAAAAAAAAAAAAAQEEAAAAAAACgQQAAAEEAAIBCAAAAQQAA2EIAAABBAADYQgAAAEEAAPBCAAAAQQAA8EIAAKBBAADwQgAAoEEAAPBCAABgQgAA8EIAALhCAADwQgAAuEIAAPBCAADQQgAA2EIAANBCAADYQgAA0EIAAIBCAADQQgAAoEEAANBCAACgQQAA0EIAAABBAADQQgAAAEEAALhCAAAAQQAAuEIAAABBAABgQgAAAEEAAKBBAAAAQQAAoEEAAABBAAAAQQAAoEEAAABBAAAMQwAAgEEAAEBDAABQwQAAaEMAABBCAABoQwAAEEIAAH1DAACqQgAAOEMAANBCAAA4QwAA0EIAACBDAADYQgAAEEMAALBCAAAQQwAAsEIAAA5DAABQQgAADEMAAIBBAAAUQwAAmEIAACBDAABwQgAALEMAADBCAAAsQwAAMEIAADhDAABwQgAAREMAAJhCAABEQwAAmEIAACxDAACYQgAAFEMAAJhCAQAAAAAAAAAAAIA/AAAAAAAAAAAAAOBCAAAAAP////8AAAAAAgAAAAAAAAD/////AACAPwAAAAAAAAAAAAAAAAAAAAD/////AgAAAAAAAAACAAAAAAAAAAAAgD8zczxD7MRbQmbmbENVVdFC/////wIAAAACAAAAAAAAAP9s3PQAAIA/AAAAAAAAAAAAAAAAAAAAAP////8EAAAAAAAAAAAAAAD/4GgoAAAAAAAAgD//gFjgAAAAAAAAAAD/bNz0AAAAAAAAgD//XDaAAAAAAAAAQEAAAIBAAAAAAAAAAAAAAAAAAQAAAP////8AAAAAAgAAAAAAAAAAAIBAAACAQAEAAAABAAAAAAAAAAMAAAD/////AgAAAAAAAAAAAAAAAADAQAAAQEABAAAAAQAAAAAAAAD/////"))
+    let animatedAsset = CompiledVectorAsset.Load(Convert.FromBase64String("R0NWMQEArABsCAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAHBDAADwQqwAAABAAQAABAAAAOwBAAAgAAAAAgAAAAwCAAAIAQAACwAAABQDAACgAAAABAAAAAAAAAAAAAAAAAAAALQDAABQAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEAACoAAAABwAAAKwEAADAAwAAFAAAAAAAAAAAAAAAAAAAAP////8BAAAAAgAAAAAAAAAAAAAAAAAAAP///////////////////////////////wAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAMAAAABAAAAAAAAAAAAAAAAAAAA////////////////AAAAAP//////////AACAPwAAAAAAAAAAAACAPwAAIEEAAABBAACAPwAAAAAAAAAA/////wAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAP////8BAAAA//////////8AAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAEAAAD/////AAAAAAAAAAABAAAAAQAAAAIAAAABAAAA//////////8EAAAA/////wAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAMAAAABAAAAAAAAAAMAAAAIAAAAAQAAAAAAAAAAAAJDAADAQQAAKkMAAMBBAABSQwAAwEEAAFJDAADAQQAAPkMAAHBCAAAqQwAAwEIAACpDAADAQgAAFkMAAHBCAAACQwAAwEEAAABBAAAAAAAAMEIAAAAAAACgQgAAAAAAAKBCAAAAAAAAsEIAAAAAAACwQgAAAEEAALBCAAAAQQAAsEIAANBBAACwQgAAMEIAALBCAAAwQgAAsEIAAFBCAACgQgAAUEIAAKBCAABQQgAAMEIAAFBCAAAAQQAAUEIAAABBAABQQgAAAAAAAFBCAAAAAAAAMEIAAAAAAAAwQgAAAAAAANBBAAAAAAAAAEEAAAAAAAAAQQAAAAAAAAAAAAAAQQAAAAAAAAAA/4e7XAAAgD8AAAAAAAAAAAAAAAAAAAAA/////wAAAAAAAAAAAAAAAP////8AAIA/AAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAD/4GgoAACAPwAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAA/2zc9AAAgD8AAAAAAAAAAAAAAAAAAAAA/////wAAAAAAAAAAAABAQAAAgEAAAAAAAAAAAAAAAAABAAAAAwAAAAAAAAAAAAAAAAAAAAAAAEAAAIBAAAAAAAAAAAAAAAAAAwAAAAYAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAQAAAAAAIBAAAAAAAAAAAAAAAIABAAAAAIAAAAAAMA/AQAAAAAAAAACAAEABgAAAAQAAAAAAABAAAAAAAAAAAADAAMACgAAAAIAAAAAAIA/AAAAAAAAAAABAAAADAAAAAQAAAAAAIA/AAAAAAAAAAACAAEAEAAAAAIAAAAAAIA/AQAAAAAAAAADAAMAEgAAAAIAAAAAAIA/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAACAPwAAAAAAAAAAAACAPwAAoEEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIBAAACAPwAAAAAAAAAAAACAPwAAoEEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMA/NYJ9P2WDDj5lgw6+NYJ9P0xDDkEYOrnBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/gYAAP9nYWD65uLg+AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAgYAAP9nYWD65uLg+AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQAAAgEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AABAQAAAgEAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAZmbmPgAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAgD7NzMw9AACAPgAAgD8AAAA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/ZmbmPgAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAgD7NzMw9AACAPgAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAoaAgPtHQ0D7h4GA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/4eBgP7GwsD6BgAA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAgEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AADAQAAAgEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="))
+    let morphAsset = CompiledVectorAsset.Load(Convert.FromBase64String("R0NWMQEArAAUBAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAPBCAADIQqwAAACgAAAAAgAAAEwBAAAQAAAAAQAAAFwBAABIAAAAAwAAAKQBAABQAAAAAgAAAAAAAAAAAAAAAAAAAPQBAAAoAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwCAAAYAAAAAQAAADQCAADAAAAABAAAAPQCAAAgAQAADAAAAP////8BAAAAAQAAAAAAAAAAAAAAAAAAAP///////////////////////////////wAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAP////8AAAAAAAAAAAAAAAABAAAAAAAAAAAAAAD///////////////8AAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAwAAAAEAAAAAAAAAAACQQQAAkEEAAHBCAACQQQAAzEIAAJBBAADMQgAAkEEAAKJCAABIQgAAcEIAAKRCAABwQgAApEIAABxCAABIQgAAkEEAAJBBAAAAAP+Hu1wAAIA/AAAAAAAAAAAAAAAAAAAAAP////8AAAAAAAAAAAAAAAD/////AACAPwAAAAAAAAAAAAAAAAAAAAD/////AAAAAAAAAAAAAEBAAACAQAAAAAAAAAAAAAAAAAEAAAD/////AAAAAAAAAAAAAAAABAAEAAAAAAAEAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAIA+zczMPQAAgD4AAIA/AACAPwMAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwYAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAIA+zczMPQAAgD4AAIA/AAAAQAkAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQQQAAkEEAAHBCAACQQQAAzEIAAJBBAADMQgAAkEEAAKJCAABIQgAAcEIAAKRCAABwQgAApEIAABxCAABIQgAAkEEAAJBBAADAQQAA4EEAAHBCAADAQQAAwEIAAKBBAADAQgAAoEEAAJxCAAA8QgAAcEIAAJRCAABwQgAAlEIAAChCAABMQgAAwEEAAOBBAACQQQAAkEEAAHBCAACQQQAAzEIAAJBBAADMQgAAkEEAAKJCAABIQgAAcEIAAKRCAABwQgAApEIAABxCAABIQgAAkEEAAJBBAADAQQAA4EEAAHBCAADAQQAAwEIAAKBBAADAQgAAoEEAAJxCAAA8QgAAcEIAAJRCAABwQgAAlEIAAChCAABMQgAAwEEAAOBB"))
+    if staticAsset.NodeCount == 0 || staticAsset.CurveCount == 0 || staticAsset.TrackCount != 0
+      || staticAsset.MorphCurveCount != 0 {
+        throw InvalidOperationException("S13 static compiled vector asset failed the public load contract")
+      }
+    if animatedAsset.NodeCount == 0 || animatedAsset.TrackCount == 0
+      || animatedAsset.KeyframeCount == 0 || animatedAsset.MorphCurveCount != 0 {
+        throw InvalidOperationException("S13 retained animation asset failed the public load contract")
+      }
+    if morphAsset.NodeCount == 0 || morphAsset.TrackCount == 0
+      || morphAsset.KeyframeCount == 0 || morphAsset.MorphCurveCount == 0 {
+        throw InvalidOperationException("S13 morph animation asset failed the public load contract")
+      }
+    let morphPath = morphAsset.PathForNode(0)
+    if morphPath.ViewBoxWidth <= 0.0 || morphPath.ViewBoxHeight <= 0.0 {
+      throw InvalidOperationException("S13 morph animation path failed the public geometry contract")
+    }
 
-  let root = S13CompiledVectorSmokeCell(staticAsset, animatedAsset, morphAsset)
-  let window = Window{
-    Title: "Goo S13 compiled vector",
-    Width: 900,
-    Height: 260,
-    VSync: false,
-    Root: root,
-  }
-  try {
-    window.Open()
-    window.Pump(0.0)
-    var pumps int32 = 0
-    while pumps < 64 {
-      window.Pump(0.016)
-      Thread.Yield()
-      pumps = pumps + 1
+    let root = S13CompiledVectorSmokeCell(staticAsset, animatedAsset, morphAsset)
+    let window = Window{
+      Title: "Goo S13 compiled vector",
+      Width: 900,
+      Height: 260,
+      VSync: false,
+      Root: root,
     }
-    if !window.IsOpen
-      || !S13CompiledVectorSmokeCell.Root.IsMounted
-      || !S13CompiledVectorSmokeCell.StaticHost.IsMounted
-      || !S13CompiledVectorSmokeCell.AnimatedHost.IsMounted
-      || !S13CompiledVectorSmokeCell.MorphHost.IsMounted
-      || S13CompiledVectorSmokeCell.Root.BorderBox.Width <= 0.0
-      || S13CompiledVectorSmokeCell.Root.BorderBox.Height <= 0.0
-      || S13CompiledVectorSmokeCell.StaticHost.BorderBox.Width <= 0.0
-      || S13CompiledVectorSmokeCell.StaticHost.BorderBox.Height <= 0.0
-      || S13CompiledVectorSmokeCell.AnimatedHost.BorderBox.Width <= 0.0
-      || S13CompiledVectorSmokeCell.AnimatedHost.BorderBox.Height <= 0.0
-      || S13CompiledVectorSmokeCell.MorphHost.BorderBox.Width <= 0.0
-      || S13CompiledVectorSmokeCell.MorphHost.BorderBox.Height <= 0.0 {
-      throw InvalidOperationException("S13 compiled vector assets did not mount with positive geometry")
-    }
-    if !CloseWindow(window) {
-      throw InvalidOperationException("S13 compiled vector smoke window did not close")
-    }
-    let diagnostics = capturedError.ToString()
-    let planCompileCount = DiagnosticCounterValue(diagnostics, "planCompileCount")
-    let recordCount = DiagnosticCounterValue(diagnostics, "recordCount")
-    let drawCount = DiagnosticCounterValue(diagnostics, "drawCount")
-    let pathResident = DiagnosticCounterValue(diagnostics, "pathAtlasResidentWords")
-    let pathCount = DiagnosticCounterValue(diagnostics, "pathAtlasPathCount")
-    let pathActiveReferences = DiagnosticCounterValue(diagnostics, "pathAtlasActiveReferenceCount")
-    let pathLiveObjects = DiagnosticCounterValue(diagnostics, "pathAtlasLiveObjectCount")
-    let pathRetiredWords = DiagnosticCounterValue(diagnostics, "pathAtlasRetiredWords")
-    let pathReuseCount = DiagnosticCounterValue(diagnostics, "pathAtlasReuseCount")
-    let imageLiveObjects = DiagnosticCounterValue(diagnostics, "imageLiveObjectCount")
-    let textLiveObjects = DiagnosticCounterValue(diagnostics, "textAtlasLiveObjectCount")
-    let vulkanObjects = DiagnosticCounterValue(diagnostics, "vulkanObjectCount")
-    let validationErrors = DiagnosticCounterValue(diagnostics, "validationErrorCount")
-    let resultFailures = DiagnosticCounterValue(diagnostics, "resultFailureCount")
-    if diagnostics.Contains("\"kind\":\"fatal\"")
-      || planCompileCount <= 1uL || recordCount <= 1uL || drawCount == 0uL
-      || pathReuseCount == 0uL
-      || pathResident != 0uL || pathCount != 0uL || pathActiveReferences != 0uL
-      || pathLiveObjects != 0uL || imageLiveObjects != 0uL || textLiveObjects != 0uL
-      || vulkanObjects != 0uL || validationErrors != 0uL || resultFailures != 0uL {
+    try {
+      window.Open()
+      window.Pump(0.0)
+      var pumps int32 = 0
+      while pumps < 64 {
+        window.Pump(0.016)
+        Thread.Yield()
+        pumps = pumps + 1
+      }
+      if !window.IsOpen
+        || !S13CompiledVectorSmokeCell.Root.IsMounted
+        || !S13CompiledVectorSmokeCell.StaticHost.IsMounted
+        || !S13CompiledVectorSmokeCell.AnimatedHost.IsMounted
+        || !S13CompiledVectorSmokeCell.MorphHost.IsMounted
+        || S13CompiledVectorSmokeCell.Root.BorderBox.Width <= 0.0
+        || S13CompiledVectorSmokeCell.Root.BorderBox.Height <= 0.0
+        || S13CompiledVectorSmokeCell.StaticHost.BorderBox.Width <= 0.0
+        || S13CompiledVectorSmokeCell.StaticHost.BorderBox.Height <= 0.0
+        || S13CompiledVectorSmokeCell.AnimatedHost.BorderBox.Width <= 0.0
+        || S13CompiledVectorSmokeCell.AnimatedHost.BorderBox.Height <= 0.0
+        || S13CompiledVectorSmokeCell.MorphHost.BorderBox.Width <= 0.0
+        || S13CompiledVectorSmokeCell.MorphHost.BorderBox.Height <= 0.0 {
+          throw InvalidOperationException("S13 compiled vector assets did not mount with positive geometry")
+        }
+      if !CloseWindow(window) {
+        throw InvalidOperationException("S13 compiled vector smoke window did not close")
+      }
+      let diagnostics = capturedError.ToString()
+      let planCompileCount = DiagnosticCounterValue(diagnostics, "planCompileCount")
+      let recordCount = DiagnosticCounterValue(diagnostics, "recordCount")
+      let drawCount = DiagnosticCounterValue(diagnostics, "drawCount")
+      let pathResident = DiagnosticCounterValue(diagnostics, "pathAtlasResidentWords")
+      let pathCount = DiagnosticCounterValue(diagnostics, "pathAtlasPathCount")
+      let pathActiveReferences = DiagnosticCounterValue(diagnostics, "pathAtlasActiveReferenceCount")
+      let pathLiveObjects = DiagnosticCounterValue(diagnostics, "pathAtlasLiveObjectCount")
+      let pathRetiredWords = DiagnosticCounterValue(diagnostics, "pathAtlasRetiredWords")
+      let pathReuseCount = DiagnosticCounterValue(diagnostics, "pathAtlasReuseCount")
+      let imageLiveObjects = DiagnosticCounterValue(diagnostics, "imageLiveObjectCount")
+      let textLiveObjects = DiagnosticCounterValue(diagnostics, "textAtlasLiveObjectCount")
+      let vulkanObjects = DiagnosticCounterValue(diagnostics, "vulkanObjectCount")
+      let validationErrors = DiagnosticCounterValue(diagnostics, "validationErrorCount")
+      let resultFailures = DiagnosticCounterValue(diagnostics, "resultFailureCount")
+      if diagnostics.Contains("\"kind\":\"fatal\"")
+        || planCompileCount <= 1uL || recordCount <= 1uL || drawCount == 0uL
+        || pathReuseCount == 0uL
+        || pathResident != 0uL || pathCount != 0uL || pathActiveReferences != 0uL
+        || pathLiveObjects != 0uL || imageLiveObjects != 0uL || textLiveObjects != 0uL
+        || vulkanObjects != 0uL || validationErrors != 0uL || resultFailures != 0uL {
+          Console.SetError(originalError)
+          originalError.Write(diagnostics)
+          throw InvalidOperationException("S13 compiled vector smoke diagnostics failed: plan="
+            +planCompileCount.ToString() + " record=" + recordCount.ToString()
+            +" draw=" + drawCount.ToString() + " pathRetired=" + pathRetiredWords.ToString()
+            +" pathReuse=" + pathReuseCount.ToString()
+            +" pathLive=" + pathLiveObjects.ToString() + " imageLive=" + imageLiveObjects.ToString()
+            +" textLive=" + textLiveObjects.ToString() + " vulkanObjects=" + vulkanObjects.ToString()
+            +" validation=" + validationErrors.ToString() + " resultFailures=" + resultFailures.ToString())
+        }
       Console.SetError(originalError)
-      originalError.Write(diagnostics)
-      throw InvalidOperationException("S13 compiled vector smoke diagnostics failed: plan="
-        + planCompileCount.ToString() + " record=" + recordCount.ToString()
-        + " draw=" + drawCount.ToString() + " pathRetired=" + pathRetiredWords.ToString()
-        + " pathReuse=" + pathReuseCount.ToString()
-        + " pathLive=" + pathLiveObjects.ToString() + " imageLive=" + imageLiveObjects.ToString()
-        + " textLive=" + textLiveObjects.ToString() + " vulkanObjects=" + vulkanObjects.ToString()
-        + " validation=" + validationErrors.ToString() + " resultFailures=" + resultFailures.ToString())
+      Console.WriteLine(
+        "s13-compiled-vector: static="
+        +staticAsset.ByteCount.ToString()
+        +" animatedTracks=" + animatedAsset.TrackCount.ToString()
+        +" morphCurves=" + morphAsset.MorphCurveCount.ToString()
+        +" plan=" + planCompileCount.ToString()
+        +" record=" + recordCount.ToString()
+        +" draw=" + drawCount.ToString()
+        +" pathRetired=" + pathRetiredWords.ToString()
+        +" pathReuse=" + pathReuseCount.ToString()
+        +" mounted=1")
+    } finally {
+      if window.IsOpen {
+        CloseWindow(window)
+      }
     }
-    Console.SetError(originalError)
-    Console.WriteLine(
-      "s13-compiled-vector: static="
-        + staticAsset.ByteCount.ToString()
-        + " animatedTracks=" + animatedAsset.TrackCount.ToString()
-        + " morphCurves=" + morphAsset.MorphCurveCount.ToString()
-        + " plan=" + planCompileCount.ToString()
-        + " record=" + recordCount.ToString()
-        + " draw=" + drawCount.ToString()
-        + " pathRetired=" + pathRetiredWords.ToString()
-        + " pathReuse=" + pathReuseCount.ToString()
-        + " mounted=1")
-  } finally {
-    if window.IsOpen {
-      CloseWindow(window)
-    }
-  }
   } finally {
     Console.SetError(originalError)
   }
@@ -1025,8 +976,8 @@ func RunS13PathSmoke() {
       || S13StaticPathSmokeCell.Root.BorderBox.Height <= 0.0
       || S13StaticPathSmokeCell.ShapeHandle.BorderBox.Width <= 0.0
       || S13StaticPathSmokeCell.ShapeHandle.BorderBox.Height <= 0.0 {
-      throw InvalidOperationException("S13 path smoke did not retain visible positive geometry in both windows")
-    }
+        throw InvalidOperationException("S13 path smoke did not retain visible positive geometry in both windows")
+      }
     var phase int32 = 1
     while phase <= 12 {
       churnRoot.SetPhase(phase)
@@ -1052,8 +1003,8 @@ func RunS13PathSmoke() {
       || S13StaticPathSmokeCell.Root.BorderBox.Height <= 0.0
       || S13StaticPathSmokeCell.ShapeHandle.BorderBox.Width <= 0.0
       || S13StaticPathSmokeCell.ShapeHandle.BorderBox.Height <= 0.0 {
-      throw InvalidOperationException("S13 static path window was disrupted by churn window disposal")
-    }
+        throw InvalidOperationException("S13 static path window was disrupted by churn window disposal")
+      }
     var staticPumps int32
     while staticPumps < 4 {
       staticOpened.Pump(0.016)
@@ -1085,23 +1036,23 @@ func RunS13PathSmoke() {
       || pressureEvents == 0uL || evictionCount == 0uL || reuseCount == 0uL
       || pressureFailures != 0uL || validationErrors != 0uL
       || resultFailures != 0uL || drawCount == 0uL {
-      Console.SetError(originalError)
-      originalError.Write(diagnostics)
-      throw InvalidOperationException("S13 path smoke did not qualify bounded lifetime and cleanup: budget="
-        + pathBudget.ToString() + " residentWords=" + pathResident.ToString()
-        + " freeWords=" + pathFree.ToString() + " pathCount=" + pathCount.ToString()
-        + " activeReferences=" + activeReferences.ToString() + " liveObjects=" + liveObjects.ToString()
-        + " pressureEvents=" + pressureEvents.ToString() + " evictionCount=" + evictionCount.ToString()
-        + " retiredWords=" + retiredWords.ToString() + " reuseCount=" + reuseCount.ToString()
-        + " pressureFailures=" + pressureFailures.ToString() + " validationErrors="
-        + validationErrors.ToString() + " resultFailures=" + resultFailures.ToString()
-        + " drawCount=" + drawCount.ToString())
-    }
+        Console.SetError(originalError)
+        originalError.Write(diagnostics)
+        throw InvalidOperationException("S13 path smoke did not qualify bounded lifetime and cleanup: budget="
+          +pathBudget.ToString() + " residentWords=" + pathResident.ToString()
+          +" freeWords=" + pathFree.ToString() + " pathCount=" + pathCount.ToString()
+          +" activeReferences=" + activeReferences.ToString() + " liveObjects=" + liveObjects.ToString()
+          +" pressureEvents=" + pressureEvents.ToString() + " evictionCount=" + evictionCount.ToString()
+          +" retiredWords=" + retiredWords.ToString() + " reuseCount=" + reuseCount.ToString()
+          +" pressureFailures=" + pressureFailures.ToString() + " validationErrors="
+          +validationErrors.ToString() + " resultFailures=" + resultFailures.ToString()
+          +" drawCount=" + drawCount.ToString())
+      }
     Console.SetError(originalError)
     Console.WriteLine("s13-path: nonzero=1 evenodd=1 rounded=1 clip=1 mounted=1 static=1 pressureEvents="
-      + pressureEvents.ToString() + " evictionCount=" + evictionCount.ToString()
-      + " retiredWords=" + retiredWords.ToString() + " reuseCount=" + reuseCount.ToString()
-      + " close=1")
+      +pressureEvents.ToString() + " evictionCount=" + evictionCount.ToString()
+      +" retiredWords=" + retiredWords.ToString() + " reuseCount=" + reuseCount.ToString()
+      +" close=1")
   } finally {
     Console.SetError(originalError)
     if let active = churnWindow {
@@ -1139,9 +1090,9 @@ func RunS09RSmoke() {
     opened.Pump(0.0)
     if !opened.IsOpen || !S09RSmokeCell.Root.IsMounted
       || !S09RSmokeCell.ScrollViewport.IsMounted
-      || !S09RSmokeCell.ScrollLeaf.IsMounted {
-      throw InvalidOperationException("S09R smoke did not mount its public handles")
-    }
+      || !S09RSmokeCell.ScrollLeaf.IsMounted{
+        throw InvalidOperationException("S09R smoke did not mount its public handles")
+      }
     var pumps int32
     while pumps < 8 {
       opened.Pump(0.016)
@@ -1166,8 +1117,8 @@ func RunS09RSmoke() {
       || S09RSmokeCell.OpacityLeaf.BorderBox.Width <= 0.0
       || S09RSmokeCell.BackStack.BorderBox.Height <= 0.0
       || S09RSmokeCell.FrontStack.BorderBox.Width <= 0.0 {
-      throw InvalidOperationException("S09R smoke did not settle positive public geometry")
-    }
+        throw InvalidOperationException("S09R smoke did not settle positive public geometry")
+      }
     let beforeOffset = S09RSmokeCell.ScrollViewport.ScrollOffset.X
     let before = S09RSmokeCell.ScrollLeaf.BorderBox
     if !S09RSmokeCell.ScrollViewport.ScrollTo(24.0, 0.0) {
@@ -1183,8 +1134,8 @@ func RunS09RSmoke() {
       || after.Width != before.Width
       || after.Height != before.Height
       || Math.Abs(borderShift - offsetShift) > 0.01 {
-      throw InvalidOperationException("S09R smoke public scroll was not applied once")
-    }
+        throw InvalidOperationException("S09R smoke public scroll was not applied once")
+      }
     if !CloseWindow(opened) {
       throw InvalidOperationException("S09R smoke window did not close")
     }
@@ -1194,8 +1145,8 @@ func RunS09RSmoke() {
     if diagnostics.Contains("\"kind\":\"fatal\"")
       || diagnostics.Contains("\"event\":325")
       || validationErrors != 0uL || resultFailures != 0uL {
-      throw InvalidOperationException("S09R smoke emitted Vulkan diagnostics errors")
-    }
+        throw InvalidOperationException("S09R smoke emitted Vulkan diagnostics errors")
+      }
     let drawCount = DiagnosticCounterValue(diagnostics, "drawCount")
     let planCompileCount = DiagnosticCounterValue(diagnostics, "planCompileCount")
     let recordCount = DiagnosticCounterValue(diagnostics, "recordCount")
@@ -1204,8 +1155,8 @@ func RunS09RSmoke() {
     }
     Console.SetError(originalError)
     Console.WriteLine("s09r: mounted=1 scroll=1 drawCount=" + drawCount.ToString()
-      + " planCompileCount=" + planCompileCount.ToString()
-      + " recordCount=" + recordCount.ToString() + " close=1")
+      +" planCompileCount=" + planCompileCount.ToString()
+      +" recordCount=" + recordCount.ToString() + " close=1")
   } finally {
     Console.SetError(originalError)
     if let active = window {
@@ -1222,11 +1173,11 @@ func RunTextControlsSmoke() {
   }
   let document = TextDocument(
     "CJK \u3041\u4c2e\n"
-      + "RTL שלום مرحبا بالعالم\n"
-      + "Combining cafe\u0301 e\u0301 and ligature ffi office\n"
-      + "Wrapping projection hidden secret line with enough words to wrap across the editor viewport\n"
-      + "offscreen tail alpha beta gamma delta epsilon zeta eta theta\n"
-      + "final caret line for recovery and focus follow")
+    +"RTL שלום مرحبا بالعالم\n"
+    +"Combining cafe\u0301 e\u0301 and ligature ffi office\n"
+    +"Wrapping projection hidden secret line with enough words to wrap across the editor viewport\n"
+    +"offscreen tail alpha beta gamma delta epsilon zeta eta theta\n"
+    +"final caret line for recovery and focus follow")
   let controller = TextEditorController(document)
   let root = TextControlsSmokeCell(document, controller)
   let cjkPath = Path.Combine(AppContext.BaseDirectory, "HarfBuzz-cff-style-italic.otf")
@@ -1253,9 +1204,9 @@ func RunTextControlsSmoke() {
     opened.Pump(0.0)
     if !opened.IsOpen || !TextControlsSmokeCell.Root.IsMounted
       || !TextControlsSmokeCell.Entry.IsMounted || !TextControlsSmokeCell.Editor.IsMounted
-      || !TextControlsSmokeCell.Rich.IsMounted {
-      throw InvalidOperationException("Text controls smoke did not mount its controls")
-    }
+      || !TextControlsSmokeCell.Rich.IsMounted{
+        throw InvalidOperationException("Text controls smoke did not mount its controls")
+      }
     controller.Focus()
     if !controller.IsFocused {
       throw InvalidOperationException("Text controls smoke controller did not retain focus")
@@ -1264,8 +1215,8 @@ func RunTextControlsSmoke() {
       Anchor: TextPosition{ Offset: 0, Affinity: TextAffinity.Upstream },
       Active: TextPosition{ Offset: 3, Affinity: TextAffinity.Downstream },
     }
-    var selectionRects = [16]ElementRect
-    var selectionDestination = selectionRects.AsSpan()
+    let selectionRects = [16]ElementRect
+    let selectionDestination = selectionRects.AsSpan()
     var selectionRequired int32
     let selectionGeometry = TextControlsSmokeCell.Editor.TryCopyTextRangeRects(
       TextRange{ Start: 0, Length: 3 }, TextCoordinateSpace.Content,
@@ -1280,8 +1231,8 @@ func RunTextControlsSmoke() {
       TextCoordinateSpace.Content, out richCaret)
     if !selectionGeometry || selectionRequired <= 0 || !selectedCaretGeometry
       || selectedCaret.Height <= 0.0 || !richGeometry || richCaret.Height <= 0.0 {
-      throw InvalidOperationException("Text controls smoke public text geometry is unavailable")
-    }
+        throw InvalidOperationException("Text controls smoke public text geometry is unavailable")
+      }
 
     let endPosition = TextPosition{ Offset: document.Length,
       Affinity: TextAffinity.Downstream }
@@ -1303,8 +1254,8 @@ func RunTextControlsSmoke() {
     let activeComposition = composition!!
     if activeComposition.SelectionStart != 2 || activeComposition.SelectionLength != 3
       || activeComposition.Text != "compose" {
-      throw InvalidOperationException("Text controls smoke lost composition selection")
-    }
+        throw InvalidOperationException("Text controls smoke lost composition selection")
+      }
     var pumps int32
     while pumps < 12 {
       opened.Pump(0.016)
@@ -1318,13 +1269,13 @@ func RunTextControlsSmoke() {
       || TextControlsSmokeCell.Entry.BorderBox.Width <= 0.0
       || TextControlsSmokeCell.Editor.BorderBox.Width <= 0.0
       || TextControlsSmokeCell.Editor.BorderBox.Height <= 0.0 {
-      throw InvalidOperationException("Text controls smoke did not settle control geometry entry="
-        + TextControlsSmokeCell.Entry.BorderBox.Width.ToString() + "x"
-        + TextControlsSmokeCell.Entry.BorderBox.Height.ToString() + " editor="
-        + TextControlsSmokeCell.Editor.BorderBox.Width.ToString() + "x"
-        + TextControlsSmokeCell.Editor.BorderBox.Height.ToString() + " composition="
-        + (controller.Composition != nil).ToString())
-    }
+        throw InvalidOperationException("Text controls smoke did not settle control geometry entry="
+          +TextControlsSmokeCell.Entry.BorderBox.Width.ToString() + "x"
+          +TextControlsSmokeCell.Entry.BorderBox.Height.ToString() + " editor="
+          +TextControlsSmokeCell.Editor.BorderBox.Width.ToString() + "x"
+          +TextControlsSmokeCell.Editor.BorderBox.Height.ToString() + " composition="
+          +(controller.Composition != nil).ToString())
+      }
     if !CloseWindow(opened) {
       throw InvalidOperationException("Text controls smoke window did not close")
     }
@@ -1343,14 +1294,14 @@ func RunTextControlsSmoke() {
     if !reopened.IsOpen || !TextReopenSmokeCell.Root.IsMounted
       || TextReopenSmokeCell.Root.BorderBox.Width <= 0.0
       || TextReopenSmokeCell.Root.BorderBox.Height <= 0.0 {
-      throw InvalidOperationException("Text controls smoke did not reopen a simple text window")
-    }
+        throw InvalidOperationException("Text controls smoke did not reopen a simple text window")
+      }
     var reopenedCaret ElementRect
     if !TextReopenSmokeCell.Root.TryGetTextCaretRect(
       TextPosition{ Offset: 0, Affinity: TextAffinity.Downstream },
       TextCoordinateSpace.Content, out reopenedCaret) || reopenedCaret.Height <= 0.0 {
-      throw InvalidOperationException("Text controls smoke reopen text geometry is unavailable")
-    }
+        throw InvalidOperationException("Text controls smoke reopen text geometry is unavailable")
+      }
     if !CloseWindow(reopened) {
       throw InvalidOperationException("Text controls smoke reopen window did not close")
     }
@@ -1368,15 +1319,15 @@ func RunTextControlsSmoke() {
       || diagnostics.Contains("TextShadow")
       || diagnostics.Contains("TextStroke")
       || validationErrors != 0uL || resultFailures != 0uL {
-      throw InvalidOperationException("Text controls smoke emitted Vulkan diagnostics errors")
-    }
+        throw InvalidOperationException("Text controls smoke emitted Vulkan diagnostics errors")
+      }
     if drawCount <= 1 {
       throw InvalidOperationException("Text controls smoke did not record text draw work")
     }
     Console.SetError(originalError)
     Console.WriteLine("text-controls: mounted=1 focused=1 pumps=" + pumps.ToString()
-      + " selection=1 composition=1 caretFollow=1 reopen=1 drawCount="
-      + drawCount.ToString() + " close=1")
+      +" selection=1 composition=1 caretFollow=1 reopen=1 drawCount="
+      +drawCount.ToString() + " close=1")
   } finally {
     Console.SetError(originalError)
     if let active = window {
@@ -1398,8 +1349,8 @@ func RunTextControlsSmoke() {
 func RunTextAtlasSmoke() {
   if Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") != "1"
     || Environment.GetEnvironmentVariable("GOO_VK_TEXT_ATLAS_BYTES") != "8192" {
-    throw InvalidOperationException("GOO_VK_DIAGNOSTICS=1 and GOO_VK_TEXT_ATLAS_BYTES=8192 are required")
-  }
+      throw InvalidOperationException("GOO_VK_DIAGNOSTICS=1 and GOO_VK_TEXT_ATLAS_BYTES=8192 are required")
+    }
   let fontPath = Path.Combine(AppContext.BaseDirectory, "VendSans-VariableFont_wght.ttf")
   if !File.Exists(fontPath) {
     throw FileNotFoundException("Text atlas smoke font asset is missing")
@@ -1452,16 +1403,16 @@ func RunTextAtlasSmoke() {
       }
       if !opened.IsOpen || TextAtlasSmokeCell.Root.BorderBox.Width <= 0.0
         || TextAtlasSmokeCell.Root.BorderBox.Height <= 0.0 {
-        throw InvalidOperationException("Text atlas smoke did not render after atlas reuse")
-      }
+          throw InvalidOperationException("Text atlas smoke did not render after atlas reuse")
+        }
       if !CloseWindow(opened) {
         throw InvalidOperationException("Text atlas smoke window did not close")
       }
       let diagnostics = capturedError.ToString()
       if diagnostics.Contains("\"kind\":\"fatal\"")
         || diagnostics.Contains("\"event\":325") {
-        throw InvalidOperationException("Text atlas smoke emitted Vulkan diagnostics errors")
-      }
+          throw InvalidOperationException("Text atlas smoke emitted Vulkan diagnostics errors")
+        }
       let atlasCount = DiagnosticCounterValue(diagnostics, "textAtlasPeakCount")
       let budget = DiagnosticCounterValue(diagnostics, "textAtlasPeakByteBudget")
       let resident = DiagnosticCounterValue(diagnostics, "textAtlasPeakResidentBytes")
@@ -1482,24 +1433,24 @@ func RunTextAtlasSmoke() {
         || currentVulkanObjects != 0uL || currentDeviceMemory != 0uL
         || uploadBytes <= 0 || evictionCount <= 0 || retirementCount <= 0
         || validationErrors != 0 || resultFailures != 0 || drawCount <= 0 {
-        throw InvalidOperationException("Text atlas smoke did not qualify atlas growth and reuse: atlasCount="
-          + atlasCount.ToString() + " budget=" + budget.ToString() + " resident=" + resident.ToString()
-          + " liveObjects=" + liveObjects.ToString() + " uploadBytes=" + uploadBytes.ToString()
-          + " currentAtlasCount=" + currentAtlasCount.ToString()
-          + " currentResident=" + currentResident.ToString()
-          + " currentLiveObjects=" + currentLiveObjects.ToString()
-          + " currentVulkanObjects=" + currentVulkanObjects.ToString()
-          + " currentDeviceMemory=" + currentDeviceMemory.ToString()
-          + " evictionCount=" + evictionCount.ToString() + " retirementCount=" + retirementCount.ToString()
-          + " validationErrors=" + validationErrors.ToString() + " resultFailures="
-          + resultFailures.ToString() + " drawCount=" + drawCount.ToString())
-      }
+          throw InvalidOperationException("Text atlas smoke did not qualify atlas growth and reuse: atlasCount="
+            +atlasCount.ToString() + " budget=" + budget.ToString() + " resident=" + resident.ToString()
+            +" liveObjects=" + liveObjects.ToString() + " uploadBytes=" + uploadBytes.ToString()
+            +" currentAtlasCount=" + currentAtlasCount.ToString()
+            +" currentResident=" + currentResident.ToString()
+            +" currentLiveObjects=" + currentLiveObjects.ToString()
+            +" currentVulkanObjects=" + currentVulkanObjects.ToString()
+            +" currentDeviceMemory=" + currentDeviceMemory.ToString()
+            +" evictionCount=" + evictionCount.ToString() + " retirementCount=" + retirementCount.ToString()
+            +" validationErrors=" + validationErrors.ToString() + " resultFailures="
+            +resultFailures.ToString() + " drawCount=" + drawCount.ToString())
+        }
       Console.SetError(originalError)
       Console.WriteLine("text-atlas: atlasCount=" + atlasCount.ToString()
-        + " budget=" + budget.ToString() + " resident=" + resident.ToString()
-        + " liveObjects=" + liveObjects.ToString() + " uploadBytes=" + uploadBytes.ToString()
-        + " evictionCount=" + evictionCount.ToString() + " retirementCount="
-        + retirementCount.ToString() + " drawCount=" + drawCount.ToString() + " close=1")
+        +" budget=" + budget.ToString() + " resident=" + resident.ToString()
+        +" liveObjects=" + liveObjects.ToString() + " uploadBytes=" + uploadBytes.ToString()
+        +" evictionCount=" + evictionCount.ToString() + " retirementCount="
+        +retirementCount.ToString() + " drawCount=" + drawCount.ToString() + " close=1")
     } finally {
       Console.SetError(originalError)
       if let active = window {
@@ -1532,7 +1483,7 @@ public class VersionedImageProvider : ImageSourceProvider {
     version = 1uL
   }
 
-  public prop ContentVersion uint64 {
+  public prop ContentVersion uint64{
     get {
       var result uint64
       lock gate { result = version }
@@ -1542,7 +1493,7 @@ public class VersionedImageProvider : ImageSourceProvider {
 
   public event ContentChanged Action
 
-  public prop AcquireCount int32 {
+  public prop AcquireCount int32{
     get {
       var result int32
       lock gate { result = acquireCount }
@@ -1550,7 +1501,7 @@ public class VersionedImageProvider : ImageSourceProvider {
     }
   }
 
-  public prop ReleasedCount int32 {
+  public prop ReleasedCount int32{
     get {
       var result int32
       lock gate { result = releasedCount }
@@ -1629,10 +1580,10 @@ class PressureImageProvider : ImageSourceProvider, IDisposable {
     source = nativeSource
   }
 
-  public prop ContentVersion uint64 { get { return 1uL } }
+  public prop ContentVersion uint64{ get { return 1uL } }
   public event ContentChanged Action
-  public prop AcquireCount int32 { get { return Interlocked.CompareExchange(&acquireCount, 0, 0) } }
-  public prop ReleasedCount int32 { get { return Interlocked.CompareExchange(&releasedCount, 0, 0) } }
+  public prop AcquireCount int32{ get { return Interlocked.CompareExchange(&acquireCount, 0, 0) } }
+  public prop ReleasedCount int32{ get { return Interlocked.CompareExchange(&releasedCount, 0, 0) } }
 
   public func Acquire() ImageSourceLease {
     let lease = source.Acquire()
@@ -1661,18 +1612,18 @@ func CreatePressureImage(width int32, height int32, seed uint8) PressureImagePro
 
 func PumpPressureSwap(window Window, root SmokeCell,
   prior PressureImageProvider, next PressureImageProvider) {
-  root.SetPressureSource(next)
-  var pumps int32 = 0
-  while pumps < 6 {
-    window.Pump(0.016)
-    pumps = pumps + 1
+    root.SetPressureSource(next)
+    var pumps int32 = 0
+    while pumps < 6 {
+      window.Pump(0.016)
+      pumps = pumps + 1
+    }
+    if !window.IsOpen || next.AcquireCount == 0
+      || prior.ReleasedCount != prior.AcquireCount{
+        throw InvalidOperationException("Native image pressure swap did not settle")
+      }
+    prior.Dispose()
   }
-  if !window.IsOpen || next.AcquireCount == 0
-    || prior.ReleasedCount != prior.AcquireCount {
-    throw InvalidOperationException("Native image pressure swap did not settle")
-  }
-  prior.Dispose()
-}
 
 func RunImagePressureSmoke(window Window, root SmokeCell, initial PressureImageProvider) {
   var current = initial
@@ -1705,8 +1656,8 @@ func RunRegisteredFontSmoke() {
   if !File.Exists(primaryPath) || !File.Exists(fallbackPath) || !File.Exists(ttcPath)
     || !File.Exists(cffFace0Path) || !File.Exists(cffFace1Path) || !File.Exists(otcPath)
     || !File.Exists(styleRegularPath) || !File.Exists(styleBoldPath) || !File.Exists(styleItalicPath) {
-    throw FileNotFoundException("Registered font smoke assets are missing")
-  }
+      throw FileNotFoundException("Registered font smoke assets are missing")
+    }
   let primaryBytes = File.ReadAllBytes(primaryPath)
   let fallbackBytes = File.ReadAllBytes(fallbackPath)
   let ttcBytes = File.ReadAllBytes(ttcPath)
@@ -1745,15 +1696,15 @@ func RunRegisteredFontSmoke() {
   styleItalicBytes[0] = 0u
   if cff.Family != "GooSmokeCff" || cff.Weight != 400 || cff.Italic
     || ttcFace1.FaceIndex != 1u || otcFace1.FaceIndex != 1u {
-    throw InvalidOperationException("Registered font smoke did not retain public source metadata")
-  }
+      throw InvalidOperationException("Registered font smoke did not retain public source metadata")
+    }
   let regularVariations = variableRegular.Variations
   let boldVariations = variableBold.Variations
   if regularVariations.Length != 1 || boldVariations.Length != 1
     || regularVariations[0].Tag != "wght" || boldVariations[0].Tag != "wght"
     || regularVariations[0].Value != 400.0F || boldVariations[0].Value != 700.0F {
-    throw InvalidOperationException("Registered font smoke did not retain variation coordinates")
-  }
+      throw InvalidOperationException("Registered font smoke did not retain variation coordinates")
+    }
   try {
     primary.Register()
     fallback.Register()
@@ -1774,9 +1725,9 @@ func RunRegisteredFontSmoke() {
       || !styleRegular.IsRegistered || !styleBold.IsRegistered || !styleItalic.IsRegistered
       || !styleBoldItalic.IsRegistered || !ttcFace0.IsRegistered || !ttcFace1.IsRegistered
       || !otcFace0.IsRegistered || !otcFace1.IsRegistered
-      || !variableRegular.IsRegistered || !variableBold.IsRegistered {
-      throw InvalidOperationException("Registered font smoke did not register the corpus")
-    }
+      || !variableRegular.IsRegistered || !variableBold.IsRegistered{
+        throw InvalidOperationException("Registered font smoke did not register the corpus")
+      }
     let duplicate = FontSource("GooSmokeStyle", 700, false, cffFace0Bytes)
     var duplicateRejected bool
     try {
@@ -1831,24 +1782,24 @@ func RunRegisteredFontSmoke() {
       || RegisteredFontCorpusSmokeCell.StyleItalic.BorderBox.Width <= 0.0
       || RegisteredFontCorpusSmokeCell.StyleBoldItalic.BorderBox.Width <= 0.0
       || RegisteredFontCorpusSmokeCell.StyleRegular.BorderBox.Width
-        == RegisteredFontCorpusSmokeCell.StyleBold.BorderBox.Width
+    == RegisteredFontCorpusSmokeCell.StyleBold.BorderBox.Width
       || RegisteredFontCorpusSmokeCell.StyleRegular.BorderBox.Width
-        == RegisteredFontCorpusSmokeCell.StyleItalic.BorderBox.Width
+    == RegisteredFontCorpusSmokeCell.StyleItalic.BorderBox.Width
       || RegisteredFontCorpusSmokeCell.StyleRegular.BorderBox.Width
-        == RegisteredFontCorpusSmokeCell.StyleBoldItalic.BorderBox.Width
+    == RegisteredFontCorpusSmokeCell.StyleBoldItalic.BorderBox.Width
       || RegisteredFontCorpusSmokeCell.StyleBold.BorderBox.Width
-        == RegisteredFontCorpusSmokeCell.StyleItalic.BorderBox.Width
+    == RegisteredFontCorpusSmokeCell.StyleItalic.BorderBox.Width
       || RegisteredFontCorpusSmokeCell.StyleBold.BorderBox.Width
-        == RegisteredFontCorpusSmokeCell.StyleBoldItalic.BorderBox.Width
+    == RegisteredFontCorpusSmokeCell.StyleBoldItalic.BorderBox.Width
       || RegisteredFontCorpusSmokeCell.StyleItalic.BorderBox.Width
-        == RegisteredFontCorpusSmokeCell.StyleBoldItalic.BorderBox.Width
+    == RegisteredFontCorpusSmokeCell.StyleBoldItalic.BorderBox.Width
       || RegisteredFontCorpusSmokeCell.VariableRegular.BorderBox.Width <= 0.0
       || RegisteredFontCorpusSmokeCell.VariableBold.BorderBox.Width <= 0.0
       || RegisteredFontCorpusSmokeCell.VariableRegular.BorderBox.Width
-        == RegisteredFontCorpusSmokeCell.VariableBold.BorderBox.Width
+    == RegisteredFontCorpusSmokeCell.VariableBold.BorderBox.Width
       || RegisteredFontCorpusSmokeCell.Fallback.BorderBox.Width <= 0.0
       || RegisteredFontCorpusSmokeCell.Fallback.BorderBox.Width
-        != RegisteredFontCorpusSmokeCell.Cff.BorderBox.Width {
+    != RegisteredFontCorpusSmokeCell.Cff.BorderBox.Width{
       throw InvalidOperationException("Registered font smoke did not render the corpus matrix")
     }
     primary.Dispose()
@@ -1990,8 +1941,8 @@ func Main() {
     watchdog.Join()
     if Interlocked.CompareExchange(&secondScheduled, 0, 0) == 0
       || Interlocked.CompareExchange(&thirdScheduled, 0, 0) == 0 {
-      throw InvalidOperationException("Native multi-window scheduler did not continue sibling work")
-    }
+        throw InvalidOperationException("Native multi-window scheduler did not continue sibling work")
+      }
     if first.IsOpen || second.IsOpen || third.IsOpen {
       throw InvalidOperationException("Native multi-window smoke windows did not close")
     }
@@ -2095,28 +2046,28 @@ func Main() {
       let imageRetirementCount = DiagnosticCounterValue(diagnostics, "imageRetirementCount")
       if diagnostics.Contains("\"kind\":\"fatal\"")
         || diagnostics.Contains("\"event\":325") {
-        throw InvalidOperationException("Native image pressure smoke emitted Vulkan diagnostics errors")
-      }
+          throw InvalidOperationException("Native image pressure smoke emitted Vulkan diagnostics errors")
+        }
       if imageBudget != 67108864uL || imagePeakResident == 0uL
         || imagePeakResident > imageBudget
         || imagePeakLiveObjects == 0uL || imageEvictionCount == 0uL
         || imageRetirementCount == 0uL || imageResident != 0uL
         || imageLiveObjects != 0uL {
-        throw InvalidOperationException("Native image pressure smoke did not qualify GPU image pressure: budget="
-          + imageBudget.ToString() + " resident=" + imageResident.ToString()
-          + " liveObjects=" + imageLiveObjects.ToString() + " peakResident="
-          + imagePeakResident.ToString() + " peakLiveObjects=" + imagePeakLiveObjects.ToString()
-          + " evictionCount=" + imageEvictionCount.ToString() + " retirementCount="
-          + imageRetirementCount.ToString())
-      }
+          throw InvalidOperationException("Native image pressure smoke did not qualify GPU image pressure: budget="
+            +imageBudget.ToString() + " resident=" + imageResident.ToString()
+            +" liveObjects=" + imageLiveObjects.ToString() + " peakResident="
+            +imagePeakResident.ToString() + " peakLiveObjects=" + imagePeakLiveObjects.ToString()
+            +" evictionCount=" + imageEvictionCount.ToString() + " retirementCount="
+            +imageRetirementCount.ToString())
+        }
       Console.SetError(originalError)
       Console.WriteLine("image-pressure: budget=" + imageBudget.ToString()
-        + " peakResident=" + imagePeakResident.ToString()
-        + " peakLiveObjects=" + imagePeakLiveObjects.ToString()
-        + " evictionCount=" + imageEvictionCount.ToString()
-        + " retirementCount=" + imageRetirementCount.ToString()
-        + " residentAfterClose=" + imageResident.ToString()
-        + " liveObjectsAfterClose=" + imageLiveObjects.ToString() + " close=1")
+        +" peakResident=" + imagePeakResident.ToString()
+        +" peakLiveObjects=" + imagePeakLiveObjects.ToString()
+        +" evictionCount=" + imageEvictionCount.ToString()
+        +" retirementCount=" + imageRetirementCount.ToString()
+        +" residentAfterClose=" + imageResident.ToString()
+        +" liveObjectsAfterClose=" + imageLiveObjects.ToString() + " close=1")
     } finally {
       Console.SetError(originalError)
       if window.IsOpen {
@@ -2158,8 +2109,8 @@ func Main() {
       if image.ContentVersion != 2uL || background.ContentVersion != 2uL
         || image.AcquireCount != 2 || background.AcquireCount != 2
         || image.ReleasedCount != 1 || background.ReleasedCount != 1 {
-        throw InvalidOperationException("Versioned image providers did not marshal async completion and change")
-      }
+          throw InvalidOperationException("Versioned image providers did not marshal async completion and change")
+        }
       if image.CompleteStale(firstImage) {
         throw InvalidOperationException("Versioned image stale completion was accepted")
       }
@@ -2173,8 +2124,8 @@ func Main() {
       if image.ContentVersion != 3uL || background.ContentVersion != 3uL
         || image.AcquireCount != 3 || background.AcquireCount != 3
         || image.ReleasedCount != 2 || background.ReleasedCount != 2 {
-        throw InvalidOperationException("Versioned image providers did not enter the failed version")
-      }
+          throw InvalidOperationException("Versioned image providers did not enter the failed version")
+        }
       if !image.FailCurrent() || !background.FailCurrent() {
         throw InvalidOperationException("Versioned image providers did not fail the terminal leases")
       }
@@ -2182,15 +2133,15 @@ func Main() {
       window.Pump(0.0)
       if image.AcquireCount != 3 || background.AcquireCount != 3
         || image.ReleasedCount != 2 || background.ReleasedCount != 2 {
-        throw InvalidOperationException("Versioned image providers retried an unchanged failed version")
-      }
+          throw InvalidOperationException("Versioned image providers retried an unchanged failed version")
+        }
       image.Advance()
       background.Advance()
       if image.ContentVersion != 4uL || background.ContentVersion != 4uL
         || image.AcquireCount != 4 || background.AcquireCount != 4
         || image.ReleasedCount != 3 || background.ReleasedCount != 3 {
-        throw InvalidOperationException("Versioned image providers did not make one recovery transition")
-      }
+          throw InvalidOperationException("Versioned image providers did not make one recovery transition")
+        }
       if !image.CompleteCurrent(secondImage) || !background.CompleteCurrent(secondBackground) {
         throw InvalidOperationException("Versioned image providers rejected the recovery completion")
       }
@@ -2216,9 +2167,9 @@ func Main() {
     let scaleConsistent = latestMetrics.DisplayScaleX > 0.0
       && latestMetrics.DisplayScaleY > 0.0
       && Math.Abs(float64(latestMetrics.FramebufferWidth)
-        - float64(latestMetrics.LogicalWidth) * latestMetrics.DisplayScaleX) < 0.01
+        -float64(latestMetrics.LogicalWidth) * latestMetrics.DisplayScaleX) < 0.01
       && Math.Abs(float64(latestMetrics.FramebufferHeight)
-        - float64(latestMetrics.LogicalHeight) * latestMetrics.DisplayScaleY) < 0.01
+        -float64(latestMetrics.LogicalHeight) * latestMetrics.DisplayScaleY) < 0.01
     let finalRoot = SmokeCell.Root.BorderBox
     if !resized || !scaleConsistent || !latestRootMetrics.IsMounted
       || finalRoot.Width != float64(targetWidth) || finalRoot.Height != float64(targetHeight)
@@ -2226,9 +2177,9 @@ func Main() {
       || latestRootMetrics.BorderBox.Width != finalRoot.Width
       || latestRootMetrics.BorderBox.Height != finalRoot.Height
       || latestMetrics.FramebufferWidth == beforeMetrics.FramebufferWidth
-        && latestMetrics.FramebufferHeight == beforeMetrics.FramebufferHeight {
-      throw InvalidOperationException("Native smoke resize metrics or layout did not settle")
-    }
+      && latestMetrics.FramebufferHeight == beforeMetrics.FramebufferHeight{
+        throw InvalidOperationException("Native smoke resize metrics or layout did not settle")
+      }
     window.Pump(0.0)
     if !window.IsOpen {
       throw InvalidOperationException("Native smoke resize closed the window")
@@ -2246,8 +2197,8 @@ func Main() {
     if afterOffset <= beforeOffset || after.Y != before.Y
       || after.Width != before.Width || after.Height != before.Height
       || Math.Abs(borderShift - offsetShift) > 0.01 {
-      throw InvalidOperationException("Native smoke public scroll geometry was not single-shifted")
-    }
+        throw InvalidOperationException("Native smoke public scroll geometry was not single-shifted")
+      }
     let minimizedStateEventStart = minimizedStateEvents
     window.State = WindowState.Minimized
     attempts = 0
@@ -2269,9 +2220,9 @@ func Main() {
       let scaleY = latestMetrics.DisplayScaleY
       let scaleConsistent = scaleX > 0.0 && scaleY > 0.0
         && Math.Abs(float64(latestMetrics.FramebufferWidth)
-          - float64(latestMetrics.LogicalWidth) * scaleX) < 0.01
+          -float64(latestMetrics.LogicalWidth) * scaleX) < 0.01
         && Math.Abs(float64(latestMetrics.FramebufferHeight)
-          - float64(latestMetrics.LogicalHeight) * scaleY) < 0.01
+          -float64(latestMetrics.LogicalHeight) * scaleY) < 0.01
       restored = window.State == WindowState.Normal
         && latestMetrics.FramebufferWidth > 0
         && latestMetrics.FramebufferHeight > 0
@@ -2283,9 +2234,9 @@ func Main() {
       || restoredRoot.Width != float64(latestMetrics.LogicalWidth)
       || restoredRoot.Height != float64(latestMetrics.LogicalHeight)
       || latestRootMetrics.BorderBox.Width != restoredRoot.Width
-      || latestRootMetrics.BorderBox.Height != restoredRoot.Height {
-      throw InvalidOperationException("Native smoke window did not restore metrics or layout")
-    }
+      || latestRootMetrics.BorderBox.Height != restoredRoot.Height{
+        throw InvalidOperationException("Native smoke window did not restore metrics or layout")
+      }
     smokeRoot.TextValue.Value = "Goo Vulkan text 2"
     window.Pump(0.0)
     window.Background = Color.Rgb(16, 24, 36)
@@ -2299,9 +2250,9 @@ func Main() {
       let image = imageProvider!!
       let background = backgroundProvider!!
       if image.ReleasedCount != image.AcquireCount
-        || background.ReleasedCount != background.AcquireCount {
-        throw InvalidOperationException("Versioned image leases did not release on close")
-      }
+        || background.ReleasedCount != background.AcquireCount{
+          throw InvalidOperationException("Versioned image leases did not release on close")
+        }
     }
   }
   imageV1?.Dispose()

@@ -6,14 +6,14 @@ public class Text : Blob {
   }
 
   /// Gets the displayed text.
-  public prop Content string { get; init; }
+  public prop Content string{ get; init; }
   /// Gets ordered passive inline styles in UTF-16 source offsets.
   /// A cluster uses the style at its logical start. Later ranges override earlier fields.
-  public prop StyleRanges []TextStyleRange {
+  public prop StyleRanges []TextStyleRange{
     get { return PassiveTextRangeBlobs.Read(this) }
-    init { PassiveTextRangeBlobs.Write(this, value) }
+    init{ PassiveTextRangeBlobs.Write(this, value) }
   }
-  internal prop StyleRangeValues []?TextStyleRange {
+  internal prop StyleRangeValues [] ? TextStyleRange{
     get { return HasPassiveTextRanges ? PassiveTextRangeBlobs.Values(this) : nil }
   }
 

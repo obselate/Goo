@@ -9,7 +9,7 @@ internal sealed class DecodedImage {
   shared {
     private let failed DecodedImage = DecodedImage()
 
-    internal prop Failed DecodedImage { get { return failed } }
+    internal prop Failed DecodedImage{ get { return failed } }
 
     internal func FromRgba(width int32, height int32, source []uint8) DecodedImage {
       if width <= 0 || height <= 0 {
@@ -29,7 +29,7 @@ internal sealed class DecodedImage {
   }
 
   private let gate object
-  private var pixels ([]uint8)?
+  private var pixels([]uint8)?
   private var references int32
   private var disposed bool
 
@@ -46,9 +46,9 @@ internal sealed class DecodedImage {
     references = 1
   }
 
-  internal prop Width int32 { get; private set; }
-  internal prop Height int32 { get; private set; }
-  internal prop IsValid bool { get { return pixels != nil && !disposed } }
+  internal prop Width int32{ get; private set; }
+  internal prop Height int32{ get; private set; }
+  internal prop IsValid bool{ get { return pixels != nil && !disposed } }
 
   internal func Retain() {
     lock gate {
@@ -72,7 +72,7 @@ internal sealed class DecodedImage {
     }
   }
 
-  internal func Pixels() ([]uint8)? {
+  internal func Pixels()([]uint8)? {
     lock gate { return pixels }
   }
 }
@@ -121,11 +121,11 @@ internal sealed class ImageRequest {
     references = 1
   }
 
-  internal prop Path string { get; private set; }
-  internal prop IsComplete bool { get { return true } }
-  internal prop Result DecodedImage { get { return result } }
+  internal prop Path string{ get; private set; }
+  internal prop IsComplete bool{ get { return true } }
+  internal prop Result DecodedImage{ get { return result } }
 
-  internal func Wait() DecodedImage { return result }
+  internal func Wait() DecodedImage -> result
 
   internal func OnCompleted(callback Action) ImageCompletionRegistration {
     let registration = ImageCompletionRegistration(callback)
@@ -173,10 +173,10 @@ internal class ImageDecoding {
     internal func SetCacheByteBudgetForTests(bytes int64) {
       if bytes < -1 { throw ArgumentOutOfRangeException("bytes") }
     }
-    internal func CacheCountForTests() int32 { return 0 }
-    internal func DecodeWorkerCountForTests() int32 { return 0 }
-    internal func PendingDecodeCountForTests() int32 { return 0 }
-    internal func CachedDecodedBytesForTests() int64 { return 0L }
+    internal func CacheCountForTests() int32 -> 0
+    internal func DecodeWorkerCountForTests() int32 -> 0
+    internal func PendingDecodeCountForTests() int32 -> 0
+    internal func CachedDecodedBytesForTests() int64 -> 0L
     internal func ResetForTests() { synthetic = false }
 
     private func Canonicalize(path string) string {
@@ -188,9 +188,7 @@ internal class ImageDecoding {
       }
     }
 
-    private func StringComparerForPlatform() StringComparer {
-      return OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal
-    }
+    private func StringComparerForPlatform() StringComparer -> OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal
 
     private func SyntheticImage(width int32, height int32) DecodedImage {
       let pixels = [width * height * 4]uint8

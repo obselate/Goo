@@ -161,23 +161,17 @@ internal class Transforming {
       if visual || !isDefaultTranslation(state.TranslateX)
         || !isDefaultTranslation(state.TranslateY)
         || !isDefaultOrigin(state.OriginX) || !isDefaultOrigin(state.OriginY) {
-        return
-      }
+          return
+        }
       values?.Remove(n)
       n.HasTransformState = false
     }
 
-    private func isZeroLength(value Length) bool {
-      return value.Value == 0.0F
-    }
+    private func isZeroLength(value Length) bool -> value.Value == 0.0F
 
-    private func isDefaultTranslation(value Length) bool {
-      return value.Unit == LengthUnit.Px && value.Value == 0.0F
-    }
+    private func isDefaultTranslation(value Length) bool -> value.Unit == LengthUnit.Px && value.Value == 0.0F
 
-    private func isDefaultOrigin(value Length) bool {
-      return value.Unit == LengthUnit.Percent && value.Value == 50.0F
-    }
+    private func isDefaultOrigin(value Length) bool -> value.Unit == LengthUnit.Percent && value.Value == 50.0F
   }
 }
 

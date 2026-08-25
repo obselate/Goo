@@ -83,11 +83,15 @@ S14 uses the existing typed declarative Style effect surface as its public contr
 shaders, pipelines, artifacts, and handles are internal and closed; raw runtime shader source and
 unrestricted Vulkan capabilities are not part of the public surface. Under S20, precompiled fragment
 SPIR-V ShaderEffect support is complete and Linux-qualified via Style.ShaderEffect, using the bounded
-layer compositor, fixed ABI descriptor/push contracts, and a bounded pipeline cache. General masks and
-higher-level filters remain explicitly deferred to a separate planned path with their own API, safety,
-resource, validation, performance, lifecycle, and package decisions. They are not rejected, are not
-consumer-dependent omissions, and are not an S14 or S20 blocker. O16 is accepted; final T02 and Windows
-qualification remain S19 release gates.
+layer compositor, fixed ABI descriptor/push contracts, and a bounded pipeline cache. A non-normal
+BlendMode combined with ShaderEffect uses two internal layers: the inner effect processes the isolated
+subtree and may borrow the original parent backdrop, then the outer layer blends the result. This adds
+no public member. General masks and a higher-level filter API are intentional current non-goals.
+Simulation supplies time-varying values while `ClipPath` supplies hard spatial clipping and
+`ShaderEffect` supplies soft/procedural reveals and pixel filters. Reopen general masks only for a
+required external alpha/luminance mask source. Reopen higher-level filters only if Goo accepts a
+no-shader-authoring convenience layer. O16 is accepted; final T02 and Windows qualification remain
+S19 release gates.
 
 ## 3. Plan-entry evidence that constrains the accepted decisions
 

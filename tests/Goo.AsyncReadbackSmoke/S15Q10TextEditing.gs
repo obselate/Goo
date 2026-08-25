@@ -53,27 +53,27 @@ class S15Q10TextEditingRoot : Cell {
   }
 
   private func GenerateSource(initialSeed uint64) string {
-      let builder = StringBuilder(TextByteCount)
-      var state = initialSeed
-      var line int32 = 0
-      while line < FullLineCount {
-        var column int32 = 0
-        while column < FullLineTextBytes {
-          state = (state * 1664525uL + 1013904223uL) & 0xffffffffuL
-          builder.Append(Alphabet[int32(state % uint64(Alphabet.Length))])
-          column = column + 1
-        }
-        builder.Append("\n")
-        line = line + 1
-      }
-      var finalColumn int32 = 0
-      while finalColumn < FinalLineTextBytes {
+    let builder = StringBuilder(TextByteCount)
+    var state = initialSeed
+    var line int32 = 0
+    while line < FullLineCount {
+      var column int32 = 0
+      while column < FullLineTextBytes {
         state = (state * 1664525uL + 1013904223uL) & 0xffffffffuL
         builder.Append(Alphabet[int32(state % uint64(Alphabet.Length))])
-        finalColumn = finalColumn + 1
+        column = column + 1
       }
-      return builder.ToString()
+      builder.Append("\n")
+      line = line + 1
     }
+    var finalColumn int32 = 0
+    while finalColumn < FinalLineTextBytes {
+      state = (state * 1664525uL + 1013904223uL) & 0xffffffffuL
+      builder.Append(Alphabet[int32(state % uint64(Alphabet.Length))])
+      finalColumn = finalColumn + 1
+    }
+    return builder.ToString()
+  }
 
   func Advance(frame int32) {
     let accepted = if (frame & 1) == 0 {
@@ -88,20 +88,18 @@ class S15Q10TextEditingRoot : Cell {
     Rebuild()
   }
 
-  override func Build() Blob {
-    return TextEditor(document, controller){
-      Key = EditorKey,
-      Width = ViewportWidth,
-      Height = ViewportHeight,
-      FontSize = 20.0,
-      LineHeight = 1.125,
-      TextWrap = TextWrap.NoWrap,
-      BackgroundColor = Color.Rgb(8, 13, 22),
-      Color = Color.Rgb(224, 232, 244),
-      SelectionColor = Color.Rgba(48, 96, 160, 180),
-      CaretColor = Color.Rgb(255, 220, 120),
-      OverscanLines = 0,
-    }
+  override func Build() Blob -> TextEditor(document, controller) {
+    Key = EditorKey,
+    Width = ViewportWidth,
+    Height = ViewportHeight,
+    FontSize = 20.0,
+    LineHeight = 1.125,
+    TextWrap = TextWrap.NoWrap,
+    BackgroundColor = Color.Rgb(8, 13, 22),
+    Color = Color.Rgb(224, 232, 244),
+    SelectionColor = Color.Rgba(48, 96, 160, 180),
+    CaretColor = Color.Rgb(255, 220, 120),
+    OverscanLines = 0,
   }
 
   func Invariant() bool {

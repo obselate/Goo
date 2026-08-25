@@ -12,19 +12,17 @@ internal open class MotionParticle {
 }
 
 internal class AnimHandle : MotionParticle {
-  private let tick (float64) -> bool
-  private let dispose () -> void
-  private let bind (MotionPump) -> void
+  private let tick(float64) -> bool
+  private let dispose() -> void
+  private let bind(MotionPump) -> void
 
-  internal init(tick (float64) -> bool, dispose () -> void, bind (MotionPump) -> void) {
+  internal init(tick(float64) -> bool, dispose() -> void, bind(MotionPump) -> void) {
     this.tick = tick
     this.dispose = dispose
     this.bind = bind
   }
 
-  internal override func Tick(now float64) bool {
-    return tick(now)
-  }
+  internal override func Tick(now float64) bool -> tick(now)
 
   internal override func Dispose() {
     dispose()
@@ -45,7 +43,7 @@ public open class Anim[T] {
   private let toDims []float64
   private let velDims []float64
   private let velRead []float64
-  private let invalidate () -> void
+  private let invalidate() -> void
   private let handle AnimHandle
   private var currentT T
   private var toT T
@@ -59,7 +57,7 @@ public open class Anim[T] {
   private var memoValue T
   private var memoValid bool
 
-  internal init(initial T, converter MotionConverter[T], invalidate () -> void) {
+  internal init(initial T, converter MotionConverter[T], invalidate() -> void) {
     if converter == nil {
       throw ArgumentNullException("converter")
     }
@@ -85,7 +83,7 @@ public open class Anim[T] {
   internal open func gate();
 
   /// Gets the current value at the current motion clock time.
-  public prop Value T {
+  public prop Value T{
     get {
       if !running {
         return currentT
@@ -102,11 +100,11 @@ public open class Anim[T] {
   }
 
   /// Gets the target value for the current or last animation.
-  public prop Target T { get { return toT } }
+  public prop Target T{ get { return toT } }
 
   /// Gets the current velocity in converter-coordinate units per second.
   /// A resting animation reports zero velocity in every dimension.
-  public prop Velocity MotionVelocity {
+  public prop Velocity MotionVelocity{
     get {
       if !running || disposed {
         return zeroVelocity()
@@ -126,9 +124,9 @@ public open class Anim[T] {
   }
 
   /// Gets whether any scalar simulation is still running.
-  public prop Running bool { get { return running } }
+  public prop Running bool{ get { return running } }
 
-  internal prop Handle MotionParticle { get { return handle } }
+  internal prop Handle MotionParticle{ get { return handle } }
 
   /// Animates toward target with Motion.Default.
   /// @param target value to animate toward
@@ -142,10 +140,10 @@ public open class Anim[T] {
   /// @param specs remaining specifications, empty for shared behavior
   public func To(
     target T,
-    spec (float64, float64, float64) -> Simulation,
-    specs ...((float64, float64, float64) -> Simulation)) {
-    retargetRequired(target, MotionVelocity{}, false, spec, specs)
-  }
+    spec(float64, float64, float64) -> Simulation,
+    specs ... ((float64, float64, float64) -> Simulation)) {
+      retargetRequired(target, MotionVelocity{}, false, spec, specs)
+    }
 
   /// Animates toward target with an explicit initial converter-coordinate velocity.
   /// @param target value to animate toward
@@ -162,10 +160,10 @@ public open class Anim[T] {
   public func To(
     target T,
     velocity MotionVelocity,
-    spec (float64, float64, float64) -> Simulation,
-    specs ...((float64, float64, float64) -> Simulation)) {
-    retargetRequired(target, velocity, true, spec, specs)
-  }
+    spec(float64, float64, float64) -> Simulation,
+    specs ... ((float64, float64, float64) -> Simulation)) {
+      retargetRequired(target, velocity, true, spec, specs)
+    }
 
   /// Snaps to value, stops all scalar simulations, and invalidates the owner.
   /// @param value value to set
@@ -207,9 +205,7 @@ public open class Anim[T] {
     }
   }
 
-  private func zeroVelocity() MotionVelocity {
-    return MotionVelocity.Uniform(0.0)
-  }
+  private func zeroVelocity() MotionVelocity -> MotionVelocity.Uniform(0.0)
 
   private func retargetDefault(target T, velocity MotionVelocity, explicitVelocity bool) {
     if disposed {
@@ -235,38 +231,38 @@ public open class Anim[T] {
     target T,
     velocity MotionVelocity,
     explicitVelocity bool,
-    spec (float64, float64, float64) -> Simulation,
-    specs ...((float64, float64, float64) -> Simulation)) {
-    if disposed {
-      return
-    }
-    beginMutation()
-    var committed = false
-    try {
-      validateRequiredSpecs(spec, specs)
-      committed = buildSims(target, velocity, explicitVelocity,
-        (i int32) -> specs.Length == 0 || i == 0 ? spec : specs[i - 1])
-    } finally {
-      if !committed {
-        clearNextSims()
+    spec(float64, float64, float64) -> Simulation,
+    specs ... ((float64, float64, float64) -> Simulation)) {
+      if disposed {
+        return
       }
-      mutating = false
+      beginMutation()
+      var committed = false
+      try {
+        validateRequiredSpecs(spec, specs)
+        committed = buildSims(target, velocity, explicitVelocity,
+          (i int32) -> specs.Length == 0 || i == 0 ? spec : specs[i - 1])
+      } finally {
+        if !committed {
+          clearNextSims()
+        }
+        mutating = false
+      }
     }
-  }
 
   private func buildSims(target T, velocity MotionVelocity, explicitVelocity bool,
-    selectSpec (int32) -> (float64, float64, float64) -> Simulation) bool {
-    let now = prepareRetarget(target, velocity, explicitVelocity)
-    for var i = 0; i < sims.Length; i++ {
-      let built = selectSpec(i)(work[i], toDims[i], velDims[i])
-      if built == nil {
-        throw InvalidOperationException("motion specification returned nil")
+    selectSpec(int32) -> (float64, float64, float64) -> Simulation) bool{
+      let now = prepareRetarget(target, velocity, explicitVelocity)
+      for var i = 0; i < sims.Length; i++ {
+        let built = selectSpec(i)(work[i], toDims[i], velDims[i])
+        if built == nil {
+          throw InvalidOperationException("motion specification returned nil")
+        }
+        nextSims[i] = built
       }
-      nextSims[i] = built
+      commitRetarget(target, now)
+      return true
     }
-    commitRetarget(target, now)
-    return true
-  }
 
   private func prepareRetarget(target T, velocity MotionVelocity, explicitVelocity bool) float64 {
     converter.Read(target, toDims)
@@ -306,21 +302,21 @@ public open class Anim[T] {
   }
 
   private func validateRequiredSpecs(
-    spec (float64, float64, float64) -> Simulation,
+    spec(float64, float64, float64) -> Simulation,
     specs []((float64, float64, float64) -> Simulation)) {
-    let count = specs.Length + 1
-    if count != 1 && count != sims.Length {
-      throw ArgumentException("spec count must be one or match converter dimensions", "specs")
-    }
-    if spec == nil {
-      throw ArgumentNullException("spec")
-    }
-    for var i = 0; i < specs.Length; i++ {
-      if specs[i] == nil {
-        throw ArgumentNullException("specs")
+      let count = specs.Length + 1
+      if count != 1 && count != sims.Length {
+        throw ArgumentException("spec count must be one or match converter dimensions", "specs")
+      }
+      if spec == nil {
+        throw ArgumentNullException("spec")
+      }
+      for var i = 0; i < specs.Length; i++ {
+        if specs[i] == nil {
+          throw ArgumentNullException("specs")
+        }
       }
     }
-  }
 
   private func beginMutation() {
     if mutating {
@@ -431,9 +427,7 @@ public open class Anim[T] {
     }
   }
 
-  private func elapsedAt(now float64) float64 {
-    return (now - startTime) * Motion.TimeScale
-  }
+  private func elapsedAt(now float64) float64 -> (now - startTime) * Motion.TimeScale
 
   private func simAt(i int32) Simulation {
     guard let sim = sims[i] else {
@@ -443,7 +437,7 @@ public open class Anim[T] {
   }
 }
 
-internal class AnimCore[T](initial T, converter MotionConverter[T], invalidate () -> void) : Anim[T](initial, converter, invalidate) {
+internal class AnimCore[T](initial T, converter MotionConverter[T], invalidate() -> void) : Anim[T](initial, converter, invalidate) {
   internal override func gate() {
   }
 }

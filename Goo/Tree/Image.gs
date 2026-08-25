@@ -18,11 +18,11 @@ public class Image : Blob {
   }
 
   /// Gets the local image path.
-  public prop Path string { get; init; }
+  public prop Path string{ get; init; }
   /// Gets the owned or provider-backed image source. It wins over Path when set.
   public prop Source ImageSourceProvider? { get; init; }
   /// Gets the image fit mode.
-  public prop Fit ImageFit { get; init; }
+  public prop Fit ImageFit{ get; init; }
 
   /// Initializes an image with an empty path and contained fit mode.
   public init() {

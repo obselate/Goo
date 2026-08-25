@@ -10,70 +10,70 @@ data struct S15StocksGridStop {
 }
 
 func S15StocksGridRequirePixelsEqual(first VulkanReadbackResult,
-    second VulkanReadbackResult, stop string) {
-  let firstPixels = first.Pixels
-  let secondPixels = second.Pixels
-  S14Require(first.Width == second.Width && first.Height == second.Height
-      && firstPixels.Length == secondPixels.Length,
-    "S15 StocksGrid readback extent differs at " + stop)
-  var index int32 = 0
-  while index < firstPixels.Length {
-    if firstPixels[index] != secondPixels[index] {
-      throw InvalidOperationException("S15 StocksGrid pixels differ at " + stop
-        + " byte=" + index.ToString())
+  second VulkanReadbackResult, stop string) {
+    let firstPixels = first.Pixels
+    let secondPixels = second.Pixels
+    S14Require(first.Width == second.Width && first.Height == second.Height
+        && firstPixels.Length == secondPixels.Length,
+      "S15 StocksGrid readback extent differs at " + stop)
+    var index int32 = 0
+    while index < firstPixels.Length {
+      if firstPixels[index] != secondPixels[index] {
+        throw InvalidOperationException("S15 StocksGrid pixels differ at " + stop
+          +" byte=" + index.ToString())
+      }
+      index = index + 1
     }
-    index = index + 1
   }
-}
 func S15StocksGridRequirePixelsDiffer(first VulkanReadbackResult,
-    second VulkanReadbackResult, stop string) {
-  let firstPixels = first.Pixels
-  let secondPixels = second.Pixels
-  S14Require(first.Width == second.Width && first.Height == second.Height
-      && firstPixels.Length == secondPixels.Length,
-    "S15 StocksGrid readback extent differs at " + stop)
-  var index int32 = 0
-  while index < firstPixels.Length {
-    if firstPixels[index] != secondPixels[index] {
-      return
+  second VulkanReadbackResult, stop string) {
+    let firstPixels = first.Pixels
+    let secondPixels = second.Pixels
+    S14Require(first.Width == second.Width && first.Height == second.Height
+        && firstPixels.Length == secondPixels.Length,
+      "S15 StocksGrid readback extent differs at " + stop)
+    var index int32 = 0
+    while index < firstPixels.Length {
+      if firstPixels[index] != secondPixels[index] {
+        return
+      }
+      index = index + 1
     }
-    index = index + 1
+    throw InvalidOperationException("S15 StocksGrid legacy and explicit pixels unexpectedly match at "
+      +stop)
   }
-  throw InvalidOperationException("S15 StocksGrid legacy and explicit pixels unexpectedly match at "
-    + stop)
-}
 
 func S15StocksGridCompareStop(complete Window, virtualized Window,
-    completeRoot S15StocksGridRootCell, virtualRoot S15StocksGridRootCell,
-    stop S15StocksGridStop) {
-  completeRoot.ScrollTo(stop.X, stop.Y)
-  virtualRoot.ScrollTo(stop.X, stop.Y)
-  WindowReadbackTestFixture.ForceRender(complete, 0.0)
-  WindowReadbackTestFixture.ForceRender(virtualized, 0.0)
-  virtualRoot.AssertVirtualState()
-  let completeResult = S09RReadback(complete,
-    WindowReadbackTestFixture.Metrics(complete))
-  let virtualResult = S09RReadback(virtualized,
-    WindowReadbackTestFixture.Metrics(virtualized))
-  S15StocksGridRequirePixelsEqual(completeResult, virtualResult, stop.Name)
-}
+  completeRoot S15StocksGridRootCell, virtualRoot S15StocksGridRootCell,
+  stop S15StocksGridStop) {
+    completeRoot.ScrollTo(stop.X, stop.Y)
+    virtualRoot.ScrollTo(stop.X, stop.Y)
+    WindowReadbackTestFixture.ForceRender(complete, 0.0)
+    WindowReadbackTestFixture.ForceRender(virtualized, 0.0)
+    virtualRoot.AssertVirtualState()
+    let completeResult = S09RReadback(complete,
+      WindowReadbackTestFixture.Metrics(complete))
+    let virtualResult = S09RReadback(virtualized,
+      WindowReadbackTestFixture.Metrics(virtualized))
+    S15StocksGridRequirePixelsEqual(completeResult, virtualResult, stop.Name)
+  }
 
 func S15StocksGridOpen(cullEnabled bool, root S15StocksGridRootCell,
-    title string) Window {
-  let opened = Window{
-    Title: title,
-    Width: 1280,
-    Height: 720,
-    Background: Color.Rgb(13, 17, 23),
-    Root: root,
-    VSync: false,
+  title string) Window{
+    let opened = Window{
+      Title: title,
+      Width: 1280,
+      Height: 720,
+      Background: Color.Rgb(13, 17, 23),
+      Root: root,
+      VSync: false,
+    }
+    opened.Open()
+    WindowReadbackTestFixture.SetExactTextClipCull(opened, cullEnabled)
+    WindowReadbackTestFixture.SetForceFullRedraw(opened, false)
+    WindowReadbackTestFixture.ForceRender(opened, 0.0)
+    return opened
   }
-  opened.Open()
-  WindowReadbackTestFixture.SetExactTextClipCull(opened, cullEnabled)
-  WindowReadbackTestFixture.SetForceFullRedraw(opened, false)
-  WindowReadbackTestFixture.ForceRender(opened, 0.0)
-  return opened
-}
 
 func S15StocksGridClose(window Window?) {
   if let active = window {
@@ -320,6 +320,6 @@ func RunS15StocksGridVirtualizationGate() {
   S15StocksGridRunChurnCheck()
   S15StocksGridRunResizeCheck()
   Console.WriteLine("s15-stocks-grid-virtualization-gate: cull_modes=2 stops=9"
-    + " explicit_clip=1 complete=4900 virtual_pool=989 zero_overscan=1"
-    + " mutation=1 stale_slot=1 uniqueness=1 churn=1 resize=1 close=1")
+    +" explicit_clip=1 complete=4900 virtual_pool=989 zero_overscan=1"
+    +" mutation=1 stale_slot=1 uniqueness=1 churn=1 resize=1 close=1")
 }

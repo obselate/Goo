@@ -5,9 +5,7 @@ import System.Diagnostics
 import System.Threading
 import Goo
 
-func S19IdleDelta(after uint64, before uint64) uint64 {
-  return after >= before ? after - before : uint64.MaxValue
-}
+func S19IdleDelta(after uint64, before uint64) uint64 -> after >= before ? after - before : uint64.MaxValue
 
 func S19IdleDurationMs() int32 {
   let value = Environment.GetEnvironmentVariable("GOO_S19_IDLE_DURATION_MS")
@@ -71,16 +69,16 @@ func RunS19IdleGate() {
     opened.Post(captureBefore)
     let beforeDeadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 5L
     while Interlocked.CompareExchange(&beforeCaptured, 0, 0) == 0
-        && Stopwatch.GetTimestamp() < beforeDeadline {
-      Thread.Sleep(1)
-    }
+      && Stopwatch.GetTimestamp() < beforeDeadline{
+        Thread.Sleep(1)
+      }
     Thread.Sleep(durationMs)
     opened.Post(captureAfter)
     let deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 5L
     while Interlocked.CompareExchange(&afterCaptured, 0, 0) == 0
-        && Stopwatch.GetTimestamp() < deadline {
-      Thread.Sleep(1)
-    }
+      && Stopwatch.GetTimestamp() < deadline{
+        Thread.Sleep(1)
+      }
     opened.RequestClose()
   })
   closeWorker.IsBackground = true
@@ -107,21 +105,21 @@ func RunS19IdleGate() {
   let cpuPercentOneCore = cpuSeconds / elapsedSeconds * 100.0
   let managedThreadBytes = mainAllocatedAfter - mainAllocatedBefore
   Console.WriteLine("s19-idle-observed: duration_ms="
-    + Math.Round(elapsedSeconds * 1000.0).ToString()
-    + " cpu_one_core_percent=" + cpuPercentOneCore.ToString("F4")
-    + " rebuild=" + S19IdleDelta(after.rebuildCount, before.rebuildCount).ToString()
-    + " layout=" + S19IdleDelta(after.layoutCount, before.layoutCount).ToString()
-    + " plan=" + S19IdleDelta(after.planCompileCount, before.planCompileCount).ToString()
-    + " upload=" + S19IdleDelta(after.uploadCount, before.uploadCount).ToString()
-    + " record=" + S19IdleDelta(after.recordCount, before.recordCount).ToString()
-    + " submit=" + S19IdleDelta(after.submitCount, before.submitCount).ToString()
-    + " present=" + S19IdleDelta(after.presentCount, before.presentCount).ToString()
-    + " diagnostic_managed_B="
-    + S19IdleDelta(after.managedAllocatedBytes, before.managedAllocatedBytes).ToString()
-    + " main_managed_B=" + managedThreadBytes.ToString()
-    + " objects=" + S19IdleDelta(after.vulkanObjectAllocationCount,
+    +Math.Round(elapsedSeconds * 1000.0).ToString()
+    +" cpu_one_core_percent=" + cpuPercentOneCore.ToString("F4")
+    +" rebuild=" + S19IdleDelta(after.rebuildCount, before.rebuildCount).ToString()
+    +" layout=" + S19IdleDelta(after.layoutCount, before.layoutCount).ToString()
+    +" plan=" + S19IdleDelta(after.planCompileCount, before.planCompileCount).ToString()
+    +" upload=" + S19IdleDelta(after.uploadCount, before.uploadCount).ToString()
+    +" record=" + S19IdleDelta(after.recordCount, before.recordCount).ToString()
+    +" submit=" + S19IdleDelta(after.submitCount, before.submitCount).ToString()
+    +" present=" + S19IdleDelta(after.presentCount, before.presentCount).ToString()
+    +" diagnostic_managed_B="
+    +S19IdleDelta(after.managedAllocatedBytes, before.managedAllocatedBytes).ToString()
+    +" main_managed_B=" + managedThreadBytes.ToString()
+    +" objects=" + S19IdleDelta(after.vulkanObjectAllocationCount,
       before.vulkanObjectAllocationCount).ToString()
-    + " device_memory=" + S19IdleDelta(after.vulkanDeviceMemoryAllocationCount,
+    +" device_memory=" + S19IdleDelta(after.vulkanDeviceMemoryAllocationCount,
       before.vulkanDeviceMemoryAllocationCount).ToString())
   S14Require(elapsedSeconds >= float64(durationMs) / 1000.0,
     "S19 idle observation ended early")
@@ -152,8 +150,8 @@ func RunS19IdleGate() {
   S14Require(cpuPercentOneCore < 0.5,
     "S19 idle used at least 0.5 percent of one CPU core")
   Console.WriteLine("s19-idle: duration_ms="
-    + Math.Round(elapsedSeconds * 1000.0).ToString()
-    + " cpu_one_core_percent=" + cpuPercentOneCore.ToString("F4")
-    + " rebuild=0 layout=0 plan=0 upload=0 record=0 submit=0 present=0"
-    + " managed_B=0 objects=0 device_memory=0 close=1")
+    +Math.Round(elapsedSeconds * 1000.0).ToString()
+    +" cpu_one_core_percent=" + cpuPercentOneCore.ToString("F4")
+    +" rebuild=0 layout=0 plan=0 upload=0 record=0 submit=0 present=0"
+    +" managed_B=0 objects=0 device_memory=0 close=1")
 }

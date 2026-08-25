@@ -17,7 +17,7 @@ internal class MotionFixtures {
       anim.To(10.0, clockEchoSpec)
       pump.Sweep(3.0)
       var captured = -1.0
-      let captureSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+      let captureSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
         captured = velocity
         return ClockEchoSimulation()
       }
@@ -33,12 +33,12 @@ internal class MotionFixtures {
     cell.BindPump(pump)
     let anim = cell.Animate(0.0)
     try {
-      let startSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> LinearTimed(1.0, from, to)
+      let startSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> LinearTimed(1.0, from, to)
       anim.To(100.0, startSpec)
       pump.Sweep(0.5)
       let valueBefore = anim.Value
       var captured = -1.0
-      let captureSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+      let captureSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
         captured = velocity
         return LinearTimed(1.0, from, to)
       }
@@ -147,7 +147,7 @@ internal class MotionFixtures {
     let anim = cell.Animate(Point{ X: 0.0, Y: 0.0 })
     try {
       var initialCalls = 0
-      let initialSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+      let initialSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
         initialCalls = initialCalls + 1
         return ConstantVelocitySimulation(from, initialCalls == 1 ? 3.0 : -4.0)
       }
@@ -156,7 +156,7 @@ internal class MotionFixtures {
       var retargetCalls = 0
       var xVelocity = 0.0
       var yVelocity = 0.0
-      let captureSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+      let captureSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
         retargetCalls = retargetCalls + 1
         if retargetCalls == 1 {
           xVelocity = velocity
@@ -178,7 +178,7 @@ internal class MotionFixtures {
     let anim = cell.Animate(Point{ X: 1.0, Y: 2.0 })
     try {
       var uniformCalls = 0
-      let uniformSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+      let uniformSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
         uniformCalls = uniformCalls + 1
         return ClockEchoSimulation()
       }
@@ -186,11 +186,11 @@ internal class MotionFixtures {
       anim.Set(Point{ X: 1.0, Y: 2.0 })
       var xCalled = false
       var yCalled = false
-      let xSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+      let xSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
         xCalled = from == 1.0 && to == 3.0
         return ClockEchoSimulation()
       }
-      let ySpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+      let ySpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
         yCalled = from == 2.0 && to == 5.0
         return ClockEchoSimulation()
       }
@@ -212,7 +212,7 @@ internal class MotionFixtures {
       var calls = 0
       var first = 0.0
       var second = 0.0
-      let uniformSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+      let uniformSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
         calls = calls + 1
         if calls == 1 {
           first = velocity
@@ -229,7 +229,7 @@ internal class MotionFixtures {
       calls = 0
       first = 0.0
       second = 0.0
-      let componentSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+      let componentSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
         calls = calls + 1
         if calls == 1 {
           first = velocity
@@ -347,7 +347,7 @@ internal class MotionFixtures {
       if velocity[0] != 0.0 {
         return false
       }
-      let spec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> LinearTimed(1.0, from, to)
+      let spec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> LinearTimed(1.0, from, to)
       anim.To(10.0, spec)
       pump.Sweep(0.25)
       anim.Velocity.CopyInto(velocity)
@@ -372,7 +372,7 @@ internal class MotionFixtures {
       let observed = [1]float64
       anim.Velocity.CopyInto(observed)
       var captured = -1.0
-      let captureSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+      let captureSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
         captured = velocity
         return ClockEchoSimulation()
       }
@@ -388,8 +388,8 @@ internal class MotionFixtures {
     cell.BindPump(pump)
     let anim = cell.Animate(Point{ X: 0.0, Y: 0.0 })
     try {
-      let fast (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> LinearTimed(1.0, from, to)
-      let slow (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> LinearTimed(2.0, from, to)
+      let fast(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> LinearTimed(1.0, from, to)
+      let slow(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> LinearTimed(2.0, from, to)
       anim.To(Point{ X: 10.0, Y: 10.0 }, fast, slow)
       pump.Sweep(0.25)
       let velocity = [2]float64
@@ -405,10 +405,10 @@ internal class MotionFixtures {
     cell.BindPump(pump)
     let anim = cell.Animate(Color.Black)
     try {
-      let r (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> ConstantVelocitySimulation(from, -2.0)
-      let g (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> ConstantVelocitySimulation(from, 3.0)
-      let b (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> ConstantVelocitySimulation(from, -4.0)
-      let a (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> ConstantVelocitySimulation(from, 5.0)
+      let r(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> ConstantVelocitySimulation(from, -2.0)
+      let g(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> ConstantVelocitySimulation(from, 3.0)
+      let b(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> ConstantVelocitySimulation(from, -4.0)
+      let a(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> ConstantVelocitySimulation(from, 5.0)
       anim.To(Color.White, r, g, b, a)
       pump.Sweep(0.25)
       let velocity = [4]float64
@@ -422,17 +422,11 @@ internal class MotionFixtures {
 
   func MotionVelocityAdditionPreservesShapeContract() bool {
     let mixed = [2]float64
-    MotionVelocity.Components(-2.0, 3.0)
-      .Add(MotionVelocity.Uniform(0.5))
-      .CopyInto(mixed)
+    MotionVelocity.Components(-2.0, 3.0).Add(MotionVelocity.Uniform(0.5)).CopyInto(mixed)
     let uniform = [3]float64
-    MotionVelocity.Uniform(1.5)
-      .Add(MotionVelocity.Uniform(-0.5))
-      .CopyInto(uniform)
+    MotionVelocity.Uniform(1.5).Add(MotionVelocity.Uniform(-0.5)).CopyInto(uniform)
     let paired = [2]float64
-    MotionVelocity.Components(1.0, 2.0)
-      .Add(MotionVelocity.Components(3.0, -5.0))
-      .CopyInto(paired)
+    MotionVelocity.Components(1.0, 2.0).Add(MotionVelocity.Components(3.0, -5.0)).CopyInto(paired)
     let invalidFails = throws(() -> {
       let ignored = MotionVelocity{}.Add(MotionVelocity.Uniform(1.0))
     })
@@ -463,7 +457,7 @@ internal class MotionFixtures {
     cell.BindPump(pump)
     let anim = cell.Animate(0.0)
     try {
-      let spec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> LinearTimed(1.0, from, to)
+      let spec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> LinearTimed(1.0, from, to)
       anim.To(10.0, spec)
       pump.Sweep(0.25)
       cell.ClearDirty()
@@ -513,7 +507,7 @@ internal class MotionFixtures {
     let simulation = CountingPositionSimulation()
     try {
       Motion.TimeScale = 1.0
-      let spec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> simulation
+      let spec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> simulation
       anim.To(1.0, spec)
       pump.Sweep(0.1)
       let first = anim.Value
@@ -539,7 +533,7 @@ internal class MotionFixtures {
       pump.Sweep(0.1)
       Motion.TimeScale = 1.0
       var capturedFrom = -1.0
-      let captureSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+      let captureSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
         capturedFrom = from
         return ClockEchoSimulation()
       }
@@ -555,7 +549,7 @@ internal class MotionFixtures {
     let cell = MotionFixtureCell{}
     cell.BindPump(pump)
     let anim = cell.Animate(0.0)
-    let spec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> LinearTimed(1.0, from, to)
+    let spec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> LinearTimed(1.0, from, to)
     anim.To(100.0, spec)
     pump.Sweep(0.5)
     cell.DisposeMounted()
@@ -610,8 +604,8 @@ internal class MotionFixtures {
     let second = cell.Animate(0.0)
     let firstSimulation = ThrowingPositionSimulation()
     let secondCounter = PumpCounter()
-    let firstSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
-    let secondSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> PumpFixtureSimulation(secondCounter, false)
+    let firstSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
+    let secondSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> PumpFixtureSimulation(secondCounter, false)
     window.UpdateTree()
     first.To(1.0, firstSpec)
     second.To(1.0, secondSpec)
@@ -638,8 +632,8 @@ internal class MotionFixtures {
     }
     let firstSimulation = ThrowingPositionSimulation()
     let laterCounter = PumpCounter()
-    let firstSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
-    let laterSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> PumpFixtureSimulation(laterCounter, false)
+    let firstSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
+    let laterSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> PumpFixtureSimulation(laterCounter, false)
     first.Animation.To(1.0, firstSpec)
     later.Animation.To(1.0, laterSpec)
     var threw = false
@@ -688,7 +682,7 @@ internal class MotionFixtures {
     cell.BindPump(pump)
     let anim = cell.Animate(0.0)
     let simulation = ThrowingDoneSimulation()
-    let spec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> simulation
+    let spec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> simulation
     try {
       anim.To(1.0, spec)
       let threw = throws(() -> pump.Sweep(0.1))
@@ -719,7 +713,7 @@ internal class MotionFixtures {
     let first = firstCell.Animate(0.0)
     let second = secondCell.Animate(0.0)
     let secondCounter = PumpCounter()
-    let secondSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+    let secondSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
       return PumpFixtureSimulation(secondCounter, false)
     }
     var attempted = false
@@ -734,15 +728,15 @@ internal class MotionFixtures {
         }
       }
     }, false)
-    let firstSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
+    let firstSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
     try {
       first.To(1.0, firstSpec)
       second.To(1.0, secondSpec)
       pump.Sweep(0.1)
       if !rejected || firstSimulation.DoneCalls != 1 || secondCounter.DoneCalls != 1
-        || !first.Running || !second.Running || !pump.Active {
-        return false
-      }
+        || !first.Running || !second.Running || !pump.Active{
+          return false
+        }
       pump.Sweep(0.1)
       return firstSimulation.DoneCalls == 2 && secondCounter.DoneCalls == 2
         && first.Running && second.Running
@@ -763,7 +757,7 @@ internal class MotionFixtures {
     let throwing = throwingCell.Animate(0.0)
     let deferred = deferredCell.Animate(0.0)
     let deferredCounter = PumpCounter()
-    let deferredSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+    let deferredSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
       return PumpFixtureSimulation(deferredCounter, false)
     }
     var added = false
@@ -774,16 +768,16 @@ internal class MotionFixtures {
       }
     }, false)
     let throwingSimulation = ThrowingDoneSimulation()
-    let firstSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
-    let throwingSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> throwingSimulation
+    let firstSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
+    let throwingSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> throwingSimulation
     try {
       first.To(1.0, firstSpec)
       throwing.To(1.0, throwingSpec)
       let threw = throws(() -> pump.Sweep(0.1))
       if !threw || !added || firstSimulation.DoneCalls != 1
         || throwingSimulation.DoneCalls != 1 || deferredCounter.DoneCalls != 0 {
-        return false
-      }
+          return false
+        }
       throwingSimulation.Throw = false
       pump.Sweep(0.1)
       return firstSimulation.DoneCalls == 2 && throwingSimulation.DoneCalls == 2
@@ -804,7 +798,7 @@ internal class MotionFixtures {
     let first = firstCell.Animate(0.0)
     let second = secondCell.Animate(0.0)
     let secondCounter = PumpCounter()
-    let secondSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+    let secondSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
       return PumpFixtureSimulation(secondCounter, false)
     }
     var added = false
@@ -814,7 +808,7 @@ internal class MotionFixtures {
         second.To(1.0, secondSpec)
       }
     }, false)
-    let firstSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
+    let firstSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
     try {
       first.To(1.0, firstSpec)
       pump.Sweep(0.1)
@@ -841,16 +835,16 @@ internal class MotionFixtures {
     let third = thirdCell.Animate(0.0)
     let laterCounter = PumpCounter()
     let thirdCounter = PumpCounter()
-    let laterSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+    let laterSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
       return PumpFixtureSimulation(laterCounter, false)
     }
-    let thirdSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
+    let thirdSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> {
       return PumpFixtureSimulation(thirdCounter, false)
     }
     let firstSimulation = PumpCallbackSimulation(() -> {
       later.Set(0.0)
     }, false)
-    let firstSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
+    let firstSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
     try {
       first.To(1.0, firstSpec)
       later.To(1.0, laterSpec)
@@ -924,8 +918,8 @@ internal class MotionFixtures {
     let second = cell.Animate(0.0)
     let firstSimulation = ThrowingPositionSimulation()
     let secondCounter = PumpCounter()
-    let firstSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
-    let secondSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> PumpFixtureSimulation(secondCounter, false)
+    let firstSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> firstSimulation
+    let secondSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> PumpFixtureSimulation(secondCounter, false)
     first.To(1.0, firstSpec)
     second.To(1.0, secondSpec)
     var threw = false
@@ -941,7 +935,7 @@ internal class MotionFixtures {
     reuseCell.BindPump(pump)
     let reuse = reuseCell.Animate(0.0)
     let reuseCounter = PumpCounter()
-    let reuseSpec (float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> PumpFixtureSimulation(reuseCounter, false)
+    let reuseSpec(float64, float64, float64) -> Simulation = (from float64, to float64, velocity float64) -> PumpFixtureSimulation(reuseCounter, false)
     try {
       reuse.To(1.0, reuseSpec)
       pump.Sweep(0.1)
@@ -959,12 +953,10 @@ internal class WindowSiblingParent : Cell {
   internal var First WindowSiblingThrowingCell?
   internal var Later WindowSiblingRetainedCell?
 
-  override func Build() Blob {
-    return Container{ Children: {
-      Cell.Mount[WindowSiblingThrowingCell]("first", (child WindowSiblingThrowingCell) -> { First = child }),
-      Cell.Mount[WindowSiblingRetainedCell]("later", (child WindowSiblingRetainedCell) -> { Later = child }),
-    } }
-  }
+  override func Build() Blob -> Container { Children: {
+    Cell.Mount[WindowSiblingThrowingCell]("first", (child WindowSiblingThrowingCell) -> { First = child }),
+    Cell.Mount[WindowSiblingRetainedCell]("later", (child WindowSiblingRetainedCell) -> { Later = child }),
+  } }
 }
 
 internal class WindowSiblingThrowingCell : Cell {
@@ -974,9 +966,7 @@ internal class WindowSiblingThrowingCell : Cell {
     Animation = Animate(0.0)
   }
 
-  override func Build() Blob {
-    return Text{ Content: "first" }
-  }
+  override func Build() Blob -> Text { Content: "first" }
 }
 
 internal class WindowSiblingRetainedCell : Cell, IDisposable {
@@ -993,9 +983,7 @@ internal class WindowSiblingRetainedCell : Cell, IDisposable {
     Disposals = Disposals + 1
   }
 
-  override func Build() Blob {
-    return Text{ Content: "${Value.Value}" }
-  }
+  override func Build() Blob -> Text { Content: "${Value.Value}" }
 }
 
 internal class CountingMotionFixtureCell : Cell {
@@ -1043,17 +1031,11 @@ internal class SnapDuringBuildFixtureCell : Cell {
 }
 
 internal class ClockEchoSimulation : Simulation {
-  public override func Position(elapsed float64) float64 {
-    return elapsed
-  }
+  public override func Position(elapsed float64) float64 -> elapsed
 
-  public override func Velocity(elapsed float64) float64 {
-    return elapsed
-  }
+  public override func Velocity(elapsed float64) float64 -> elapsed
 
-  public override func Done(elapsed float64) bool {
-    return false
-  }
+  public override func Done(elapsed float64) bool -> false
 }
 internal class ThrowingPositionSimulation : Simulation {
   internal var PositionCalls int32
@@ -1063,18 +1045,12 @@ internal class ThrowingPositionSimulation : Simulation {
     throw InvalidOperationException("dispose position failed")
   }
 
-  public override func Velocity(elapsed float64) float64 {
-    return 0.0
-  }
+  public override func Velocity(elapsed float64) float64 -> 0.0
 
-  public override func Done(elapsed float64) bool {
-    return false
-  }
+  public override func Done(elapsed float64) bool -> false
 }
 
-internal func clockEchoSpec(from float64, to float64, velocity float64) Simulation {
-  return ClockEchoSimulation()
-}
+internal func clockEchoSpec(from float64, to float64, velocity float64) Simulation -> ClockEchoSimulation()
 
 internal class ConstantVelocitySimulation : Simulation {
   private let from float64
@@ -1085,17 +1061,11 @@ internal class ConstantVelocitySimulation : Simulation {
     this.velocity = velocity
   }
 
-  public override func Position(elapsed float64) float64 {
-    return from + velocity * elapsed
-  }
+  public override func Position(elapsed float64) float64 -> from + velocity * elapsed
 
-  public override func Velocity(elapsed float64) float64 {
-    return velocity
-  }
+  public override func Velocity(elapsed float64) float64 -> velocity
 
-  public override func Done(elapsed float64) bool {
-    return false
-  }
+  public override func Done(elapsed float64) bool -> false
 }
 
 internal class RestsShortOfTargetSimulation : Simulation {
@@ -1105,22 +1075,14 @@ internal class RestsShortOfTargetSimulation : Simulation {
     restingAt = startedFrom + 3.0
   }
 
-  public override func Position(elapsed float64) float64 {
-    return restingAt
-  }
+  public override func Position(elapsed float64) float64 -> restingAt
 
-  public override func Velocity(elapsed float64) float64 {
-    return 0.0
-  }
+  public override func Velocity(elapsed float64) float64 -> 0.0
 
-  public override func Done(elapsed float64) bool {
-    return true
-  }
+  public override func Done(elapsed float64) bool -> true
 }
 
-internal func restsShortOfTargetSpec(from float64, to float64, velocity float64) Simulation {
-  return RestsShortOfTargetSimulation(from)
-}
+internal func restsShortOfTargetSpec(from float64, to float64, velocity float64) Simulation -> RestsShortOfTargetSimulation(from)
 
 internal func throwingMotionSpec(from float64, to float64, velocity float64) Simulation {
   throw InvalidOperationException("motion spec failed")
@@ -1134,13 +1096,9 @@ internal class CountingPositionSimulation : Simulation {
     return elapsed
   }
 
-  public override func Velocity(elapsed float64) float64 {
-    return 0.0
-  }
+  public override func Velocity(elapsed float64) float64 -> 0.0
 
-  public override func Done(elapsed float64) bool {
-    return false
-  }
+  public override func Done(elapsed float64) bool -> false
 }
 
 internal class PumpCounter {
@@ -1157,13 +1115,9 @@ internal class ThrowingDoneSimulation : Simulation {
     Complete = false
   }
 
-  public override func Position(elapsed float64) float64 {
-    return elapsed
-  }
+  public override func Position(elapsed float64) float64 -> elapsed
 
-  public override func Velocity(elapsed float64) float64 {
-    return 0.0
-  }
+  public override func Velocity(elapsed float64) float64 -> 0.0
 
   public override func Done(elapsed float64) bool {
     DoneCalls = DoneCalls + 1
@@ -1184,13 +1138,9 @@ internal class PumpCallbackSimulation : Simulation {
     this.done = done
   }
 
-  public override func Position(elapsed float64) float64 {
-    return elapsed
-  }
+  public override func Position(elapsed float64) float64 -> elapsed
 
-  public override func Velocity(elapsed float64) float64 {
-    return 0.0
-  }
+  public override func Velocity(elapsed float64) float64 -> 0.0
 
   public override func Done(elapsed float64) bool {
     DoneCalls = DoneCalls + 1
@@ -1208,13 +1158,9 @@ internal class PumpFixtureSimulation : Simulation {
     this.done = done
   }
 
-  public override func Position(elapsed float64) float64 {
-    return elapsed
-  }
+  public override func Position(elapsed float64) float64 -> elapsed
 
-  public override func Velocity(elapsed float64) float64 {
-    return 0.0
-  }
+  public override func Velocity(elapsed float64) float64 -> 0.0
 
   public override func Done(elapsed float64) bool {
     counter.DoneCalls = counter.DoneCalls + 1
@@ -1229,9 +1175,7 @@ internal func rejectInitialMotion(value float64, into []float64) {
   throw ArgumentException("initial value rejected")
 }
 
-internal func writeFloatMotion(dims []float64) float64 {
-  return dims[0]
-}
+internal func writeFloatMotion(dims []float64) float64 -> dims[0]
 
 internal func throws(action Action) bool {
   try {

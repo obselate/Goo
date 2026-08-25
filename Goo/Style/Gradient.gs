@@ -10,9 +10,9 @@ public data struct GradientStop {
   private var color Color
 
   /// Gets the stop position from 0 through 1.
-  public prop Offset float64 {
+  public prop Offset float64{
     get { return offset }
-    init {
+    init{
       if Double.IsNaN(value) || Double.IsInfinity(value) || value < 0.0 || value > 1.0 {
         throw ArgumentOutOfRangeException("Offset")
       }
@@ -21,9 +21,9 @@ public data struct GradientStop {
   }
 
   /// Gets the stop color.
-  public prop Color Color {
+  public prop Color Color{
     get { return color }
-    init { color = value }
+    init{ color = value }
   }
 }
 
@@ -40,14 +40,14 @@ public class LinearGradient : Gradient {
   private let contentHash int32
 
   /// Gets the ordered color stops.
-  public prop Stops IReadOnlyList[GradientStop] { get { return stops } }
+  public prop Stops IReadOnlyList[GradientStop]{ get { return stops } }
   /// Gets the direction in degrees. Zero points up and positive angles turn clockwise.
-  public prop Angle float64 { get { return angle } }
-  internal prop ContentHashForCache int32 { get { return contentHash } }
+  public prop Angle float64{ get { return angle } }
+  internal prop ContentHashForCache int32{ get { return contentHash } }
 
   /// Creates a top-to-bottom linear gradient from evenly spread colors.
   /// @param colors At least two colors, spread evenly from 0 through 1.
-  public init(colors ...Color) {
+  public init(colors ... Color) {
     angle = 180.0
     stops = spreadGradientColors(colors)
     contentHash = computeGradientContentHash(1, angle, 0.0, 0.0, stops)
@@ -56,7 +56,7 @@ public class LinearGradient : Gradient {
   /// Creates an angled linear gradient from evenly spread colors.
   /// @param angle The finite direction in degrees. Zero points up and positive angles turn clockwise.
   /// @param colors At least two colors, spread evenly from 0 through 1.
-  public init(angle float64, colors ...Color) {
+  public init(angle float64, colors ... Color) {
     this.angle = validateGradientAngle(angle)
     stops = spreadGradientColors(colors)
     contentHash = computeGradientContentHash(1, this.angle, 0.0, 0.0, stops)
@@ -81,18 +81,18 @@ public class RadialGradient : Gradient {
   private let contentHash int32
 
   /// Gets the ordered color stops.
-  public prop Stops IReadOnlyList[GradientStop] { get { return stops } }
+  public prop Stops IReadOnlyList[GradientStop]{ get { return stops } }
   /// Gets the normalized horizontal center from 0 through 1.
-  public prop CenterX float64 { get { return centerX } }
+  public prop CenterX float64{ get { return centerX } }
   /// Gets the normalized vertical center from 0 through 1.
-  public prop CenterY float64 { get { return centerY } }
+  public prop CenterY float64{ get { return centerY } }
   /// Gets the normalized radius above 0 and at most 1.
-  public prop Radius float64 { get { return radius } }
-  internal prop ContentHashForCache int32 { get { return contentHash } }
+  public prop Radius float64{ get { return radius } }
+  internal prop ContentHashForCache int32{ get { return contentHash } }
 
   /// Creates a centered radial gradient from evenly spread colors.
   /// @param colors At least two colors, spread evenly from 0 through 1.
-  public init(colors ...Color) {
+  public init(colors ... Color) {
     centerX = 0.5
     centerY = 0.5
     radius = 0.5
@@ -203,41 +203,39 @@ internal func sameGradient(a Gradient?, b Gradient?) bool {
       || leftStop.Color.R != rightStop.Color.R
       || leftStop.Color.G != rightStop.Color.G
       || leftStop.Color.B != rightStop.Color.B
-      || leftStop.Color.A != rightStop.Color.A {
-      return false
-    }
+      || leftStop.Color.A != rightStop.Color.A{
+        return false
+      }
   }
   return true
 }
 
 internal func computeGradientContentHash(kind int32, a float64, b float64, c float64,
-  stops IReadOnlyList[GradientStop]) int32 {
-  var result = HashCode.Combine(kind, a, b, c)
-  result = HashCode.Combine(result, stops.Count)
-  for i in 0 ... stops.Count {
-    let stop = stops[i]
-    result = HashCode.Combine(result, stop.Offset, stop.Color.GetHashCode())
+  stops IReadOnlyList[GradientStop]) int32{
+    var result = HashCode.Combine(kind, a, b, c)
+    result = HashCode.Combine(result, stops.Count)
+    for i in 0 ... stops.Count {
+      let stop = stops[i]
+      result = HashCode.Combine(result, stop.Offset, stop.Color.GetHashCode())
+    }
+    return result
   }
-  return result
-}
 
 internal func computeGradientContentHash4(kind int32, a float64, b float64, c float64,
-  d float64, stops IReadOnlyList[GradientStop]) int32 {
-  var result = HashCode.Combine(kind, a, b, c, d)
-  result = HashCode.Combine(result, stops.Count)
-  for i in 0 ... stops.Count {
-    let stop = stops[i]
-    result = HashCode.Combine(result, stop.Offset, stop.Color.GetHashCode())
+  d float64, stops IReadOnlyList[GradientStop]) int32{
+    var result = HashCode.Combine(kind, a, b, c, d)
+    result = HashCode.Combine(result, stops.Count)
+    for i in 0 ... stops.Count {
+      let stop = stops[i]
+      result = HashCode.Combine(result, stop.Offset, stop.Color.GetHashCode())
+    }
+    return result
   }
-  return result
-}
 
-internal func gradientContentHash(value Gradient) int32 {
-  return switch value {
-    case linear is LinearGradient: linear.ContentHashForCache
-    case radial is RadialGradient: radial.ContentHashForCache
-    case compiled is CompiledVectorLinearGradient: compiled.ContentHashForCache
-    case compiled is CompiledVectorRadialGradient: compiled.ContentHashForCache
-    case _: 0
-  }
+internal func gradientContentHash(value Gradient) int32 -> switch value {
+  case linear is LinearGradient: linear.ContentHashForCache
+  case radial is RadialGradient: radial.ContentHashForCache
+  case compiled is CompiledVectorLinearGradient: compiled.ContentHashForCache
+  case compiled is CompiledVectorRadialGradient: compiled.ContentHashForCache
+  case _: 0
 }

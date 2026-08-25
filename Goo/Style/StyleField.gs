@@ -83,17 +83,11 @@ internal func styleMaskHas(mask StyleMask, field StyleField) bool {
   return (mask.High & (uint64(1) << (ordinal - 64))) != uint64(0)
 }
 
-internal func styleMaskUnion(left StyleMask, right StyleMask) StyleMask {
-  return StyleMask{ Low: left.Low | right.Low, High: left.High | right.High }
-}
+internal func styleMaskUnion(left StyleMask, right StyleMask) StyleMask -> StyleMask { Low: left.Low | right.Low, High: left.High | right.High }
 
-internal func styleMaskExcept(left StyleMask, right StyleMask) StyleMask {
-  return StyleMask{ Low: left.Low & ^right.Low, High: left.High & ^right.High }
-}
+internal func styleMaskExcept(left StyleMask, right StyleMask) StyleMask -> StyleMask { Low: left.Low & ^right.Low, High: left.High & ^right.High }
 
-internal func styleMaskEmpty(mask StyleMask) bool {
-  return mask.Low == uint64(0) && mask.High == uint64(0)
-}
+internal func styleMaskEmpty(mask StyleMask) bool -> mask.Low == uint64(0) && mask.High == uint64(0)
 
 internal data struct StyleEntry {
   internal var Field StyleField
@@ -121,14 +115,12 @@ internal class StyleEntryBlock {
     }
   }
 
-  internal func At(index int32) StyleEntry {
-    return switch index {
-      case 0: first
-      case 1: second
-      case 2: third
-      case 3: fourth
-      default: throw ArgumentOutOfRangeException("index")
-    }
+  internal func At(index int32) StyleEntry -> switch index {
+    case 0: first
+    case 1: second
+    case 2: third
+    case 3: fourth
+    default: throw ArgumentOutOfRangeException("index")
   }
 }
 
@@ -140,7 +132,7 @@ internal class StyleEntries {
   private var spillLast StyleEntryBlock?
   private var count int32
 
-  internal prop Count int32 { get { return count } }
+  internal prop Count int32{ get { return count } }
 
   internal func Add(value StyleEntry) {
     switch count {
@@ -191,38 +183,26 @@ internal class StyleEntries {
   }
 }
 
-internal func entryText(entry StyleEntry) string? {
-  return entry.Payload as string?
+internal func entryText(entry StyleEntry) string ? -> entry.Payload as string?
+
+internal func entryGradient(entry StyleEntry) Gradient ? -> switch entry.Payload {
+  case value is Gradient: value
+  case _: nil
 }
 
-internal func entryGradient(entry StyleEntry) Gradient? {
-  return switch entry.Payload {
-    case value is Gradient: value
-    case _: nil
-  }
+internal func entryShadows(entry StyleEntry) BoxShadowStack ? -> switch entry.Payload {
+  case value is BoxShadowStack: value
+  case _: nil
 }
 
-internal func entryShadows(entry StyleEntry) BoxShadowStack? {
-  return switch entry.Payload {
-    case value is BoxShadowStack: value
-    case _: nil
-  }
+internal func entryPath(entry StyleEntry) VectorPath -> switch entry.Payload {
+  case value is VectorPathData: VectorPath { payload: value }
+  case _: VectorPath.Empty
 }
 
-internal func entryPath(entry StyleEntry) VectorPath {
-  return switch entry.Payload {
-    case value is VectorPathData: VectorPath{ payload: value }
-    case _: VectorPath.Empty
-  }
-}
+internal func entryImageSource(entry StyleEntry) ImageSourceProvider ? -> entry.Payload as ImageSourceProvider?
 
-internal func entryImageSource(entry StyleEntry) ImageSourceProvider? {
-  return entry.Payload as ImageSourceProvider?
-}
-
-internal func entryShaderEffect(entry StyleEntry) ShaderEffect? {
-  return entry.Payload as ShaderEffect?
-}
+internal func entryShaderEffect(entry StyleEntry) ShaderEffect ? -> entry.Payload as ShaderEffect?
 
 internal func samePath(left VectorPath, right VectorPath) bool {
   if left.payload == right.payload { return true }

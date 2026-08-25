@@ -44,8 +44,8 @@ class S15StockDataSource {
       let row = index / columns
       let column = index % columns
       let symbol = Convert.ToChar(65 + row % 26).ToString()
-        + Convert.ToChar(65 + column / 3 % 26).ToString()
-        + Convert.ToChar(65 + column % 26).ToString()
+      +Convert.ToChar(65 + column / 3 % 26).ToString()
+      +Convert.ToChar(65 + column % 26).ToString()
       let price = Math.Round(10.0 + random.NextDouble() * 990.0, 2)
       items[index] = S15StockItem{
         Symbol: symbol,
@@ -174,58 +174,58 @@ class S15StocksGridRootCell : Cell {
   prop CellBuildCount int64 { get { return cellBuildCount } }
 
   init(initialItems []S15StockItem, columns int32, rows int32,
-      treeMode string, viewportWidth float64, viewportHeight float64,
-      overscan int32, explicitClip bool) {
-    items = initialItems
-    this.columns = columns
-    this.rows = rows
-    this.treeMode = treeMode
-    virtualized = treeMode == "virtualized"
-    this.viewportWidth = viewportWidth
-    this.viewportHeight = viewportHeight
-    this.overscan = overscan
-    this.explicitClip = explicitClip
-    logicalToSlot = [initialItems.Length]int32
-    nextLogicalToSlot = [initialItems.Length]int32
-    var logicalIndex int32 = 0
-    while logicalIndex < initialItems.Length {
-      logicalToSlot[logicalIndex] = -1
-      nextLogicalToSlot[logicalIndex] = -1
-      logicalIndex = logicalIndex + 1
-    }
-    slotToLogical = [0]int32
-    previousSlotToLogical = [0]int32
-    slotKeys = [0]string
-    slotCells = [0]S15StockGridCell?
-    if virtualized {
-      EnsureVirtualPoolCapacity()
-      RecomputeVirtualRange()
-    } else {
-      poolRows = rows
-      poolColumns = columns
-      poolCapacity = initialItems.Length
-      slotToLogical = [poolCapacity]int32
-      previousSlotToLogical = [poolCapacity]int32
-      var previousSlot int32 = 0
-      while previousSlot < poolCapacity {
-        previousSlotToLogical[previousSlot] = -1
-        previousSlot = previousSlot + 1
+    treeMode string, viewportWidth float64, viewportHeight float64,
+    overscan int32, explicitClip bool) {
+      items = initialItems
+      this.columns = columns
+      this.rows = rows
+      this.treeMode = treeMode
+      virtualized = treeMode == "virtualized"
+      this.viewportWidth = viewportWidth
+      this.viewportHeight = viewportHeight
+      this.overscan = overscan
+      this.explicitClip = explicitClip
+      logicalToSlot = [initialItems.Length]int32
+      nextLogicalToSlot = [initialItems.Length]int32
+      var logicalIndex int32 = 0
+      while logicalIndex < initialItems.Length {
+        logicalToSlot[logicalIndex] = -1
+        nextLogicalToSlot[logicalIndex] = -1
+        logicalIndex = logicalIndex + 1
       }
-      slotCells = [poolCapacity]S15StockGridCell?
-      var slot int32 = 0
-      while slot < poolCapacity {
-        slotToLogical[slot] = slot
-        logicalToSlot[slot] = slot
-        slot = slot + 1
+      slotToLogical = [0]int32
+      previousSlotToLogical = [0]int32
+      slotKeys = [0]string
+      slotCells = [0]S15StockGridCell?
+      if virtualized {
+        EnsureVirtualPoolCapacity()
+        RecomputeVirtualRange()
+      } else {
+        poolRows = rows
+        poolColumns = columns
+        poolCapacity = initialItems.Length
+        slotToLogical = [poolCapacity]int32
+        previousSlotToLogical = [poolCapacity]int32
+        var previousSlot int32 = 0
+        while previousSlot < poolCapacity {
+          previousSlotToLogical[previousSlot] = -1
+          previousSlot = previousSlot + 1
+        }
+        slotCells = [poolCapacity]S15StockGridCell?
+        var slot int32 = 0
+        while slot < poolCapacity {
+          slotToLogical[slot] = slot
+          logicalToSlot[slot] = slot
+          slot = slot + 1
+        }
+        let visible = VisibleRange()
+        activeFirstRow = visible[0]
+        activeLastRow = visible[1] - 1
+        activeFirstColumn = visible[2]
+        activeLastColumn = visible[3] - 1
+        visibleItemCount = CountRange(visible[0], visible[1], visible[2], visible[3])
       }
-      let visible = VisibleRange()
-      activeFirstRow = visible[0]
-      activeLastRow = visible[1] - 1
-      activeFirstColumn = visible[2]
-      activeLastColumn = visible[3] - 1
-      visibleItemCount = CountRange(visible[0], visible[1], visible[2], visible[3])
     }
-  }
 
   func RecordCellBuild() {
     cellBuildCount = cellBuildCount + 1L
@@ -260,10 +260,10 @@ class S15StocksGridRootCell : Cell {
 
   func TryApplySlot(slot int32, index int32, item S15StockItem) bool {
     if slot < 0 || slot >= slotToLogical.Length || slotToLogical[slot] != index
-        || index < 0 || index >= logicalToSlot.Length || logicalToSlot[index] != slot {
-      staleSlotRejectionCount = staleSlotRejectionCount + 1L
-      return false
-    }
+      || index < 0 || index >= logicalToSlot.Length || logicalToSlot[index] != slot{
+        staleSlotRejectionCount = staleSlotRejectionCount + 1L
+        return false
+      }
     guard let cell = slotCells[slot] else {
       staleSlotRejectionCount = staleSlotRejectionCount + 1L
       return false
@@ -314,16 +314,16 @@ class S15StocksGridRootCell : Cell {
       let logical = slotToLogical[slot]
       if logical >= 0 {
         if logical >= items.Length || active[logical]
-            || logicalToSlot[logical] != slot {
-          throw InvalidOperationException("S15 StocksGrid virtual mapping is not unique")
-        }
+          || logicalToSlot[logical] != slot{
+            throw InvalidOperationException("S15 StocksGrid virtual mapping is not unique")
+          }
         active[logical] = true
         let row = logical / columns
         let column = logical % columns
         if row < activeFirstRow || row > activeLastRow
-            || column < activeFirstColumn || column > activeLastColumn {
-          throw InvalidOperationException("S15 StocksGrid virtual mapping exceeds active range")
-        }
+          || column < activeFirstColumn || column > activeLastColumn{
+            throw InvalidOperationException("S15 StocksGrid virtual mapping exceeds active range")
+          }
       }
       slot = slot + 1
     }
@@ -415,9 +415,9 @@ class S15StocksGridRootCell : Cell {
 
   private func EnsureVirtualPoolCapacity() {
     let requiredColumns = int32(Math.Ceiling(viewportWidth / CellWidth))
-      + 1 + overscan * 2
+    +1 + overscan * 2
     let requiredRows = int32(Math.Ceiling(viewportHeight / CellHeight))
-      + 1 + overscan * 2
+    +1 + overscan * 2
     let requestedColumns = Math.Min(columns, requiredColumns)
     let requestedRows = Math.Min(rows, requiredRows)
     let nextColumns = Math.Max(poolColumns, requestedColumns)
@@ -509,9 +509,9 @@ class S15StocksGridRootCell : Cell {
     slot = 0
     while slot < slotToLogical.Length {
       if previousSlotToLogical[slot] >= 0
-          && previousSlotToLogical[slot] != slotToLogical[slot] {
-        slotReassignmentCount = slotReassignmentCount + 1L
-      }
+        && previousSlotToLogical[slot] != slotToLogical[slot]{
+          slotReassignmentCount = slotReassignmentCount + 1L
+        }
       slot = slot + 1
     }
     let previous = logicalToSlot
@@ -520,21 +520,21 @@ class S15StocksGridRootCell : Cell {
   }
 
   private func CountRange(firstRow int32, lastRow int32,
-      firstColumn int32, lastColumn int32) int32 {
-    var count int32 = 0
-    var row int32 = firstRow
-    while row < lastRow {
-      var column int32 = firstColumn
-      while column < lastColumn {
-        if row * columns + column < items.Length {
-          count = count + 1
+    firstColumn int32, lastColumn int32) int32{
+      var count int32 = 0
+      var row int32 = firstRow
+      while row < lastRow {
+        var column int32 = firstColumn
+        while column < lastColumn {
+          if row * columns + column < items.Length {
+            count = count + 1
+          }
+          column = column + 1
         }
-        column = column + 1
+        row = row + 1
       }
-      row = row + 1
+      return count
     }
-    return count
-  }
 
   private func ClampIndex(value int32, limit int32) int32 {
     if value < 0 { return 0 }
@@ -596,11 +596,31 @@ open class S15StockGridCell : Cell[S15StockGridCellInput] {
   }
 }
 func S15StocksGridText(item S15StockItem, column int32, row int32,
-    explicitClip bool) Blob {
-  if explicitClip {
+  explicitClip bool) Blob{
+    if explicitClip {
+      return Text{
+        Content: item.Symbol + " "
+        +item.CurrentPrice.ToString("F2", CultureInfo.InvariantCulture),
+        Position: PositionType.Absolute,
+        Left: float64(column) * S15StocksGridRootCell.CellWidth,
+        Top: float64(row) * S15StocksGridRootCell.CellHeight,
+        Width: S15StocksGridRootCell.CellWidth,
+        Height: S15StocksGridRootCell.CellHeight,
+        PaddingLeft: 2.0,
+        PaddingTop: 1.0,
+        PaddingRight: 2.0,
+        PaddingBottom: 1.0,
+        FontSize: 8.0,
+        TextWrap: TextWrap.NoWrap,
+        TextTrimming: TextTrimming.Ellipsis,
+        OverflowX: Overflow.Hidden,
+        OverflowY: Overflow.Hidden,
+        Color: item.IsUp ? Color.Rgb(0, 128, 0) : Color.Rgb(255, 0, 0),
+      }
+    }
     return Text{
       Content: item.Symbol + " "
-        + item.CurrentPrice.ToString("F2", CultureInfo.InvariantCulture),
+      +item.CurrentPrice.ToString("F2", CultureInfo.InvariantCulture),
       Position: PositionType.Absolute,
       Left: float64(column) * S15StocksGridRootCell.CellWidth,
       Top: float64(row) * S15StocksGridRootCell.CellHeight,
@@ -613,29 +633,9 @@ func S15StocksGridText(item S15StockItem, column int32, row int32,
       FontSize: 8.0,
       TextWrap: TextWrap.NoWrap,
       TextTrimming: TextTrimming.Ellipsis,
-      OverflowX: Overflow.Hidden,
-      OverflowY: Overflow.Hidden,
       Color: item.IsUp ? Color.Rgb(0, 128, 0) : Color.Rgb(255, 0, 0),
     }
   }
-  return Text{
-    Content: item.Symbol + " "
-      + item.CurrentPrice.ToString("F2", CultureInfo.InvariantCulture),
-    Position: PositionType.Absolute,
-    Left: float64(column) * S15StocksGridRootCell.CellWidth,
-    Top: float64(row) * S15StocksGridRootCell.CellHeight,
-    Width: S15StocksGridRootCell.CellWidth,
-    Height: S15StocksGridRootCell.CellHeight,
-    PaddingLeft: 2.0,
-    PaddingTop: 1.0,
-    PaddingRight: 2.0,
-    PaddingBottom: 1.0,
-    FontSize: 8.0,
-    TextWrap: TextWrap.NoWrap,
-    TextTrimming: TextTrimming.Ellipsis,
-    Color: item.IsUp ? Color.Rgb(0, 128, 0) : Color.Rgb(255, 0, 0),
-  }
-}
 
 func S15StocksGridArm() string {
   let value = Environment.GetEnvironmentVariable("GOO_S15_STOCKS_ARM")
@@ -698,9 +698,9 @@ func S15StocksGridCellCount() int32 {
   let value = S14EnvCount("GOO_S15_STOCKS_CELLS", S15StockDataSource.DefaultTotalItems,
     S15StockDataSource.DefaultTotalItems)
   if value == 1 || value == 100 || value == 500 || value == 1000
-    || value == S15StockDataSource.DefaultTotalItems {
-    return value
-  }
+    || value == S15StockDataSource.DefaultTotalItems{
+      return value
+    }
   throw InvalidOperationException("GOO_S15_STOCKS_CELLS must be 1, 100, 500, 1000, or 4900")
 }
 
@@ -813,52 +813,52 @@ func RunS15StocksGridBenchmark() {
   let allocationTotal = S15StocksGridSum(frameAllocations)
   let allocationPerFrame = samples > 0 ? allocationTotal / int64(samples) : 0L
   Console.WriteLine("s15-stocks-grid: arm=" + arm
-    + " tree=" + tree
-    + " cull=" + cull
-    + " clip=" + clip
-    + " overscan=" + overscan.ToString()
-    + " logical=" + source.TotalItems.ToString()
-    + " visible=" + root.VisibleItemCount.ToString()
-    + " mounted=" + root.MountedCellCount.ToString()
-    + " peak_mounted=" + root.PeakMountedCellCount.ToString()
-    + " reassignment=" + root.SlotReassignmentCount.ToString()
-    + " visible_mutation=" + root.VisibleMutationCount.ToString()
-    + " offscreen_suppression=" + root.OffscreenMutationSuppressionCount.ToString()
-    + " stale_rejection=" + root.StaleSlotRejectionCount.ToString()
-    + " cell_build=" + root.CellBuildCount.ToString()
-    + " active_range=" + root.ActiveFirstRow.ToString() + ","
-      + root.ActiveLastRow.ToString() + ","
-      + root.ActiveFirstColumn.ToString() + ","
-      + root.ActiveLastColumn.ToString()
-    + " pool=" + root.PoolRows.ToString() + "x" + root.PoolColumns.ToString()
-    + " pool_capacity=" + root.PoolCapacity.ToString()
-    + " pool_growth=" + root.PoolCapacityGrowthCount.ToString()
-    + " requested_changes=" + requestedChanges.ToString()
-    + " samples=" + samples.ToString()
-    + " p50_ns=" + S14Percentile(frameNs, 0.50).ToString()
-    + " p95_ns=" + S14Percentile(frameNs, 0.95).ToString()
-    + " max_ns=" + S14Max(frameNs).ToString()
-    + " alloc_B_frame=" + allocationPerFrame.ToString()
-    + " partial_frames=" + partialFrames.ToString()
-    + " full_frames=" + fullFrames.ToString()
-    + " damage_area=" + damageArea.ToString()
-    + " dirty_chunks=" + finalScene.DirtyChunkCount.ToString()
-    + " reused_chunks=" + finalScene.ReusedChunkCount.ToString()
-    + " skipped_nodes=" + finalScene.SkippedNodeCount.ToString()
-    + " exact_candidates=" + finalScene.ExactTextClipCandidateCount.ToString()
-    + " exact_culls=" + finalScene.ExactTextClipCullCount.ToString()
-    + " cached_paint_culls=" + finalScene.CachedTextPaintCullCount.ToString()
-    + " text_layout_requests=" + finalScene.TextLayoutRequestCount.ToString()
-    + " retained_hits=" + finalScene.RetainedLeafHitCount.ToString()
-    + " retained_rebuilds=" + finalScene.RetainedLeafRebuildCount.ToString()
-    + " retained_fallbacks=" + finalScene.RetainedLeafFallbackCount.ToString()
-    + " retained_text_total=" + finalScene.RetainedTextTotalCount.ToString()
-    + " retained_text_hits=" + finalScene.RetainedTextHitCount.ToString()
-    + " retained_text_rebuilds=" + finalScene.RetainedTextRebuildCount.ToString()
-    + " retained_text_fallbacks=" + finalScene.RetainedTextFallbackCount.ToString()
-    + " retained_text_invalidations=" + finalScene.RetainedTextInvalidationCount.ToString()
-    + " primitive_records=" + finalPrimitive.RecordCount.ToString()
-    + " primitive_written=" + finalPrimitive.WrittenBytes.ToString()
-    + " primitive_skipped=" + finalPrimitive.SkippedBytes.ToString()
-    + " close=1")
+    +" tree=" + tree
+    +" cull=" + cull
+    +" clip=" + clip
+    +" overscan=" + overscan.ToString()
+    +" logical=" + source.TotalItems.ToString()
+    +" visible=" + root.VisibleItemCount.ToString()
+    +" mounted=" + root.MountedCellCount.ToString()
+    +" peak_mounted=" + root.PeakMountedCellCount.ToString()
+    +" reassignment=" + root.SlotReassignmentCount.ToString()
+    +" visible_mutation=" + root.VisibleMutationCount.ToString()
+    +" offscreen_suppression=" + root.OffscreenMutationSuppressionCount.ToString()
+    +" stale_rejection=" + root.StaleSlotRejectionCount.ToString()
+    +" cell_build=" + root.CellBuildCount.ToString()
+    +" active_range=" + root.ActiveFirstRow.ToString() + ","
+    +root.ActiveLastRow.ToString() + ","
+    +root.ActiveFirstColumn.ToString() + ","
+    +root.ActiveLastColumn.ToString()
+    +" pool=" + root.PoolRows.ToString() + "x" + root.PoolColumns.ToString()
+    +" pool_capacity=" + root.PoolCapacity.ToString()
+    +" pool_growth=" + root.PoolCapacityGrowthCount.ToString()
+    +" requested_changes=" + requestedChanges.ToString()
+    +" samples=" + samples.ToString()
+    +" p50_ns=" + S14Percentile(frameNs, 0.50).ToString()
+    +" p95_ns=" + S14Percentile(frameNs, 0.95).ToString()
+    +" max_ns=" + S14Max(frameNs).ToString()
+    +" alloc_B_frame=" + allocationPerFrame.ToString()
+    +" partial_frames=" + partialFrames.ToString()
+    +" full_frames=" + fullFrames.ToString()
+    +" damage_area=" + damageArea.ToString()
+    +" dirty_chunks=" + finalScene.DirtyChunkCount.ToString()
+    +" reused_chunks=" + finalScene.ReusedChunkCount.ToString()
+    +" skipped_nodes=" + finalScene.SkippedNodeCount.ToString()
+    +" exact_candidates=" + finalScene.ExactTextClipCandidateCount.ToString()
+    +" exact_culls=" + finalScene.ExactTextClipCullCount.ToString()
+    +" cached_paint_culls=" + finalScene.CachedTextPaintCullCount.ToString()
+    +" text_layout_requests=" + finalScene.TextLayoutRequestCount.ToString()
+    +" retained_hits=" + finalScene.RetainedLeafHitCount.ToString()
+    +" retained_rebuilds=" + finalScene.RetainedLeafRebuildCount.ToString()
+    +" retained_fallbacks=" + finalScene.RetainedLeafFallbackCount.ToString()
+    +" retained_text_total=" + finalScene.RetainedTextTotalCount.ToString()
+    +" retained_text_hits=" + finalScene.RetainedTextHitCount.ToString()
+    +" retained_text_rebuilds=" + finalScene.RetainedTextRebuildCount.ToString()
+    +" retained_text_fallbacks=" + finalScene.RetainedTextFallbackCount.ToString()
+    +" retained_text_invalidations=" + finalScene.RetainedTextInvalidationCount.ToString()
+    +" primitive_records=" + finalPrimitive.RecordCount.ToString()
+    +" primitive_written=" + finalPrimitive.WrittenBytes.ToString()
+    +" primitive_skipped=" + finalPrimitive.SkippedBytes.ToString()
+    +" close=1")
 }

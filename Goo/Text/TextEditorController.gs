@@ -53,9 +53,9 @@ public class TextCommandEvent {
   }
 
   /// Gets the semantic command being dispatched.
-  public prop Command TextCommand { get { return command } }
+  public prop Command TextCommand{ get { return command } }
   /// Gets or sets whether Goo skips its default command behavior.
-  public prop Cancel bool {
+  public prop Cancel bool{
     get { return cancel }
     set(v) { cancel = v }
   }
@@ -112,9 +112,9 @@ public class TextEditorController : IDisposable {
   }
 
   /// Gets the document edited by this controller.
-  public prop Document TextDocument { get { return document } }
+  public prop Document TextDocument{ get { return document } }
   /// Gets or sets the current selection.
-  public prop Selection TextSelection {
+  public prop Selection TextSelection{
     get { return selection }
     set(v) { setSelection(v, true) }
   }
@@ -123,15 +123,15 @@ public class TextEditorController : IDisposable {
     get { return hasDesiredHorizontalPosition ? desiredHorizontalPosition : nil }
   }
   /// Gets the horizontal scroll target in logical pixels.
-  public prop ScrollTargetX float64 { get { return scrollTargetX } }
+  public prop ScrollTargetX float64{ get { return scrollTargetX } }
   /// Gets the vertical scroll target in logical pixels.
-  public prop ScrollTargetY float64 { get { return scrollTargetY } }
+  public prop ScrollTargetY float64{ get { return scrollTargetY } }
   /// Gets whether this controller currently owns editor focus.
-  public prop IsFocused bool { get { return focused } }
+  public prop IsFocused bool{ get { return focused } }
   /// Gets the transient IME composition, or nil when none is active.
   public prop Composition TextComposition? { get { return composition } }
   /// Gets or sets whether typed text overwrites following grapheme clusters.
-  public prop Overwrite bool {
+  public prop Overwrite bool{
     get { return overwrite }
     set(v) {
       if overwrite != v {
@@ -206,119 +206,87 @@ public class TextEditorController : IDisposable {
   /// Inserts text at the active selection.
   /// @param text The text to insert.
   /// @returns True when default handling ran.
-  public func Insert(text string) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.Insert, Text: text })
-  }
+  public func Insert(text string) bool -> Execute(TextCommand { Kind: TextCommandKind.Insert, Text: text })
 
   /// Deletes the preceding grapheme cluster or selection.
   /// @returns True when default handling ran.
-  public func DeleteBackward() bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.DeleteBackward })
-  }
+  public func DeleteBackward() bool -> Execute(TextCommand { Kind: TextCommandKind.DeleteBackward })
 
   /// Deletes the following grapheme cluster or selection.
   /// @returns True when default handling ran.
-  public func DeleteForward() bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.DeleteForward })
-  }
+  public func DeleteForward() bool -> Execute(TextCommand { Kind: TextCommandKind.DeleteForward })
 
   /// Moves left in visual order while mounted, otherwise logical document order.
   /// @param extendSelection True to retain the anchor.
   /// @returns True when default handling ran.
-  public func MoveLeft(extendSelection bool) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.MoveLeft, ExtendSelection: extendSelection })
-  }
+  public func MoveLeft(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveLeft, ExtendSelection: extendSelection })
 
   /// Moves right in visual order while mounted, otherwise logical document order.
   /// @param extendSelection True to retain the anchor.
   /// @returns True when default handling ran.
-  public func MoveRight(extendSelection bool) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.MoveRight, ExtendSelection: extendSelection })
-  }
+  public func MoveRight(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveRight, ExtendSelection: extendSelection })
 
   /// Moves up by one logical line.
   /// @param extendSelection True to retain the anchor.
   /// @returns True when default handling ran.
-  public func MoveUp(extendSelection bool) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.MoveUp, ExtendSelection: extendSelection })
-  }
+  public func MoveUp(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveUp, ExtendSelection: extendSelection })
 
   /// Moves down by one logical line.
   /// @param extendSelection True to retain the anchor.
   /// @returns True when default handling ran.
-  public func MoveDown(extendSelection bool) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.MoveDown, ExtendSelection: extendSelection })
-  }
+  public func MoveDown(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveDown, ExtendSelection: extendSelection })
 
   /// Moves to the preceding word boundary.
   /// @param extendSelection True to retain the anchor.
   /// @returns True when default handling ran.
-  public func MoveWordLeft(extendSelection bool) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.MoveWordLeft, ExtendSelection: extendSelection })
-  }
+  public func MoveWordLeft(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveWordLeft, ExtendSelection: extendSelection })
 
   /// Moves to the following word boundary.
   /// @param extendSelection True to retain the anchor.
   /// @returns True when default handling ran.
-  public func MoveWordRight(extendSelection bool) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.MoveWordRight, ExtendSelection: extendSelection })
-  }
+  public func MoveWordRight(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveWordRight, ExtendSelection: extendSelection })
 
   /// Moves to the active line start.
   /// @param extendSelection True to retain the anchor.
   /// @returns True when default handling ran.
-  public func MoveLineStart(extendSelection bool) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.MoveLineStart, ExtendSelection: extendSelection })
-  }
+  public func MoveLineStart(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveLineStart, ExtendSelection: extendSelection })
 
   /// Moves to the active line end.
   /// @param extendSelection True to retain the anchor.
   /// @returns True when default handling ran.
-  public func MoveLineEnd(extendSelection bool) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.MoveLineEnd, ExtendSelection: extendSelection })
-  }
+  public func MoveLineEnd(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveLineEnd, ExtendSelection: extendSelection })
 
   /// Moves to the document start and optionally extends the selection.
   /// @returns True when default handling ran.
-  public func MoveDocumentStart(extendSelection bool) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.MoveDocumentStart, ExtendSelection: extendSelection })
-  }
+  public func MoveDocumentStart(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveDocumentStart, ExtendSelection: extendSelection })
 
   /// Moves to the document end and optionally extends the selection.
   /// @returns True when default handling ran.
-  public func MoveDocumentEnd(extendSelection bool) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.MoveDocumentEnd, ExtendSelection: extendSelection })
-  }
+  public func MoveDocumentEnd(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveDocumentEnd, ExtendSelection: extendSelection })
 
   /// Moves up by one page and optionally extends the selection.
   /// @returns True when default handling ran.
-  public func PageUp(extendSelection bool) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.PageUp, ExtendSelection: extendSelection })
-  }
+  public func PageUp(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.PageUp, ExtendSelection: extendSelection })
 
   /// Moves down by one page and optionally extends the selection.
   /// @returns True when default handling ran.
-  public func PageDown(extendSelection bool) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.PageDown, ExtendSelection: extendSelection })
-  }
+  public func PageDown(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.PageDown, ExtendSelection: extendSelection })
 
   /// Selects the whole document.
   /// @returns True when default handling ran.
-  public func SelectAll() bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.SelectAll })
-  }
+  public func SelectAll() bool -> Execute(TextCommand { Kind: TextCommandKind.SelectAll })
 
   /// Gets the selected text after command interception.
   /// @returns The selected text, or an empty string when canceled.
   public func Copy() string {
-    if !beginCommand(TextCommand{ Kind: TextCommandKind.Copy }) { return "" }
+    if !beginCommand(TextCommand { Kind: TextCommandKind.Copy }) { return "" }
     return selectedText()
   }
 
   /// Gets and deletes the selected text after command interception.
   /// @returns The deleted text, or an empty string when canceled.
   public func Cut() string {
-    if !beginCommand(TextCommand{ Kind: TextCommandKind.Cut }) { return "" }
+    if !beginCommand(TextCommand { Kind: TextCommandKind.Cut }) { return "" }
     let copied = selectedText()
     cutDefault()
     return copied
@@ -327,45 +295,31 @@ public class TextEditorController : IDisposable {
   /// Inserts pasted text at the active selection.
   /// @param text The text to paste.
   /// @returns True when default handling ran.
-  public func Paste(text string) bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.Paste, Text: text })
-  }
+  public func Paste(text string) bool -> Execute(TextCommand { Kind: TextCommandKind.Paste, Text: text })
 
   /// Reverts the previous grouped edit.
   /// @returns True when an edit was reverted.
-  public func Undo() bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.Undo })
-  }
+  public func Undo() bool -> Execute(TextCommand { Kind: TextCommandKind.Undo })
 
   /// Reapplies the previous reverted edit.
   /// @returns True when an edit was reapplied.
-  public func Redo() bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.Redo })
-  }
+  public func Redo() bool -> Execute(TextCommand { Kind: TextCommandKind.Redo })
 
   /// Inserts a tab at every selected logical line.
   /// @returns True when default handling ran.
-  public func Indent() bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.Indent })
-  }
+  public func Indent() bool -> Execute(TextCommand { Kind: TextCommandKind.Indent })
 
   /// Removes a leading tab or up to four spaces from every selected logical line.
   /// @returns True when default handling ran.
-  public func Outdent() bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.Outdent })
-  }
+  public func Outdent() bool -> Execute(TextCommand { Kind: TextCommandKind.Outdent })
 
   /// Dispatches the submit command.
   /// @returns True when default handling ran.
-  public func Submit() bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.Submit })
-  }
+  public func Submit() bool -> Execute(TextCommand { Kind: TextCommandKind.Submit })
 
   /// Starts IME composition over the active selection.
   /// @returns True when default handling ran.
-  public func BeginComposition() bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.BeginComposition })
-  }
+  public func BeginComposition() bool -> Execute(TextCommand { Kind: TextCommandKind.BeginComposition })
 
   /// Updates transient IME composition text and its selected segment.
   /// @param text The transient preedit text.
@@ -373,14 +327,14 @@ public class TextEditorController : IDisposable {
   /// @param selectionLength The UTF-16 selected-segment length.
   /// @returns True when default handling ran.
   public func UpdateComposition(text string, selectionStart int32, selectionLength int32) bool {
-    if !beginCommand(TextCommand{ Kind: TextCommandKind.UpdateComposition, Text: text }) { return false }
+    if !beginCommand(TextCommand { Kind: TextCommandKind.UpdateComposition, Text: text }) { return false }
     return updateCompositionDefault(text, selectionStart, selectionLength)
   }
 
   /// Commits the current transient composition text.
   /// @returns True when default handling ran.
   public func CommitComposition() bool {
-    if !beginCommand(TextCommand{ Kind: TextCommandKind.CommitComposition }) { return false }
+    if !beginCommand(TextCommand { Kind: TextCommandKind.CommitComposition }) { return false }
     return commitCompositionDefault(nil)
   }
 
@@ -388,15 +342,13 @@ public class TextEditorController : IDisposable {
   /// @param text The committed text.
   /// @returns True when default handling ran.
   public func CommitComposition(text string) bool {
-    if !beginCommand(TextCommand{ Kind: TextCommandKind.CommitComposition, Text: text }) { return false }
+    if !beginCommand(TextCommand { Kind: TextCommandKind.CommitComposition, Text: text }) { return false }
     return commitCompositionDefault(text)
   }
 
   /// Cancels transient IME composition without changing the document.
   /// @returns True when default handling ran.
-  public func CancelComposition() bool {
-    return Execute(TextCommand{ Kind: TextCommandKind.CancelComposition })
-  }
+  public func CancelComposition() bool -> Execute(TextCommand { Kind: TextCommandKind.CancelComposition })
 
   /// Marks this controller focused.
   public func Focus() {
@@ -463,17 +415,15 @@ public class TextEditorController : IDisposable {
     }
   }
 
-  internal func State() TextEditorControllerState {
-    return TextEditorControllerState{
-      Selection: selection,
-      Composition: composition,
-      DesiredHorizontalPosition: desiredHorizontalPosition,
-      HasDesiredHorizontalPosition: hasDesiredHorizontalPosition,
-      ScrollTargetX: scrollTargetX,
-      ScrollTargetY: scrollTargetY,
-      Focused: focused,
-      Overwrite: overwrite,
-    }
+  internal func State() TextEditorControllerState -> TextEditorControllerState {
+    Selection: selection,
+    Composition: composition,
+    DesiredHorizontalPosition: desiredHorizontalPosition,
+    HasDesiredHorizontalPosition: hasDesiredHorizontalPosition,
+    ScrollTargetX: scrollTargetX,
+    ScrollTargetY: scrollTargetY,
+    Focused: focused,
+    Overwrite: overwrite,
   }
 
   private func beginCommand(command TextCommand) bool {
@@ -486,12 +436,12 @@ public class TextEditorController : IDisposable {
   private func validateCommand(command TextCommand) {
     if int32(command.Kind) < int32(TextCommandKind.Insert)
       || int32(command.Kind) > int32(TextCommandKind.CancelComposition) {
-      throw ArgumentOutOfRangeException("command")
-    }
+        throw ArgumentOutOfRangeException("command")
+      }
     if (command.Kind == TextCommandKind.Insert || command.Kind == TextCommandKind.Paste
-      || command.Kind == TextCommandKind.UpdateComposition) && command.Text == nil {
-      throw ArgumentNullException("command")
-    }
+        || command.Kind == TextCommandKind.UpdateComposition) && command.Text == nil {
+          throw ArgumentNullException("command")
+        }
   }
 
   private func insertDefault(text string, kind TextCommandKind) bool {
@@ -513,7 +463,7 @@ public class TextEditorController : IDisposable {
       return true
     }
     let start = if word { previousWord(selection.Active.Offset) }
-      else { previousDocumentElement(selection.Active.Offset) }
+    else { previousDocumentElement(selection.Active.Offset) }
     if start == selection.Active.Offset { return true }
     applyTextChange(word ? TextCommandKind.DeleteWordBackward : TextCommandKind.DeleteBackward,
       TextChange{ Range: TextRange{ Start: start, Length: selection.Active.Offset - start }, InsertedText: "" })
@@ -530,7 +480,7 @@ public class TextEditorController : IDisposable {
       return true
     }
     let end = if word { nextWord(selection.Active.Offset) }
-      else { nextDocumentElement(selection.Active.Offset) }
+    else { nextDocumentElement(selection.Active.Offset) }
     if end == selection.Active.Offset { return true }
     applyTextChange(word ? TextCommandKind.DeleteWordForward : TextCommandKind.DeleteForward,
       TextChange{ Range: TextRange{ Start: selection.Active.Offset, Length: end - selection.Active.Offset }, InsertedText: "" })
@@ -546,15 +496,13 @@ public class TextEditorController : IDisposable {
       }
     }
     let target = direction < 0
-      ? previousDocumentElement(selection.Active.Offset)
-      : nextDocumentElement(selection.Active.Offset)
+    ? previousDocumentElement(selection.Active.Offset) : nextDocumentElement(selection.Active.Offset)
     return placeSelection(target, direction < 0 ? TextAffinity.Upstream : TextAffinity.Downstream, extend, false)
   }
 
   private func moveWord(direction int32, extend bool) bool {
     if let collapsed = collapseToEdgeIfNotExtending(direction, extend) { return collapsed }
-    let target = direction < 0 ? previousWord(selection.Active.Offset)
-      : nextWord(selection.Active.Offset)
+    let target = direction < 0 ? previousWord(selection.Active.Offset) : nextWord(selection.Active.Offset)
     return placeSelection(target, direction < 0 ? TextAffinity.Upstream : TextAffinity.Downstream, extend, false)
   }
 
@@ -577,8 +525,8 @@ public class TextEditorController : IDisposable {
       }
       if let target = TextEditorLayouts.MoveVertical(mounted, selection.Active,
         float32(desiredHorizontalPosition), lines) {
-        return placeSelection(target.Offset, target.Affinity, extend, true)
-      }
+          return placeSelection(target.Offset, target.Affinity, extend, true)
+        }
     }
     let current = document.GetLineIndex(selection.Active.Offset)
     let target = Math.Clamp(current + lines, 0, document.LineCount - 1)
@@ -665,7 +613,7 @@ public class TextEditorController : IDisposable {
     }
     if changes.Count == 0 { return true }
     let committed = outdent && mountedEditor != nil
-      ? expandAtomicDeletions(changes) : changes.ToArray()
+    ? expandAtomicDeletions(changes) : changes.ToArray()
     let group = beginEditGroup(outdent ? TextCommandKind.Outdent : TextCommandKind.Indent)
     applyingDocumentEdit = true
     try {
@@ -715,8 +663,8 @@ public class TextEditorController : IDisposable {
     let selectionEnd = selectionStart + selectionLength
     if !wellFormedUtf16(text) || !graphemeBoundary(text, selectionStart)
       || !graphemeBoundary(text, selectionEnd) {
-      throw ArgumentException("Composition selection must use grapheme boundaries", "selectionStart")
-    }
+        throw ArgumentException("Composition selection must use grapheme boundaries", "selectionStart")
+      }
     if composition == nil { beginCompositionDefault() }
     let textRange = composition!!.Range
     composition = TextComposition{
@@ -732,8 +680,8 @@ public class TextEditorController : IDisposable {
   private func commitCompositionDefault(text string?) bool {
     let textRange = if let current = composition { current.Range } else { selectedRange() }
     let committed = if let value = text { value }
-      else if let current = composition { current.Text }
-      else { "" }
+    else if let current = composition { current.Text }
+    else { "" }
     applyTextChange(TextCommandKind.CommitComposition,
       TextChange{ Range: textRange, InsertedText: committed })
     composition = nil
@@ -787,13 +735,11 @@ public class TextEditorController : IDisposable {
     return undoGroup!!
   }
 
-  private func coalescesEdit(kind TextCommandKind) bool {
-    return kind == TextCommandKind.Insert
-      || kind == TextCommandKind.DeleteBackward
-      || kind == TextCommandKind.DeleteForward
-      || kind == TextCommandKind.DeleteWordBackward
-      || kind == TextCommandKind.DeleteWordForward
-  }
+  private func coalescesEdit(kind TextCommandKind) bool -> kind == TextCommandKind.Insert
+    || kind == TextCommandKind.DeleteBackward
+    || kind == TextCommandKind.DeleteForward
+    || kind == TextCommandKind.DeleteWordBackward
+    || kind == TextCommandKind.DeleteWordForward
 
   private func breakUndoGroup() {
     undoGroup = nil
@@ -868,13 +814,11 @@ public class TextEditorController : IDisposable {
   private func snapRebasedPosition(position TextPosition) TextPosition {
     if documentGraphemeBoundary(position.Offset) { return position }
     let offset = position.Affinity == TextAffinity.Upstream
-      ? previousDocumentElement(position.Offset) : nextDocumentElement(position.Offset)
+    ? previousDocumentElement(position.Offset) : nextDocumentElement(position.Offset)
     return TextPosition{ Offset: offset, Affinity: position.Affinity }
   }
 
-  private func selectedText() string {
-    return document.GetText(selectedRange())
-  }
+  private func selectedText() string -> document.GetText(selectedRange())
 
   private func overwriteRange(text string) TextRange {
     var end = selection.Active.Offset
@@ -1067,16 +1011,12 @@ public class TextEditorController : IDisposable {
     return i < starts.Length ? starts[i] : text.Length
   }
 
-  private func wordAt(text string, offset int32) bool {
-    return Char.IsLetterOrDigit(text, offset)
-  }
+  private func wordAt(text string, offset int32) bool -> Char.IsLetterOrDigit(text, offset)
 
-  private func sameSelection(left TextSelection, right TextSelection) bool {
-    return left.Anchor.Offset == right.Anchor.Offset
-      && left.Anchor.Affinity == right.Anchor.Affinity
-      && left.Active.Offset == right.Active.Offset
-      && left.Active.Affinity == right.Active.Affinity
-  }
+  private func sameSelection(left TextSelection, right TextSelection) bool -> left.Anchor.Offset == right.Anchor.Offset
+    && left.Anchor.Affinity == right.Anchor.Affinity
+    && left.Active.Offset == right.Active.Offset
+    && left.Active.Affinity == right.Active.Affinity
 
   private func changed() {
     Changed?.Invoke()

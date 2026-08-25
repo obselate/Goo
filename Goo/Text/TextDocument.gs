@@ -24,45 +24,35 @@ public class TextSnapshot {
   }
 
   /// Gets the version represented by this snapshot.
-  public prop Version int64 { get { return version } }
+  public prop Version int64{ get { return version } }
   /// Gets the document length in UTF-16 code units.
-  public prop Length int32 { get { return textLength(root) } }
+  public prop Length int32{ get { return textLength(root) } }
   /// Gets the number of logical lines.
-  public prop LineCount int32 { get { return textLineCount(root) } }
+  public prop LineCount int32{ get { return textLineCount(root) } }
 
   /// Gets all text in this snapshot.
   /// @returns The complete snapshot text.
-  public func GetText() string {
-    return rootText(root)
-  }
+  public func GetText() string -> rootText(root)
 
   /// Gets text in a UTF-16 range.
   /// @param textRange The range to read.
   /// @returns The text in the range.
-  public func GetText(textRange TextRange) string {
-    return rootTextRange(root, textRange)
-  }
+  public func GetText(textRange TextRange) string -> rootTextRange(root, textRange)
 
   /// Gets the content range of a logical line, excluding its line ending.
   /// @param line The zero-based line index.
   /// @returns The line content range.
-  public func GetLineRange(line int32) TextRange {
-    return rootLineRange(root, line)
-  }
+  public func GetLineRange(line int32) TextRange -> rootLineRange(root, line)
 
   /// Gets the content of a logical line, excluding its line ending.
   /// @param line The zero-based line index.
   /// @returns The line content.
-  public func GetLineText(line int32) string {
-    return rootLineText(root, line)
-  }
+  public func GetLineText(line int32) string -> rootLineText(root, line)
 
   /// Gets the logical line that contains a UTF-16 offset.
   /// @param offset The zero-based UTF-16 offset.
   /// @returns The zero-based line index.
-  public func GetLineIndex(offset int32) int32 {
-    return rootLineIndex(root, offset)
-  }
+  public func GetLineIndex(offset int32) int32 -> rootLineIndex(root, offset)
 }
 
 /// Stores editable text and versioned immutable snapshots.
@@ -97,66 +87,52 @@ public class TextDocument {
   }
 
   /// Gets the document length in UTF-16 code units.
-  public prop Length int32 { get { return textLength(root) } }
+  public prop Length int32{ get { return textLength(root) } }
   /// Gets the number of logical lines.
-  public prop LineCount int32 { get { return textLineCount(root) } }
+  public prop LineCount int32{ get { return textLineCount(root) } }
   /// Gets the monotonically increasing document version.
-  public prop Version int64 { get { return version } }
+  public prop Version int64{ get { return version } }
   /// Gets whether an undo operation is available.
-  public prop CanUndo bool { get { return undoHistory.Count != 0 || groupHistory.Count != 0 } }
+  public prop CanUndo bool{ get { return undoHistory.Count != 0 || groupHistory.Count != 0 } }
   /// Gets whether a redo operation is available.
-  public prop CanRedo bool { get { return redoHistory.Count != 0 } }
+  public prop CanRedo bool{ get { return redoHistory.Count != 0 } }
 
   /// Creates an immutable snapshot of the current document version.
   /// @returns The immutable snapshot.
-  public func Snapshot() TextSnapshot {
-    return TextSnapshot(this)
-  }
+  public func Snapshot() TextSnapshot -> TextSnapshot(this)
 
-  internal func SnapshotRoot() TextPieceNode? { return root }
-  internal prop PieceCount int32 { get { return countTextPieces(root) } }
+  internal func SnapshotRoot() TextPieceNode ? -> root
+  internal prop PieceCount int32{ get { return countTextPieces(root) } }
   internal prop CurrentMutation TextDocumentMutation? { get { return currentMutation } }
 
   /// Gets all document text.
   /// @returns The complete document text.
-  public func GetText() string {
-    return rootText(root)
-  }
+  public func GetText() string -> rootText(root)
 
   /// Gets text in a UTF-16 range.
   /// @param textRange The range to read.
   /// @returns The text in the range.
-  public func GetText(textRange TextRange) string {
-    return rootTextRange(root, textRange)
-  }
+  public func GetText(textRange TextRange) string -> rootTextRange(root, textRange)
 
   /// Gets the content range of a logical line, excluding its line ending.
   /// @param line The zero-based line index.
   /// @returns The line content range.
-  public func GetLineRange(line int32) TextRange {
-    return rootLineRange(root, line)
-  }
+  public func GetLineRange(line int32) TextRange -> rootLineRange(root, line)
 
   /// Gets the content of a logical line, excluding its line ending.
   /// @param line The zero-based line index.
   /// @returns The line content.
-  public func GetLineText(line int32) string {
-    return rootLineText(root, line)
-  }
+  public func GetLineText(line int32) string -> rootLineText(root, line)
 
   /// Gets the logical line that contains a UTF-16 offset.
   /// @param offset The zero-based UTF-16 offset.
   /// @returns The zero-based line index.
-  public func GetLineIndex(offset int32) int32 {
-    return rootLineIndex(root, offset)
-  }
+  public func GetLineIndex(offset int32) int32 -> rootLineIndex(root, offset)
 
   /// Applies one replacement against the current document version.
   /// @param change The replacement to apply.
   /// @returns The committed change description.
-  public func Apply(change TextChange) TextDocumentChange {
-    return ApplyTransaction([]TextChange{ change })
-  }
+  public func Apply(change TextChange) TextDocumentChange -> ApplyTransaction([]TextChange { change })
 
   /// Applies ordered, non-overlapping replacements against the current version.
   /// @param changes The replacements, interpreted against the pre-edit snapshot.
@@ -167,9 +143,7 @@ public class TextDocument {
   }
 
   internal func ApplyControllerTransaction(changes []TextChange,
-    historyGroup object) TextDocumentChange {
-    return applyTransaction(changes, true, historyGroup, TextDocumentMutationKind.Normal, nil)
-  }
+    historyGroup object) TextDocumentChange -> applyTransaction(changes, true, historyGroup, TextDocumentMutationKind.Normal, nil)
 
   /// Starts an undo group. Nested groups commit when the outer group ends.
   public func BeginUndoGroup() {
@@ -202,7 +176,7 @@ public class TextDocument {
     let index = undoHistory.Count - 1
     let entry = undoHistory[index]
     undoHistory.RemoveAt(index)
-    for i in (entry.Transactions.Count - 1) ... -1 {
+    for i in(entry.Transactions.Count - 1) ... -1 {
       let transaction = entry.Transactions[i]
       applyTransaction(transaction.UndoChanges, false, nil,
         TextDocumentMutationKind.Undo, transaction)
@@ -232,72 +206,72 @@ public class TextDocument {
 
   private func applyTransaction(changes []TextChange, recordHistory bool,
     historyGroup object?, mutationKind TextDocumentMutationKind,
-    transaction TextHistoryTransaction?) TextDocumentChange {
-    validateTextChanges(root, changes)
-    if changes.Length == 0 || noTextChanges(changes) {
-      return TextDocumentChange{
-        BeforeVersion: version,
-        AfterVersion: version,
-        Changes: freezeTextChanges(changes),
+    transaction TextHistoryTransaction?) TextDocumentChange{
+      validateTextChanges(root, changes)
+      if changes.Length == 0 || noTextChanges(changes) {
+        return TextDocumentChange{
+          BeforeVersion: version,
+          AfterVersion: version,
+          Changes: freezeTextChanges(changes),
+        }
       }
-    }
 
-    let beforeRoot = root
-    let beforeVersion = version
-    let forward = copyTextChanges(changes)
-    let undo = inverseTextChanges(beforeRoot, forward)
-    var changedRoot = beforeRoot
-    for i in (forward.Length - 1) ... -1 {
-      changedRoot = replaceText(changedRoot, forward[i])
-    }
-    root = changedRoot
-    version++
-    let committed = TextDocumentChange{
-      BeforeVersion: beforeVersion,
-      AfterVersion: version,
-      Changes: freezeTextChanges(forward),
-    }
-    let committedTransaction = transaction ?? TextHistoryTransaction(forward, undo)
-    var discarded IReadOnlyList[TextHistoryTransaction]? = nil
-    if recordHistory { discarded = record(committedTransaction, historyGroup) }
-    let previousMutation = currentMutation
-    currentMutation = TextDocumentMutation{ Kind: mutationKind,
-      Transaction: committedTransaction, DiscardedTransactions: discarded }
-    try {
-      if Changed != nil {
-        Changed(committed)
+      let beforeRoot = root
+      let beforeVersion = version
+      let forward = copyTextChanges(changes)
+      let undo = inverseTextChanges(beforeRoot, forward)
+      var changedRoot = beforeRoot
+      for i in(forward.Length - 1) ... -1 {
+        changedRoot = replaceText(changedRoot, forward[i])
       }
-    } finally {
-      currentMutation = previousMutation
+      root = changedRoot
+      version++
+      let committed = TextDocumentChange{
+        BeforeVersion: beforeVersion,
+        AfterVersion: version,
+        Changes: freezeTextChanges(forward),
+      }
+      let committedTransaction = transaction ?? TextHistoryTransaction(forward, undo)
+      var discarded IReadOnlyList[TextHistoryTransaction]? = nil
+      if recordHistory { discarded = record(committedTransaction, historyGroup) }
+      let previousMutation = currentMutation
+      currentMutation = TextDocumentMutation{ Kind: mutationKind,
+        Transaction: committedTransaction, DiscardedTransactions: discarded }
+      try {
+        if Changed != nil {
+          Changed(committed)
+        }
+      } finally {
+        currentMutation = previousMutation
+      }
+      return committed
     }
-    return committed
-  }
 
   private func record(transaction TextHistoryTransaction,
     historyGroup object?) IReadOnlyList[TextHistoryTransaction]? {
-    var discarded List[TextHistoryTransaction]? = nil
-    if redoHistory.Count != 0 {
-      discarded = List[TextHistoryTransaction]()
-      for entry in redoHistory {
-        for value in entry.Transactions { discarded.Add(value) }
+      var discarded List[TextHistoryTransaction]? = nil
+      if redoHistory.Count != 0 {
+        discarded = List[TextHistoryTransaction]()
+        for entry in redoHistory {
+          for value in entry.Transactions { discarded.Add(value) }
+        }
       }
-    }
-    redoHistory.Clear()
-    if undoGroupDepth != 0 {
-      groupHistory.Add(transaction)
-      return discarded
-    }
-    if historyGroup != nil && undoHistory.Count != 0 {
-      let last = undoHistory[undoHistory.Count - 1]
-      if last.Group == historyGroup {
-        last.Transactions.Add(transaction)
+      redoHistory.Clear()
+      if undoGroupDepth != 0 {
+        groupHistory.Add(transaction)
         return discarded
       }
+      if historyGroup != nil && undoHistory.Count != 0 {
+        let last = undoHistory[undoHistory.Count - 1]
+        if last.Group == historyGroup {
+          last.Transactions.Add(transaction)
+          return discarded
+        }
+      }
+      let transactions = List[TextHistoryTransaction]{ transaction }
+      undoHistory.Add(TextHistoryEntry(transactions, historyGroup))
+      return discarded
     }
-    let transactions = List[TextHistoryTransaction]{ transaction }
-    undoHistory.Add(TextHistoryEntry(transactions, historyGroup))
-    return discarded
-  }
 
   private func commitUndoGroup() {
     if groupHistory.Count == 0 {
@@ -361,18 +335,14 @@ internal sealed class TextPieceBuffer {
     }
   }
 
-  internal func CharAt(index int32) char {
-    return appendable ? text[index] : source[index]
-  }
+  internal func CharAt(index int32) char -> appendable ? text[index] : source[index]
 
   internal func AppendTo(builder StringBuilder, start int32, count int32) {
     if appendable { builder.Append(text, start, count) }
     else { builder.Append(source, start, count) }
   }
 
-  internal func CanAppend(offset int32) bool {
-    return appendable && offset == length
-  }
+  internal func CanAppend(offset int32) bool -> appendable && offset == length
 
   internal func Append(value string) {
     let nextLength = length + value.Length
@@ -457,9 +427,7 @@ internal sealed class TextPiece {
     EndsCr = buffer.CharAt(start + length - 1) == '\r'
   }
 
-  internal func LineBreaksBefore(length int32) int32 {
-    return Buffer.CountLineBreaks(Start, length)
-  }
+  internal func LineBreaksBefore(length int32) int32 -> Buffer.CountLineBreaks(Start, length)
 }
 
 internal sealed class TextPieceNode {
@@ -479,7 +447,7 @@ internal sealed class TextPieceNode {
     Height = 1 + Math.Max(textHeight(left), textHeight(right))
     Length = textLength(left) + piece.Length + textLength(right)
     LineBreaks = textLineBreaks(left) + piece.LineBreaks + textLineBreaks(right)
-      - joinedCrLf(left, piece) - joinedCrLf(piece, right)
+    -joinedCrLf(left, piece) - joinedCrLf(piece, right)
     StartsLf = firstStartsLf(left, piece)
     EndsCr = lastEndsCr(piece, right)
   }
@@ -530,9 +498,9 @@ internal func replaceText(root TextPieceNode?, change TextChange) TextPieceNode?
   let ignoredAndAfter = splitText(beforeAndRest.Right, change.Range.Length)
   if change.InsertedText.Length != 0 && change.Range.Length == 0
     && canExtendLastText(beforeAndRest.Left) {
-    let before = beforeAndRest.Left!!
-    return joinText(extendLastText(before, change.InsertedText), ignoredAndAfter.Right)
-  }
+      let before = beforeAndRest.Left!!
+      return joinText(extendLastText(before, change.InsertedText), ignoredAndAfter.Right)
+    }
   let inserted TextPieceNode? = if change.InsertedText.Length != 0 {
     let buffer = TextPieceBuffer(change.InsertedText, true)
     TextPieceNode(nil, TextPiece(buffer, 0, change.InsertedText.Length), nil)
@@ -662,9 +630,7 @@ internal func textLineBreaks(root TextPieceNode?) int32 {
   return node.LineBreaks
 }
 
-internal func textLineCount(root TextPieceNode?) int32 {
-  return textLineBreaks(root) + 1
-}
+internal func textLineCount(root TextPieceNode?) int32 -> textLineBreaks(root) + 1
 
 internal func joinedCrLf(left TextPieceNode?, right TextPiece) int32 {
   guard let leftNode = left else { return 0 }
@@ -686,22 +652,16 @@ internal func lastEndsCr(piece TextPiece, right TextPieceNode?) bool {
   return node.EndsCr
 }
 
-internal func rootText(root TextPieceNode?) string {
-  return readText(root, TextRange{ Start: 0, Length: textLength(root) })
-}
+internal func rootText(root TextPieceNode?) string -> readText(root, TextRange { Start: 0, Length: textLength(root) })
 
 internal func rootTextRange(root TextPieceNode?, textRange TextRange) string {
   validateTextRange(root, textRange)
   return readText(root, textRange)
 }
 
-internal func rootLineRange(root TextPieceNode?, line int32) TextRange {
-  return findLineRange(root, line)
-}
+internal func rootLineRange(root TextPieceNode?, line int32) TextRange -> findLineRange(root, line)
 
-internal func rootLineText(root TextPieceNode?, line int32) string {
-  return readText(root, rootLineRange(root, line))
-}
+internal func rootLineText(root TextPieceNode?, line int32) string -> readText(root, rootLineRange(root, line))
 
 internal func rootLineIndex(root TextPieceNode?, offset int32) int32 {
   validateTextOffset(root, offset)
@@ -750,8 +710,8 @@ internal func findLineIndex(root TextPieceNode?, offset int32) int32 {
   let count = countTextLineBreaksBefore(root, offset, false)
   if offset > 0 && offset < textLength(root)
     && textCharAt(root, offset - 1) == '\r' && textCharAt(root, offset) == '\n' {
-    return count - 1
-  }
+      return count - 1
+    }
   return count
 }
 
@@ -790,9 +750,7 @@ internal func findTextLineBreakStart(root TextPieceNode, breakIndex int32, prefi
   return findTextLineBreakStart(right, remaining + skipRightStart, prefix + leftLength + root.Piece.Length)
 }
 
-internal func findPieceLineBreakStart(piece TextPiece, breakIndex int32) int32 {
-  return piece.Buffer.LineBreakStart(piece.Start, piece.Length, breakIndex)
-}
+internal func findPieceLineBreakStart(piece TextPiece, breakIndex int32) int32 -> piece.Buffer.LineBreakStart(piece.Start, piece.Length, breakIndex)
 
 internal func countTextLineBreaksBefore(root TextPieceNode?, offset int32, predecessorEndsCr bool) int32 {
   if offset <= 0 { return 0 }
@@ -867,8 +825,8 @@ internal func validateTextOffset(root TextPieceNode?, offset int32) {
   }
   if offset != 0 && offset != length
     && Char.IsHighSurrogate(textCharAt(root, offset - 1)) && Char.IsLowSurrogate(textCharAt(root, offset)) {
-    throw ArgumentOutOfRangeException("offset")
-  }
+      throw ArgumentOutOfRangeException("offset")
+    }
 }
 
 internal func validateUtf16Text(text string, name string) {

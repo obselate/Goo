@@ -10,20 +10,18 @@ public data struct Color {
   private var a float32
 
   /// Gets the normalized red channel.
-  public prop R float32 { get { return r } }
+  public prop R float32{ get { return r } }
   /// Gets the normalized green channel.
-  public prop G float32 { get { return g } }
+  public prop G float32{ get { return g } }
   /// Gets the normalized blue channel.
-  public prop B float32 { get { return b } }
+  public prop B float32{ get { return b } }
   /// Gets the normalized alpha channel.
-  public prop A float32 { get { return a } }
+  public prop A float32{ get { return a } }
 
   /// Returns this color with a normalized alpha channel.
   /// @param alpha The alpha channel from 0 through 1.
   /// @returns A color with the specified alpha channel.
-  public func WithAlpha(alpha float64) Color {
-    return Color{ r: r, g: g, b: b, a: normalizeAlpha(alpha) }
-  }
+  public func WithAlpha(alpha float64) Color -> Color { r: r, g: g, b: b, a: normalizeAlpha(alpha) }
 
   internal func ToPackedRgba() uint32 {
     let alpha = uint32(clamp255(a))
@@ -39,9 +37,7 @@ public data struct Color {
     /// @param g The green channel from 0 through 255.
     /// @param b The blue channel from 0 through 255.
     /// @returns A normalized opaque color.
-    public func Rgb(r int32, g int32, b int32) Color {
-      return Rgba(r, g, b, 255)
-    }
+    public func Rgb(r int32, g int32, b int32) Color -> Rgba(r, g, b, 255)
 
     /// Creates a color from 8-bit channels.
     /// @param r The red channel from 0 through 255.
@@ -49,13 +45,11 @@ public data struct Color {
     /// @param b The blue channel from 0 through 255.
     /// @param a The alpha channel from 0 through 255.
     /// @returns A normalized color.
-    public func Rgba(r int32, g int32, b int32, a int32) Color {
-      return Color{
-        r: float32(clampByte(r)) / 255.0F,
-        g: float32(clampByte(g)) / 255.0F,
-        b: float32(clampByte(b)) / 255.0F,
-        a: float32(clampByte(a)) / 255.0F,
-      }
+    public func Rgba(r int32, g int32, b int32, a int32) Color -> Color {
+      r: float32(clampByte(r)) / 255.0F,
+      g: float32(clampByte(g)) / 255.0F,
+      b: float32(clampByte(b)) / 255.0F,
+      a: float32(clampByte(a)) / 255.0F,
     }
 
     /// Creates a color from normalized (0-1) channels, clamping out-of-range
@@ -66,13 +60,11 @@ public data struct Color {
     /// @param b The blue channel from 0 through 1.
     /// @param a The alpha channel from 0 through 1.
     /// @returns A normalized color.
-    public func FromNormalized(r float32, g float32, b float32, a float32) Color {
-      return Color{
-        r: normalizeChannel(r, "r"),
-        g: normalizeChannel(g, "g"),
-        b: normalizeChannel(b, "b"),
-        a: normalizeChannel(a, "a"),
-      }
+    public func FromNormalized(r float32, g float32, b float32, a float32) Color -> Color {
+      r: normalizeChannel(r, "r"),
+      g: normalizeChannel(g, "g"),
+      b: normalizeChannel(b, "b"),
+      a: normalizeChannel(a, "a"),
     }
 
     /// Parses a CSS hexadecimal or named color.
@@ -99,20 +91,18 @@ public data struct Color {
     }
 
     /// Gets opaque white.
-    public prop White Color { get { return Rgb(255, 255, 255) } }
+    public prop White Color{ get { return Rgb(255, 255, 255) } }
     /// Gets opaque black.
-    public prop Black Color { get { return Rgb(0, 0, 0) } }
+    public prop Black Color{ get { return Rgb(0, 0, 0) } }
     /// Gets transparent black.
-    public prop Transparent Color { get { return Rgba(0, 0, 0, 0) } }
+    public prop Transparent Color{ get { return Rgba(0, 0, 0, 0) } }
   }
 }
 
 /// Converts a CSS color string to Color.
 /// @param value The CSS color string to convert.
 /// @returns The parsed color.
-public func operator implicit (value string) Color {
-  return Color.Parse(value)
-}
+public func operator implicit (value string) Color -> Color.Parse (value)
 
 internal func clampByte(value int32) int32 {
   if value < 0 { return 0 }
@@ -143,13 +133,9 @@ internal func clamp255(value float32) int32 {
   return clampByte(normalized)
 }
 
-internal func transparent(value Color) bool {
-  return value.R == 0.0F && value.G == 0.0F && value.B == 0.0F && value.A == 0.0F
-}
+internal func transparent(value Color) bool -> value.R == 0.0F && value.G == 0.0F && value.B == 0.0F && value.A == 0.0F
 
-internal func defaultSelectionColor() Color {
-  return Color.FromNormalized(0.25F, 0.45F, 1.0F, 0.35F)
-}
+internal func defaultSelectionColor() Color -> Color.FromNormalized(0.25F, 0.45F, 1.0F, 0.35F)
 
 internal func parseHexColor(value string) Color? {
   switch value.Length {

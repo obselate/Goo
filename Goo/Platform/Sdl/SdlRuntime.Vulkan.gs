@@ -13,11 +13,11 @@ internal class SdlVulkanInstanceSnapshot {
     this.extensions = extensions
   }
 
-  internal prop GetInstanceProcAddress nint {
+  internal prop GetInstanceProcAddress nint{
     get { return getInstanceProcAddress }
   }
 
-  internal prop Extensions []string {
+  internal prop Extensions []string{
     get { return extensions }
   }
 }
@@ -45,7 +45,7 @@ internal unsafe partial class SdlRuntime {
           throw InvalidOperationException("SDL Vulkan loader state is invalid.")
         }
 
-        let path *uint8 = nil
+        let path * uint8 = nil
         if !SDL.VulkanLoadLibrary(path) {
           return false
         }

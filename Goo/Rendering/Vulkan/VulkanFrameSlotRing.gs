@@ -7,7 +7,7 @@ internal unsafe struct VulkanFrameSlotRing {
   private var second VulkanFrameSlot? = nil
   private var currentIndex uint32
 
-  internal prop CurrentIndex uint32 {
+  internal prop CurrentIndex uint32{
     get -> currentIndex
   }
 
@@ -31,22 +31,22 @@ internal unsafe struct VulkanFrameSlotRing {
     firstCommandBuffer VkCommandBuffer,
     secondCommandBuffer VkCommandBuffer,
     objectAccounting VulkanObjectAccounting?) {
-    if first != nil || second != nil {
-      throw InvalidOperationException("Vulkan frame slot ring is already created")
+      if first != nil || second != nil {
+        throw InvalidOperationException("Vulkan frame slot ring is already created")
+      }
+      let createdFirst = VulkanFrameSlot(
+        device, dispatch, firstCommandBuffer, objectAccounting)
+      first = createdFirst
+      try {
+        second = VulkanFrameSlot(
+          device, dispatch, secondCommandBuffer, objectAccounting)
+      } catch (error Exception) {
+        try { createdFirst.Dispose() } catch (cleanup Exception) { }
+        first = nil
+        throw error
+      }
+      currentIndex = 0u
     }
-    let createdFirst = VulkanFrameSlot(
-      device, dispatch, firstCommandBuffer, objectAccounting)
-    first = createdFirst
-    try {
-      second = VulkanFrameSlot(
-        device, dispatch, secondCommandBuffer, objectAccounting)
-    } catch (error Exception) {
-      try { createdFirst.Dispose() } catch (cleanup Exception) { }
-      first = nil
-      throw error
-    }
-    currentIndex = 0u
-  }
 
   internal func Advance() {
     currentIndex = if currentIndex == 0u { 1u } else { 0u }

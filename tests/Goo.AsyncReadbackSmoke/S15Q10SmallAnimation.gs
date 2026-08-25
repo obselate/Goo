@@ -57,12 +57,12 @@ class S15Q10SmallAnimationRoot : Cell {
   prop Width int32 { get { return ViewportWidth } }
   prop Height int32 { get { return ViewportHeight } }
   prop MutationCount int32 { get { return AnimatedCardCount } }
-  internal prop StaticBuildCount int32 { get { return staticBuildCount } }
-  internal prop AnimatedBuildCount int32 { get { return animatedBuildCount } }
-  internal prop StaticMountedCount int32 { get { return staticMountedCount } }
-  internal prop CurrentLeft float64 { get { return animatedInput.Left } }
-  internal prop CurrentTop float64 { get { return animatedInput.Top } }
-  internal prop CurrentOpacity float64 { get { return animatedInput.Opacity } }
+  internal prop StaticBuildCount int32{ get { return staticBuildCount } }
+  internal prop AnimatedBuildCount int32{ get { return animatedBuildCount } }
+  internal prop StaticMountedCount int32{ get { return staticMountedCount } }
+  internal prop CurrentLeft float64{ get { return animatedInput.Left } }
+  internal prop CurrentTop float64{ get { return animatedInput.Top } }
+  internal prop CurrentOpacity float64{ get { return animatedInput.Opacity } }
 
   init(initialSeed uint64) {
     seed = initialSeed
@@ -193,8 +193,7 @@ class S15Q10SmallAnimationRoot : Cell {
   }
 }
 
-open class S15Q10SmallAnimationStaticCardCell
-  : Cell[S15Q10SmallAnimationStaticCardInput] {
+open class S15Q10SmallAnimationStaticCardCell : Cell[S15Q10SmallAnimationStaticCardInput] {
   protected override func Build(input S15Q10SmallAnimationStaticCardInput) Blob {
     input.Root.RecordStaticBuild(input.Index)
     return Container{
@@ -209,8 +208,7 @@ open class S15Q10SmallAnimationStaticCardCell
   }
 }
 
-open class S15Q10SmallAnimationAnimatedCardCell
-  : Cell[S15Q10SmallAnimationAnimatedCardInput] {
+open class S15Q10SmallAnimationAnimatedCardCell : Cell[S15Q10SmallAnimationAnimatedCardInput] {
   protected override func Build(input S15Q10SmallAnimationAnimatedCardInput) Blob {
     input.Root.RecordAnimatedBuild()
     return Container{

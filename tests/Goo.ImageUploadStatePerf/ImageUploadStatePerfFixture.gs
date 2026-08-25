@@ -30,10 +30,10 @@ internal unsafe partial class VulkanImageResources {
     while index < entries.Length {
       let entry = entries[index]
       if entry.State == VulkanImageResourceState.UploadPending
-          && entry.Upload.Succeeded && entry.UploadRecorded
-          && !entry.UploadSubmitted {
-        recordedUnsubmittedCount = recordedUnsubmittedCount + 1
-      }
+        && entry.Upload.Succeeded && entry.UploadRecorded
+        && !entry.UploadSubmitted{
+          recordedUnsubmittedCount = recordedUnsubmittedCount + 1
+        }
       index = index + 1
     }
     return VulkanImageUploadPredicateTestSnapshot{
@@ -47,7 +47,7 @@ internal unsafe partial class VulkanImageResources {
   }
 
   internal func MeasureImageUploadPredicateForTest(iterations int32, warmupIterations int32)
-      VulkanImageUploadPredicateMeasurement {
+  VulkanImageUploadPredicateMeasurement{
     if iterations <= 0 {
       throw ArgumentOutOfRangeException("iterations")
     }
@@ -98,7 +98,7 @@ internal partial class VulkanWindowTarget {
   }
 
   internal func MeasureImageUploadPredicateForTest(iterations int32, warmupIterations int32)
-      VulkanImageUploadPredicateMeasurement {
+  VulkanImageUploadPredicateMeasurement{
     guard let current = runtime else {
       throw InvalidOperationException("Vulkan shared runtime is unavailable")
     }
@@ -119,7 +119,7 @@ public partial class Window {
   }
 
   internal func MeasureImageUploadPredicateForTest(iterations int32, warmupIterations int32)
-      VulkanImageUploadPredicateMeasurement {
+  VulkanImageUploadPredicateMeasurement{
     guard let target = windowTarget else {
       throw InvalidOperationException("Vulkan window target is unavailable")
     }
@@ -144,9 +144,7 @@ public partial class Window {
     return completed
   }
 
-  internal func ImageUploadQueuePendingForTest() bool {
-    return windowTarget?.QueueWorkPending ?? false
-  }
+  internal func ImageUploadQueuePendingForTest() bool -> windowTarget?.QueueWorkPending ?? false
 
   internal func ImageUploadHoldNextSubmitForTest() {
     windowTarget?.HoldNextQueueSubmitForTest()
@@ -159,14 +157,10 @@ public partial class Window {
 
 internal class ImageUploadStatePerfFixture {
   shared {
-    internal func Snapshot(window Window) VulkanImageUploadPredicateTestSnapshot {
-      return window.ImageUploadPredicateTestSnapshot()
-    }
+    internal func Snapshot(window Window) VulkanImageUploadPredicateTestSnapshot -> window.ImageUploadPredicateTestSnapshot()
 
     internal func Measure(window Window, iterations int32, warmupIterations int32)
-        VulkanImageUploadPredicateMeasurement {
-      return window.MeasureImageUploadPredicateForTest(iterations, warmupIterations)
-    }
+    VulkanImageUploadPredicateMeasurement -> window.MeasureImageUploadPredicateForTest(iterations, warmupIterations)
 
     internal func ForceRenderNonblocking(window Window, dt float64) {
       window.ImageUploadForceRenderNonblockingForTest(dt)
@@ -176,13 +170,9 @@ internal class ImageUploadStatePerfFixture {
       window.ImageUploadPumpForTest(dt)
     }
 
-    internal func PollQueue(window Window) bool {
-      return window.ImageUploadPollQueueForTest()
-    }
+    internal func PollQueue(window Window) bool -> window.ImageUploadPollQueueForTest()
 
-    internal func QueuePending(window Window) bool {
-      return window.ImageUploadQueuePendingForTest()
-    }
+    internal func QueuePending(window Window) bool -> window.ImageUploadQueuePendingForTest()
 
     internal func DrainQueue(window Window, timeoutMs int32) {
       let timeoutTicks = int64(float64(Stopwatch.Frequency) * float64(timeoutMs) / 1000.0)
@@ -200,9 +190,7 @@ internal class ImageUploadStatePerfFixture {
       window.ImageUploadHoldNextSubmitForTest()
     }
 
-    internal func WaitForHeldSubmit(timeoutMs int32) bool {
-      return VulkanSharedRuntime.WaitForHeldQueueCallForTest(timeoutMs)
-    }
+    internal func WaitForHeldSubmit(timeoutMs int32) bool -> VulkanSharedRuntime.WaitForHeldQueueCallForTest(timeoutMs)
 
     internal func ReleaseHeldSubmit() {
       VulkanSharedRuntime.ReleaseHeldQueueCallForTest()
@@ -212,9 +200,7 @@ internal class ImageUploadStatePerfFixture {
       VulkanSharedRuntime.DeferNextQueueEnqueueForTest()
     }
 
-    internal func EnqueueDeferralCount() int64 {
-      return VulkanSharedRuntime.QueueEnqueueDeferralCountForTest
-    }
+    internal func EnqueueDeferralCount() int64 -> VulkanSharedRuntime.QueueEnqueueDeferralCountForTest
 
     internal func FailNextSubmit() {
       VulkanSharedRuntime.FailNextGraphicsSubmissionForTest()

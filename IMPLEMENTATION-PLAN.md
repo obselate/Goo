@@ -3,22 +3,37 @@
 Status: active. This file contains only current gaps, unresolved specifications, qualification work,
 and release gates.
 
-Current audited baseline: branch `gaps-and-reductions`, 2026-08-24 after the
+Current audited baseline: branch `gaps-and-reductions`, 2026-08-25 after the
 canonical S15 workload and lifecycle pass, the Q10 manifest expansion, the
-q10.text-editing and startup/input-latency follow-ups, and completed Linux S07
-Effects/Offscreen timestamp integration into T03/T04.
+q10.text-editing, startup/input-latency, and resize-DPI follow-ups, completed
+Linux S07 Effects/Offscreen timestamp integration into T03/T04, combined
+`ShaderEffect` plus non-normal `BlendMode` qualification, and Vulkan
+`TextEditor` inline/block child-slot qualification.
 The S09R primitive, S11 text, S12 image, and S13 path/compiled-vector Linux
 implementations are complete. Linux S14 has qualified mixed-axis and rounded
 overflow clipping, request-only asynchronous readback, the accepted effect
 stack, all public blend modes, and bounded layer lifecycle. S20 adds the
-qualified generic precompiled fragment `ShaderEffect` mechanism. General masks
-and higher-level filters remain deferred.
-S15 retained-scene, damage, transport, lifecycle, and current Q10 workload mechanisms are implemented. S07 Effects/Offscreen stage timestamps and Linux T03/T04 integration are complete, with the Windows repeat still open.
-The current five-process actual-NVIDIA final protocol has 7/8 official Linux workload rows:
-true-idle, small-animation, virtual-table, topology, text-editing, image-effects, and three-window.
-Five-process rows use 300 warmups and 2,000 measured samples. All measured current rows pass
-their exact local contracts and absolute budgets. Sparse/full box rows remain additional stress
-evidence, not official Q10 workload coverage.
+qualified generic precompiled fragment `ShaderEffect` mechanism and internal
+nested-layer composition with non-normal blend modes. General masks and a
+higher-level filter API are intentional current non-goals: Simulation plus
+`ClipPath` or `ShaderEffect` covers animated reveals, and `ShaderEffect` remains
+the filter mechanism.
+S15 retained-scene, damage, transport, lifecycle, and current Q10 workload
+mechanisms are implemented. S07 Effects/Offscreen stage timestamps and Linux
+T03/T04 integration are complete, with the Windows repeat still open.
+The current five-process actual-NVIDIA final protocol has 8/8 official Linux
+workload rows: true-idle, small-animation, virtual-table, topology, text-editing,
+image-effects, resize-DPI, and three-window.
+The resize-DPI follow-up uses five isolated NativeAOT processes with 300 warmups
+and 2,000 measured frames. Every process completes the repeated
+1.0 -> 1.5 -> 2.0 -> 1.5 -> 1.0 active-swapchain cycle, submits and presents
+exactly 2,000 measured frames, uses both slots, reports zero validation, result,
+and fatal failures, closes cleanly, and restores output scale 1.5. Process-median
+CPU P50/P95/P99 is `0.137319/1.618522/2.430012 ms`; GPU Main P95 is
+`0.113664 ms`.
+Five-process rows use 300 warmups and 2,000 measured samples. All eight current
+rows pass their exact local contracts and absolute budgets. Sparse/full box rows
+remain additional stress evidence, not official Q10 workload coverage.
 The q10.text-editing follow-up NativeAOT binary is 5,708,704 bytes with SHA-256
 `7751034df36fd2f83db3ef13a175728fddc03f8d875100b05b1b325149324065`.
 The q10.text-editing follow-up measures CPU P50/P95/P99 `0.497938/0.552471/0.701151 ms` versus
@@ -33,38 +48,39 @@ for the same reason. Repository search found no in-place shaped-payload writer, 
 shape-reference identity assumption.
 Text editing no longer blocks the general frame-time gate. It remains slower than accepted Skia at P95;
 no Vulkan-over-Skia claim is made.
-The separate 2026-08-24 startup/readback and synthetic input-latency follow-up uses five fresh
+The 2026-08-24 startup/readback and synthetic input-latency follow-up uses five fresh
 Linux NativeAOT processes on actual NVIDIA hardware, 300 warmups, and 2,000 input samples per process.
 Its binary is 5,733,280 bytes with SHA-256
 `d0c6a3968681fd0a2675aaf7c6d45c9ba40c8597d131401b5a918e6346047bc6`.
-Every process exited 0 with zero validation, result-failure, and fatal failures, 2,001 unique
-presentation tokens, and exact 2,000 submit/present deltas. On this route, managed-entry to
-successful `vkQueuePresentKHR` handoff is median `226.193175 ms`, and window-open to that handoff
-is median `225.551726 ms`; these are route-specific handoff values, not a first-usable-frame P95.
+Every process exited 0 with zero validation, result-failure, and fatal failures. Its startup frame has
+positive metrics, a mounted invariant root, exactly one submit and present, a present-fence observation,
+and a successful non-background readback. Across the five independent processes, the nearest-rank
+first-usable-frame P95 is `255.212748 ms` from managed entry and `252.771895 ms` from `Window.Open`
+to successful `vkQueuePresentKHR` handoff. Completion-observed upper-bound P95 is `255.238026 ms`
+and `252.797173 ms`. This current Vulkan result is the regression reference; disposition of the
+missing historical Skia startup distribution remains a final Q&A decision.
 The synthetic injection-to-present-handoff result is P50/P95/P99/worst
 `0.381620/1.348723/1.625866/1.974053 ms`, so the `37.333334 ms` P95 limit passes.
-Completion-observed upper bounds are P50/P95/P99/worst
+Completion-observed input upper bounds are P50/P95/P99/worst
 `1.571202/6.193419/7.986581/21.262635 ms`.
-The matrix is source-dirty; these seven rows and the latency follow-up are not full Q10 qualification.
-The deterministic KWin scale-1 wrapper now qualifies the three-window row on the current NVIDIA host.
-Resize-DPI remains the one missing current Linux row: the exact 1.0/1.5/2.0 sequence runs under the
-same environment, but repeated swapchain shrink/recreate fails returning to state 0 at frame 120.
-Full Q10 remains open on that product defect, actual SDL acceptance and Wayland presentation-time
-feedback, comparative startup evidence, source-clean provenance, accepted GPU-memory and
-binary/package comparisons, and Windows qualification.
+The matrix is source-dirty; these eight rows and the latency follow-up are not
+full Q10 qualification. The deterministic KWin scale-1 wrapper qualifies both
+the three-window and resize-DPI rows on the current NVIDIA host. The lost-retry
+correction closes the frame-120 resize-DPI failure, so the comprehensive Vulkan
+WSI resize state machine is not required.
+Full Q10 remains open on source-clean provenance, accepted GPU-memory and
+binary/package comparisons, and Windows qualification. Wayland presentation-time feedback remains
+deferred under S16-D03; nominal display refresh is the accepted fallback.
 Linux S19 qualification and local core implementation remain complete on the
 available discrete host. The broad stale test project is retired; 261
 backend-neutral contracts run in the focused core-behavior lane. Current-host
-T01, T02, T04, and Linux T05 pass. T03 stage/resource and scale-1 three-window checks pass, while full
-T03 remains blocked on the resize-DPI frame-120 defect and one clean-source matrix.
+T01, T02, T04, and Linux T05 pass. T03 stage/resource, scale-1 three-window, and
+resize-DPI checks pass, while full T03 remains partial on one clean-source matrix.
 The remaining hardware matrix is Windows, Linux integrated GPU, and a second
 real DPI scale.
 
 After the current-host T01-T05 pass, the remaining program is qualification and release closure:
 
-- Linux product work: fix the repeated resize-DPI swapchain shrink/recreate failure at frame 120, then
-  qualify actual SDL input acceptance, supported Wayland presentation-time feedback, and
-  first-usable-frame evidence.
 - Clean-source work: one eight-workload Linux matrix with final provenance and artifact hashes.
 - External hardware work: Windows x64 parity, Linux integrated-GPU qualification, and a second real
   DPI scale.
@@ -134,16 +150,15 @@ These are implementation boundaries, not remaining tasks.
 | S07 product diagnostics | Linux implementation and T03/T04 integration complete: upload, main, effects, and offscreen timestamps are asynchronous and fence-owned; disabled diagnostics remain allocation-free | Repeat package, validation, and NativeAOT qualification on Windows |
 | S10R shared Vulkan resources | Complete for the Linux substrate used by current allocator/upload/image/text/shared-immutable owners | S11-S14 qualify owner-specific pressure, LRU, cache, and recovery; S19 repeats the substrate and lifecycle gates on Windows |
 | S11 text completion | Linux implementation and qualification complete | Windows repeats the gates in S19 |
-| S14 compositing, effects, readback, and AA | Linux-complete for its accepted scope; S20 separately completed generic precompiled fragment effects; general masks and higher-level filters remain deferred | Final cross-platform T02 evidence and Windows qualification remain S19; reopen O16 only on measured failure |
-| S15 retained scene and damage | Retention, damage, transport, and Linux lifecycle mechanisms pass. The current five-process actual-NVIDIA final protocol has 7/8 official Linux rows: true-idle, small-animation, virtual-table, topology, text-editing, image-effects, and three-window. The startup/readback proof and synthetic pointer/key/text handoff gate are recorded, with synthetic handoff P95 passing; table/topology controls remain reconstructed, the matrix is source-dirty, and box rows remain non-manifest stress evidence; resize-DPI is blocked on the exact active swapchain DPI cycle, while actual SDL acceptance and Wayland presentation-time feedback remain open | Resolve and qualify resize-DPI, then complete actual SDL acceptance and presentation-feedback evidence, clean Linux and Windows matrices, and resolve irrecoverable baseline, GPU-memory, and binary/package evidence through Q&A |
+| S14 compositing, effects, readback, and AA | Linux-complete for its accepted scope; S20 separately completed generic precompiled fragment effects. General masks and a higher-level filter API are intentional non-goals | Final cross-platform T02 evidence and Windows qualification remain S19; reopen O16 only on measured failure |
+| S15 retained scene and damage | Retention, damage, transport, and Linux lifecycle mechanisms pass. The current five-process actual-NVIDIA final protocol has 8/8 official Linux rows. First-usable-frame, synthetic input handoff, and actual SDL polling acceptance gates pass. Table/topology controls remain reconstructed and the matrix is source-dirty. Wayland presentation feedback uses the accepted nominal-refresh fallback and remains deferred under S16-D03 | Complete clean Linux and Windows matrices, then resolve irrecoverable baseline, GPU-memory, and binary/package evidence through Q&A |
 | S16 shared runtime and window behavior | Complete for the local discrete-Linux core scope. S19 qualification removed normal-close device-wide idle, passed 1,000 operations, 10 injected surface losses, 3 device losses across three live windows, and qualified queue-call isolation and offscreen failure propagation | External Windows and integrated-GPU repeats only; no local D01, D02, or D04 blocker remains |
-| S19 release qualification | Current-host T01, T02, T04, and Linux T05 pass. T03 stage/resource and deterministic scale-1 three-window checks pass, but full T03 remains resize/provenance partial. API/XML and 261 backend-neutral behavior contracts run in focused CI lanes | Fix resize-DPI and run the clean-source matrix, then run Windows, Linux integrated-GPU, and second-real-DPI qualification |
-| S20 generic retained shader effects | Implemented and qualified on Linux with two bounded constructors, eight retained parameter slots, 0 B warm allocation, and no warm Vulkan resource creation | Repeat T02, recovery, package, and NativeAOT qualification on Windows; keep non-normal `BlendMode` plus `ShaderEffect` unsupported until a nested-layer contract is approved |
+| S19 release qualification | Current-host T01, T02, T04, and Linux T05 pass. T03 stage/resource, deterministic scale-1 three-window, and resize-DPI checks pass, but full T03 remains provenance partial. API/XML and 261 backend-neutral behavior contracts run in focused CI lanes | Run the clean-source matrix, then run Windows, Linux integrated-GPU, and second-real-DPI qualification |
+| S20 generic retained shader effects | Implemented and qualified on Linux with two bounded constructors, eight retained parameter slots, 0 B warm allocation, no warm Vulkan resource creation, and internal nested-layer composition with non-normal `BlendMode` | Repeat T02, recovery, package, and NativeAOT qualification on Windows |
 
 No remaining stage is complete end to end across both RIDs. S10R closes only the
-Linux substrate for owners that exist before S14. S15 cannot exit until its
-actionable workload, metric, pixel, package, clean-source, Windows, and
-input/presentation-feedback blockers are complete and Q&A resolves the
+Linux substrate for owners that exist before S14. S15 cannot exit until clean-source,
+Windows, package, and comparison-policy blockers are complete. Q&A owns
 irrecoverable historical comparison evidence.
 Final T02 or Windows evidence may reopen O16 only on measured failure.
 
@@ -163,23 +178,15 @@ and must pass the acceptance and measurement rules in
 This work is independent of the core stage dependency graph. Each accepted slice preserves existing
 ownership, teardown, recovery, capability, and performance behavior.
 
-### 3.2 Actual remaining capability gaps
+### 3.2 Actual remaining release gaps
 
-- General reusable masks and higher-level filters do not have an accepted public contract or product
-  implementation. The narrower clip-mask, shadow-mask, and `ShaderEffect` mechanisms do not imply one.
-- `TextEditor` inline and block child slots remain deferred pending a proven child clip-lifetime
-  contract. Rich text presentation layers without child slots are supported.
-- A non-normal `BlendMode` and `ShaderEffect` cannot be applied to the same element until their
-  nested-layer composition and resource lifetime are specified and qualified.
-- S15 current retention, lifecycle, absolute-frame, and seven of eight official workload rows are
-  measured on the current Linux NVIDIA protocol. All measured rows pass their exact local contracts
-  and absolute budgets; table/topology controls remain reconstructed and the matrix is source-dirty.
-  The startup/readback proof and synthetic input-injection-to-present-handoff P95 pass are route-qualified
-  only. Full Q10 remains blocked by resize-DPI, actual SDL acceptance and Wayland presentation-time
-  feedback, comparative startup evidence, Windows qualification, and accepted GPU-memory, binary/package,
-  clean-source, and provenance gaps.
-- Cross-RID parity, final T01-T05 evidence, and clean package qualification
-  remain S19 work.
+- S15 current retention, lifecycle, absolute-frame, first-usable-frame, SDL polling acceptance, and
+  all eight official workload rows are measured on the current Linux NVIDIA protocol. All measured
+  rows pass their exact local contracts and absolute budgets; table/topology controls remain
+  reconstructed and the matrix is source-dirty. Full Q10 remains blocked by Windows qualification
+  and accepted GPU-memory, binary/package, clean-source, and provenance decisions. Wayland
+  presentation feedback is deferred under S16-D03 with nominal refresh as the accepted fallback.
+- Cross-RID parity, final T01-T05 evidence, and clean package qualification remain S19 work.
 
 The fixed two-through-four-stop gradient limit, 4-pixel text-stroke limit, excluded bitmap/SVG font
 formats, language hyphenation, platform accessibility adapters, and consumer-level widgets are
@@ -190,16 +197,18 @@ their decisions.
 
 ```text
 S07 Linux diagnostics and T03/T04 -> Windows repeat
-S15 Q10 current 7/8 Linux rows -> resize-DPI qualification -> SDL acceptance and Wayland presentation-time feedback -> clean Linux matrix -> Windows matrix -> baseline Q&A -> S15 exit
+S15 Q10 current 8/8 Linux rows -> clean Linux matrix -> Windows matrix -> baseline Q&A -> S15 exit
 S19 local package cleanup  -> T01 through T05
 S20 Windows repeat         -> S19 cross-RID T02 and T05
 ```
 
-S07 and S15 may land incrementally. The startup/readback proof and synthetic input handoff gate are
-recorded, but they do not close actual SDL acceptance or Wayland presentation-time feedback. S20 uses
-the S14 bounded layer owner and is Linux-qualified. Windows platform, lifecycle, visual, package, and
-NativeAOT qualification remains in S19. General masks, filters, editor child slots, and combined
-non-normal blend plus shader effects require their own accepted contracts before implementation.
+S07 and S15 may land incrementally. First-usable-frame, synthetic input handoff, and actual SDL
+polling acceptance gates pass. Wayland presentation feedback is deferred under S16-D03 and nominal
+display refresh remains the accepted fallback. S20 uses the S14 bounded layer owner and is
+Linux-qualified. Windows platform, lifecycle, visual, package, and
+NativeAOT qualification remains in S19. General masks reopen only for a
+required external alpha/luminance mask source; higher-level filters reopen only
+if Goo adopts a no-shader-authoring convenience layer.
 
 ## 5. Active stage specifications
 
@@ -346,6 +355,12 @@ Current state:
   product path covers CJK, RTL, combining marks, ligatures, wrapping, replacements, hidden spans,
   caret and selection geometry, focus-follow scrolling, active IME composition, rich presentation
   layers, decorations, sharp text shadows, and text stroke through 4 pixels.
+- `TextEditor` inline and block child slots share one compiler-owned content clip with editor text.
+  Slot children inherit its clip index, depth, and intersected bounds through scroll, nested layers,
+  resize, and DPI changes. Unsupported clip contexts skip both editor content and slot children rather
+  than painting them unclipped. No public API, shader, descriptor, or Vulkan resource contract changed.
+  The Khronos-validation gate passes inline/block pixels, scrolled boundary clipping, retained editor
+  text, zero unsupported diagnostics, zero warm Vulkan allocation, cleanup, and close.
 - Monochrome glyphs and required COLR/CPAL v0/v1 color glyphs use the same Vulkan text path.
 - Text residency uses a bounded eight-page LRU atlas set with stable identities, dynamic discovery,
   upload-before-publication, fence-safe recycle and retirement, byte and live-object diagnostics,
@@ -366,16 +381,12 @@ Locked direction:
 
 Remaining work and explicit limitations:
 
-1. Defer exact product post-recycle pixel comparison to the S14 request-only asynchronous Vulkan
-   readback path. S11 proves lifecycle, counters, bounded residency, and no leaked current atlas state.
-2. Defer blurred text shadows to S14. Sharp shadows and the Linux COLR paint effect slice are supported.
-3. Inline and block editor slots remain deferred until child clip lifetime is implemented. Rich text
-   presentation layers without child slots are supported.
-4. Text stroke is intentionally capped at 4 pixels. Reopen only with visual and performance evidence
+1. Text stroke is intentionally capped at 4 pixels. Reopen only with visual and performance evidence
    for a different fixed product limit.
-5. CBDT/CBLC, `sbix`, SVG fonts, and language hyphenation remain outside the accepted corpus unless a
+2. CBDT/CBLC, `sbix`, SVG fonts, and language hyphenation remain outside the accepted corpus unless a
    required product case reopens O02.
-6. Repeat the same package, provider, corpus, atlas, recovery, and NativeAOT gates on Windows in S19.
+3. Repeat the same package, provider, corpus, atlas, recovery, slot, and NativeAOT gates on Windows in
+   S19.
 
 ### S14. Implement compositing, effects, async readback, and one AA policy (Linux scope complete)
 
@@ -469,8 +480,8 @@ Current state:
   SHA-256 `048e7d6c9d6e60d94f8556b1160cf25fee0f66afa169f95667d8a0498cf2723a`.
 - The S14 typed declarative Style effect boundary remains accepted. S20 separately adds the bounded
   public `Style.ShaderEffect` integration point for precompiled fragment SPIR-V while keeping Vulkan
-  shaders, pipelines, descriptors, compiler objects, and handles internal. General masks and
-  higher-level filters remain deferred and are not an S14 blocker.
+  shaders, pipelines, descriptors, compiler objects, and handles internal. General masks and a
+  higher-level filter API are intentional non-goals, not S14 blockers.
 - `LayerSubtreeBounds` now tightens allocations with a root-space AABB seeded from the active viewport
   and intersected with emitted ancestor rectangular, path, rounded, and mixed clips. The bounded Linux
   Wayland proof verified four targets shrinking from 1800x1350 to 2x2 at 2x DPI, reducing nominal
@@ -482,9 +493,10 @@ Work:
 2. Final cross-platform T02 evidence and Windows qualification belong to S19. Reopen O16 only if those
    measurements show a failure of the accepted analytic-coverage policy.
 
-General masks and higher-level filters are deferred outside S14. Their future Goo path requires its own
-API, safety, resource, validation, performance, lifecycle, and package decisions. Generic precompiled
-fragment effects are complete under S20.
+General masks remain unnecessary without an external alpha/luminance mask-source requirement:
+Simulation plus `ClipPath` covers hard animated reveals and Simulation plus `ShaderEffect` covers
+soft or procedural reveals. `ShaderEffect` remains the only filter mechanism; no higher-level core
+API or convenience package is planned. Generic precompiled fragment effects are complete under S20.
 
 Exit:
 
@@ -698,12 +710,17 @@ Rejected primitive-staging follow-up:
   absolute total-result improvement, so P06 and P07 were removed. Their separate evidence documents
   remain under `docs/perf/2026-08-21-vulkan-performance-p0{5,6,7}-*.md`.
 
-Q10 blocker ledger (audited 2026-08-24):
+Q10 blocker ledger (audited 2026-08-25):
 
 - The official manifest in `docs/perf/q10-workloads-v1.json` defines eight
-  workloads. The final actual-NVIDIA matrix has 7/8 current Linux official
+  workloads. The final actual-NVIDIA matrix has 8/8 current Linux official
   rows: true-idle, small-animation, virtual-table, topology, text-editing,
-  image-effects, and three-window, plus two non-manifest box stress rows.
+  image-effects, resize-DPI, and three-window, plus two non-manifest box stress rows.
+- The five-process resize-DPI follow-up closes the frame-120 active-swapchain
+  failure after the lost-retry correction. Each process passes 300 warmups and
+  2,000 measured frames with exact submit/present counts, both slots, clean
+  diagnostics, close, and scale restore. Raw logs are
+  `artifacts/reports/s15-q10/resize-dpi-final-run-{1..5}.log`.
 - The final matrix used a source-dirty working tree. It is strong current
   diagnostic evidence, not clean-source final qualification.
 - 2026-08-23 targeted pixel requalification on the current RTX 3080 source:
@@ -736,14 +753,14 @@ Q10 blocker ledger (audited 2026-08-24):
   NativeAOT processes on actual NVIDIA hardware, 300 warmups, and 2,000 input samples per process.
   The binary is 5,733,280 bytes with SHA-256
   `d0c6a3968681fd0a2675aaf7c6d45c9ba40c8597d131401b5a918e6346047bc6`. Every process exited 0 with
-  zero validation, result-failure, and fatal failures, 2,001 unique presentation tokens, and exact
-  2,000 submit/present deltas. Startup submit/present was exactly one each per process and the
-  startup readback usability proof passed. On this route, managed-entry to successful
-  `vkQueuePresentKHR` handoff is median `226.193175 ms`, and window-open to that handoff is median
-  `225.551726 ms`; these are qualified handoff values, not a first-usable-frame P95.
-  Synthetic injection-to-present-handoff P50/P95/P99/worst is
+  zero validation, result-failure, and fatal failures. The startup frame had one submit/present,
+  positive metrics, a mounted invariant root, a present-fence observation, and a successful
+  non-background readback. Nearest-rank first-usable-frame P95 across the five processes is
+  `255.212748 ms` from managed entry and `252.771895 ms` from `Window.Open` to handoff.
+  Completion-observed upper-bound P95 is `255.238026/252.797173 ms`. This establishes the current
+  Vulkan regression reference. Synthetic injection-to-present-handoff P50/P95/P99/worst is
   `0.381620/1.348723/1.625866/1.974053 ms`; the `37.333334 ms` P95 limit passes. Completion-observed
-  upper bounds are `1.571202/6.193419/7.986581/21.262635 ms` P50/P95/P99/worst.
+  input upper bounds are `1.571202/6.193419/7.986581/21.262635 ms` P50/P95/P99/worst.
 - Presentation retirement uses bounded presentation-token and completion history plus bounded retired
   generation records. Successful `vkQueuePresentKHR` handoff timestamps and present IDs are monotonic
   by token, while callbacks are stored by token and may arrive out of order. With
@@ -754,8 +771,11 @@ Q10 blocker ledger (audited 2026-08-24):
 - The fixture applies causal pointer, key, and committed-text mutations. Each mutation increments only
   its corresponding counter and one rendered generation, and all five runs preserve the exact per-kind
   handoff medians: pointer `0.346123/0.476438/0.529628 ms`, key `0.339610/0.461310/0.518588 ms`,
-  and committed text `0.747760/1.567176/1.711557 ms` P50/P95/P99. The fixture bypasses SDL polling.
-  Actual SDL acceptance and Wayland presentation-time feedback remain open. Raw evidence is
+  and committed text `0.747760/1.567176/1.711557 ms` P50/P95/P99. A separate Khronos-validation
+  gate pushes pointer, key, and committed UTF-8 text through `SDL_PushEvent`, consumes them through
+  product `SdlRuntime.PumpEvents` and `SdlHost.Dispatch`, and reports
+  `sdl_poll=1 pointer=1 key=1 text=1 submit=3 present=3 close=1`. Wayland presentation feedback
+  remains deferred under S16-D03 with nominal refresh as the fallback. Raw evidence is
   `artifacts/reports/s15-q10/summary.json` and
   `artifacts/reports/s15-q10/latency-final-run-*.log`.
 Current follow-up work (not full Q10 qualification):
@@ -775,7 +795,7 @@ Current follow-up work (not full Q10 qualification):
   and add no public API.
 
 
-Official workload state (current Linux final-protocol rows: 7/8):
+Official workload state (current Linux final-protocol rows: 8/8):
 
 | Workload | State | Current evidence and blocker |
 |---|---|---|
@@ -785,52 +805,43 @@ Official workload state (current Linux final-protocol rows: 7/8):
 | `q10.topology` | Measured (Linux, reconstructed control) | Five current NVIDIA processes pass absolute budgets, exact submit/present, warm-resource, and process-memory checks. The control is reconstructed, the matrix is source-dirty, and Windows is missing |
 | `q10.text-editing` | Measured (Linux, frame gate pass) | Five current NativeAOT processes pass the local absolute contract at CPU P50/P95/P99 `0.497938/0.552471/0.701151 ms`, GPU P95 `0.054272 ms`, and allocation P50 `63,184 B`. Prior current CPU P95 was `1.320821 ms`, a `58.172%` reduction. The exact retained-segment fast hit applies to Text and TextEditor only. TextEntry remains on full segment generation and full renderer validation because cached Entry proof repeatedly lost S17 protected-mask pixels. Accepted recorded Skia P95 is `0.461491 ms`; the new delta is `+0.090980 ms` or `+19.714%`, inside the exact gate by `0.009020 ms`. Windows is missing |
 | `q10.image-effects` | Measured (Linux) | Five current NVIDIA processes pass the exact local contract and absolute budget at CPU P50/P95/P99 5.283/6.001/7.690 ms and GPU P95 0.934 ms. Effects/COLR and rounded-overflow pixel prerequisites pass; Windows and an accepted recorded baseline remain missing |
-| `q10.resize-dpi` | Product-blocked | The deterministic KWin scale-1 wrapper supplies exact initial metrics and the 1.0/1.5/2.0 framebuffer states. Repeated swapchain shrink/recreate fails returning to state 0 at frame 120. No current Linux final-protocol row exists |
+| `q10.resize-dpi` | Measured (Linux) | Five isolated direct-KWin scale-1 NativeAOT processes complete repeated 1.0/1.5/2.0 active-swapchain cycles. CPU P50/P95/P99 process medians are `0.137319/1.618522/2.430012 ms`; GPU Main P95 is `0.113664 ms`. Exact 2,000 submit/present deltas, both slots, clean validation/result/fatal streams, close, and scale restore pass. Windows and an accepted recorded baseline remain missing |
 | `q10.three-window` | Measured (Linux, baseline pending) | Five current NVIDIA processes pass the exact local contract and absolute budget at CPU P50/P95/P99 0.648/1.463/1.652 ms and GPU P95 0.022 ms. Global submit/present delta is 2033 = 2000 selected frames + 33 actual focus-loss dirty renders; clean local slots remain unchanged. Windows and an accepted recorded baseline remain missing |
 
 Hard-gate state:
 
 | Gate | State | Exact blocker |
 |---|---|---|
-| Feature and pixel coverage | Partial | Effects/COLR, rounded-overflow, protected-text, and image/effects pixels pass on the current RTX 3080 source and CPU Lavapipe. Seven current Linux workload rows are measured, but resize-DPI and Windows remain |
-| Absolute frame budget | Partial | True-idle, small-animation, virtual-table, topology, text-editing, image-effects, and three-window current Linux rows pass local absolute budgets. Resize-DPI is blocked on the exact active swapchain DPI cycle, and Windows remains |
-| General frame time | Pass for q10.text-editing | The current text follow-up P95 is `0.552471 ms` versus accepted recorded Skia P95 `0.461491 ms`, a `+0.090980 ms` or `+19.714%` delta, and passes the larger-of-3%-or-0.1-ms gate by `0.009020 ms`. Text editing no longer blocks this gate; resize-DPI, provenance, and cross-platform blockers remain |
+| Feature and pixel coverage | Partial | Effects/COLR, rounded-overflow, protected-text, image/effects, and all eight current Linux workload routes pass on the current RTX 3080 source; Windows remains |
+| Absolute frame budget | Partial | All eight current Linux workload rows pass their local absolute budgets; Windows remains |
+| General frame time | Pass for q10.text-editing | The current text follow-up P95 is `0.552471 ms` versus accepted recorded Skia P95 `0.461491 ms`, a `+0.090980 ms` or `+19.714%` delta, and passes the larger-of-3%-or-0.1-ms gate by `0.009020 ms`. Text editing no longer blocks this gate; provenance and cross-platform blockers remain |
 | Relative sparse performance | Blocked | Table and topology improvements use reconstructed controls, not recorded references. Three-window has no accepted recorded comparison and the source is dirty |
-| Input latency | Pass (synthetic fixture route) | Five fresh NativeAOT processes pass causal pointer/key/committed-text injection to successful `vkQueuePresentKHR` handoff at P50/P95/P99/worst `0.381620/1.348723/1.625866/1.974053 ms`; P95 is below the `37.333334 ms` limit. The fixture bypasses SDL polling, so actual SDL acceptance remains Open |
-| Startup and first-use stalls | Partial | Each process proves one startup submit and present, positive logical/framebuffer metrics, a mounted invariant root, and a usable startup readback. Managed-entry to present-handoff median is `226.193175 ms` and window-open to present-handoff median is `225.551726 ms` on this route; no comparable first-usable-frame P95 or SDL acceptance timing is qualified |
-| SDL acceptance and Wayland presentation feedback | Open | Synthetic WindowReadbackFixture injection bypasses SDL polling, and no Wayland presentation-time feedback is recorded |
+| Input latency | Pass | Five NativeAOT processes pass synthetic pointer/key/committed-text handoff at P50/P95/P99/worst `0.381620/1.348723/1.625866/1.974053 ms`; the focused native gate separately proves SDL polling acceptance |
+| Startup and first-use stalls | Pass (current route) | Five independent NativeAOT processes prove a mounted usable startup frame with exact submit/present, present-fence observation, and non-background readback. Nearest-rank `Window.Open` P95 is `252.771895 ms` to handoff and `252.797173 ms` completion-observed upper bound. This is the current Vulkan regression reference |
+| SDL polling acceptance | Pass | `SDL_PushEvent` pointer, key, and committed UTF-8 text events are consumed only through product native polling and dispatch, with exact causal submit/present and clean Khronos validation |
+| Wayland presentation feedback | Deferred | Swapchain-maintenance present fences provide completion-observed upper bounds. S16-D03 accepts nominal display refresh as fallback until a supported feedback path is available or cadence fails |
 | Managed, RSS, and private-dirty memory | Partial | Current Linux rows record metrics and table/topology remain below reconstructed controls. Accepted baselines and Windows are missing |
 | Goo-reserved GPU memory | Blocked | The Skia control recorded no comparable metric. The whole-device proxy is non-attributable and differs by more than five percent |
 | Binary and package | Blocked | No qualifying per-RID frozen-Skia denominator or final T05 comparison proves the required 8 MiB reduction |
 | Dependencies and fallback | Partial | Direct Vulkan has no product fallback. Final per-RID native-library and forbidden-payload audits remain T05 work |
 | Validation | Partial | The current Linux workload and lifecycle routes pass their local validation contracts. The eight-workload visual sweep and Windows remain |
-| Idle and warm resources | Partial | Five nested-KWin scale-1 true-idle processes pass 60 seconds with zero work and allocation. Measured workload rows pass warm-resource checks; resize-DPI and Windows remain |
-| Lifecycle and recovery | Partial | The compact Linux program passes. Resize-DPI fails repeated swapchain shrink/recreate returning to state 0 at frame 120, and the Windows twin is missing |
+| Idle and warm resources | Partial | Five nested-KWin scale-1 true-idle processes pass 60 seconds with zero work and allocation. Measured workload rows pass their applicable warm-resource checks; Windows remains |
+| Lifecycle and recovery | Partial | The compact Linux program and repeated resize-DPI active-swapchain cycle pass; the Windows twin is missing |
 | Provenance | Blocked | The final matrix is source-dirty; only text editing has an accepted recorded Skia baseline, table/topology use reconstructed controls, and Windows plus other recorded comparisons are missing |
 
 Work, in order:
 
-1. Fix and qualify resize-DPI only. The deterministic scale-1 environment is complete. The route must
-   complete repeated 1.0 -> 1.5 -> 2.0 -> 1.5 -> 1.0 active-swapchain cycles instead of failing the
-   second return to state 0 at frame 120. Do not relabel any of the seven measured Linux rows or
-   promote box rows to official coverage.
-2. Keep the startup/readback usability proof and synthetic input-injection-to-present-handoff result
-   as route-qualified evidence. The synthetic handoff P95 passes at `1.348723 ms` against the
-   `37.333334 ms` limit. Close the remaining latency semantics only through actual SDL acceptance and
-   supported Wayland presentation-time feedback; do not reinterpret handoff or completion-observed
-   upper-bound timestamps.
-3. Run one clean-source Linux matrix across all eight official workloads,
-   including validation, package, dependency, fallback, memory, and binary
-   evidence.
-4. Run the equivalent Windows x64 matrix and lifecycle program. Integrated-GPU
+1. Run one clean-source Linux matrix across all eight official workloads,
+   including validation, package, dependency, fallback, memory, and binary evidence.
+2. Run the equivalent Windows x64 matrix and lifecycle program. Integrated-GPU
    and second-real-DPI repeats remain broader S19 hardware work.
-5. Reconstruct any missing frozen-commit controls only as supplementary
+3. Reconstruct any missing frozen-commit controls only as supplementary
    evidence. Record exact GPU-memory and package metrics where technically
    possible without changing their provenance status.
-6. Return the remaining historical baseline, Goo-reserved GPU-memory, and
+4. Return the remaining historical baseline, Goo-reserved GPU-memory, and
    binary-denominator decisions to Q&A. Do not perform further CPU process-memory
    optimization without a comparable failing metric.
-7. Keep incremental-present regions optional. Do not add a separate full-window
+5. Keep incremental-present regions optional. Do not add a separate full-window
    backing image or framebuffer tile cache.
 
 User-decision boundary:
@@ -904,8 +915,8 @@ First scheduling slice:
   the next permitted frame while wall time remains exact.
 - Dirty idle windows submit zero frames after initial work. Minimized, occluded, zero-framebuffer,
   unavailable-swapchain, or GPU-deferred windows are skipped in the implemented polling paths and do
-  query retains the last valid display sample. Actual Wayland presentation-time feedback is still absent,
-  so nominal display refresh is the fallback.
+  query retains the last valid display sample. Direct Wayland presentation-time feedback is absent
+  and deferred under S16-D03; nominal display refresh is the accepted fallback.
 - `Window.VSync` is public and per-window. Its value now reaches target and swapchain recreation:
   `true` selects FIFO; `false` selects Immediate, then Mailbox, then FIFO, never FIFO_RELAXED. Both
   modes remain display-rate paced under `Window.Run`.
@@ -1011,9 +1022,9 @@ Current-host T01-T05 checkpoint, 2026-08-24:
 - T03 stage/resource checks pass: the 2,000-sample stage route has exact 16/8 Effects/Offscreen scope
   counts, zero drops, zero warm Vulkan allocations, and clean validation. The million-iteration image
   upload state gate allocates 0 B and passes record, submit, abort, recovery, oracle, and close.
-  Full T03 remains partial because resize-DPI fails repeated swapchain shrink/recreate returning to
-  state 0 at frame 120 and no clean-source eight-workload matrix was run. The deterministic scale-1
-  three-window route now passes its full 300/2,000 contract.
+  The deterministic scale-1 three-window and five-process resize-DPI routes pass their full 300/2,000
+  contracts. Actual SDL polling acceptance also passes its focused validation gate. Full T03 remains
+  partial only because no clean-source eight-workload matrix was run.
 - T04 passes after the queue-ordering change: 3 windows, 1,000 operations, 10 surface losses, 3 device
   losses, resource plateau, validation, and post-recovery stage timestamps all pass. API contract
   tests pass 10/10 and core behavior passes 261/261.
@@ -1086,16 +1097,16 @@ Public contract:
 - Fragment modules use one fixed Goo ABI: source at set 0, optional backdrop at set 1, Goo primitive
   data at set 2, Goo clip data at set 3, and eight `vec4` parameter slots in a 128-byte fragment push
   block. Output is premultiplied linear color composed source-over.
-- Non-normal `BlendMode` combined with `ShaderEffect` is rejected until the two effects have a proven
-  nested-layer contract.
+- When combined with a non-normal `BlendMode`, `ShaderEffect` runs first over the isolated subtree.
+  The resulting source then blends into the original parent backdrop through an outer layer.
+  Backdrop-sampling effects borrow that outer capture with identical origin and extent.
 
 Remaining work:
 
 1. Repeat the focused visual, interaction, resize, DPI, recovery, package, and NativeAOT gates on
    Windows through S19.
-2. Include ordinary, backdrop, and bounded-outset effects in final cross-platform T02 and T05 evidence.
-3. Keep non-normal `BlendMode` plus `ShaderEffect` unsupported until a nested-layer contract proves
-   ordering, damage, target reuse, bounds, and recovery without expanding the public surface.
+2. Include ordinary, backdrop, bounded-outset, and combined non-normal-blend effects in final
+   cross-platform T02 and T05 evidence.
 
 Linux result:
 
@@ -1107,6 +1118,12 @@ Linux result:
   +1.00 percent, +2.37 percent, and -1.80 percent from P00.
 - JIT and NativeAOT gates passed ordinary Button source isolation, backdrop sampling, rounded clip,
   pointer input, resize, display scale, device recovery, and cleanup.
+- The focused Linux NativeAOT gate passes a backdrop-sampling effect combined with Multiply blend,
+  original-parent backdrop pixels, rounded clipping, pointer input, resize, display scale, injected
+  device recovery, zero-allocation parameter mutation, zero warm Vulkan resource creation, and clean
+  layer teardown. Its 300/2,000 benchmark reports CPU P50/P95/P99
+  `0.241085/0.365820/0.601514 ms`, 0 B allocation, zero warm Vulkan object or device-memory creation,
+  6,000 layer passes and composites, and clean close.
 - The package-only NativeAOT consumer is 1,262,784 B with a separate 5,600 B SPIR-V asset.
 - Final public delta is one type and four members: two constructors, `SetParameter`, and
   `Style.ShaderEffect`.
@@ -1193,14 +1210,11 @@ geometry, color, parity, performance, memory, or binary gates.
 
 ## 9. Current execution order
 
-1. Fix the resize-DPI repeated swapchain shrink/recreate failure at frame 120, then qualify actual
-   SDL input acceptance, supported Wayland presentation-time feedback, and comparable
-   first-usable-frame measurements. The deterministic scale-1 environment and three-window route pass.
-2. Run one clean-source Linux matrix across all eight official workloads and
-   finish the Linux T03 evidence with current artifact hashes and provenance.
-3. Run the external Windows x64, Linux integrated-GPU, and second-real-DPI
+1. Run one clean-source Linux matrix across all eight official workloads and finish the Linux T03
+   evidence with current artifact hashes and provenance.
+2. Run the external Windows x64, Linux integrated-GPU, and second-real-DPI
    matrix, including the S07 and S20 Windows repeats.
-4. Return the irrecoverable historical baseline, Goo-reserved GPU-memory, and
+3. Return the irrecoverable historical baseline, Goo-reserved GPU-memory, and
    binary/package denominator decisions to Q&A, then close S15 and S19 only if
    their exit contracts are satisfied.
 
@@ -1251,9 +1265,8 @@ When blocked by external hardware or one stage contract:
 Return to Q&A when:
 
 - Path implementation evidence requires a new dependency or materially different representation.
-- A separately planned general-mask or higher-level filter path is opened for contract review.
-- Combined non-normal blend plus `ShaderEffect` support requires a nested-layer contract or public
-  surface change.
+- A general mask is reopened for required external alpha/luminance mask data, or a higher-level
+  filter layer is reopened to remove shader authoring from consumers.
 - Final T02 or Windows measurements show a measured failure of the accepted O16 AA policy.
 - A public mechanism would expand Goo beyond an inaccessible primitive or confirmed core defect.
 - Multi-device Vulkan becomes necessary on required hardware.

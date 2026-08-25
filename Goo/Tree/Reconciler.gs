@@ -5,12 +5,12 @@ import System.Collections.Generic
 
 internal class Reconciler {
   internal prop CellInvalidated Action[Cell]? { get; init; }
-  internal prop ImageCompleted ((Node, object) -> void)? { get; init; }
+  internal prop ImageCompleted((Node, object) -> void)? { get; init; }
   internal prop RetainedInvalidated Action[ReconcileEffects]? { get; init; }
-  internal prop Res Resolver { get; init; }
+  internal prop Res Resolver{ get; init; }
   internal prop ChildScratch ChildDiffScratch? { get; init; }
   internal prop Profiler FrameProfiler? { get; init; }
-  internal prop DeferStyleFlush bool { get; init; }
+  internal prop DeferStyleFlush bool{ get; init; }
   internal prop Pump MotionPump? { get; init; }
   internal var Effects ReconcileEffects
   internal var ProfileBuildTicks int64
@@ -375,59 +375,59 @@ internal class Reconciler {
 
   internal func applyEditor(n Node, t TextEditor, layers []TextPresentationLayer,
     initial bool) {
-    applyStyle(n, t, true, initial)
-    var contentChanged = false
-    var paintChanged = false
-    var inputChanged = false
-    if n.EditorState == nil {
-      validateEditorLayerOverlaps(layers)
-      t.Controller.Attach(n)
-      n.EditorController = t.Controller
-      n.EditorState = TextEditorRenderState(n, t.Document, t.Controller, layers, t.ReadOnly,
-        RetainedInvalidated)
-      contentChanged = true
-      paintChanged = true
-      inputChanged = true
-    } else if let state = n.EditorState {
-      if !state.MatchesLayers(layers) { validateEditorLayerOverlaps(layers) }
-      state.Apply(layers, t.ReadOnly)
+      applyStyle(n, t, true, initial)
+      var contentChanged = false
+      var paintChanged = false
+      var inputChanged = false
+      if n.EditorState == nil {
+        validateEditorLayerOverlaps(layers)
+        t.Controller.Attach(n)
+        n.EditorController = t.Controller
+        n.EditorState = TextEditorRenderState(n, t.Document, t.Controller, layers, t.ReadOnly,
+          RetainedInvalidated)
+        contentChanged = true
+        paintChanged = true
+        inputChanged = true
+      } else if let state = n.EditorState {
+        if !state.MatchesLayers(layers) { validateEditorLayerOverlaps(layers) }
+        state.Apply(layers, t.ReadOnly)
+      }
+      if n.EditorReadOnly != t.ReadOnly {
+        n.EditorReadOnly = t.ReadOnly
+        inputChanged = true
+      }
+      if n.Placeholder != t.Placeholder {
+        n.Placeholder = t.Placeholder
+        paintChanged = true
+      }
+      if !n.SelectionColor.Equals(t.SelectionColor) {
+        n.SelectionColor = t.SelectionColor
+        paintChanged = true
+      }
+      if !n.EditorCaretColor.Equals(t.CaretColor) {
+        n.EditorCaretColor = t.CaretColor
+        paintChanged = true
+      }
+      if !n.EditorCurrentLineColor.Equals(t.CurrentLineColor) {
+        n.EditorCurrentLineColor = t.CurrentLineColor
+        paintChanged = true
+      }
+      if n.EditorOverscanLines != t.OverscanLines {
+        n.EditorOverscanLines = t.OverscanLines
+        TextEditorLayouts.Invalidate(n)
+        contentChanged = true
+        paintChanged = true
+      }
+      n.EditorOnChange = t.OnChange
+      n.EditorOnSubmit = t.OnSubmit
+      if contentChanged {
+        TextEditorLayouts.Invalidate(n)
+        MarkEffects(ReconcileEffects.Content)
+        MarkEffects(ReconcileEffects.Layout)
+      }
+      if paintChanged { MarkEffects(ReconcileEffects.Paint) }
+      if inputChanged { MarkEffects(ReconcileEffects.Input) }
     }
-    if n.EditorReadOnly != t.ReadOnly {
-      n.EditorReadOnly = t.ReadOnly
-      inputChanged = true
-    }
-    if n.Placeholder != t.Placeholder {
-      n.Placeholder = t.Placeholder
-      paintChanged = true
-    }
-    if !n.SelectionColor.Equals(t.SelectionColor) {
-      n.SelectionColor = t.SelectionColor
-      paintChanged = true
-    }
-    if !n.EditorCaretColor.Equals(t.CaretColor) {
-      n.EditorCaretColor = t.CaretColor
-      paintChanged = true
-    }
-    if !n.EditorCurrentLineColor.Equals(t.CurrentLineColor) {
-      n.EditorCurrentLineColor = t.CurrentLineColor
-      paintChanged = true
-    }
-    if n.EditorOverscanLines != t.OverscanLines {
-      n.EditorOverscanLines = t.OverscanLines
-      TextEditorLayouts.Invalidate(n)
-      contentChanged = true
-      paintChanged = true
-    }
-    n.EditorOnChange = t.OnChange
-    n.EditorOnSubmit = t.OnSubmit
-    if contentChanged {
-      TextEditorLayouts.Invalidate(n)
-      MarkEffects(ReconcileEffects.Content)
-      MarkEffects(ReconcileEffects.Layout)
-    }
-    if paintChanged { MarkEffects(ReconcileEffects.Paint) }
-    if inputChanged { MarkEffects(ReconcileEffects.Input) }
-  }
 
   private func editorSlotBlobs(layers []TextPresentationLayer) IList[Blob] {
     let result = List[Blob]()
@@ -435,9 +435,9 @@ internal class Reconciler {
       let layer = layers[layerIndex]
       for projection in layer.ReadProjections() {
         if projection.Kind != TextProjectionKind.InlineSlot
-          && projection.Kind != TextProjectionKind.BlockSlot {
-          continue
-        }
+          && projection.Kind != TextProjectionKind.BlockSlot{
+            continue
+          }
         guard let content = projection.Content else { continue }
         result.Add(Container{
           Key: textEditorSlotKey(layer, projection),
@@ -454,9 +454,9 @@ internal class Reconciler {
     for layer in layers {
       for projection in layer.ReadProjections() {
         if (projection.Kind != TextProjectionKind.InlineSlot
-          && projection.Kind != TextProjectionKind.BlockSlot) || projection.Content == nil {
-          continue
-        }
+            && projection.Kind != TextProjectionKind.BlockSlot) || projection.Content == nil {
+              continue
+            }
         if childIndex >= n.Children.Count {
           return
         }
@@ -537,7 +537,6 @@ internal class Reconciler {
     styleRetryRoot = root
   }
 
-
   private func diffKeyedHit(n Node, b Blob) Node {
     let prior = deferredRetirement
     deferredRetirement = n
@@ -614,7 +613,7 @@ internal class Reconciler {
   // Reuse-or-replace the fiber, seed once, configure every time; detach the
   // hook before recursing so an inner kind-change teardown can't touch it.
   internal func expandCell(existing Node?, e CellElement) Node ->
-    expandCellAt(existing, e, existing?.Fiber, nil)
+  expandCellAt(existing, e, existing?.Fiber, nil)
 
   internal func createCell(e CellElement) Cell {
     if let factory = e.Factory {
@@ -1324,11 +1323,11 @@ internal func sameStyleEntries(a StyleEntries?, b StyleEntries?) bool {
 }
 
 internal func sameStyleEntry(a StyleEntry, b StyleEntry) bool ->
-  a.A == b.A && a.B == b.B && a.C == b.C && a.D == b.D
-    && entryText(a) == entryText(b) && sameGradient(entryGradient(a), entryGradient(b))
-    && sameBoxShadows(entryShadows(a), entryShadows(b))
-    && samePath(entryPath(a), entryPath(b))
-    && entryImageSource(a) == entryImageSource(b)
+a.A == b.A && a.B == b.B && a.C == b.C && a.D == b.D
+  && entryText(a) == entryText(b) && sameGradient(entryGradient(a), entryGradient(b))
+  && sameBoxShadows(entryShadows(a), entryShadows(b))
+  && samePath(entryPath(a), entryPath(b))
+  && entryImageSource(a) == entryImageSource(b)
 
 internal func sameDashPattern(a DashPattern?, b DashPattern?) bool {
   if a == b {

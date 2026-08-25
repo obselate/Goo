@@ -4,6 +4,7 @@ import System
 import System.Diagnostics
 import System.Threading
 
+import Hexa.NET.SDL3
 internal data struct VulkanPresentationLatencyTestSample {
   internal var Token uint64
   internal var Kind int32
@@ -184,7 +185,6 @@ internal data struct VulkanTextFrameRetentionTestSnapshot {
   internal var TotalPrepared uint64
 }
 
-
 internal data struct VulkanFrameSubmissionTestSnapshot {
   internal var Slot0Serial uint64
   internal var Slot1Serial uint64
@@ -193,7 +193,6 @@ internal data struct VulkanWindowFramebufferExtentTestSnapshot {
   internal var Width int32
   internal var Height int32
 }
-
 
 internal partial class VulkanWindowTarget {
   internal func DiagnosticCountersSnapshotForTest() VulkanDiagnosticCounterSnapshot {
@@ -210,19 +209,17 @@ internal partial class VulkanWindowTarget {
   }
 
   internal func SetMainPassTimestampSinkForTest(
-      sink Action[VulkanDiagnosticTimestampSnapshot]?) {
-    timestampState?.SetMainPassTimestampSink(sink)
-  }
+    sink Action[VulkanDiagnosticTimestampSnapshot]?) {
+      timestampState?.SetMainPassTimestampSink(sink)
+    }
   internal func SetAllTimestampSinkForTest(
-      sink Action[VulkanDiagnosticTimestampSnapshot]?) {
-    timestampState?.SetAllTimestampSink(sink)
-  }
+    sink Action[VulkanDiagnosticTimestampSnapshot]?) {
+      timestampState?.SetAllTimestampSink(sink)
+    }
 
-  internal func DiagnosticFrameIdForTest() uint64 {
-    return nextFrameId
-  }
+  internal func DiagnosticFrameIdForTest() uint64 -> nextFrameId
   internal func FramebufferExtentForTest()
-      VulkanWindowFramebufferExtentTestSnapshot {
+  VulkanWindowFramebufferExtentTestSnapshot{
     if let current = generation {
       return VulkanWindowFramebufferExtentTestSnapshot{
         Width: int32(current.Extent.width),
@@ -234,8 +231,6 @@ internal partial class VulkanWindowTarget {
       Height: framebufferHeight,
     }
   }
-
-
 
   internal func SceneRetentionSnapshotForTest() VulkanSceneRetentionTestSnapshot {
     let sceneVersion = activeSceneVersion
@@ -283,9 +278,9 @@ internal partial class VulkanWindowTarget {
     let logicalWidth = host.LogicalWidth > 0 ? host.LogicalWidth : framebufferWidth
     let logicalHeight = host.LogicalHeight > 0 ? host.LogicalHeight : framebufferHeight
     let payloadScaleX = logicalWidth > 0
-      ? float32(framebufferWidth) / float32(logicalWidth) : 1.0F
+    ? float32(framebufferWidth) / float32(logicalWidth) : 1.0F
     let payloadScaleY = logicalHeight > 0
-      ? float32(framebufferHeight) / float32(logicalHeight) : 1.0F
+    ? float32(framebufferHeight) / float32(logicalHeight) : 1.0F
     var mutatedSolidLeafFound bool = false
     var mutatedSolidLeafBounds ConservativeBounds{}
     var mutatedSolidLeafColor uint32 = 0u
@@ -297,50 +292,50 @@ internal partial class VulkanWindowTarget {
     while drawIndex < frame.DrawRefCount {
       let draw = frame.DrawRefs[drawIndex]
       if draw.Kind == SceneDrawKind.RoundedBox
-          && draw.Index >= 0 && draw.Index < frame.RoundedBoxCount {
-        let record = frame.RoundedBoxes[draw.Index]
-        roundedLeafCount = roundedLeafCount + 1u
-        if roundedLeafCount == 1u {
-          roundedLeafBounds = record.Bounds
-          roundedLeafRadiusTopLeft = record.RadiusTopLeft
-          roundedLeafRadiusTopRight = record.RadiusTopRight
-          roundedLeafRadiusBottomRight = record.RadiusBottomRight
-          roundedLeafRadiusBottomLeft = record.RadiusBottomLeft
-          roundedLeafColor = record.Color
-          roundedLeafOpacity = record.Opacity
-        }
-      } else if draw.Kind == SceneDrawKind.SolidBox
-          && draw.Index >= 0 && draw.Index < frame.SolidBoxCount {
-        let record = frame.SolidBoxes[draw.Index]
-        let inX = record.Bounds.X > 80.0F * payloadScaleX
-          && record.Bounds.X < 160.0F * payloadScaleX
-        let inY = record.Bounds.Y > 0.0F
-          && record.Bounds.Y < 16.0F * payloadScaleY
-        let widthMatches = record.Bounds.Width > 63.0F * payloadScaleX
-          && record.Bounds.Width < 65.0F * payloadScaleX
-        let heightMatches = record.Bounds.Height > 31.0F * payloadScaleY
-          && record.Bounds.Height < 33.0F * payloadScaleY
-        if inX && inY && widthMatches && heightMatches {
-          mutatedSolidLeafFound = true
-          mutatedSolidLeafBounds = record.Bounds
-          mutatedSolidLeafColor = record.Color
-          mutatedSolidLeafOpacity = record.Opacity
-        }
-      } else if draw.Kind == SceneDrawKind.PerEdgeBorder
-          && draw.Index >= 0 && draw.Index < frame.PerEdgeBorderCount {
-        let record = frame.PerEdgeBorders[draw.Index]
-        let inX = record.Bounds.X > 160.0F * payloadScaleX
-          && record.Bounds.X < 176.0F * payloadScaleX
-        let inY = record.Bounds.Y > 0.0F
-          && record.Bounds.Y < 16.0F * payloadScaleY
-        if inX && inY {
-          borderLeafCount = borderLeafCount + 1u
-          if !borderLeafFound {
-            borderLeafFound = true
-            borderLeaf = record
+        && draw.Index >= 0 && draw.Index < frame.RoundedBoxCount{
+          let record = frame.RoundedBoxes[draw.Index]
+          roundedLeafCount = roundedLeafCount + 1u
+          if roundedLeafCount == 1u {
+            roundedLeafBounds = record.Bounds
+            roundedLeafRadiusTopLeft = record.RadiusTopLeft
+            roundedLeafRadiusTopRight = record.RadiusTopRight
+            roundedLeafRadiusBottomRight = record.RadiusBottomRight
+            roundedLeafRadiusBottomLeft = record.RadiusBottomLeft
+            roundedLeafColor = record.Color
+            roundedLeafOpacity = record.Opacity
+          }
+        } else if draw.Kind == SceneDrawKind.SolidBox
+        && draw.Index >= 0 && draw.Index < frame.SolidBoxCount{
+          let record = frame.SolidBoxes[draw.Index]
+          let inX = record.Bounds.X > 80.0F * payloadScaleX
+            && record.Bounds.X < 160.0F * payloadScaleX
+          let inY = record.Bounds.Y > 0.0F
+            && record.Bounds.Y < 16.0F * payloadScaleY
+          let widthMatches = record.Bounds.Width > 63.0F * payloadScaleX
+            && record.Bounds.Width < 65.0F * payloadScaleX
+          let heightMatches = record.Bounds.Height > 31.0F * payloadScaleY
+            && record.Bounds.Height < 33.0F * payloadScaleY
+          if inX && inY && widthMatches && heightMatches {
+            mutatedSolidLeafFound = true
+            mutatedSolidLeafBounds = record.Bounds
+            mutatedSolidLeafColor = record.Color
+            mutatedSolidLeafOpacity = record.Opacity
+          }
+        } else if draw.Kind == SceneDrawKind.PerEdgeBorder
+        && draw.Index >= 0 && draw.Index < frame.PerEdgeBorderCount{
+          let record = frame.PerEdgeBorders[draw.Index]
+          let inX = record.Bounds.X > 160.0F * payloadScaleX
+            && record.Bounds.X < 176.0F * payloadScaleX
+          let inY = record.Bounds.Y > 0.0F
+            && record.Bounds.Y < 16.0F * payloadScaleY
+          if inX && inY {
+            borderLeafCount = borderLeafCount + 1u
+            if !borderLeafFound {
+              borderLeafFound = true
+              borderLeaf = record
+            }
           }
         }
-      }
       drawIndex = drawIndex + 1
     }
     let damage = activeDamageRegion
@@ -434,7 +429,7 @@ internal partial class VulkanWindowTarget {
   }
 
   internal func PrimitiveFrameRetentionSnapshotForTest()
-      VulkanPrimitiveFrameRetentionTestSnapshot {
+  VulkanPrimitiveFrameRetentionTestSnapshot{
     guard let renderer = primitiveRenderer else {
       return VulkanPrimitiveFrameRetentionTestSnapshot{}
     }
@@ -466,7 +461,7 @@ internal partial class VulkanWindowTarget {
     }
   }
   internal func TextFrameRetentionSnapshotForTest()
-      VulkanTextFrameRetentionTestSnapshot {
+  VulkanTextFrameRetentionTestSnapshot{
     guard let renderer = primitiveRenderer else {
       return VulkanTextFrameRetentionTestSnapshot{}
     }
@@ -508,12 +503,9 @@ internal partial class VulkanWindowTarget {
     }
   }
 
-
-  internal func FrameSubmissionSerialsForTest() VulkanFrameSubmissionTestSnapshot {
-    return VulkanFrameSubmissionTestSnapshot{
-      Slot0Serial: frameSlots.Slot(0u)?.SubmissionSerial ?? 0uL,
-      Slot1Serial: frameSlots.Slot(1u)?.SubmissionSerial ?? 0uL,
-    }
+  internal func FrameSubmissionSerialsForTest() VulkanFrameSubmissionTestSnapshot -> VulkanFrameSubmissionTestSnapshot {
+    Slot0Serial: frameSlots.Slot(0u)?.SubmissionSerial ?? 0uL,
+    Slot1Serial: frameSlots.Slot(1u)?.SubmissionSerial ?? 0uL,
   }
 
   internal func SetForceFullRedrawForTest(value bool) {
@@ -542,13 +534,9 @@ public partial class Window {
     VulkanSharedRuntime.DeferNextQueueEnqueueForTest()
   }
 
-  internal func S16WaitForHeldQueueCallForTest(timeoutMs int32) bool {
-    return VulkanSharedRuntime.WaitForHeldQueueCallForTest(timeoutMs)
-  }
+  internal func S16WaitForHeldQueueCallForTest(timeoutMs int32) bool -> VulkanSharedRuntime.WaitForHeldQueueCallForTest(timeoutMs)
 
-  internal func S16QueueWorkPendingForTest() bool {
-    return windowTarget?.QueueWorkPending ?? false
-  }
+  internal func S16QueueWorkPendingForTest() bool -> windowTarget?.QueueWorkPending ?? false
 
   internal func PollQueueCompletionForTest() bool {
     let completed = windowTarget?.PollQueueCompletion() == true
@@ -565,55 +553,47 @@ public partial class Window {
     }
     return target.DiagnosticCountersSnapshotForTest()
   }
-  internal func TimestampSupportedForTest() bool {
-    return windowTarget?.TimestampSupportedForTest() == true
-  }
+  internal func TimestampSupportedForTest() bool -> windowTarget?.TimestampSupportedForTest() == true
 
   internal func SetMainPassTimestampSinkForTest(
-      sink Action[VulkanDiagnosticTimestampSnapshot]?) {
-    windowTarget?.SetMainPassTimestampSinkForTest(sink)
-  }
+    sink Action[VulkanDiagnosticTimestampSnapshot]?) {
+      windowTarget?.SetMainPassTimestampSinkForTest(sink)
+    }
   internal func SetAllTimestampSinkForTest(
-      sink Action[VulkanDiagnosticTimestampSnapshot]?) {
-    windowTarget?.SetAllTimestampSinkForTest(sink)
-  }
+    sink Action[VulkanDiagnosticTimestampSnapshot]?) {
+      windowTarget?.SetAllTimestampSinkForTest(sink)
+    }
   internal func SetPresentationLatencySinkForTest(
-      sink Action[VulkanPresentationLatencyTestSample]?) {
-    guard let target = windowTarget else {
-      return
-    }
-    guard let callback = sink else {
-      target.SetPresentationLatencySink(nil)
-      return
-    }
-    target.SetPresentationLatencySink((sample VulkanPresentationLatencySample) -> {
-      callback.Invoke(VulkanPresentationLatencyTestSample{
-        Token: sample.token,
-        Kind: sample.kind,
-        StartTimestamp: sample.startTimestamp,
-        HandoffTimestamp: sample.handoffTimestamp,
-        CompletionObservedTimestamp: sample.completionObservedTimestamp,
-        PresentId: sample.presentId,
-        PresentFenceObserved: sample.presentFenceObserved,
+    sink Action[VulkanPresentationLatencyTestSample]?) {
+      guard let target = windowTarget else {
+        return
+      }
+      guard let callback = sink else {
+        target.SetPresentationLatencySink(nil)
+        return
+      }
+      target.SetPresentationLatencySink((sample VulkanPresentationLatencySample) -> {
+        callback.Invoke(VulkanPresentationLatencyTestSample{
+          Token: sample.token,
+          Kind: sample.kind,
+          StartTimestamp: sample.startTimestamp,
+          HandoffTimestamp: sample.handoffTimestamp,
+          CompletionObservedTimestamp: sample.completionObservedTimestamp,
+          PresentId: sample.presentId,
+          PresentFenceObserved: sample.presentFenceObserved,
+        })
       })
-    })
-  }
+    }
 
   internal func BeginPresentationLatencyForTest(
-      token uint64, kind int32, startTimestamp int64) {
-    windowTarget?.BeginPresentationLatency(token, kind, startTimestamp)
-  }
+    token uint64, kind int32, startTimestamp int64) {
+      windowTarget?.BeginPresentationLatency(token, kind, startTimestamp)
+    }
 
-  internal func PresentFenceSupportedForTest() bool {
-    return windowTarget?.PresentFenceSupported ?? false
-  }
+  internal func PresentFenceSupportedForTest() bool -> windowTarget?.PresentFenceSupported ?? false
 
-  internal func DiagnosticFrameIdForTest() uint64 {
-    return windowTarget?.DiagnosticFrameIdForTest() ?? 0uL
-  }
-  internal func CaptureTargetForTest() VulkanWindowTarget? {
-    return windowTarget
-  }
+  internal func DiagnosticFrameIdForTest() uint64 -> windowTarget?.DiagnosticFrameIdForTest() ?? 0uL
+  internal func CaptureTargetForTest() VulkanWindowTarget ? -> windowTarget
 
   internal func ForceRenderForTest(dt float64) {
     requestRender()
@@ -625,7 +605,7 @@ public partial class Window {
   }
 
   internal func RequestReadbackForTest(width uint32, height uint32)
-      VulkanReadbackRequestStatus {
+  VulkanReadbackRequestStatus{
     guard let target = windowTarget else {
       return VulkanReadbackRequestStatus.NotReady
     }
@@ -638,53 +618,60 @@ public partial class Window {
     return target.RequestReadback(node, background, dpi, region)
   }
 
-  internal func RequestReadbackForTest() VulkanReadbackRequestStatus {
-    return RequestReadbackForTest(64u, 64u)
-  }
+  internal func RequestReadbackForTest() VulkanReadbackRequestStatus -> RequestReadbackForTest(64u, 64u)
 
-  internal func CurrentWindowMetricsForTest() WindowMetrics {
-    return CurrentWindowMetrics()
-  }
+  internal func CurrentWindowMetricsForTest() WindowMetrics -> CurrentWindowMetrics()
 
   internal func ApplyNativeResizeForTest(logicalWidth int32, logicalHeight int32,
-      framebufferWidth int32, framebufferHeight int32) bool {
-    guard let target = windowTarget else {
-      return false
+    framebufferWidth int32, framebufferHeight int32) bool{
+      guard let target = windowTarget else {
+        return false
+      }
+      let previousGeneration = target.CurrentPresentGeneration
+      if !applyNativeResize(logicalWidth, logicalHeight, framebufferWidth,
+        framebufferHeight) {
+          return false
+        }
+      let deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 2L
+      var actual = target.FramebufferExtentForTest()
+      var currentGeneration = target.CurrentPresentGeneration
+      while (currentGeneration == previousGeneration
+          || actual.Width != framebufferWidth
+          || actual.Height != framebufferHeight)
+        && Stopwatch.GetTimestamp() < deadline{
+          Thread.Yield()
+          if !target.Resize(framebufferWidth, framebufferHeight) {
+            return false
+          }
+          actual = target.FramebufferExtentForTest()
+          currentGeneration = target.CurrentPresentGeneration
+        }
+      host?.SetMetricsForTest(logicalWidth, logicalHeight, actual.Width,
+        actual.Height)
+      this.framebufferWidth = actual.Width
+      this.framebufferHeight = actual.Height
+      return currentGeneration != 0uL
+        && currentGeneration != previousGeneration
+        && actual.Width == framebufferWidth
+        && actual.Height == framebufferHeight
     }
-    let previousGeneration = target.CurrentPresentGeneration
-    let resized = applyNativeResize(logicalWidth, logicalHeight, framebufferWidth,
-      framebufferHeight)
-    let actual = target.FramebufferExtentForTest()
-    host?.SetMetricsForTest(logicalWidth, logicalHeight, actual.Width,
-      actual.Height)
-    this.framebufferWidth = actual.Width
-    this.framebufferHeight = actual.Height
-    let currentGeneration = target.CurrentPresentGeneration
-    return resized && currentGeneration != 0uL
-      && currentGeneration != previousGeneration
-      && actual.Width == framebufferWidth
-      && actual.Height == framebufferHeight
-  }
 
-  internal func HasDemandForTest() bool {
-    return hasDemand()
-  }
+  internal func HasDemandForTest() bool -> hasDemand()
 
   internal func HandleFocusChangedForTest(hasFocus bool) {
     handleFocusChanged(hasFocus)
   }
 
+  internal func SdlWindowIdForTest() uint32 -> host?.WindowIdForTest() ?? 0u
+
+
   internal func QueueTextForTest(value string) {
     input.QueueText(value)
   }
 
-  internal func CurrentPresentModeForTest() VkPresentModeKHR {
-    return windowTarget?.CurrentPresentMode ?? VkPresentModeKHR(-1)
-  }
+  internal func CurrentPresentModeForTest() VkPresentModeKHR -> windowTarget?.CurrentPresentMode ?? VkPresentModeKHR(-1)
 
-  internal func CurrentPresentGenerationForTest() uint64 {
-    return windowTarget?.CurrentPresentGeneration ?? 0uL
-  }
+  internal func CurrentPresentGenerationForTest() uint64 -> windowTarget?.CurrentPresentGeneration ?? 0uL
 
   internal func FrameSubmissionSerialsForTest() VulkanFrameSubmissionTestSnapshot {
     guard let target = windowTarget else {
@@ -693,9 +680,7 @@ public partial class Window {
     return target.FrameSubmissionSerialsForTest()
   }
 
-  internal func PacingRefreshRateForTest() float64 {
-    return host?.FramePacing.RefreshRate ?? 0.0
-  }
+  internal func PacingRefreshRateForTest() float64 -> host?.FramePacing.RefreshRate ?? 0.0
 
   internal func PollReadbackForTest() VkResult {
     guard let target = windowTarget else {
@@ -769,15 +754,15 @@ public partial class Window {
       || entrySourceOffset(state, 1) != 2
       || entrySourceOffset(state, 2) != 13
       || entrySourceOffset(state, 3) != 14 {
-      return false
-    }
+        return false
+      }
     n.CaretAffinity = TextAffinity.Downstream
     if metrics.CaretX(n, 0) != shape.CaretX(0, int32(TextAffinity.Downstream))
       || metrics.CaretX(n, 2) != shape.CaretX(1, int32(TextAffinity.Downstream))
       || metrics.CaretX(n, 13) != shape.CaretX(2, int32(TextAffinity.Downstream))
       || metrics.CaretX(n, 14) != shape.CaretX(3, int32(TextAffinity.Downstream)) {
-      return false
-    }
+        return false
+      }
     n.Anchor = 2
     n.AnchorAffinity = TextAffinity.Downstream
     n.Caret = 13
@@ -789,19 +774,19 @@ public partial class Window {
       if actual[index] != expected[index] { return false }
     }
     var caretRect ElementRect
-    if !handle.TryGetTextCaretRect(TextPosition{
+    if !handle.TryGetTextCaretRect(TextPosition {
       Offset: 2, Affinity: TextAffinity.Downstream,
     }, TextCoordinateSpace.Element, out caretRect) {
       return false
     }
     var hit TextPosition
-    if !handle.TryGetTextPositionAt(Point{
+    if !handle.TryGetTextPositionAt(Point {
       X: caretRect.X, Y: caretRect.Y + caretRect.Height * 0.5,
     }, TextCoordinateSpace.Element, out hit) || hit.Offset != 2 {
       return false
     }
     let rangeValues = [4]ElementRect
-    var rangeDestination = rangeValues.AsSpan()
+    let rangeDestination = rangeValues.AsSpan()
     var rangeRequired int32
     return handle.TryCopyTextRangeRects(TextRange{ Start: 2, Length: 11 },
       TextCoordinateSpace.Element, rangeDestination, out rangeRequired)
@@ -821,30 +806,30 @@ public partial class Window {
       || !input.HandleKey(node, resolver, Key.C, primary)
       || !input.HandleKey(node, resolver, Key.End, KeyModifiers{})
       || !input.HandleKey(node, resolver, Key.V, primary) {
-      return false
-    }
+        return false
+      }
     if n.Buffer != source + "safe" { return false }
     let beforeCut = n.Buffer
     if !input.HandleKey(node, resolver, Key.A, primary)
       || !input.HandleKey(node, resolver, Key.X, primary)
       || n.Buffer != beforeCut
       || !input.HandleKey(node, resolver, Key.End, KeyModifiers{}) {
-      return false
-    }
+        return false
+      }
     let metrics = TextMetrics()
     let beforeComposition = n.Buffer
     let beforeCompositionShape = metrics.BufferShape(n)
     input.QueueComposition("z\u0301", 1, 0)
     if input.Drain(node, resolver, 0.0, nil)
       || n.Buffer != beforeComposition
-      || metrics.BufferShape(n) != beforeCompositionShape {
-      return false
-    }
+      || metrics.BufferShape(n) != beforeCompositionShape{
+        return false
+      }
     input.QueueText("z\u0301")
     if !input.Drain(node, resolver, 0.0, nil)
       || n.Buffer != beforeComposition + "z\u0301" {
-      return false
-    }
+        return false
+      }
     metrics.BufferShape(n)
     accessibility?.MarkDirty()
     resolver.VisualDirty = true
@@ -876,23 +861,22 @@ public partial class Window {
   }
 
   internal func PrimitiveFrameRetentionSnapshotForTest()
-      VulkanPrimitiveFrameRetentionTestSnapshot {
+  VulkanPrimitiveFrameRetentionTestSnapshot{
     guard let target = windowTarget else {
       return VulkanPrimitiveFrameRetentionTestSnapshot{}
     }
     return target.PrimitiveFrameRetentionSnapshotForTest()
   }
   internal func TextFrameRetentionSnapshotForTest()
-      VulkanTextFrameRetentionTestSnapshot {
+  VulkanTextFrameRetentionTestSnapshot{
     guard let target = windowTarget else {
       return VulkanTextFrameRetentionTestSnapshot{}
     }
     return target.TextFrameRetentionSnapshotForTest()
   }
 
-
-    internal func ClipMaskRetentionSnapshotForTest()
-        VulkanClipMaskRetentionTestSnapshot {
+  internal func ClipMaskRetentionSnapshotForTest()
+  VulkanClipMaskRetentionTestSnapshot{
     guard let target = windowTarget else {
       return VulkanClipMaskRetentionTestSnapshot{}
     }
@@ -925,12 +909,20 @@ public partial class Window {
 
 internal partial class SdlHost {
   internal func SetMetricsForTest(logicalWidth int32, logicalHeight int32,
-      framebufferWidth int32, framebufferHeight int32) {
-    LogicalWidth = logicalWidth
-    LogicalHeight = logicalHeight
-    FramebufferWidth = framebufferWidth
-    FramebufferHeight = framebufferHeight
+    framebufferWidth int32, framebufferHeight int32) {
+      LogicalWidth = logicalWidth
+      LogicalHeight = logicalHeight
+      FramebufferWidth = framebufferWidth
+      FramebufferHeight = framebufferHeight
+    }
+
+  internal func WindowIdForTest() uint32 {
+    if window.IsNull {
+      return 0u
+    }
+    return SDL.GetWindowID(window)
   }
+
 }
 
 internal class WindowReadbackTestFixture {
@@ -954,76 +946,60 @@ internal class WindowReadbackTestFixture {
       }
     }
 
-    internal func DiagnosticCounters(window Window) VulkanDiagnosticCounterSnapshot {
-      return window.DiagnosticCountersSnapshotForTest()
-    }
-    internal func CellDirty(cell Cell) bool {
-      return cell.IsDirty()
-    }
+    internal func DiagnosticCounters(window Window) VulkanDiagnosticCounterSnapshot -> window.DiagnosticCountersSnapshotForTest()
+    internal func CellDirty(cell Cell) bool -> cell.IsDirty()
 
-    internal func CellMounted(cell Cell) bool {
-      return cell.MountedNode() != nil
-    }
+    internal func CellMounted(cell Cell) bool -> cell.MountedNode() != nil
 
-    internal func TimestampSupported(window Window) bool {
-      return window.TimestampSupportedForTest()
-    }
+    internal func TimestampSupported(window Window) bool -> window.TimestampSupportedForTest()
 
     internal func SetMainPassTimestampSink(window Window,
-        sink Action[VulkanDiagnosticTimestampSnapshot]?) {
-      window.SetMainPassTimestampSinkForTest(sink)
-    }
+      sink Action[VulkanDiagnosticTimestampSnapshot]?) {
+        window.SetMainPassTimestampSinkForTest(sink)
+      }
     internal func SetAllTimestampSink(window Window,
-        sink Action[VulkanDiagnosticTimestampSnapshot]?) {
-      window.SetAllTimestampSinkForTest(sink)
-    }
+      sink Action[VulkanDiagnosticTimestampSnapshot]?) {
+        window.SetAllTimestampSinkForTest(sink)
+      }
     internal func SetPresentationLatencySink(window Window,
-        sink Action[VulkanPresentationLatencyTestSample]?) {
-      window.SetPresentationLatencySinkForTest(sink)
-    }
+      sink Action[VulkanPresentationLatencyTestSample]?) {
+        window.SetPresentationLatencySinkForTest(sink)
+      }
 
     internal func BeginPresentationLatency(window Window,
-        token uint64, kind int32, startTimestamp int64) {
-      window.BeginPresentationLatencyForTest(token, kind, startTimestamp)
-    }
+      token uint64, kind int32, startTimestamp int64) {
+        window.BeginPresentationLatencyForTest(token, kind, startTimestamp)
+      }
 
-    internal func PresentFenceSupported(window Window) bool {
-      return window.PresentFenceSupportedForTest()
-    }
+    internal func PresentFenceSupported(window Window) bool -> window.PresentFenceSupportedForTest()
 
-    internal func DiagnosticFrameId(window Window) uint64 {
-      return window.DiagnosticFrameIdForTest()
-    }
-    internal func CaptureTarget(window Window) VulkanWindowTarget? {
-      return window.CaptureTargetForTest()
-    }
-
-
+    internal func DiagnosticFrameId(window Window) uint64 -> window.DiagnosticFrameIdForTest()
+    internal func CaptureTarget(window Window) VulkanWindowTarget ? -> window.CaptureTargetForTest()
 
     internal func ForceRender(window Window, dt float64,
-        timeoutSeconds float64 = 2.0) {
-      let baseline = window.FrameSubmissionSerialsForTest()
-      window.ForceRenderForTest(dt)
-      let deadline = Stopwatch.GetTimestamp()
-        + int64(float64(Stopwatch.Frequency) * timeoutSeconds)
-      var accepted = false
-      while Stopwatch.GetTimestamp() < deadline {
-        SdlRuntime.PumpEvents(Int32.MaxValue)
-        window.PollQueueCompletionForTest()
-        let current = window.FrameSubmissionSerialsForTest()
-        accepted = current.Slot0Serial != baseline.Slot0Serial
-          || current.Slot1Serial != baseline.Slot1Serial
-        let pending = window.S16QueueWorkPendingForTest()
-        if accepted && !pending {
-          return
+      timeoutSeconds float64 = 2.0) {
+        let baseline = window.FrameSubmissionSerialsForTest()
+        window.ForceRenderForTest(dt)
+        let deadline = Stopwatch.GetTimestamp()
+        +int64(float64(Stopwatch.Frequency) * timeoutSeconds)
+        var accepted = false
+        while Stopwatch.GetTimestamp() < deadline {
+          SdlRuntime.PumpEvents(Int32.MaxValue)
+          window.PollQueueCompletionForTest()
+          let current = window.FrameSubmissionSerialsForTest()
+          accepted = current.Slot0Serial != baseline.Slot0Serial
+            || current.Slot1Serial != baseline.Slot1Serial
+          let pending = window.S16QueueWorkPendingForTest()
+          if accepted && !pending {
+            return
+          }
+          if !accepted && !pending {
+            window.ForceRenderForTest(0.0)
+          }
+          Thread.Yield()
         }
-        if !accepted && !pending {
-          window.ForceRenderForTest(0.0)
-        }
-        Thread.Yield()
+        throw InvalidOperationException("WindowReadbackTestFixture.ForceRender did not accept and drain queue work")
       }
-      throw InvalidOperationException("WindowReadbackTestFixture.ForceRender did not accept and drain queue work")
-    }
 
     internal func ForceRenderNonblocking(window Window, dt float64) {
       window.ForceRenderForTest(dt)
@@ -1033,9 +1009,13 @@ internal class WindowReadbackTestFixture {
       window.PumpForTest(dt)
     }
 
+
+    internal func SdlWindowId(window Window) uint32 -> window.SdlWindowIdForTest()
     internal func PumpNativeEvents() {
       SdlRuntime.PumpEvents(Int32.MaxValue)
     }
+    internal func PumpNativeEventsForTest() int32 -> SdlRuntime.PumpEvents(Int32.MaxValue)
+
 
     internal func SetForceFullRedraw(window Window, value bool) {
       window.SetForceFullRedrawForTest(value)
@@ -1045,32 +1025,24 @@ internal class WindowReadbackTestFixture {
       window.SetExactTextClipCullForTest(value)
     }
 
-    internal func Request(window Window) VulkanReadbackRequestStatus {
-      return window.RequestReadbackForTest()
-    }
+    internal func Request(window Window) VulkanReadbackRequestStatus -> window.RequestReadbackForTest()
 
     internal func Request(window Window, width uint32, height uint32)
-        VulkanReadbackRequestStatus {
-      return window.RequestReadbackForTest(width, height)
-    }
+    VulkanReadbackRequestStatus -> window.RequestReadbackForTest(width, height)
 
-    internal func Metrics(window Window) WindowMetrics {
-      return window.CurrentWindowMetricsForTest()
-    }
+    internal func Metrics(window Window) WindowMetrics -> window.CurrentWindowMetricsForTest()
     internal func Resize(window Window, logicalWidth int32, logicalHeight int32,
-        framebufferWidth int32, framebufferHeight int32) bool {
-      if logicalWidth <= 0 || logicalHeight <= 0
+      framebufferWidth int32, framebufferHeight int32) bool{
+        if logicalWidth <= 0 || logicalHeight <= 0
           || framebufferWidth <= 0 || framebufferHeight <= 0 {
-        throw InvalidOperationException(
-          "WindowReadbackTestFixture.Resize dimensions must be positive")
+            throw InvalidOperationException(
+              "WindowReadbackTestFixture.Resize dimensions must be positive")
+          }
+        return window.ApplyNativeResizeForTest(logicalWidth, logicalHeight,
+          framebufferWidth, framebufferHeight)
       }
-      return window.ApplyNativeResizeForTest(logicalWidth, logicalHeight,
-        framebufferWidth, framebufferHeight)
-    }
 
-    internal func HasDemand(window Window) bool {
-      return window.HasDemandForTest()
-    }
+    internal func HasDemand(window Window) bool -> window.HasDemandForTest()
 
     internal func SetFocus(window Window, value bool) {
       window.HandleFocusChangedForTest(value)
@@ -1080,38 +1052,23 @@ internal class WindowReadbackTestFixture {
       window.QueueTextForTest(value)
     }
 
+    internal func PresentMode(window Window) VkPresentModeKHR -> window.CurrentPresentModeForTest()
 
-    internal func PresentMode(window Window) VkPresentModeKHR {
-      return window.CurrentPresentModeForTest()
-    }
+    internal func PresentGeneration(window Window) uint64 -> window.CurrentPresentGenerationForTest()
 
-    internal func PresentGeneration(window Window) uint64 {
-      return window.CurrentPresentGenerationForTest()
-    }
+    internal func FrameSubmissions(window Window) VulkanFrameSubmissionTestSnapshot -> window.FrameSubmissionSerialsForTest()
 
-    internal func FrameSubmissions(window Window) VulkanFrameSubmissionTestSnapshot {
-      return window.FrameSubmissionSerialsForTest()
-    }
-
-    internal func PacingRefreshRate(window Window) float64 {
-      return window.PacingRefreshRateForTest()
-    }
+    internal func PacingRefreshRate(window Window) float64 -> window.PacingRefreshRateForTest()
 
     internal func UpdateTree(window Window) {
       window.UpdateTree()
     }
 
-    internal func S17ValidateInitial(window Window, handle ElementHandle, source string) bool {
-      return window.S17ValidateInitialForTest(handle, source)
-    }
+    internal func S17ValidateInitial(window Window, handle ElementHandle, source string) bool -> window.S17ValidateInitialForTest(handle, source)
 
-    internal func S17SelectionMapped(window Window, handle ElementHandle) bool {
-      return window.S17SelectionMappedForTest(handle)
-    }
+    internal func S17SelectionMapped(window Window, handle ElementHandle) bool -> window.S17SelectionMappedForTest(handle)
 
-    internal func S17ExerciseInput(window Window, handle ElementHandle, source string) bool {
-      return window.S17ExerciseInputForTest(handle, source)
-    }
+    internal func S17ExerciseInput(window Window, handle ElementHandle, source string) bool -> window.S17ExerciseInputForTest(handle, source)
 
     internal func S17QueuePointerMove(window Window, x float64, y float64) {
       window.S17QueuePointerMoveForTest(x, y)
@@ -1126,9 +1083,9 @@ internal class WindowReadbackTestFixture {
     }
 
     internal func S17QueueWheel(window Window, x float64, y float64,
-        dx float64, dy float64) {
-      window.S17QueueWheelForTest(x, y, dx, dy)
-    }
+      dx float64, dy float64) {
+        window.S17QueueWheelForTest(x, y, dx, dy)
+      }
 
     internal func S17QueueKeyPress(window Window, key Key) {
       window.S17QueueKeyPressForTest(key)
@@ -1138,25 +1095,15 @@ internal class WindowReadbackTestFixture {
       window.S17QueueKeyReleaseForTest(key)
     }
 
-    internal func Poll(window Window) VkResult {
-      return window.PollReadbackForTest()
-    }
+    internal func Poll(window Window) VkResult -> window.PollReadbackForTest()
 
-    internal func Take(window Window) VulkanReadbackResult? {
-      return window.TakeReadbackForTest()
-    }
+    internal func Take(window Window) VulkanReadbackResult ? -> window.TakeReadbackForTest()
 
-    internal func RequestCount(window Window) uint64 {
-      return window.ReadbackRequestCountForTest()
-    }
+    internal func RequestCount(window Window) uint64 -> window.ReadbackRequestCountForTest()
 
-    internal func CompletionCount(window Window) uint64 {
-      return window.ReadbackCompletionCountForTest()
-    }
+    internal func CompletionCount(window Window) uint64 -> window.ReadbackCompletionCountForTest()
 
-    internal func ResidentResourceBytes(window Window) uint64 {
-      return window.ReadbackResidentResourceBytesForTest()
-    }
+    internal func ResidentResourceBytes(window Window) uint64 -> window.ReadbackResidentResourceBytesForTest()
     internal func TargetResidentResourceBytes(target VulkanWindowTarget?) uint64 {
       guard let retained = target else {
         return 0uL
@@ -1165,36 +1112,24 @@ internal class WindowReadbackTestFixture {
     }
 
     internal func TargetFramebufferExtent(target VulkanWindowTarget?)
-        VulkanWindowFramebufferExtentTestSnapshot {
+    VulkanWindowFramebufferExtentTestSnapshot{
       guard let retained = target else {
         return VulkanWindowFramebufferExtentTestSnapshot{}
       }
       return retained.FramebufferExtentForTest()
     }
 
+    internal func Timing(window Window) VulkanReadbackTimingSnapshot -> window.ReadbackTimingForTest()
 
-    internal func Timing(window Window) VulkanReadbackTimingSnapshot {
-      return window.ReadbackTimingForTest()
-    }
-
-    internal func SceneRetention(window Window) VulkanSceneRetentionTestSnapshot {
-      return window.SceneRetentionSnapshotForTest()
-    }
+    internal func SceneRetention(window Window) VulkanSceneRetentionTestSnapshot -> window.SceneRetentionSnapshotForTest()
 
     internal func PrimitiveFrameRetention(window Window)
-        VulkanPrimitiveFrameRetentionTestSnapshot {
-      return window.PrimitiveFrameRetentionSnapshotForTest()
-    }
+    VulkanPrimitiveFrameRetentionTestSnapshot -> window.PrimitiveFrameRetentionSnapshotForTest()
     internal func TextFrameRetention(window Window)
-        VulkanTextFrameRetentionTestSnapshot {
-      return window.TextFrameRetentionSnapshotForTest()
-    }
-
+    VulkanTextFrameRetentionTestSnapshot -> window.TextFrameRetentionSnapshotForTest()
 
     internal func ClipMaskRetention(window Window)
-        VulkanClipMaskRetentionTestSnapshot {
-      return window.ClipMaskRetentionSnapshotForTest()
-    }
+    VulkanClipMaskRetentionTestSnapshot -> window.ClipMaskRetentionSnapshotForTest()
 
     internal func S16HoldNextQueueSubmit(window Window) {
       window.S16HoldNextQueueSubmitForTest()
@@ -1204,9 +1139,7 @@ internal class WindowReadbackTestFixture {
       window.S16HoldNextQueuePresentForTest()
     }
 
-    internal func S16WaitForHeldQueueCall(window Window, timeoutMs int32) bool {
-      return window.S16WaitForHeldQueueCallForTest(timeoutMs)
-    }
+    internal func S16WaitForHeldQueueCall(window Window, timeoutMs int32) bool -> window.S16WaitForHeldQueueCallForTest(timeoutMs)
 
     internal func S16ReleaseHeldQueueCall() {
       VulkanSharedRuntime.ReleaseHeldQueueCallForTest()
@@ -1216,9 +1149,7 @@ internal class WindowReadbackTestFixture {
       window.S16DeferNextQueueEnqueueForTest()
     }
 
-    internal func S16QueueWorkPending(window Window) bool {
-      return window.S16QueueWorkPendingForTest()
-    }
+    internal func S16QueueWorkPending(window Window) bool -> window.S16QueueWorkPendingForTest()
 
     internal func DrainWindowQueue(window Window, timeoutMs int32) {
       let timeoutTicks = int64(float64(Stopwatch.Frequency) * float64(timeoutMs) / 1000.0)
@@ -1233,9 +1164,7 @@ internal class WindowReadbackTestFixture {
       }
     }
 
-    internal func S16DeferredQueueEnqueueCount() int64 {
-      return VulkanSharedRuntime.QueueEnqueueDeferralCountForTest
-    }
+    internal func S16DeferredQueueEnqueueCount() int64 -> VulkanSharedRuntime.QueueEnqueueDeferralCountForTest
 
     internal func RunFramePacingGate() string {
       let previousUncapped = SdlFramePacing.UncappedBenchmark
@@ -1296,34 +1225,34 @@ internal class WindowReadbackTestFixture {
     }
 
     private func CheckFramePacingRate(rate float64, display uint32,
-        expectedWaitMs int32) {
-      let frequency = float64(Stopwatch.Frequency)
-      let base = 100000.0
-      let interval = frequency / rate
-      let pacing = SdlFramePacing{}
-      pacing.Refresh(display, rate, base, true)
-      FramePacingRequire(pacing.DisplayId == display,
-        "S16 pacing display identity is incorrect")
-      FramePacingRequire(Math.Abs(pacing.RefreshRate - rate) < 0.000000001,
-        "S16 pacing refresh rate is incorrect")
-      FramePacingRequire(pacing.IsDue(base),
-        "S16 pacing reset did not make the first frame due")
-      pacing.MarkFrame(base)
-      FramePacingRequire(!pacing.IsDue(base + interval - 0.5),
-        "S16 pacing deadline became due early")
-      FramePacingRequire(pacing.WaitMilliseconds(base + interval * 0.5, 100)
+      expectedWaitMs int32) {
+        let frequency = float64(Stopwatch.Frequency)
+        let base = 100000.0
+        let interval = frequency / rate
+        let pacing = SdlFramePacing{}
+        pacing.Refresh(display, rate, base, true)
+        FramePacingRequire(pacing.DisplayId == display,
+          "S16 pacing display identity is incorrect")
+        FramePacingRequire(Math.Abs(pacing.RefreshRate - rate) < 0.000000001,
+          "S16 pacing refresh rate is incorrect")
+        FramePacingRequire(pacing.IsDue(base),
+          "S16 pacing reset did not make the first frame due")
+        pacing.MarkFrame(base)
+        FramePacingRequire(!pacing.IsDue(base + interval - 0.5),
+          "S16 pacing deadline became due early")
+        FramePacingRequire(pacing.WaitMilliseconds(base + interval * 0.5, 100)
           == expectedWaitMs,
-        "S16 pacing wait rounding is incorrect")
-      FramePacingRequire(pacing.IsDue(base + interval),
-        "S16 pacing deadline was not due at one refresh interval")
-      let late = base + interval * 5.25
-      pacing.MarkFrame(late)
-      let expectedNext = base + interval * 6.0
-      FramePacingRequire(!pacing.IsDue(expectedNext - 0.5),
-        "S16 pacing late-frame advancement drifted early")
-      FramePacingRequire(pacing.IsDue(expectedNext + 1.0),
-        "S16 pacing late-frame advancement did not stay anchored")
-    }
+          "S16 pacing wait rounding is incorrect")
+        FramePacingRequire(pacing.IsDue(base + interval),
+          "S16 pacing deadline was not due at one refresh interval")
+        let late = base + interval * 5.25
+        pacing.MarkFrame(late)
+        let expectedNext = base + interval * 6.0
+        FramePacingRequire(!pacing.IsDue(expectedNext - 0.5),
+          "S16 pacing late-frame advancement drifted early")
+        FramePacingRequire(pacing.IsDue(expectedNext + 1.0),
+          "S16 pacing late-frame advancement did not stay anchored")
+      }
 
     private func CheckFramePacingFallbackAndRetention() {
       let base = 300000.0
@@ -1334,19 +1263,19 @@ internal class WindowReadbackTestFixture {
         "S16 pacing fallback rate is not 60 Hz")
       pacing.Refresh(0u, 0.0, base, true)
       FramePacingRequire(!pacing.HasValidSample && pacing.DisplayId == 0u &&
-          Math.Abs(pacing.RefreshRate - 60.0) < 0.000000001,
+        Math.Abs(pacing.RefreshRate - 60.0) < 0.000000001,
         "S16 pacing initial invalid sample changed the fallback")
       pacing.Refresh(uint32(5), 120.0, base + 1.0, true)
       pacing.MarkFrame(base + 1.0)
       pacing.Refresh(0u, 0.0, base + 2.0, true)
       FramePacingRequire(pacing.HasValidSample && pacing.DisplayId == uint32(5) &&
-          Math.Abs(pacing.RefreshRate - 120.0) < 0.000000001,
+        Math.Abs(pacing.RefreshRate - 120.0) < 0.000000001,
         "S16 pacing transient invalid sample discarded the last valid sample")
       FramePacingRequire(pacing.IsDue(base + 2.0),
         "S16 pacing transient invalid sample did not reset the retained deadline")
       pacing.Refresh(uint32(5), -1.0, base + 3.0, false)
       FramePacingRequire(pacing.DisplayId == uint32(5) &&
-          Math.Abs(pacing.RefreshRate - 120.0) < 0.000000001,
+        Math.Abs(pacing.RefreshRate - 120.0) < 0.000000001,
         "S16 pacing invalid mode rate changed the retained sample")
     }
 

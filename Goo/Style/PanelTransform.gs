@@ -16,59 +16,59 @@ public struct PanelTransform : IEquatable[PanelTransform] {
 
   /// Gets or sets the horizontal pixel or percentage translation.
   /// An explicit percentage unit is retained at zero for transitions.
-  public prop TranslateX Length {
+  public prop TranslateX Length{
     get {
       let value = normalizeTransformTranslation(translateX, "TranslateX")
       return value.Unit == LengthUnit.Unset ? Length{ Unit: LengthUnit.Px } : value
     }
-    init { translateX = normalizeTransformTranslation(value, "TranslateX") }
+    init{ translateX = normalizeTransformTranslation(value, "TranslateX") }
   }
 
   /// Gets or sets the vertical pixel or percentage translation.
   /// An explicit percentage unit is retained at zero for transitions.
-  public prop TranslateY Length {
+  public prop TranslateY Length{
     get {
       let value = normalizeTransformTranslation(translateY, "TranslateY")
       return value.Unit == LengthUnit.Unset ? Length{ Unit: LengthUnit.Px } : value
     }
-    init { translateY = normalizeTransformTranslation(value, "TranslateY") }
+    init{ translateY = normalizeTransformTranslation(value, "TranslateY") }
   }
 
   /// Gets or sets clockwise rotation in degrees.
   /// Authored turns are preserved for interpolation.
-  public prop Rotate float64 {
+  public prop Rotate float64{
     get { return float64(rotate) }
-    init { rotate = normalizeTransformRotation(value) }
+    init{ rotate = normalizeTransformRotation(value) }
   }
 
   /// Gets or sets uniform scale. The default is 1.
-  public prop Scale float64 {
+  public prop Scale float64{
     get { return float64(scaleOffset + 1.0F) }
-    init { scaleOffset = checkedTransformScalar(value, "Scale") - 1.0F }
+    init{ scaleOffset = checkedTransformScalar(value, "Scale") - 1.0F }
   }
 
   /// Gets or sets horizontal scale. It multiplies with Scale. The default is 1.
-  public prop ScaleX float64 {
+  public prop ScaleX float64{
     get { return float64(scaleXOffset + 1.0F) }
-    init { scaleXOffset = checkedTransformScalar(value, "ScaleX") - 1.0F }
+    init{ scaleXOffset = checkedTransformScalar(value, "ScaleX") - 1.0F }
   }
 
   /// Gets or sets vertical scale. It multiplies with Scale. The default is 1.
-  public prop ScaleY float64 {
+  public prop ScaleY float64{
     get { return float64(scaleYOffset + 1.0F) }
-    init { scaleYOffset = checkedTransformScalar(value, "ScaleY") - 1.0F }
+    init{ scaleYOffset = checkedTransformScalar(value, "ScaleY") - 1.0F }
   }
 
   /// Gets or sets the horizontal skew angle in degrees.
-  public prop SkewX float64 {
+  public prop SkewX float64{
     get { return float64(skewX) }
-    init { skewX = checkedTransformScalar(value, "SkewX") }
+    init{ skewX = checkedTransformScalar(value, "SkewX") }
   }
 
   /// Gets or sets the vertical skew angle in degrees.
-  public prop SkewY float64 {
+  public prop SkewY float64{
     get { return float64(skewY) }
-    init { skewY = checkedTransformScalar(value, "SkewY") }
+    init{ skewY = checkedTransformScalar(value, "SkewY") }
   }
 
   /// Tests whether another transform has the same normalized components.
@@ -86,14 +86,10 @@ public struct PanelTransform : IEquatable[PanelTransform] {
 }
 
 /// Tests two panel transforms for normalized component equality.
-public func (left PanelTransform) operator ==(right PanelTransform) bool {
-  return left.Equals(right)
-}
+public func(left PanelTransform) operator == (right PanelTransform) bool -> left.Equals (right)
 
 /// Tests two panel transforms for normalized component inequality.
-public func (left PanelTransform) operator !=(right PanelTransform) bool {
-  return !left.Equals(right)
-}
+public func(left PanelTransform) operator != (right PanelTransform) bool -> !left.Equals (right)
 
 internal func normalizeTransformTranslation(value Length, name string) Length {
   if value.Unit == LengthUnit.Unset {
@@ -111,16 +107,14 @@ internal func normalizeTransformTranslation(value Length, name string) Length {
   return value
 }
 
-internal func normalizeTransformRotation(value float64) float32 {
-  return checkedTransformScalar(value, "Rotate")
-}
+internal func normalizeTransformRotation(value float64) float32 -> checkedTransformScalar(value, "Rotate")
 
 internal func checkedTransformScalar(value float64, name string) float32 {
   let packed = float32(value)
   if Double.IsNaN(value) || Double.IsInfinity(value)
     || Single.IsNaN(packed) || Single.IsInfinity(packed) {
-    throw ArgumentOutOfRangeException(name)
-  }
+      throw ArgumentOutOfRangeException(name)
+    }
   return packed
 }
 

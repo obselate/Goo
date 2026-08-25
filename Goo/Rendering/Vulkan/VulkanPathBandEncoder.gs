@@ -10,7 +10,7 @@ internal sealed class PathBandEncoder {
     private const NonZeroFillRuleMask uint32 = 1u
     private const EvenOddFillRuleMask uint32 = 2u
     private let cache ConditionalWeakTable[VectorPathData, PathBandEncoding] =
-      ConditionalWeakTable[VectorPathData, PathBandEncoding]()
+    ConditionalWeakTable[VectorPathData, PathBandEncoding]()
     private let cacheLock object = Object()
     private let curveScratch List[PathAnalyticCurve] = List[PathAnalyticCurve]()
     private let horizontalBandScratch List[PathAnalyticBand] = List[PathAnalyticBand]()
@@ -27,10 +27,10 @@ internal sealed class PathBandEncoder {
     internal func Encode(path VectorPath) PathBandEncoding {
       guard let data = path.payload else { return PathBandEncoding.Empty }
       if cache.TryGetValue(data, out var value)
-          && value.GeometryRevision == data.GeometryRevision { return value }
+        && value.GeometryRevision == data.GeometryRevision{ return value }
       lock (cacheLock) {
         if cache.TryGetValue(data, out var retained)
-            && retained.GeometryRevision == data.GeometryRevision { return retained }
+          && retained.GeometryRevision == data.GeometryRevision{ return retained }
         let geometry = PathGeometry.For(path)
         if cache.TryGetValue(data, out var existing) {
           if EncodeInto(geometry, existing) {
@@ -41,11 +41,11 @@ internal sealed class PathBandEncoder {
         }
         let encoded = Encode(PathGeometry.For(path))
         let built = if data.NormalizedOwner != nil
-            && Object.ReferenceEquals(encoded, PathBandEncoding.Empty) {
-          PathBandEncoding.CreateEmpty(data.GeometryRevision)
-        } else {
-          encoded
-        }
+          && Object.ReferenceEquals(encoded, PathBandEncoding.Empty) {
+            PathBandEncoding.CreateEmpty(data.GeometryRevision)
+          } else {
+            encoded
+          }
         cache.Add(data, built)
         return built
       }
@@ -133,94 +133,94 @@ internal sealed class PathBandEncoder {
     private func buildBands(curves List[PathAnalyticCurve], minimum float32, maximum float32,
       count int32, horizontal bool, rayMinimum float32, rayMaximum float32,
       bands List[PathAnalyticBand], indices List[uint32]) {
-      var extent = maximum - minimum
-      if extent < 0.0F { extent = 0.0F }
-      var bandIndex int32 = 0
-      while bandIndex < count {
-        let low = if extent == 0.0F {
-          minimum
-        } else {
-          minimum + extent * float32(bandIndex) / float32(count)
-        }
-        let high = if extent == 0.0F || bandIndex + 1 == count {
-          maximum
-        } else {
-          minimum + extent * float32(bandIndex + 1) / float32(count)
-        }
-        candidateScratch.Clear()
-        var curveIndex int32 = 0
-        while curveIndex < curves.Count {
-          let curve = curves[curveIndex]
-          let curveMinimum = if horizontal {
-            quadraticMinimum(curve.Y0, curve.CY, curve.Y1)
+        var extent = maximum - minimum
+        if extent < 0.0F { extent = 0.0F }
+        var bandIndex int32 = 0
+        while bandIndex < count {
+          let low = if extent == 0.0F {
+            minimum
           } else {
-            quadraticMinimum(curve.X0, curve.CX, curve.X1)
+            minimum + extent * float32(bandIndex) / float32(count)
           }
-          let curveMaximum = if horizontal {
-            quadraticMaximum(curve.Y0, curve.CY, curve.Y1)
+          let high = if extent == 0.0F || bandIndex + 1 == count {
+            maximum
           } else {
-            quadraticMaximum(curve.X0, curve.CX, curve.X1)
+            minimum + extent * float32(bandIndex + 1) / float32(count)
           }
-          if curveMaximum >= low && curveMinimum <= high {
-            let near = if horizontal {
-              quadraticMinimum(curve.X0, curve.CX, curve.X1)
-            } else {
+          candidateScratch.Clear()
+          var curveIndex int32 = 0
+          while curveIndex < curves.Count {
+            let curve = curves[curveIndex]
+            let curveMinimum = if horizontal {
               quadraticMinimum(curve.Y0, curve.CY, curve.Y1)
-            }
-            let far = if horizontal {
-              quadraticMaximum(curve.X0, curve.CX, curve.X1)
             } else {
-              quadraticMaximum(curve.Y0, curve.CY, curve.Y1)
+              quadraticMinimum(curve.X0, curve.CX, curve.X1)
             }
-            candidateScratch.Add(PathBandCandidate{
-              Index: uint32(curveIndex),
-              Near: near,
-              Far: far,
-            })
+            let curveMaximum = if horizontal {
+              quadraticMaximum(curve.Y0, curve.CY, curve.Y1)
+            } else {
+              quadraticMaximum(curve.X0, curve.CX, curve.X1)
+            }
+            if curveMaximum >= low && curveMinimum <= high {
+              let near = if horizontal {
+                quadraticMinimum(curve.X0, curve.CX, curve.X1)
+              } else {
+                quadraticMinimum(curve.Y0, curve.CY, curve.Y1)
+              }
+              let far = if horizontal {
+                quadraticMaximum(curve.X0, curve.CX, curve.X1)
+              } else {
+                quadraticMaximum(curve.Y0, curve.CY, curve.Y1)
+              }
+              candidateScratch.Add(PathBandCandidate{
+                Index: uint32(curveIndex),
+                Near: near,
+                Far: far,
+              })
+            }
+            curveIndex++
           }
-          curveIndex++
-        }
 
-        reverseCandidateScratch.Clear()
-        for i in 0 ... candidateScratch.Count {
-          reverseCandidateScratch.Add(candidateScratch[i])
-        }
-        sortForwardCandidates(candidateScratch)
-        sortReverseCandidates(reverseCandidateScratch)
-        var splitMinimum = rayMinimum
-        var splitMaximum = rayMaximum
-        if candidateScratch.Count != 0 {
-          splitMinimum = candidateScratch[0].Near
-          splitMaximum = candidateScratch[0].Far
-          for i in 1 ... candidateScratch.Count {
-            let candidate = candidateScratch[i]
-            if candidate.Near < splitMinimum { splitMinimum = candidate.Near }
-            if candidate.Far > splitMaximum { splitMaximum = candidate.Far }
+          reverseCandidateScratch.Clear()
+          for i in 0 ... candidateScratch.Count {
+            reverseCandidateScratch.Add(candidateScratch[i])
           }
+          sortForwardCandidates(candidateScratch)
+          sortReverseCandidates(reverseCandidateScratch)
+          var splitMinimum = rayMinimum
+          var splitMaximum = rayMaximum
+          if candidateScratch.Count != 0 {
+            splitMinimum = candidateScratch[0].Near
+            splitMaximum = candidateScratch[0].Far
+            for i in 1 ... candidateScratch.Count {
+              let candidate = candidateScratch[i]
+              if candidate.Near < splitMinimum { splitMinimum = candidate.Near }
+              if candidate.Far > splitMaximum { splitMaximum = candidate.Far }
+            }
+          }
+          let forwardStart = uint32(indices.Count)
+          for i in 0 ... candidateScratch.Count {
+            indices.Add(candidateScratch[i].Index)
+          }
+          let forwardCount = uint32(candidateScratch.Count)
+          let reverseStart = uint32(indices.Count)
+          for i in 0 ... reverseCandidateScratch.Count {
+            indices.Add(reverseCandidateScratch[i].Index)
+          }
+          let reverseCount = uint32(candidateScratch.Count)
+          bands.Add(PathAnalyticBand{
+            Minimum: low,
+            Maximum: high,
+            Split: midpoint(splitMinimum, splitMaximum),
+            ForwardStart: forwardStart,
+            ForwardCount: forwardCount,
+            ReverseStart: reverseStart,
+            ReverseCount: reverseCount,
+            Flags: if horizontal { 1u } else { 2u },
+          })
+          bandIndex++
         }
-        let forwardStart = uint32(indices.Count)
-        for i in 0 ... candidateScratch.Count {
-          indices.Add(candidateScratch[i].Index)
-        }
-        let forwardCount = uint32(candidateScratch.Count)
-        let reverseStart = uint32(indices.Count)
-        for i in 0 ... reverseCandidateScratch.Count {
-          indices.Add(reverseCandidateScratch[i].Index)
-        }
-        let reverseCount = uint32(candidateScratch.Count)
-        bands.Add(PathAnalyticBand{
-          Minimum: low,
-          Maximum: high,
-          Split: midpoint(splitMinimum, splitMaximum),
-          ForwardStart: forwardStart,
-          ForwardCount: forwardCount,
-          ReverseStart: reverseStart,
-          ReverseCount: reverseCount,
-          Flags: if horizontal { 1u } else { 2u },
-        })
-        bandIndex++
       }
-    }
 
     private func sortForwardCandidates(values List[PathBandCandidate]) {
       var i int32 = 1
@@ -266,22 +266,20 @@ internal sealed class PathBandEncoder {
       return left.Index < right.Index
     }
 
-    private func finiteQuadratic(value PathQuadratic) bool {
-      return finite(value.X0) && finite(value.Y0) && finite(value.CX) && finite(value.CY)
-        && finite(value.X1) && finite(value.Y1)
-    }
+    private func finiteQuadratic(value PathQuadratic) bool -> finite(value.X0) && finite(value.Y0) && finite(value.CX) && finite(value.CY)
+      && finite(value.X1) && finite(value.Y1)
 
     private func includeQuadraticBounds(ref minimumX float32, ref minimumY float32,
       ref maximumX float32, ref maximumY float32, value PathQuadratic) {
-      let xMinimum = quadraticMinimum(value.X0, value.CX, value.X1)
-      let yMinimum = quadraticMinimum(value.Y0, value.CY, value.Y1)
-      let xMaximum = quadraticMaximum(value.X0, value.CX, value.X1)
-      let yMaximum = quadraticMaximum(value.Y0, value.CY, value.Y1)
-      if xMinimum < minimumX { minimumX = xMinimum }
-      if yMinimum < minimumY { minimumY = yMinimum }
-      if xMaximum > maximumX { maximumX = xMaximum }
-      if yMaximum > maximumY { maximumY = yMaximum }
-    }
+        let xMinimum = quadraticMinimum(value.X0, value.CX, value.X1)
+        let yMinimum = quadraticMinimum(value.Y0, value.CY, value.Y1)
+        let xMaximum = quadraticMaximum(value.X0, value.CX, value.X1)
+        let yMaximum = quadraticMaximum(value.Y0, value.CY, value.Y1)
+        if xMinimum < minimumX { minimumX = xMinimum }
+        if yMinimum < minimumY { minimumY = yMinimum }
+        if xMaximum > maximumX { maximumX = xMaximum }
+        if yMaximum > maximumY { maximumY = yMaximum }
+      }
 
     private func quadraticMinimum(start float32, control float32, finish float32) float32 {
       var value = MathF.Min(start, finish)
@@ -314,13 +312,9 @@ internal sealed class PathBandEncoder {
       return inverse * inverse * start + 2.0F * inverse * t * control + t * t * finish
     }
 
-    private func midpoint(low float32, high float32) float32 {
-      return low * 0.5F + high * 0.5F
-    }
+    private func midpoint(low float32, high float32) float32 -> low * 0.5F + high * 0.5F
 
-    private func finite(value float32) bool {
-      return !Single.IsNaN(value) && !Single.IsInfinity(value)
-    }
+    private func finite(value float32) bool -> !Single.IsNaN(value) && !Single.IsInfinity(value)
   }
 }
 

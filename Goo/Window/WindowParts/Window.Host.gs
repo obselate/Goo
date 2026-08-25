@@ -227,8 +227,8 @@ public partial class Window {
         native.LogicalHeight,
         native.FramebufferWidth,
         native.FramebufferHeight) {
-        throw InvalidOperationException("Window initialization could not create a render target")
-      }
+          throw InvalidOperationException("Window initialization could not create a render target")
+        }
       x = native.X
       y = native.Y
       input.Attach(native)
@@ -247,8 +247,8 @@ public partial class Window {
   private func configureHost(native SdlHost) {
     native.MetricsChanged += func(logicalWidth int32, logicalHeight int32,
       nativeWidth int32, nativeHeight int32) {
-      queueNativeMetrics(logicalWidth, logicalHeight, nativeWidth, nativeHeight)
-    }
+        queueNativeMetrics(logicalWidth, logicalHeight, nativeWidth, nativeHeight)
+      }
     native.StateChanged += func(value SdlHostState) {
       state = fromSdlState(value)
       requestRender()
@@ -341,129 +341,129 @@ public partial class Window {
   }
 
   private func pumpCore(dt float64, waitForEvents bool, frameAllowed bool,
-      simulationDt float64) {
-    if !motionFinite(dt) || dt < 0.0 {
-      throw ArgumentOutOfRangeException("dt")
-    }
-    if !motionFinite(simulationDt) || simulationDt < 0.0 {
-      throw ArgumentOutOfRangeException("simulationDt")
-    }
-    guard let native = host else {
-      return
-    }
-    let queueCompletedAtEntry = windowTarget?.PollQueueCompletion() == true
-    if native.IsClosing {
-      if windowTarget?.PrepareClose() == false {
-        native.Wake()
+    simulationDt float64) {
+      if !motionFinite(dt) || dt < 0.0 {
+        throw ArgumentOutOfRangeException("dt")
+      }
+      if !motionFinite(simulationDt) || simulationDt < 0.0 {
+        throw ArgumentOutOfRangeException("simulationDt")
+      }
+      guard let native = host else {
         return
       }
-      Close()
-      return
-    }
-    if !IsOpen {
-      return
-    }
-    let profiling = profiler.Active
-    let frameProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-    let eventsProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-    if waitForEvents {
-      if hasDemand() {
-        native.PollEvents()
-      } else {
-        native.WaitEvents(idleWaitMs())
-      }
-    }
-    let repeatStartTicks = Stopwatch.GetTimestamp()
-    if !native.IsClosing && drainCloseRequest() {
-      if windowTarget?.PrepareClose() == false {
-        Interlocked.Exchange(&closeRequested, 1)
-      } else {
-        stopPosts()
-        native.BeginClose()
-      }
-    }
-    if native.IsClosing || !IsOpen {
-      try {
+      let queueCompletedAtEntry = windowTarget?.PollQueueCompletion() == true
+      if native.IsClosing {
+        if windowTarget?.PrepareClose() == false {
+          native.Wake()
+          return
+        }
         Close()
-      } finally {
-        if profiling {
-          profiler.Record(FrameProfileStage.Events, eventsProfile)
-          profiler.EndFrame(frameProfile, false)
+        return
+      }
+      if !IsOpen {
+        return
+      }
+      let profiling = profiler.Active
+      let frameProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+      let eventsProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+      if waitForEvents {
+        if hasDemand() {
+          native.PollEvents()
+        } else {
+          native.WaitEvents(idleWaitMs())
         }
       }
-      return
-    }
-    consumeNativeMetrics()
-    native.ClearPendingEvents()
-    if profiling {
-      profiler.Record(FrameProfileStage.Events, eventsProfile)
-    }
-
-    // Pump drains each fixed Post batch here, after close decisions and before input.
-    drainPostedActions()
-
-    // Drain returns true only for visually relevant input; bare moves stay quiet.
-    let inputProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-    let inputChanged = input.Drain(node, resolver, timeS, OnKeyPress, repeatStartTicks)
-    if profiling {
-      profiler.Record(FrameProfileStage.Input, inputProfile)
-    }
-    if inputChanged {
-      accessibility?.MarkDirty()
-      resolver.VisualDirty = true
-    }
-    // dt can carry a stale idle wait (up to 250 ms) plus whatever this call's
-    // own poll/wait consumed. Nothing was ticking while asleep (hasDemand()
-    // was false), so nothing loses banked motion; without this clamp, an
-    // anim/transition/scroll retarget started by the very input that just
-    // woke us would take its first (and sometimes only) step across the
-    // whole stale gap instead of animating. timeS (and so input's
-    // double-click clock) must NOT be clamped, or it runs slow while idle
-    // and misreads two far-apart clicks as a double-click -- only the
-    // simulation step is bounded; UpdateTree's wallDt/simDt split keeps them
-    // separate.
-    let stepDt = frameAllowed ? Math.Min(simulationDt, 1.0 / 30.0) : 0.0
-    let treeProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-    UpdateTree(dt, stepDt)
-    if profiling {
-      profiler.Record(FrameProfileStage.Tree, treeProfile)
-    }
-    native.SetCursor(toSdlCursor(input.CurrentCursor()))
-    let queueCompleted = queueCompletedAtEntry || windowTarget?.PollQueueCompletion() == true
-    var rendered = false
-    if queueCompleted {
-      markFrameRendered()
-      rendered = true
-      native.FramePacing.MarkFrame(float64(Stopwatch.GetTimestamp()))
-    }
-    let frameNeeded = needsRenderFrame(resolver.VisualDirty)
-    if frameAllowed && frameNeeded && windowTarget?.QueueWorkPending != true {
-      let renderProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-      let currentProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-      windowTarget?.BeginFrame()
-      if profiling {
-        profiler.Record(FrameProfileStage.TargetBegin, currentProfile)
+      let repeatStartTicks = Stopwatch.GetTimestamp()
+      if !native.IsClosing && drainCloseRequest() {
+        if windowTarget?.PrepareClose() == false {
+          Interlocked.Exchange(&closeRequested, 1)
+        } else {
+          stopPosts()
+          native.BeginClose()
+        }
       }
-      renderFrame()
-      let swapProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-      windowTarget?.Present()
-      if profiling {
-        profiler.Record(FrameProfileStage.Present, swapProfile)
-        profiler.Record(FrameProfileStage.Render, renderProfile)
+      if native.IsClosing || !IsOpen {
+        try {
+          Close()
+        } finally {
+          if profiling {
+            profiler.Record(FrameProfileStage.Events, eventsProfile)
+            profiler.EndFrame(frameProfile, false)
+          }
+        }
+        return
       }
-      let submitted = windowTarget?.LastFrameSubmitted == true
-      if submitted {
+      consumeNativeMetrics()
+      native.ClearPendingEvents()
+      if profiling {
+        profiler.Record(FrameProfileStage.Events, eventsProfile)
+      }
+
+      // Pump drains each fixed Post batch here, after close decisions and before input.
+      drainPostedActions()
+
+      // Drain returns true only for visually relevant input; bare moves stay quiet.
+      let inputProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+      let inputChanged = input.Drain(node, resolver, timeS, OnKeyPress, repeatStartTicks)
+      if profiling {
+        profiler.Record(FrameProfileStage.Input, inputProfile)
+      }
+      if inputChanged {
+        accessibility?.MarkDirty()
+        resolver.VisualDirty = true
+      }
+      // dt can carry a stale idle wait (up to 250 ms) plus whatever this call's
+      // own poll/wait consumed. Nothing was ticking while asleep (hasDemand()
+      // was false), so nothing loses banked motion; without this clamp, an
+      // anim/transition/scroll retarget started by the very input that just
+      // woke us would take its first (and sometimes only) step across the
+      // whole stale gap instead of animating. timeS (and so input's
+      // double-click clock) must NOT be clamped, or it runs slow while idle
+      // and misreads two far-apart clicks as a double-click -- only the
+      // simulation step is bounded; UpdateTree's wallDt/simDt split keeps them
+      // separate.
+      let stepDt = frameAllowed ? Math.Min(simulationDt, 1.0 / 30.0) : 0.0
+      let treeProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+      UpdateTree(dt, stepDt)
+      if profiling {
+        profiler.Record(FrameProfileStage.Tree, treeProfile)
+      }
+      native.SetCursor(toSdlCursor(input.CurrentCursor()))
+      let queueCompleted = queueCompletedAtEntry || windowTarget?.PollQueueCompletion() == true
+      var rendered = false
+      if queueCompleted {
         markFrameRendered()
         rendered = true
         native.FramePacing.MarkFrame(float64(Stopwatch.GetTimestamp()))
-      } else {
-        native.FramePacing.Defer(float64(Stopwatch.GetTimestamp()))
+      }
+      let frameNeeded = needsRenderFrame(resolver.VisualDirty)
+      if frameAllowed && frameNeeded && windowTarget?.QueueWorkPending != true {
+        let renderProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+        let currentProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+        windowTarget?.BeginFrame()
+        if profiling {
+          profiler.Record(FrameProfileStage.TargetBegin, currentProfile)
+        }
+        renderFrame()
+        let swapProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+        windowTarget?.Present()
+        if profiling {
+          profiler.Record(FrameProfileStage.Present, swapProfile)
+          profiler.Record(FrameProfileStage.Render, renderProfile)
+        }
+        let submitted = windowTarget?.LastFrameSubmitted == true
+        if submitted {
+          markFrameRendered()
+          rendered = true
+          native.FramePacing.MarkFrame(float64(Stopwatch.GetTimestamp()))
+        } else {
+          native.FramePacing.Defer(float64(Stopwatch.GetTimestamp()))
+        }
+      }
+      if profiling {
+        profiler.EndFrame(frameProfile, rendered)
       }
     }
-    if profiling {
-      profiler.EndFrame(frameProfile, rendered)
-    }
-  }
 
   // One source of truth for "may I sleep": a running Anim, a mid-transition
   // Resolver field, an already-requested render, a not-yet-drained rebuild,
@@ -474,27 +474,23 @@ public partial class Window {
   // a tick for as long as it's focused), so folding them into demand would
   // latch Pump into an unpaced, unrendered poll spin instead of a bounded
   // sleep. idleWaitMs() below is where their timing actually gets honored.
-  private func hasDemand() bool {
-    return motionPump.Active || resolver.Animating.Count > 0 || renderDirty || pendingRebuild != 0
-      || pendingImageCompletion != 0 || pendingRetainedInvalidation != 0 || hasScrollDemand()
-      || accessibility?.HasDemand == true || hasPostedActions() || MetricSubscriptions.HasDemand(this)
-      || windowTarget?.NeedsRender == true || windowTarget?.QueueWorkPending == true
-      || Interlocked.CompareExchange(&closeRequested, 0, 0) != 0
-      || host?.IsClosing == true
-  }
+  private func hasDemand() bool -> motionPump.Active || resolver.Animating.Count > 0 || renderDirty || pendingRebuild != 0
+    || pendingImageCompletion != 0 || pendingRetainedInvalidation != 0 || hasScrollDemand()
+    || accessibility?.HasDemand == true || hasPostedActions() || MetricSubscriptions.HasDemand(this)
+    || windowTarget?.NeedsRender == true || windowTarget?.QueueWorkPending == true
+    || Interlocked.CompareExchange(&closeRequested, 0, 0) != 0
+    || host?.IsClosing == true
 
-  internal func SchedulerHasImmediateService() bool {
-    return host?.HasPendingEvents == true || hasPostedActions()
-      || Interlocked.CompareExchange(&closeRequested, 0, 0) != 0
-      || host?.IsClosing == true
-  }
+  internal func SchedulerHasImmediateService() bool -> host?.HasPendingEvents == true || hasPostedActions()
+    || Interlocked.CompareExchange(&closeRequested, 0, 0) != 0
+    || host?.IsClosing == true
 
   internal func SchedulerFrameDue(nowTicks float64) bool {
     guard let native = host else {
       return false
     }
     return hasDemand() && native.SchedulerPacingAvailable &&
-      native.FramePacing.IsDue(nowTicks)
+    native.FramePacing.IsDue(nowTicks)
   }
 
   internal func SchedulerWaitMs(nowTicks float64) int32 {
@@ -520,9 +516,7 @@ public partial class Window {
     return pacingWait < idle ? pacingWait : idle
   }
 
-  internal func SchedulerTimedServiceDue() bool {
-    return input.NextTickDeadlineSeconds() <= 0.0
-  }
+  internal func SchedulerTimedServiceDue() bool -> input.NextTickDeadlineSeconds() <= 0.0
 
   internal func RefreshSchedulerMetrics() {
     host?.RefreshMetricsIfChanged()
@@ -666,27 +660,27 @@ public partial class Window {
       pendingLogicalHeight,
       pendingFramebufferWidth,
       pendingFramebufferHeight) {
-      Close()
-    }
+        Close()
+      }
   }
 
   private func applyNativeResize(logicalWidth int32, logicalHeight int32,
-    newFramebufferWidth int32, newFramebufferHeight int32) bool {
-    let framebufferValid = newFramebufferWidth > 0 && newFramebufferHeight > 0
-    HandleResize(logicalWidth, logicalHeight, framebufferValid)
-    guard let target = windowTarget else {
-      return false
+    newFramebufferWidth int32, newFramebufferHeight int32) bool{
+      let framebufferValid = newFramebufferWidth > 0 && newFramebufferHeight > 0
+      HandleResize(logicalWidth, logicalHeight, framebufferValid)
+      guard let target = windowTarget else {
+        return false
+      }
+      if !target.Resize(newFramebufferWidth, newFramebufferHeight) {
+        return false
+      }
+      framebufferWidth = newFramebufferWidth
+      framebufferHeight = newFramebufferHeight
+      if framebufferValid {
+        dpi = DpiScale(logicalWidth, logicalHeight, newFramebufferWidth, newFramebufferHeight)
+      }
+      return true
     }
-    if !target.Resize(newFramebufferWidth, newFramebufferHeight) {
-      return false
-    }
-    framebufferWidth = newFramebufferWidth
-    framebufferHeight = newFramebufferHeight
-    if framebufferValid {
-      dpi = DpiScale(logicalWidth, logicalHeight, newFramebufferWidth, newFramebufferHeight)
-    }
-    return true
-  }
 }
 
 internal func DpiScale(width int32, height int32, fbWidth int32, fbHeight int32) Vector2 {

@@ -6,11 +6,11 @@ import Goo
 
 func S15Q10LatencyWriteStats(prefix string, values []int64, count int32) {
   Console.WriteLine(prefix + ":"
-    + " count=" + count.ToString()
-    + " p50_ns=" + S15Q10PercentileCount(values, count, 0.50).ToString()
-    + " p95_ns=" + S15Q10PercentileCount(values, count, 0.95).ToString()
-    + " p99_ns=" + S15Q10PercentileCount(values, count, 0.99).ToString()
-    + " worst_ns=" + S15Q10MaxCount(values, count).ToString())
+    +" count=" + count.ToString()
+    +" p50_ns=" + S15Q10PercentileCount(values, count, 0.50).ToString()
+    +" p95_ns=" + S15Q10PercentileCount(values, count, 0.95).ToString()
+    +" p99_ns=" + S15Q10PercentileCount(values, count, 0.99).ToString()
+    +" worst_ns=" + S15Q10MaxCount(values, count).ToString())
 }
 
 func RunS15Q10LatencyBenchmark(managedEntryTimestamp int64) {
@@ -96,14 +96,14 @@ func RunS15Q10LatencyBenchmark(managedEntryTimestamp int64) {
       lastObservedToken = sample.Token
     }
     if tokenIndex > 0
-        && sample.StartTimestamp != inputExpectedStarts[tokenIndex - 1] {
-      invalidTimestampCount = invalidTimestampCount + 1
-    }
+      && sample.StartTimestamp != inputExpectedStarts[tokenIndex - 1]{
+        invalidTimestampCount = invalidTimestampCount + 1
+      }
     if tokenIndex == 0 {
       if sample.Kind != 0
-          || sample.StartTimestamp != managedEntryTimestamp {
-        wrongKindCount = wrongKindCount + 1
-      }
+        || sample.StartTimestamp != managedEntryTimestamp{
+          wrongKindCount = wrongKindCount + 1
+        }
     } else {
       let inputIndex = tokenIndex - 1
       if sample.Kind != inputExpectedKinds[inputIndex] {
@@ -114,10 +114,10 @@ func RunS15Q10LatencyBenchmark(managedEntryTimestamp int64) {
       wrongFenceCount = wrongFenceCount + 1
     }
     if sample.HandoffTimestamp < sample.StartTimestamp
-        || sample.CompletionObservedTimestamp < sample.HandoffTimestamp
-        || sample.CompletionObservedTimestamp == 0L {
-      invalidTimestampCount = invalidTimestampCount + 1
-    }
+      || sample.CompletionObservedTimestamp < sample.HandoffTimestamp
+      || sample.CompletionObservedTimestamp == 0L {
+        invalidTimestampCount = invalidTimestampCount + 1
+      }
     let handoffTicks = sample.HandoffTimestamp - sample.StartTimestamp
     let completionTicks = sample.CompletionObservedTimestamp - sample.StartTimestamp
     if tokenIndex > 0 {
@@ -257,11 +257,11 @@ func RunS15Q10LatencyBenchmark(managedEntryTimestamp int64) {
             && root.TextCount == textBefore
             && root.CallbackOrder == callbackBefore + 1,
           "S15 Q10 latency key input callback was not isolated: pointer="
-            + root.PointerCount.ToString() + "/" + pointerBefore.ToString()
-            + " key=" + root.KeyCount.ToString() + "/" + keyBefore.ToString()
-            + " text=" + root.TextCount.ToString() + "/" + textBefore.ToString()
-            + " order=" + root.CallbackOrder.ToString() + "/" + callbackBefore.ToString()
-            + " generation=" + root.Generation.ToString() + "/" + generationBefore.ToString())
+          +root.PointerCount.ToString() + "/" + pointerBefore.ToString()
+          +" key=" + root.KeyCount.ToString() + "/" + keyBefore.ToString()
+          +" text=" + root.TextCount.ToString() + "/" + textBefore.ToString()
+          +" order=" + root.CallbackOrder.ToString() + "/" + callbackBefore.ToString()
+          +" generation=" + root.Generation.ToString() + "/" + generationBefore.ToString())
       } else {
         S14Require(root.PointerCount == pointerBefore
             && root.KeyCount == keyBefore
@@ -275,9 +275,9 @@ func RunS15Q10LatencyBenchmark(managedEntryTimestamp int64) {
     }
     let inputAfter = WindowReadbackTestFixture.DiagnosticCounters(opened)
     S14Require(S15Q10Delta(inputAfter.submitCount, inputBefore.submitCount)
-        == uint64(InputSamples)
+      == uint64(InputSamples)
         && S15Q10Delta(inputAfter.presentCount, inputBefore.presentCount)
-        == uint64(InputSamples),
+      == uint64(InputSamples),
       "S15 Q10 latency aggregate input submit or present delta was not exact")
     S14Require(inputSubmitDelta == uint64(InputSamples)
         && inputPresentDelta == uint64(InputSamples),
@@ -311,9 +311,9 @@ func RunS15Q10LatencyBenchmark(managedEntryTimestamp int64) {
             && sampleFenceObserved[tokenIndex] == presentFenceSupported,
           "S15 Q10 latency sample storage was overwritten")
         if samplePresentIds[tokenIndex] <= priorPresentId
-            || sampleHandoffs[tokenIndex] < priorHandoffTimestamp {
-          invalidPresentIdCount = invalidPresentIdCount + 1
-        }
+          || sampleHandoffs[tokenIndex] < priorHandoffTimestamp{
+            invalidPresentIdCount = invalidPresentIdCount + 1
+          }
         priorPresentId = samplePresentIds[tokenIndex]
         priorHandoffTimestamp = sampleHandoffs[tokenIndex]
       }
@@ -339,9 +339,9 @@ func RunS15Q10LatencyBenchmark(managedEntryTimestamp int64) {
         && root.TextCount == textSampleCount,
       "S15 Q10 latency callback counts did not match input samples")
     S14Require(S15Q10Delta(inputAfter.submitCount, inputBefore.submitCount)
-        == uint64(InputSamples)
+      == uint64(InputSamples)
         && S15Q10Delta(inputAfter.presentCount, inputBefore.presentCount)
-        == uint64(InputSamples),
+      == uint64(InputSamples),
       "S15 Q10 latency input submit or present totals changed after settlement")
     S14Require(root.Invariant(), "S15 Q10 latency root invariant failed after samples")
 
@@ -375,49 +375,49 @@ func RunS15Q10LatencyBenchmark(managedEntryTimestamp int64) {
     "S15 Q10 latency input handoff P95 exceeded two 60 Hz intervals plus 4 ms")
 
   Console.WriteLine("s15-q10-latency-gate:"
-    + " present_fence_support=" + presentFenceSupported.ToString()
-    + " startup_sample_count=1"
-    + " input_sample_count=" + InputSamples.ToString()
-    + " callbacks_total=" + totalCallbackCount.ToString()
-    + " callbacks_unique=" + callbackCount.ToString()
-    + " duplicate_tokens=" + duplicateTokenCount.ToString()
-    + " overwritten_tokens=" + overwrittenTokenCount.ToString()
-    + " missing_tokens=" + missingTokenCount.ToString()
-    + " completion_callbacks_out_of_order=" + outOfOrderTokenCount.ToString()
-    + " invalid_tokens=" + invalidTokenCount.ToString()
-    + " settle_frames=" + settleFrameCount.ToString()
-    + " startup_submit_delta=" + startupSubmitDelta.ToString()
-    + " startup_present_delta=" + startupPresentDelta.ToString()
-    + " warm_submit_delta=" + warmSubmitDelta.ToString()
-    + " warm_present_delta=" + warmPresentDelta.ToString()
-    + " input_submit_delta=" + inputSubmitDelta.ToString()
-    + " input_present_delta=" + inputPresentDelta.ToString()
-    + " close=" + closeVerified.ToString())
+    +" present_fence_support=" + presentFenceSupported.ToString()
+    +" startup_sample_count=1"
+    +" input_sample_count=" + InputSamples.ToString()
+    +" callbacks_total=" + totalCallbackCount.ToString()
+    +" callbacks_unique=" + callbackCount.ToString()
+    +" duplicate_tokens=" + duplicateTokenCount.ToString()
+    +" overwritten_tokens=" + overwrittenTokenCount.ToString()
+    +" missing_tokens=" + missingTokenCount.ToString()
+    +" completion_callbacks_out_of_order=" + outOfOrderTokenCount.ToString()
+    +" invalid_tokens=" + invalidTokenCount.ToString()
+    +" settle_frames=" + settleFrameCount.ToString()
+    +" startup_submit_delta=" + startupSubmitDelta.ToString()
+    +" startup_present_delta=" + startupPresentDelta.ToString()
+    +" warm_submit_delta=" + warmSubmitDelta.ToString()
+    +" warm_present_delta=" + warmPresentDelta.ToString()
+    +" input_submit_delta=" + inputSubmitDelta.ToString()
+    +" input_present_delta=" + inputPresentDelta.ToString()
+    +" close=" + closeVerified.ToString())
   Console.WriteLine("s15-q10-latency-startup:"
-    + " managed_entry_to_present_handoff_ns=" + startupHandoffNs.ToString()
-    + " window_open_to_present_handoff_ns=" + startupWindowHandoffNs.ToString())
+    +" managed_entry_to_present_handoff_ns=" + startupHandoffNs.ToString()
+    +" window_open_to_present_handoff_ns=" + startupWindowHandoffNs.ToString())
   if presentFenceSupported {
     Console.WriteLine("s15-q10-latency-startup-completion:"
-      + " managed_entry_to_present_completion_observed_upper_ns=" + startupCompletionNs.ToString()
-      + " window_open_to_present_completion_observed_upper_ns=" + startupWindowCompletionNs.ToString())
+      +" managed_entry_to_present_completion_observed_upper_ns=" + startupCompletionNs.ToString()
+      +" window_open_to_present_completion_observed_upper_ns=" + startupWindowCompletionNs.ToString())
   }
   Console.WriteLine("s15-q10-latency-input:"
-    + " input_injection_to_present_handoff_p50_ns=" + inputHandoffP50.ToString()
-    + " input_injection_to_present_handoff_p95_ns=" + inputHandoffP95.ToString()
-    + " input_injection_to_present_handoff_p99_ns=" + inputHandoffP99.ToString()
-    + " input_injection_to_present_handoff_worst_ns=" + inputHandoffWorst.ToString()
-    + " input_handoff_p95_gate_ns=" + handoffGateNs.ToString()
-    + " input_handoff_p95_gate=true")
+    +" input_injection_to_present_handoff_p50_ns=" + inputHandoffP50.ToString()
+    +" input_injection_to_present_handoff_p95_ns=" + inputHandoffP95.ToString()
+    +" input_injection_to_present_handoff_p99_ns=" + inputHandoffP99.ToString()
+    +" input_injection_to_present_handoff_worst_ns=" + inputHandoffWorst.ToString()
+    +" input_handoff_p95_gate_ns=" + handoffGateNs.ToString()
+    +" input_handoff_p95_gate=true")
   if presentFenceSupported {
     Console.WriteLine("s15-q10-latency-input-completion:"
-      + " input_injection_to_present_completion_observed_upper_p50_ns="
-      + S15Q10PercentileCount(inputCompletionNs, InputSamples, 0.50).ToString()
-      + " input_injection_to_present_completion_observed_upper_p95_ns="
-      + S15Q10PercentileCount(inputCompletionNs, InputSamples, 0.95).ToString()
-      + " input_injection_to_present_completion_observed_upper_p99_ns="
-      + S15Q10PercentileCount(inputCompletionNs, InputSamples, 0.99).ToString()
-      + " input_injection_to_present_completion_observed_upper_worst_ns="
-      + S15Q10MaxCount(inputCompletionNs, InputSamples).ToString())
+      +" input_injection_to_present_completion_observed_upper_p50_ns="
+      +S15Q10PercentileCount(inputCompletionNs, InputSamples, 0.50).ToString()
+      +" input_injection_to_present_completion_observed_upper_p95_ns="
+      +S15Q10PercentileCount(inputCompletionNs, InputSamples, 0.95).ToString()
+      +" input_injection_to_present_completion_observed_upper_p99_ns="
+      +S15Q10PercentileCount(inputCompletionNs, InputSamples, 0.99).ToString()
+      +" input_injection_to_present_completion_observed_upper_worst_ns="
+      +S15Q10MaxCount(inputCompletionNs, InputSamples).ToString())
   }
   S15Q10LatencyWriteStats("input_injection_to_present_handoff_kind1", pointerHandoffNs,
     pointerSampleCount)
@@ -434,10 +434,10 @@ func RunS15Q10LatencyBenchmark(managedEntryTimestamp int64) {
       textCompletionNs, textSampleCount)
   }
   Console.WriteLine("s15-q10-latency-callbacks:"
-    + " pointer_callback_count=" + pointerSampleCount.ToString()
-    + " key_callback_count=" + keySampleCount.ToString()
-    + " text_callback_count=" + textSampleCount.ToString()
-    + " pointer_sample_count=" + pointerSampleCount.ToString()
-    + " key_sample_count=" + keySampleCount.ToString()
-    + " text_sample_count=" + textSampleCount.ToString())
+    +" pointer_callback_count=" + pointerSampleCount.ToString()
+    +" key_callback_count=" + keySampleCount.ToString()
+    +" text_callback_count=" + textSampleCount.ToString()
+    +" pointer_sample_count=" + pointerSampleCount.ToString()
+    +" key_sample_count=" + keySampleCount.ToString()
+    +" text_sample_count=" + textSampleCount.ToString())
 }

@@ -88,25 +88,25 @@ public class PathBuilder {
   /// @param y The endpoint y coordinate.
   /// @returns This builder.
   public func CubicTo(controlX1 float64, controlY1 float64,
-    controlX2 float64, controlY2 float64, x float64, y float64) PathBuilder {
-    ensureContour()
-    validateFinite(controlX1, "controlX1")
-    validateFinite(controlY1, "controlY1")
-    validateFinite(controlX2, "controlX2")
-    validateFinite(controlY2, "controlY2")
-    validateFinite(x, "x")
-    validateFinite(y, "y")
-    commands.Add(VectorPathCommand{
-      Kind: VectorPathCommandKind.CubicTo,
-      X1: controlX1,
-      Y1: controlY1,
-      X2: controlX2,
-      Y2: controlY2,
-      X3: x,
-      Y3: y,
-    })
-    return this
-  }
+    controlX2 float64, controlY2 float64, x float64, y float64) PathBuilder{
+      ensureContour()
+      validateFinite(controlX1, "controlX1")
+      validateFinite(controlY1, "controlY1")
+      validateFinite(controlX2, "controlX2")
+      validateFinite(controlY2, "controlY2")
+      validateFinite(x, "x")
+      validateFinite(y, "y")
+      commands.Add(VectorPathCommand{
+        Kind: VectorPathCommandKind.CubicTo,
+        X1: controlX1,
+        Y1: controlY1,
+        X2: controlX2,
+        Y2: controlY2,
+        X3: x,
+        Y3: y,
+      })
+      return this
+    }
 
   /// Adds an elliptical arc to a point.
   /// @param radiusX The non-negative horizontal radius.
@@ -118,25 +118,25 @@ public class PathBuilder {
   /// @param y The endpoint y coordinate.
   /// @returns This builder.
   public func ArcTo(radiusX float64, radiusY float64, rotationDegrees float64,
-    largeArc bool, sweepClockwise bool, x float64, y float64) PathBuilder {
-    ensureContour()
-    validateRadius(radiusX, "radiusX")
-    validateRadius(radiusY, "radiusY")
-    validateFinite(rotationDegrees, "rotationDegrees")
-    validateFinite(x, "x")
-    validateFinite(y, "y")
-    commands.Add(VectorPathCommand{
-      Kind: VectorPathCommandKind.ArcTo,
-      X1: x,
-      Y1: y,
-      RadiusX: radiusX,
-      RadiusY: radiusY,
-      RotationDegrees: rotationDegrees,
-      LargeArc: largeArc,
-      SweepClockwise: sweepClockwise,
-    })
-    return this
-  }
+    largeArc bool, sweepClockwise bool, x float64, y float64) PathBuilder{
+      ensureContour()
+      validateRadius(radiusX, "radiusX")
+      validateRadius(radiusY, "radiusY")
+      validateFinite(rotationDegrees, "rotationDegrees")
+      validateFinite(x, "x")
+      validateFinite(y, "y")
+      commands.Add(VectorPathCommand{
+        Kind: VectorPathCommandKind.ArcTo,
+        X1: x,
+        Y1: y,
+        RadiusX: radiusX,
+        RadiusY: radiusY,
+        RotationDegrees: rotationDegrees,
+        LargeArc: largeArc,
+        SweepClockwise: sweepClockwise,
+      })
+      return this
+    }
 
   /// Adds a polyline contour through the specified points.
   /// @param points The two or more contour points.

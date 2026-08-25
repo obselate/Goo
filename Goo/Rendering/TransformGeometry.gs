@@ -88,33 +88,27 @@ internal class TransformGeometry {
       return if let parent = n.Parent { NodeToWindow(parent, point.X, point.Y) } else { point }
     }
 
-    internal func BoundsToWindow(n Node) TransformBounds {
-      return BoundsToWindow(n, n.Rect.X, n.Rect.Y, n.Rect.W, n.Rect.H)
-    }
+    internal func BoundsToWindow(n Node) TransformBounds -> BoundsToWindow(n, n.Rect.X, n.Rect.Y, n.Rect.W, n.Rect.H)
 
     internal func BoundsToWindow(n Node, x float32, y float32, width float32,
-      height float32) TransformBounds {
-      let p0 = NodeToWindow(n, x, y)
-      let p1 = NodeToWindow(n, x + width, y)
-      let p2 = NodeToWindow(n, x, y + height)
-      let p3 = NodeToWindow(n, x + width, y + height)
-      if !p0.Valid || !p1.Valid || !p2.Valid || !p3.Valid {
-        return TransformBounds{ X: x, Y: y, W: width, H: height }
+      height float32) TransformBounds{
+        let p0 = NodeToWindow(n, x, y)
+        let p1 = NodeToWindow(n, x + width, y)
+        let p2 = NodeToWindow(n, x, y + height)
+        let p3 = NodeToWindow(n, x + width, y + height)
+        if !p0.Valid || !p1.Valid || !p2.Valid || !p3.Valid {
+          return TransformBounds{ X: x, Y: y, W: width, H: height }
+        }
+        let left = min4(p0.X, p1.X, p2.X, p3.X)
+        let top = min4(p0.Y, p1.Y, p2.Y, p3.Y)
+        let right = max4(p0.X, p1.X, p2.X, p3.X)
+        let bottom = max4(p0.Y, p1.Y, p2.Y, p3.Y)
+        return TransformBounds{ X: left, Y: top, W: right - left, H: bottom - top }
       }
-      let left = min4(p0.X, p1.X, p2.X, p3.X)
-      let top = min4(p0.Y, p1.Y, p2.Y, p3.Y)
-      let right = max4(p0.X, p1.X, p2.X, p3.X)
-      let bottom = max4(p0.Y, p1.Y, p2.Y, p3.Y)
-      return TransformBounds{ X: left, Y: top, W: right - left, H: bottom - top }
-    }
 
-    private func finite(value float32) bool {
-      return !Single.IsNaN(value) && !Single.IsInfinity(value)
-    }
+    private func finite(value float32) bool -> !Single.IsNaN(value) && !Single.IsInfinity(value)
 
-    private func resolve(value Length, basis float32) float32 {
-      return value.Unit == LengthUnit.Percent ? basis * value.Value / 100.0F : value.Value
-    }
+    private func resolve(value Length, basis float32) float32 -> value.Unit == LengthUnit.Percent ? basis * value.Value / 100.0F : value.Value
 
     internal func min4(a float32, b float32, c float32, d float32) float32 {
       var result = a < b ? a : b

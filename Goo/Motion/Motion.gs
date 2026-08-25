@@ -14,7 +14,7 @@ public class Motion {
 
     /// Gets or sets the global playback rate. 1 is normal speed; 0 or lower
     /// lands every running animation on its target on the next tick.
-    public prop TimeScale float64 {
+    public prop TimeScale float64{
       get { return timeScale }
       set {
         if !motionFinite(value) {
@@ -26,9 +26,9 @@ public class Motion {
 
     /// Gets or sets the sim factory used by `To(target)` when no spec is
     /// given. Core wires a 180 ms linear timed sim at startup.
-    public prop Default ((float64, float64, float64) -> Simulation) { get; set; }
+    public prop Default((float64, float64, float64) -> Simulation) { get; set; }
 
-    init {
+    init{
       TimeScale = 1.0
       Default = (from float64, to float64, velocity float64) -> LinearTimed(0.18, from, to)
     }
@@ -38,7 +38,7 @@ public class Motion {
 internal class MotionClock {
   internal var now float64
 
-  internal prop Now float64 { get { return now } }
+  internal prop Now float64{ get { return now } }
 
   internal func Advance(dt float64) {
     now = now + dt
@@ -63,7 +63,7 @@ internal class MotionPump {
   private var logicalCount int32
   private var nextGeneration int64
 
-  internal prop Wake (() -> void)? { get; set; }
+  internal prop Wake(() -> void)? { get; set; }
 
   internal init() {
     clock = MotionClock()
@@ -71,10 +71,10 @@ internal class MotionPump {
     deferred = List[MotionPumpEntry]()
   }
 
-  internal prop Now float64 { get { return clock.Now } }
+  internal prop Now float64{ get { return clock.Now } }
 
   // True while any animation is still running.
-  internal prop Active bool { get { return logicalCount > 0 } }
+  internal prop Active bool{ get { return logicalCount > 0 } }
 
   internal func Register(p MotionParticle) {
     if p.registrationPump == this && p.registrationGeneration != 0 {
@@ -193,10 +193,8 @@ internal class MotionPump {
     sweeping = false
   }
 
-  private func isValid(entry MotionPumpEntry) bool {
-    return entry.Particle.registrationPump == this
-      && entry.Particle.registrationGeneration == entry.Generation
-  }
+  private func isValid(entry MotionPumpEntry) bool -> entry.Particle.registrationPump == this
+    && entry.Particle.registrationGeneration == entry.Generation
 
   private func invalidate(p MotionParticle, generation int64) {
     if p.registrationPump != this || p.registrationGeneration != generation {
@@ -223,10 +221,10 @@ internal class MotionPump {
     for var i = 0; i < entries.Count; i++ {
       let entry = entries[i]
       if entry.Particle.registrationPump == this
-        && entry.Particle.registrationGeneration == entry.Generation {
-        entry.Particle.registrationPump = nil
-        entry.Particle.registrationGeneration = 0
-      }
+        && entry.Particle.registrationGeneration == entry.Generation{
+          entry.Particle.registrationPump = nil
+          entry.Particle.registrationGeneration = 0
+        }
     }
   }
 }

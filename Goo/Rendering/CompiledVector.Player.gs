@@ -410,11 +410,10 @@ internal sealed class CompiledVectorMotionPlayer : MotionParticle {
       let track = asset.PlayerTrackAt(activeTracks[index])
       if track.KeyframeCount != 0u
         && (Motion.TimeScale <= 0.0
-          ? (track.Flags & CompiledVectorLimits.TrackLoop) != 0u
-          : ((track.Flags & CompiledVectorLimits.TrackLoop) != 0u
-            || elapsed < float64(track.Duration))) {
-        return true
-      }
+          ? (track.Flags & CompiledVectorLimits.TrackLoop) != 0u : ((track.Flags & CompiledVectorLimits.TrackLoop) != 0u
+              || elapsed < float64(track.Duration))) {
+                return true
+              }
       index++
     }
     return false
@@ -600,74 +599,74 @@ internal sealed class CompiledVectorMotionPlayer : MotionParticle {
   }
 
   private func evaluate(index int32, elapsed float64, discrete bool,
-    out result CompiledVectorPlaybackValue) bool {
-    result = CompiledVectorPlaybackValue{}
-    if index < 0 || index >= asset.TrackCount { return false }
-    let track = asset.PlayerTrackAt(index)
-    if track.KeyframeCount == 0u { return false }
-    let duration = float64(track.Duration)
-    let time = trackTime(track, elapsed, duration)
-    let start = int32(track.KeyframeStart)
-    let count = int32(track.KeyframeCount)
-    var segment int32 = 0
-    while segment + 1 < count {
-      let first = asset.PlayerKeyframeAt(start + segment)
-      let second = asset.PlayerKeyframeAt(start + segment + 1)
-      if time < float64(second.Time) {
-        let span = float64(second.Time - first.Time)
-        let progress = span <= 0.0 ? 1.0 : (time - float64(first.Time)) / span
-        let eased = easeProgress(first, clamp01f(float32(progress)))
-        result = interpolate(first, second, eased, discrete)
-        return true
+    out result CompiledVectorPlaybackValue) bool{
+      result = CompiledVectorPlaybackValue{}
+      if index < 0 || index >= asset.TrackCount { return false }
+      let track = asset.PlayerTrackAt(index)
+      if track.KeyframeCount == 0u { return false }
+      let duration = float64(track.Duration)
+      let time = trackTime(track, elapsed, duration)
+      let start = int32(track.KeyframeStart)
+      let count = int32(track.KeyframeCount)
+      var segment int32 = 0
+      while segment + 1 < count {
+        let first = asset.PlayerKeyframeAt(start + segment)
+        let second = asset.PlayerKeyframeAt(start + segment + 1)
+        if time < float64(second.Time) {
+          let span = float64(second.Time - first.Time)
+          let progress = span <= 0.0 ? 1.0 : (time - float64(first.Time)) / span
+          let eased = easeProgress(first, clamp01f(float32(progress)))
+          result = interpolate(first, second, eased, discrete)
+          return true
+        }
+        segment++
       }
-      segment++
+      let last = asset.PlayerKeyframeAt(start + count - 1)
+      result = CompiledVectorPlaybackValue{
+        A: last.A,
+        B: last.B,
+        C: last.C,
+        D: last.D,
+        E: last.E,
+        F: last.F,
+      }
+      return true
     }
-    let last = asset.PlayerKeyframeAt(start + count - 1)
-    result = CompiledVectorPlaybackValue{
-      A: last.A,
-      B: last.B,
-      C: last.C,
-      D: last.D,
-      E: last.E,
-      F: last.F,
-    }
-    return true
-  }
 
   private func trackTime(track CompiledVectorTrackView, elapsed float64,
-    duration float64) float64 {
-    if Motion.TimeScale <= 0.0 {
-      return duration
+    duration float64) float64{
+      if Motion.TimeScale <= 0.0 {
+        return duration
+      }
+      if duration <= 0.0 || elapsed <= duration {
+        return elapsed <= 0.0 ? 0.0 : elapsed
+      }
+      if (track.Flags & CompiledVectorLimits.TrackLoop) == 0u {
+        return duration
+      }
+      let cycle = Math.Floor(elapsed / duration)
+      var phase = elapsed - cycle * duration
+      if phase < 0.0 { phase = 0.0 }
+      if (track.Flags & CompiledVectorLimits.TrackPingPong) != 0u
+        && Math.Floor(cycle % 2.0) != 0.0 {
+          phase = duration - phase
+        }
+      return phase
     }
-    if duration <= 0.0 || elapsed <= duration {
-      return elapsed <= 0.0 ? 0.0 : elapsed
-    }
-    if (track.Flags & CompiledVectorLimits.TrackLoop) == 0u {
-      return duration
-    }
-    let cycle = Math.Floor(elapsed / duration)
-    var phase = elapsed - cycle * duration
-    if phase < 0.0 { phase = 0.0 }
-    if (track.Flags & CompiledVectorLimits.TrackPingPong) != 0u
-      && Math.Floor(cycle % 2.0) != 0.0 {
-      phase = duration - phase
-    }
-    return phase
-  }
 
   private func interpolate(first CompiledVectorKeyframeView,
     second CompiledVectorKeyframeView, progress float32,
-    discrete bool) CompiledVectorPlaybackValue {
-    let value = CompiledVectorPlaybackValue{
-      A: first.A + (second.A - first.A) * progress,
-      B: first.B + (second.B - first.B) * progress,
-      C: discrete ? first.C : first.C + (second.C - first.C) * progress,
-      D: discrete ? first.D : first.D + (second.D - first.D) * progress,
-      E: first.E + (second.E - first.E) * progress,
-      F: first.F + (second.F - first.F) * progress,
+    discrete bool) CompiledVectorPlaybackValue{
+      let value = CompiledVectorPlaybackValue{
+        A: first.A + (second.A - first.A) * progress,
+        B: first.B + (second.B - first.B) * progress,
+        C: discrete ? first.C : first.C + (second.C - first.C) * progress,
+        D: discrete ? first.D : first.D + (second.D - first.D) * progress,
+        E: first.E + (second.E - first.E) * progress,
+        F: first.F + (second.F - first.F) * progress,
+      }
+      return value
     }
-    return value
-  }
 
   private func easeProgress(keyframe CompiledVectorKeyframeView, progress float32) float32 {
     switch CompiledVectorEasingKind(keyframe.Easing) {
@@ -681,49 +680,49 @@ internal sealed class CompiledVectorMotionPlayer : MotionParticle {
   }
 
   private func easeMorphProgress(keyframe CompiledVectorMorphKeyframeView,
-    progress float32) float32 {
-    switch CompiledVectorEasingKind(keyframe.Easing) {
-      case CompiledVectorEasingKind.Step { return 0.0F }
-      case CompiledVectorEasingKind.Cubic {
-        return cubic(keyframe.ControlA, keyframe.ControlB, keyframe.ControlC,
-          keyframe.ControlD, progress)
+    progress float32) float32{
+      switch CompiledVectorEasingKind(keyframe.Easing) {
+        case CompiledVectorEasingKind.Step { return 0.0F }
+        case CompiledVectorEasingKind.Cubic {
+          return cubic(keyframe.ControlA, keyframe.ControlB, keyframe.ControlC,
+            keyframe.ControlD, progress)
+        }
+        case _ { return progress }
       }
-      case _ { return progress }
     }
-  }
 
   private func cubic(x1 float32, y1 float32, x2 float32, y2 float32,
-    x float32) float32 {
-    var t = x
-    var iteration int32 = 0
-    while iteration < 5 {
-      let current = cubicValue(t, x1, x2) - x
-      let derivative = cubicDerivative(t, x1, x2)
-      if MathF.Abs(derivative) < 0.000001F { break }
-      t = clamp01f(t - current / derivative)
-      iteration++
+    x float32) float32{
+      var t = x
+      var iteration int32 = 0
+      while iteration < 5 {
+        let current = cubicValue(t, x1, x2) - x
+        let derivative = cubicDerivative(t, x1, x2)
+        if MathF.Abs(derivative) < 0.000001F { break }
+        t = clamp01f(t - current / derivative)
+        iteration++
+      }
+      var low float32 = 0.0F
+      var high float32 = 1.0F
+      var binary int32 = 0
+      while binary < 8 {
+        if cubicValue(t, x1, x2) < x { low = t } else { high = t }
+        t = (low + high) * 0.5F
+        binary++
+      }
+      return clamp01f(cubicValue(t, y1, y2))
     }
-    var low float32 = 0.0F
-    var high float32 = 1.0F
-    var binary int32 = 0
-    while binary < 8 {
-      if cubicValue(t, x1, x2) < x { low = t } else { high = t }
-      t = (low + high) * 0.5F
-      binary++
-    }
-    return clamp01f(cubicValue(t, y1, y2))
-  }
 
   private func cubicValue(t float32, p1 float32, p2 float32) float32 {
     let inverse = 1.0F - t
     return 3.0F * inverse * inverse * t * p1
-      + 3.0F * inverse * t * t * p2 + t * t * t
+    +3.0F * inverse * t * t * p2 + t * t * t
   }
 
   private func cubicDerivative(t float32, p1 float32, p2 float32) float32 {
     let inverse = 1.0F - t
     return 3.0F * inverse * inverse * p1
-      + 6.0F * inverse * t * (p2 - p1) + 3.0F * t * t * (1.0F - p2)
+    +6.0F * inverse * t * (p2 - p1) + 3.0F * t * t * (1.0F - p2)
   }
 
   private func applyMatrix(node Node, value CompiledVectorPlaybackValue) {
@@ -806,10 +805,8 @@ internal sealed class CompiledVectorMotionPlayer : MotionParticle {
   }
 
   private func samePlaybackValue(left CompiledVectorPlaybackValue,
-    right CompiledVectorPlaybackValue) bool {
-    return left.A == right.A && left.B == right.B && left.C == right.C
-      && left.D == right.D && left.E == right.E && left.F == right.F
-  }
+    right CompiledVectorPlaybackValue) bool -> left.A == right.A && left.B == right.B && left.C == right.C
+    && left.D == right.D && left.E == right.E && left.F == right.F
 
   private func clamp01(value float32) float32 {
     if value <= 0.0F { return 0.0F }
@@ -823,9 +820,7 @@ internal sealed class CompiledVectorMotionPlayer : MotionParticle {
     return value
   }
 
-  private func clampNonNegative(value float32) float32 {
-    return value < 0.0F ? 0.0F : value
-  }
+  private func clampNonNegative(value float32) float32 -> value < 0.0F ? 0.0F : value
 
   private func clampOrdinal(value float32, minimum int32, maximum int32) int32 {
     let rounded = int32(value + 0.5F)

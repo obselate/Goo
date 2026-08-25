@@ -38,13 +38,13 @@ internal class KeyboardDispatchControl {
 /// Describes a keyboard callback.
 public struct KeyEvent {
   /// Gets the physical key.
-  public prop Key Key { get; init; }
+  public prop Key Key{ get; init; }
   /// Gets the modifier keys held for this event.
-  public prop Modifiers KeyModifiers { get; init; }
+  public prop Modifiers KeyModifiers{ get; init; }
   /// Reports whether this key down came from Goo key repeat.
-  public prop Repeat bool { get; init; }
+  public prop Repeat bool{ get; init; }
   internal prop Control KeyboardDispatchControl? { get; init; }
-  internal prop Generation int64 { get; init; }
+  internal prop Generation int64{ get; init; }
 
   /// Stops further callback propagation for this event.
   public func StopPropagation() {
@@ -60,7 +60,7 @@ public struct KeyEvent {
 /// Describes a non-cancelable focus lifecycle callback.
 public struct FocusEvent {
   internal prop Control KeyboardDispatchControl? { get; init; }
-  internal prop Generation int64 { get; init; }
+  internal prop Generation int64{ get; init; }
 
   /// Stops further callback propagation for this event.
   public func StopPropagation() {
@@ -69,92 +69,78 @@ public struct FocusEvent {
 }
 
 internal class InputCallbackSet {
-  internal var OnKeyDown ((KeyEvent) -> void)?
-  internal var OnKeyUp ((KeyEvent) -> void)?
-  internal var OnFocus ((FocusEvent) -> void)?
-  internal var OnBlur ((FocusEvent) -> void)?
-  internal var OnPointerEnter ((PointerEvent) -> void)?
-  internal var OnPointerLeave ((PointerEvent) -> void)?
+  internal var OnKeyDown((KeyEvent) -> void)?
+  internal var OnKeyUp((KeyEvent) -> void)?
+  internal var OnFocus((FocusEvent) -> void)?
+  internal var OnBlur((FocusEvent) -> void)?
+  internal var OnPointerEnter((PointerEvent) -> void)?
+  internal var OnPointerLeave((PointerEvent) -> void)?
 
-  internal func Empty() bool {
-    return OnKeyDown == nil && OnKeyUp == nil && OnFocus == nil && OnBlur == nil
-      && OnPointerEnter == nil && OnPointerLeave == nil
-  }
+  internal func Empty() bool -> OnKeyDown == nil && OnKeyUp == nil && OnFocus == nil && OnBlur == nil
+    && OnPointerEnter == nil && OnPointerLeave == nil
 }
 
 // Sparse callback state keeps ordinary declarations and retained nodes unchanged.
 internal class InputCallbacks {
   shared {
     private let blobValues ConditionalWeakTable[Blob, InputCallbackSet] =
-      ConditionalWeakTable[Blob, InputCallbackSet]()
+    ConditionalWeakTable[Blob, InputCallbackSet]()
     private let nodeValues ConditionalWeakTable[Node, InputCallbackSet] =
-      ConditionalWeakTable[Node, InputCallbackSet]()
+    ConditionalWeakTable[Node, InputCallbackSet]()
 
-    internal func SetBlobKeyDown(blob Blob, value ((KeyEvent) -> void)?) bool {
+    internal func SetBlobKeyDown(blob Blob, value((KeyEvent) -> void)?) bool {
       let callbacks = blobCallbacks(blob, value != nil)
       if callbacks == nil { return false }
       callbacks!!.OnKeyDown = value
       return finishBlob(blob, callbacks!!)
     }
 
-    internal func BlobKeyDown(blob Blob) ((KeyEvent) -> void)? {
-      return blobCallbacks(blob, false)?.OnKeyDown
-    }
+    internal func BlobKeyDown(blob Blob)((KeyEvent) -> void) ? -> blobCallbacks(blob, false)?.OnKeyDown
 
-    internal func SetBlobKeyUp(blob Blob, value ((KeyEvent) -> void)?) bool {
+    internal func SetBlobKeyUp(blob Blob, value((KeyEvent) -> void)?) bool {
       let callbacks = blobCallbacks(blob, value != nil)
       if callbacks == nil { return false }
       callbacks!!.OnKeyUp = value
       return finishBlob(blob, callbacks!!)
     }
 
-    internal func BlobKeyUp(blob Blob) ((KeyEvent) -> void)? {
-      return blobCallbacks(blob, false)?.OnKeyUp
-    }
+    internal func BlobKeyUp(blob Blob)((KeyEvent) -> void) ? -> blobCallbacks(blob, false)?.OnKeyUp
 
-    internal func SetBlobFocus(blob Blob, value ((FocusEvent) -> void)?) bool {
+    internal func SetBlobFocus(blob Blob, value((FocusEvent) -> void)?) bool {
       let callbacks = blobCallbacks(blob, value != nil)
       if callbacks == nil { return false }
       callbacks!!.OnFocus = value
       return finishBlob(blob, callbacks!!)
     }
 
-    internal func BlobFocus(blob Blob) ((FocusEvent) -> void)? {
-      return blobCallbacks(blob, false)?.OnFocus
-    }
+    internal func BlobFocus(blob Blob)((FocusEvent) -> void) ? -> blobCallbacks(blob, false)?.OnFocus
 
-    internal func SetBlobBlur(blob Blob, value ((FocusEvent) -> void)?) bool {
+    internal func SetBlobBlur(blob Blob, value((FocusEvent) -> void)?) bool {
       let callbacks = blobCallbacks(blob, value != nil)
       if callbacks == nil { return false }
       callbacks!!.OnBlur = value
       return finishBlob(blob, callbacks!!)
     }
 
-    internal func BlobBlur(blob Blob) ((FocusEvent) -> void)? {
-      return blobCallbacks(blob, false)?.OnBlur
-    }
+    internal func BlobBlur(blob Blob)((FocusEvent) -> void) ? -> blobCallbacks(blob, false)?.OnBlur
 
-    internal func SetBlobPointerEnter(blob Blob, value ((PointerEvent) -> void)?) bool {
+    internal func SetBlobPointerEnter(blob Blob, value((PointerEvent) -> void)?) bool {
       let callbacks = blobCallbacks(blob, value != nil)
       if callbacks == nil { return false }
       callbacks!!.OnPointerEnter = value
       return finishBlob(blob, callbacks!!)
     }
 
-    internal func BlobPointerEnter(blob Blob) ((PointerEvent) -> void)? {
-      return blobCallbacks(blob, false)?.OnPointerEnter
-    }
+    internal func BlobPointerEnter(blob Blob)((PointerEvent) -> void) ? -> blobCallbacks(blob, false)?.OnPointerEnter
 
-    internal func SetBlobPointerLeave(blob Blob, value ((PointerEvent) -> void)?) bool {
+    internal func SetBlobPointerLeave(blob Blob, value((PointerEvent) -> void)?) bool {
       let callbacks = blobCallbacks(blob, value != nil)
       if callbacks == nil { return false }
       callbacks!!.OnPointerLeave = value
       return finishBlob(blob, callbacks!!)
     }
 
-    internal func BlobPointerLeave(blob Blob) ((PointerEvent) -> void)? {
-      return blobCallbacks(blob, false)?.OnPointerLeave
-    }
+    internal func BlobPointerLeave(blob Blob)((PointerEvent) -> void) ? -> blobCallbacks(blob, false)?.OnPointerLeave
 
     internal func Sync(node Node, blob Blob) bool {
       var source InputCallbackSet?
@@ -186,29 +172,17 @@ internal class InputCallbacks {
       return sourcePresence != destinationPresence
     }
 
-    internal func KeyDown(node Node) ((KeyEvent) -> void)? {
-      return nodeCallbacks(node)?.OnKeyDown
-    }
+    internal func KeyDown(node Node)((KeyEvent) -> void) ? -> nodeCallbacks(node)?.OnKeyDown
 
-    internal func KeyUp(node Node) ((KeyEvent) -> void)? {
-      return nodeCallbacks(node)?.OnKeyUp
-    }
+    internal func KeyUp(node Node)((KeyEvent) -> void) ? -> nodeCallbacks(node)?.OnKeyUp
 
-    internal func Focus(node Node) ((FocusEvent) -> void)? {
-      return nodeCallbacks(node)?.OnFocus
-    }
+    internal func Focus(node Node)((FocusEvent) -> void) ? -> nodeCallbacks(node)?.OnFocus
 
-    internal func Blur(node Node) ((FocusEvent) -> void)? {
-      return nodeCallbacks(node)?.OnBlur
-    }
+    internal func Blur(node Node)((FocusEvent) -> void) ? -> nodeCallbacks(node)?.OnBlur
 
-    internal func PointerEnter(node Node) ((PointerEvent) -> void)? {
-      return nodeCallbacks(node)?.OnPointerEnter
-    }
+    internal func PointerEnter(node Node)((PointerEvent) -> void) ? -> nodeCallbacks(node)?.OnPointerEnter
 
-    internal func PointerLeave(node Node) ((PointerEvent) -> void)? {
-      return nodeCallbacks(node)?.OnPointerLeave
-    }
+    internal func PointerLeave(node Node)((PointerEvent) -> void) ? -> nodeCallbacks(node)?.OnPointerLeave
 
     private func blobCallbacks(blob Blob, create bool) InputCallbackSet? {
       if blobValues.TryGetValue(blob, out var value) {
@@ -220,13 +194,9 @@ internal class InputCallbacks {
       return created
     }
 
-    internal func HasBlobCallbacks(blob Blob) bool {
-      return blobValues.TryGetValue(blob, out var value) && !value.Empty()
-    }
+    internal func HasBlobCallbacks(blob Blob) bool -> blobValues.TryGetValue(blob, out var value) && !value.Empty()
 
-    internal func HasNodeCallbacks(node Node) bool {
-      return nodeValues.TryGetValue(node, out var value) && !value.Empty()
-    }
+    internal func HasNodeCallbacks(node Node) bool -> nodeValues.TryGetValue(node, out var value) && !value.Empty()
 
     private func finishBlob(blob Blob, callbacks InputCallbackSet) bool {
       if callbacks.Empty() {

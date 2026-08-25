@@ -40,32 +40,32 @@ func RunS16VSyncTransitionGate() {
     opened.VSync = false
     let offDeadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency / 4L
     while Stopwatch.GetTimestamp() < offDeadline
-        && (offGeneration == 0uL || offGeneration == initialGeneration) {
-      WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
-      offMode = WindowReadbackTestFixture.PresentMode(opened)
-      offGeneration = WindowReadbackTestFixture.PresentGeneration(opened)
-      if offGeneration == 0uL || offGeneration == initialGeneration {
-        Thread.Sleep(1)
+      && (offGeneration == 0uL || offGeneration == initialGeneration) {
+        WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+        offMode = WindowReadbackTestFixture.PresentMode(opened)
+        offGeneration = WindowReadbackTestFixture.PresentGeneration(opened)
+        if offGeneration == 0uL || offGeneration == initialGeneration {
+          Thread.Sleep(1)
+        }
       }
-    }
     S14Require(offGeneration != 0uL && offGeneration != initialGeneration
         && (offMode == VkConstants.VK_PRESENT_MODE_IMMEDIATE_KHR
-          || offMode == VkConstants.VK_PRESENT_MODE_MAILBOX_KHR
-          || offMode == VkConstants.VK_PRESENT_MODE_FIFO_KHR)
+            || offMode == VkConstants.VK_PRESENT_MODE_MAILBOX_KHR
+            || offMode == VkConstants.VK_PRESENT_MODE_FIFO_KHR)
         && offMode != VkConstants.VK_PRESENT_MODE_FIFO_RELAXED_KHR,
       "S16 VSync-off did not recreate an allowed present mode")
 
     opened.VSync = true
     let finalDeadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency / 4L
     while Stopwatch.GetTimestamp() < finalDeadline
-        && (finalGeneration == 0uL || finalGeneration == offGeneration) {
-      WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
-      finalMode = WindowReadbackTestFixture.PresentMode(opened)
-      finalGeneration = WindowReadbackTestFixture.PresentGeneration(opened)
-      if finalGeneration == 0uL || finalGeneration == offGeneration {
-        Thread.Sleep(1)
+      && (finalGeneration == 0uL || finalGeneration == offGeneration) {
+        WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+        finalMode = WindowReadbackTestFixture.PresentMode(opened)
+        finalGeneration = WindowReadbackTestFixture.PresentGeneration(opened)
+        if finalGeneration == 0uL || finalGeneration == offGeneration {
+          Thread.Sleep(1)
+        }
       }
-    }
     S14Require(finalGeneration != 0uL && finalGeneration != offGeneration
         && finalMode == VkConstants.VK_PRESENT_MODE_FIFO_KHR,
       "S16 VSync-on transition did not restore FIFO")
@@ -80,7 +80,7 @@ func RunS16VSyncTransitionGate() {
       "fifo"
     }
     Console.WriteLine("s16-vsync-transition-gate: initial=fifo off="
-      + offModeName + " generations=3 close=1")
+      +offModeName + " generations=3 close=1")
   } finally {
     if let active = window {
       if active.IsOpen {

@@ -83,9 +83,7 @@ internal class Outlining {
       n.HasOutlineState = false
     }
 
-    private func emptyLength(value Length) bool {
-      return value.Unit == LengthUnit.Unset
-    }
+    private func emptyLength(value Length) bool -> value.Unit == LengthUnit.Unset
   }
 }
 

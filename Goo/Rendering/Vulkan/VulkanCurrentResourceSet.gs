@@ -17,23 +17,23 @@ internal class VulkanCurrentResourceSet {
     }
     if nativeMaximumCapacity < 0
       || (nativeMaximumCapacity != UnlimitedCapacity
-        && nativeMaximumCapacity < initialCapacity) {
-      throw ArgumentOutOfRangeException("nativeMaximumCapacity")
-    }
+          && nativeMaximumCapacity < initialCapacity) {
+            throw ArgumentOutOfRangeException("nativeMaximumCapacity")
+          }
     current = [initialCapacity]ResourceId
     pending = [initialCapacity]ResourceId
     maximumCapacity = nativeMaximumCapacity
   }
 
-  internal prop Current []ResourceId {
+  internal prop Current []ResourceId{
     get -> current
   }
 
-  internal prop CurrentCount int32 {
+  internal prop CurrentCount int32{
     get -> currentCount
   }
 
-  internal prop PendingCount int32 {
+  internal prop PendingCount int32{
     get -> pendingCount
   }
 
@@ -73,10 +73,10 @@ internal class VulkanCurrentResourceSet {
   }
 
   internal func CurrentContains(id ResourceId) bool
-    -> Contains(current, currentCount, id)
+  -> Contains(current, currentCount, id)
 
   internal func PendingContains(id ResourceId) bool
-    -> Contains(pending, pendingCount, id)
+  -> Contains(pending, pendingCount, id)
 
   internal func Commit() {
     EnsureCapacity(pendingCount)
@@ -123,9 +123,9 @@ internal class VulkanCurrentResourceSet {
     while index < count {
       let currentId = values[index]
       if currentId.Kind == id.Kind && currentId.LogicalId == id.LogicalId
-        && currentId.Version == id.Version {
-        return true
-      }
+        && currentId.Version == id.Version{
+          return true
+        }
       index = index + 1
     }
     return false

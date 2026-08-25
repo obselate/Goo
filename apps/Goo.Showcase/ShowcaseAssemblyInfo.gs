@@ -7,7 +7,7 @@ import System.Runtime.CompilerServices
 import System.Text
 import System.Threading
 
-@assembly:InternalsVisibleTo("Goo.Showcase")
+@assembly: InternalsVisibleTo("Goo.Showcase")
 
 public class LavaShowcaseFactory {
   shared {
@@ -21,11 +21,10 @@ public class LavaShowcaseFactory {
       rotation Point,
       seed uint32,
       handle ElementHandle,
-      pointerDown ((PointerEvent) -> void),
-      pointerMove ((PointerEvent) -> void),
-      pointerUp ((PointerEvent) -> void),
-      pointerCancel ((PointerEvent) -> void)) Blob {
-      return LavaSurface{
+      pointerDown((PointerEvent) -> void),
+      pointerMove((PointerEvent) -> void),
+      pointerUp((PointerEvent) -> void),
+      pointerCancel((PointerEvent) -> void)) Blob -> LavaSurface{
         Key: "lava-surface",
         Width: Length.Percent(100),
         Height: Length.Percent(100),
@@ -46,7 +45,6 @@ public class LavaShowcaseFactory {
         OnPointerUp: pointerUp,
         OnPointerCancel: pointerCancel,
       }
-    }
   }
 }
 
@@ -55,9 +53,9 @@ public partial class Window {
     guard let tree = node else { return "no-root" }
     guard let target = Hit().Topmost(tree, float32(x), float32(y)) else { return "miss" }
     return target.Kind.ToString() + ":" + (target.Key ?? "")
-      + ":" + (target.OnPointerDown != nil ? "pointer" : "no-pointer")
-      + ":" + target.Rect.X.ToString() + "," + target.Rect.Y.ToString()
-      + "," + target.Rect.W.ToString() + "," + target.Rect.H.ToString()
+    +":" + (target.OnPointerDown != nil ? "pointer" : "no-pointer")
+    +":" + target.Rect.X.ToString() + "," + target.Rect.Y.ToString()
+    +"," + target.Rect.W.ToString() + "," + target.Rect.H.ToString()
   }
 
   public func LavaPointerMove(x float64, y float64) {
@@ -87,22 +85,22 @@ public partial class Window {
       Height: uint32(metrics.FramebufferHeight),
     }
     let requestDeadline = Stopwatch.GetTimestamp()
-      + int64(float64(Stopwatch.Frequency) * 2.0)
+    +int64(float64(Stopwatch.Frequency) * 2.0)
     var status = target.RequestReadback(node, background, dpi, region)
     while status == VulkanReadbackRequestStatus.Busy
-        || status == VulkanReadbackRequestStatus.NotReady {
-      if Stopwatch.GetTimestamp() >= requestDeadline {
-        throw InvalidOperationException("Lava capture request timed out")
+      || status == VulkanReadbackRequestStatus.NotReady{
+        if Stopwatch.GetTimestamp() >= requestDeadline {
+          throw InvalidOperationException("Lava capture request timed out")
+        }
+        PumpScheduled(0.0)
+        Thread.Yield()
+        status = target.RequestReadback(node, background, dpi, region)
       }
-      PumpScheduled(0.0)
-      Thread.Yield()
-      status = target.RequestReadback(node, background, dpi, region)
-    }
     if status != VulkanReadbackRequestStatus.Accepted {
       throw InvalidOperationException("Lava capture request failed: " + status.ToString())
     }
     let completionDeadline = Stopwatch.GetTimestamp()
-      + int64(float64(Stopwatch.Frequency) * 10.0)
+    +int64(float64(Stopwatch.Frequency) * 10.0)
     var completion = target.PollReadback()
     while completion == VkConstants.VK_NOT_READY {
       if Stopwatch.GetTimestamp() >= completionDeadline {
@@ -121,7 +119,7 @@ public partial class Window {
       throw InvalidOperationException("Lava capture format is unsupported")
     }
     let header = Encoding.ASCII.GetBytes("P6\n" + result.Width.ToString()
-      + " " + result.Height.ToString() + "\n255\n")
+      +" " + result.Height.ToString() + "\n255\n")
     let pixels = result.Pixels
     let output = [header.Length + int32(result.Width * result.Height * 3u)]uint8
     Array.Copy(header, output, header.Length)

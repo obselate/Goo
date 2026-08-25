@@ -161,6 +161,58 @@ namespace Facebook.Yoga
             child.SetOwner(owner);
         }
 
+        public static void YGNodeSetChildrenRetaining(
+            Node owner,
+            Node[] children)
+        {
+            Debug.AssertFatal.AssertWithNode(
+                owner,
+                !owner.HasMeasureFunc(),
+                "Cannot set children: Nodes with measure functions cannot have children.");
+
+            for (var i = 0; i < children.Length; i++)
+            {
+                var childOwner = children[i].GetOwner();
+                Debug.AssertFatal.AssertWithNode(
+                    owner,
+                    childOwner == null || childOwner == owner,
+                    "Child belongs to another owner.");
+            }
+            for (var i = 0; i < children.Length; i++)
+            {
+                if (children[i].GetOwner() == owner)
+                {
+                    children[i].SetOwner(null);
+                }
+            }
+
+            for (nuint i = 0; i < owner.GetChildCount(); i++)
+            {
+                var child = owner.GetChild(i);
+                if (child != null && child.GetOwner() == owner)
+                {
+                    child.SetLayout(new LayoutResults());
+                    child.SetOwner(null);
+
+                    var dirtiedFunc = child.GetDirtiedFunc();
+                    child.SetDirtiedFunc(null);
+                    child.SetDirty(true);
+                    child.SetDirtiedFunc(dirtiedFunc);
+                }
+            }
+
+            while (owner.GetChildCount() > 0)
+            {
+                owner.RemoveChild(owner.GetChildCount() - 1);
+            }
+            for (var i = 0; i < children.Length; i++)
+            {
+                owner.InsertChild(children[i], (nuint)i);
+                children[i].SetOwner(owner);
+            }
+            owner.MarkDirtyAndPropagate();
+        }
+
         public static void YGNodeRemoveChild(Node owner, Node excludedChild)
         {
             if (owner.GetChildCount() == 0)

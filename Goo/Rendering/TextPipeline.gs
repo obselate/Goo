@@ -12,16 +12,16 @@ internal data struct TextParagraphAnalysis(Start int32, End int32, Text string,
   Italic bool, LetterSpacing float32, Direction Direction) { }
 
 internal class TextAnalysis {
-  internal prop Snapshot TextSourceSnapshot { get; set; }
-  internal prop FontFamily string { get; set; }
-  internal prop FontSize float32 { get; set; }
-  internal prop FontWeight float64 { get; set; }
-  internal prop Italic bool { get; set; }
-  internal prop LetterSpacing float32 { get; set; }
-  internal prop Direction Direction { get; set; }
-  internal prop First TextParagraphAnalysis { get; set; }
-  internal prop Additional []?TextParagraphAnalysis { get; set; }
-  internal prop ParagraphCount int32 { get; set; }
+  internal prop Snapshot TextSourceSnapshot{ get; set; }
+  internal prop FontFamily string{ get; set; }
+  internal prop FontSize float32{ get; set; }
+  internal prop FontWeight float64{ get; set; }
+  internal prop Italic bool{ get; set; }
+  internal prop LetterSpacing float32{ get; set; }
+  internal prop Direction Direction{ get; set; }
+  internal prop First TextParagraphAnalysis{ get; set; }
+  internal prop Additional [] ? TextParagraphAnalysis{ get; set; }
+  internal prop ParagraphCount int32{ get; set; }
 
   internal init() {
     Snapshot = TextSourceSnapshot("", "", TextTransform.None)
@@ -30,14 +30,14 @@ internal class TextAnalysis {
 
   internal func Paragraph(index int32) TextParagraphAnalysis {
     if index == 0 { return First }
-    return Additional!![index - 1]
+    return Additional!! [index - 1]
   }
 
   internal func SetParagraph(index int32, value TextParagraphAnalysis) {
     if index == 0 {
       First = value
     } else {
-      Additional!![index - 1] = value
+      Additional!! [index - 1] = value
     }
   }
 }
@@ -47,7 +47,7 @@ internal class TextAnalysisStore {
 }
 
 internal class PassiveTextRangeBlob {
-  internal prop Ranges []TextStyleRange { get; init; }
+  internal prop Ranges []TextStyleRange{ get; init; }
 
   internal init(ranges []TextStyleRange) {
     Ranges = ranges
@@ -55,7 +55,7 @@ internal class PassiveTextRangeBlob {
 }
 
 internal class TextPresentationPlan {
-  internal prop Ranges []TextStyleRange { get; init; }
+  internal prop Ranges []TextStyleRange{ get; init; }
 
   internal init(ranges []TextStyleRange) {
     Ranges = ranges
@@ -63,18 +63,18 @@ internal class TextPresentationPlan {
 }
 
 internal class PassiveTextPresentation {
-  internal prop Content string { get; init; }
-  internal prop Transform TextTransform { get; init; }
-  internal prop Ranges []TextStyleRange { get; init; }
-  internal prop Plan TextPresentationPlan { get; init; }
+  internal prop Content string{ get; init; }
+  internal prop Transform TextTransform{ get; init; }
+  internal prop Ranges []TextStyleRange{ get; init; }
+  internal prop Plan TextPresentationPlan{ get; init; }
 
   internal init(content string, transform TextTransform, ranges []TextStyleRange,
     displayRanges []TextStyleRange) {
-    Content = content
-    Transform = transform
-    Ranges = ranges
-    Plan = TextPresentationPlan(displayRanges)
-  }
+      Content = content
+      Transform = transform
+      Ranges = ranges
+      Plan = TextPresentationPlan(displayRanges)
+    }
 }
 
 internal data struct PassiveTextPresentationChange(Changed bool, FlowChanged bool) { }
@@ -82,7 +82,7 @@ internal data struct PassiveTextPresentationChange(Changed bool, FlowChanged boo
 internal class PassiveTextRangeBlobs {
   shared {
     private let values ConditionalWeakTable[Text, PassiveTextRangeBlob] =
-      ConditionalWeakTable[Text, PassiveTextRangeBlob]()
+    ConditionalWeakTable[Text, PassiveTextRangeBlob]()
     private let empty []TextStyleRange = []TextStyleRange{}
 
     internal func Read(text Text) []TextStyleRange {
@@ -91,13 +91,13 @@ internal class PassiveTextRangeBlobs {
       return copyPassiveTextStyleRanges(value)
     }
 
-    internal func Values(text Text) []?TextStyleRange {
+    internal func Values(text Text) [] ? TextStyleRange {
       if !text.HasPassiveTextRanges { return nil }
       if values.TryGetValue(text, out var value) { return value.Ranges }
       return nil
     }
 
-    internal func Write(text Text, ranges []?TextStyleRange) {
+    internal func Write(text Text, ranges [] ? TextStyleRange) {
       guard let value = ranges else { throw ArgumentNullException("StyleRanges") }
       values.Remove(text)
       text.HasPassiveTextRanges = value.Length != 0
@@ -111,34 +111,34 @@ internal class PassiveTextRangeBlobs {
 internal class PassiveTextPresentations {
   shared {
     private let values ConditionalWeakTable[Node, PassiveTextPresentation] =
-      ConditionalWeakTable[Node, PassiveTextPresentation]()
+    ConditionalWeakTable[Node, PassiveTextPresentation]()
 
     internal func Apply(n Node, content string,
-      ranges []?TextStyleRange) PassiveTextPresentationChange {
-      if ranges == nil || ranges!!.Length == 0 {
-        if values.TryGetValue(n, out var prior) {
-          values.Remove(n)
-          return PassiveTextPresentationChange{ Changed: true,
-            FlowChanged: rangesAffectFlow(prior.Ranges) }
+      ranges [] ? TextStyleRange) PassiveTextPresentationChange{
+        if ranges == nil || ranges!!.Length == 0 {
+          if values.TryGetValue(n, out var prior) {
+            values.Remove(n)
+            return PassiveTextPresentationChange{ Changed: true,
+              FlowChanged: rangesAffectFlow(prior.Ranges) }
+          }
+          return PassiveTextPresentationChange{}
         }
-        return PassiveTextPresentationChange{}
+        if values.TryGetValue(n, out var current) && current.Content == content
+          && current.Transform == n.TextTransform && sameRanges(current.Ranges, ranges!!) {
+            return PassiveTextPresentationChange{}
+          }
+        validateRanges(content, ranges!!)
+        let displayRanges = mapDisplayRanges(n, content, ranges!!)
+        var oldFlow = false
+        if values.TryGetValue(n, out var prior) { oldFlow = rangesAffectFlow(prior.Ranges) }
+        let flowChanged = rangesAffectFlow(ranges!!) || oldFlow
+        values.Remove(n)
+        values.Add(n, PassiveTextPresentation(content, n.TextTransform,
+          copyPassiveTextStyleRanges(ranges!!), displayRanges))
+        return PassiveTextPresentationChange{ Changed: true, FlowChanged: flowChanged }
       }
-      if values.TryGetValue(n, out var current) && current.Content == content
-        && current.Transform == n.TextTransform && sameRanges(current.Ranges, ranges!!) {
-        return PassiveTextPresentationChange{}
-      }
-      validateRanges(content, ranges!!)
-      let displayRanges = mapDisplayRanges(n, content, ranges!!)
-      var oldFlow = false
-      if values.TryGetValue(n, out var prior) { oldFlow = rangesAffectFlow(prior.Ranges) }
-      let flowChanged = rangesAffectFlow(ranges!!) || oldFlow
-      values.Remove(n)
-      values.Add(n, PassiveTextPresentation(content, n.TextTransform,
-        copyPassiveTextStyleRanges(ranges!!), displayRanges))
-      return PassiveTextPresentationChange{ Changed: true, FlowChanged: flowChanged }
-    }
 
-    internal func Read(n Node) []?TextStyleRange {
+    internal func Read(n Node) [] ? TextStyleRange {
       if values.TryGetValue(n, out var value) { return value.Plan.Ranges }
       return nil
     }
@@ -152,9 +152,9 @@ internal class PassiveTextPresentations {
         let value = ranges[i]
         let textRange = value.Range
         if textRange.Start < 0 || textRange.Length < 0
-          || textRange.Start > content.Length - textRange.Length {
-          throw ArgumentOutOfRangeException("StyleRanges")
-        }
+          || textRange.Start > content.Length - textRange.Length{
+            throw ArgumentOutOfRangeException("StyleRanges")
+          }
         let style = value.Style
         if style == nil { throw ArgumentNullException("StyleRanges") }
         if let entries = style.Entries() {
@@ -177,27 +177,27 @@ internal class PassiveTextPresentations {
       for i in 0 ... left.Length {
         if left[i].Range != right[i].Range
           || !sameStyleEntries(left[i].Style.Entries(), right[i].Style.Entries()) {
-          return false
-        }
+            return false
+          }
       }
       return true
     }
 
     private func mapDisplayRanges(n Node, content string,
-      ranges []TextStyleRange) []TextStyleRange {
-      let result = [ranges.Length]TextStyleRange
-      for i in 0 ... ranges.Length {
-        let textRange = ranges[i].Range
-        let start = TextLayouts.transformText(content.Substring(0, textRange.Start),
-          n.TextTransform).Length
-        let end = TextLayouts.transformText(content.Substring(0,
-          textRange.Start + textRange.Length),
-          n.TextTransform).Length
-        result[i] = TextStyleRange{ Range: TextRange{ Start: start, Length: end - start },
-          Style: ranges[i].Style }
+      ranges []TextStyleRange) []TextStyleRange{
+        let result = [ranges.Length]TextStyleRange
+        for i in 0 ... ranges.Length {
+          let textRange = ranges[i].Range
+          let start = TextLayouts.transformText(content.Substring(0, textRange.Start),
+            n.TextTransform).Length
+          let end = TextLayouts.transformText(content.Substring(0,
+            textRange.Start + textRange.Length),
+            n.TextTransform).Length
+          result[i] = TextStyleRange{ Range: TextRange{ Start: start, Length: end - start },
+            Style: ranges[i].Style }
+        }
+        return result
       }
-      return result
-    }
 
     private func rangesAffectFlow(ranges []TextStyleRange) bool {
       for i in 0 ... ranges.Length {
@@ -207,9 +207,9 @@ internal class PassiveTextPresentations {
             if field == StyleField.FontFamily || field == StyleField.FontSize
               || field == StyleField.FontWeight || field == StyleField.FontStyle
               || field == StyleField.LetterSpacing || field == StyleField.LineHeight
-              || field == StyleField.Direction || field == StyleField.TextTransform {
-              return true
-            }
+              || field == StyleField.Direction || field == StyleField.TextTransform{
+                return true
+              }
           }
         }
       }
@@ -225,40 +225,40 @@ internal func copyPassiveTextStyleRanges(values []TextStyleRange) []TextStyleRan
 }
 
 internal data class TextResolvedStyle {
-  internal prop Color Color { get; set; }
-  internal prop FontFamily string { get; set; }
-  internal prop FontSize float32 { get; set; }
-  internal prop FontWeight float64 { get; set; }
-  internal prop FontStyle FontStyle { get; set; }
-  internal prop LetterSpacing float32 { get; set; }
-  internal prop LineHeight float32 { get; set; }
-  internal prop Decoration TextDecoration { get; set; }
-  internal prop StrokeWidth float32 { get; set; }
-  internal prop StrokeColor Color { get; set; }
+  internal prop Color Color{ get; set; }
+  internal prop FontFamily string{ get; set; }
+  internal prop FontSize float32{ get; set; }
+  internal prop FontWeight float64{ get; set; }
+  internal prop FontStyle FontStyle{ get; set; }
+  internal prop LetterSpacing float32{ get; set; }
+  internal prop LineHeight float32{ get; set; }
+  internal prop Decoration TextDecoration{ get; set; }
+  internal prop StrokeWidth float32{ get; set; }
+  internal prop StrokeColor Color{ get; set; }
   internal prop Shadows BoxShadowStack? { get; set; }
-  internal prop Direction Direction { get; set; }
-  internal prop Transform TextTransform { get; set; }
+  internal prop Direction Direction{ get; set; }
+  internal prop Transform TextTransform{ get; set; }
 }
 
 internal class TextPaintRun {
   internal prop Shape ShapedText? { get; init; }
-  internal prop X float32 { get; init; }
-  internal prop DisplayStart int32 { get; init; }
-  internal prop DisplayLength int32 { get; init; }
-  internal prop Style TextResolvedStyle { get; init; }
+  internal prop X float32{ get; init; }
+  internal prop DisplayStart int32{ get; init; }
+  internal prop DisplayLength int32{ get; init; }
+  internal prop Style TextResolvedStyle{ get; init; }
 }
 
 internal class TextPaintDecorations {
   shared {
     private let values ConditionalWeakTable[TextPaintRun, []float32] =
-      ConditionalWeakTable[TextPaintRun, []float32]()
+    ConditionalWeakTable[TextPaintRun, []float32]()
 
     internal func Set(run TextPaintRun, segments []float32) {
       values.Remove(run)
       values.Add(run, segments)
     }
 
-    internal func Get(run TextPaintRun) []?float32 {
+    internal func Get(run TextPaintRun) [] ? float32 {
       if values.TryGetValue(run, out var segments) { return segments }
       return nil
     }
@@ -266,25 +266,25 @@ internal class TextPaintDecorations {
 }
 
 internal class TextRichLine {
-  internal prop DisplayStart int32 { get; init; }
-  internal prop Width float32 { get; set; }
-  internal prop Ascent float32 { get; set; }
-  internal prop Descent float32 { get; set; }
-  internal prop Height float32 { get; set; }
-  internal prop PaintTop float32 { get; set; }
-  internal prop PaintBottom float32 { get; set; }
-  internal prop PaintPad float32 { get; set; }
-  internal prop Runs List[TextPaintRun] { get; init; }
+  internal prop DisplayStart int32{ get; init; }
+  internal prop Width float32{ get; set; }
+  internal prop Ascent float32{ get; set; }
+  internal prop Descent float32{ get; set; }
+  internal prop Height float32{ get; set; }
+  internal prop PaintTop float32{ get; set; }
+  internal prop PaintBottom float32{ get; set; }
+  internal prop PaintPad float32{ get; set; }
+  internal prop Runs List[TextPaintRun]{ get; init; }
 
   internal init(displayStart int32, width float32, ascent float32, descent float32,
     height float32) {
-    DisplayStart = displayStart
-    Width = width
-    Ascent = ascent
-    Descent = descent
-    Height = height
-    Runs = List[TextPaintRun]()
-  }
+      DisplayStart = displayStart
+      Width = width
+      Ascent = ascent
+      Descent = descent
+      Height = height
+      Runs = List[TextPaintRun]()
+    }
 }
 
 internal func textPaintPad(strokeWidth float32, shadows BoxShadowStack?) float32 {
@@ -295,27 +295,27 @@ internal func textPaintPad(strokeWidth float32, shadows BoxShadowStack?) float32
     let x = if shadow.OffsetX.Unit == LengthUnit.Px { shadow.OffsetX.Value } else { 0.0F }
     let y = if shadow.OffsetY.Unit == LengthUnit.Px { shadow.OffsetY.Value } else { 0.0F }
     let reach = (blur > 0.0F ? blur * 2.0F + 2.0F : 0.0F)
-      + (x < 0.0F ? -x : x) + (y < 0.0F ? -y : y)
+    +(x < 0.0F ? -x : x) + (y < 0.0F ? -y : y)
     if reach > pad { pad = reach }
   }
   return pad
 }
 
 internal func textDecorationBottom(decoration TextDecoration, ascent float32,
-  descent float32) float32 {
-  var bottom = descent
-  if decoration == TextDecoration.None { return bottom }
-  var thickness = (descent - ascent) * 0.06F
-  if thickness < 1.0F { thickness = 1.0F }
-  var offset = descent * 0.45F
-  if offset < thickness { offset = thickness }
-  let underline = offset + thickness
-  if underline > bottom { bottom = underline }
-  return bottom
-}
+  descent float32) float32{
+    var bottom = descent
+    if decoration == TextDecoration.None { return bottom }
+    var thickness = (descent - ascent) * 0.06F
+    if thickness < 1.0F { thickness = 1.0F }
+    var offset = descent * 0.45F
+    if offset < thickness { offset = thickness }
+    let underline = offset + thickness
+    if underline > bottom { bottom = underline }
+    return bottom
+  }
 
 internal class TextRichLayout {
-  internal prop Lines List[TextRichLine] { get; init; }
+  internal prop Lines List[TextRichLine]{ get; init; }
 
   internal init() {
     Lines = List[TextRichLine]()
@@ -324,24 +324,20 @@ internal class TextRichLayout {
 
 internal class TextResolvedStyles {
   shared {
-    internal func Base(n Node) TextResolvedStyle {
-      return TextResolvedStyle{ Color: n.Color, FontFamily: n.FontFamily,
-        FontSize: TextLayouts.fontSize(n), FontWeight: n.FontWeight,
-        FontStyle: n.FontStyle, LetterSpacing: TextLayouts.letterSpacing(n),
-        LineHeight: float32(n.LineHeight), Decoration: n.TextDecoration,
-        StrokeWidth: n.TextStrokeWidth.Px,
-        StrokeColor: n.TextStrokeColor, Shadows: n.TextShadows, Direction: n.Direction,
-        Transform: n.TextTransform }
-    }
+    internal func Base(n Node) TextResolvedStyle -> TextResolvedStyle { Color: n.Color, FontFamily: n.FontFamily,
+      FontSize: TextLayouts.fontSize(n), FontWeight: n.FontWeight,
+      FontStyle: n.FontStyle, LetterSpacing: TextLayouts.letterSpacing(n),
+      LineHeight: float32(n.LineHeight), Decoration: n.TextDecoration,
+      StrokeWidth: n.TextStrokeWidth.Px,
+      StrokeColor: n.TextStrokeColor, Shadows: n.TextShadows, Direction: n.Direction,
+      Transform: n.TextTransform }
 
-    internal func Copy(source TextResolvedStyle) TextResolvedStyle {
-      return TextResolvedStyle{ Color: source.Color, FontFamily: source.FontFamily,
-        FontSize: source.FontSize, FontWeight: source.FontWeight, FontStyle: source.FontStyle,
-        LetterSpacing: source.LetterSpacing, LineHeight: source.LineHeight,
-        Decoration: source.Decoration, StrokeWidth: source.StrokeWidth,
-        StrokeColor: source.StrokeColor, Shadows: source.Shadows, Direction: source.Direction,
-        Transform: source.Transform }
-    }
+    internal func Copy(source TextResolvedStyle) TextResolvedStyle -> TextResolvedStyle { Color: source.Color, FontFamily: source.FontFamily,
+      FontSize: source.FontSize, FontWeight: source.FontWeight, FontStyle: source.FontStyle,
+      LetterSpacing: source.LetterSpacing, LineHeight: source.LineHeight,
+      Decoration: source.Decoration, StrokeWidth: source.StrokeWidth,
+      StrokeColor: source.StrokeColor, Shadows: source.Shadows, Direction: source.Direction,
+      Transform: source.Transform }
 
     internal func At(n Node, ranges []TextStyleRange, offset int32) TextResolvedStyle {
       let result = Base(n)
@@ -365,12 +361,10 @@ internal class TextResolvedStyles {
       return result
     }
 
-    internal func AffectsWidth(left TextResolvedStyle, right TextResolvedStyle) bool {
-      return left.FontFamily != right.FontFamily || left.FontSize != right.FontSize
-        || left.FontWeight != right.FontWeight || left.FontStyle != right.FontStyle
-        || left.LetterSpacing != right.LetterSpacing || left.Direction != right.Direction
-        || left.Transform != right.Transform
-    }
+    internal func AffectsWidth(left TextResolvedStyle, right TextResolvedStyle) bool -> left.FontFamily != right.FontFamily || left.FontSize != right.FontSize
+      || left.FontWeight != right.FontWeight || left.FontStyle != right.FontStyle
+      || left.LetterSpacing != right.LetterSpacing || left.Direction != right.Direction
+      || left.Transform != right.Transform
 
     internal func Apply(result TextResolvedStyle, style Style) {
       if let entries = style.Entries() {
@@ -410,32 +404,28 @@ internal class TextResolvedStyles {
 
 internal class TextLineShaper {
   shared {
-    internal func Base(paragraph TextParagraphAnalysis, start int32, end int32) ShapedText {
-      return TextShaping.ShapeLine(paragraph.Text, start, end - start, paragraph.FontFamily,
-        paragraph.FontSize, int32(paragraph.FontWeight), paragraph.Italic,
-        paragraph.LetterSpacing, int32(paragraph.Direction), paragraph.Resolution)
-    }
+    internal func Base(paragraph TextParagraphAnalysis, start int32, end int32) ShapedText -> TextShaping.ShapeLine(paragraph.Text, start, end - start, paragraph.FontFamily,
+      paragraph.FontSize, int32(paragraph.FontWeight), paragraph.Italic,
+      paragraph.LetterSpacing, int32(paragraph.Direction), paragraph.Resolution)
 
     internal func Styled(paragraph TextParagraphAnalysis, start int32, end int32,
-      style TextResolvedStyle) ShapedText {
-      let resolution = if style.Direction == paragraph.Direction { paragraph.Resolution }
+      style TextResolvedStyle) ShapedText{
+        let resolution = if style.Direction == paragraph.Direction { paragraph.Resolution }
         else { TextShaping.ResolveParagraph(paragraph.Text, int32(style.Direction)) }
-      return shapeStyled(paragraph.Text, resolution, start, end, style)
-    }
+        return shapeStyled(paragraph.Text, resolution, start, end, style)
+      }
 
     internal func Styled(text string, resolution BidiResolution?, baseDirection Direction,
-      start int32, end int32, style TextResolvedStyle) ShapedText {
-      let activeResolution = if style.Direction == baseDirection { resolution }
+      start int32, end int32, style TextResolvedStyle) ShapedText{
+        let activeResolution = if style.Direction == baseDirection { resolution }
         else { TextShaping.ResolveParagraph(text, int32(style.Direction)) }
-      return shapeStyled(text, activeResolution, start, end, style)
-    }
+        return shapeStyled(text, activeResolution, start, end, style)
+      }
 
     private func shapeStyled(text string, resolution BidiResolution?, start int32, end int32,
-      style TextResolvedStyle) ShapedText {
-      return TextShaping.ShapeLine(text, start, end - start, style.FontFamily, style.FontSize,
+      style TextResolvedStyle) ShapedText -> TextShaping.ShapeLine(text, start, end - start, style.FontFamily, style.FontSize,
         int32(style.FontWeight), style.FontStyle == FontStyle.Italic, style.LetterSpacing,
         int32(style.Direction), resolution)
-    }
 
     internal func Entry(n Node, text string) ShapedText {
       let paragraph = TextParagraphAnalysis(0, text.Length, text,
@@ -450,14 +440,14 @@ internal class TextLineShaper {
 internal class TextFlow {
   shared {
     internal func Consider(cursor int32, fit int32, preferred int32, overflowed bool,
-      candidate int32, width float32, limit float32, breakable bool) TextFlowCandidate {
-      let exceeds = width > limit
-      if exceeds && fit != cursor {
-        return TextFlowCandidate(fit, preferred, true, true)
+      candidate int32, width float32, limit float32, breakable bool) TextFlowCandidate{
+        let exceeds = width > limit
+        if exceeds && fit != cursor {
+          return TextFlowCandidate(fit, preferred, true, true)
+        }
+        return TextFlowCandidate(candidate, breakable ? candidate : preferred,
+          overflowed || exceeds, false)
       }
-      return TextFlowCandidate(candidate, breakable ? candidate : preferred,
-        overflowed || exceeds, false)
-    }
 
     internal func Resolve(cursor int32, fit int32, preferred int32, overflowed bool) int32 {
       if overflowed && preferred > cursor { return preferred }
@@ -465,10 +455,10 @@ internal class TextFlow {
     }
 
     internal func Measure(paragraph TextParagraphAnalysis, start int32, end int32,
-      style TextResolvedStyle) float32 {
-      using let shape = TextLineShaper.Styled(paragraph, start, end, style)
-      return shape.Width
-    }
+      style TextResolvedStyle) float32{
+        using let shape = TextLineShaper.Styled(paragraph, start, end, style)
+        return shape.Width
+      }
 
     internal func MeasureBase(paragraph TextParagraphAnalysis, start int32, end int32) float32 {
       using let shape = TextLineShaper.Base(paragraph, start, end)
@@ -483,7 +473,7 @@ internal data struct TextFlowCandidate(Fit int32, Preferred int32, Overflowed bo
 internal class TextAnalyses {
   shared {
     private let values ConditionalWeakTable[Node, TextAnalysisStore] =
-      ConditionalWeakTable[Node, TextAnalysisStore]()
+    ConditionalWeakTable[Node, TextAnalysisStore]()
 
     internal func For(n Node) TextAnalysis {
       var store TextAnalysisStore
@@ -510,76 +500,68 @@ internal class TextAnalyses {
     }
 
     internal func ShapeLine(paragraph TextParagraphAnalysis, start int32,
-      end int32) ShapedText {
-      return TextLineShaper.Base(paragraph, start, end)
-    }
+      end int32) ShapedText -> TextLineShaper.Base(paragraph, start, end)
 
-    internal func ShapeEntry(n Node, text string) ShapedText {
-      return TextLineShaper.Entry(n, text)
-    }
+    internal func ShapeEntry(n Node, text string) ShapedText -> TextLineShaper.Entry(n, text)
 
-    private func matches(value TextAnalysis, n Node) bool {
-      return value.Snapshot.Source == n.Content && value.Snapshot.Transform == n.TextTransform
-        && value.FontFamily == n.FontFamily && value.FontSize == TextLayouts.fontSize(n)
-        && value.FontWeight == n.FontWeight && value.Italic == (n.FontStyle == FontStyle.Italic)
-        && value.LetterSpacing == TextLayouts.letterSpacing(n) && value.Direction == n.Direction
-    }
+    private func matches(value TextAnalysis, n Node) bool -> value.Snapshot.Source == n.Content && value.Snapshot.Transform == n.TextTransform
+      && value.FontFamily == n.FontFamily && value.FontSize == TextLayouts.fontSize(n)
+      && value.FontWeight == n.FontWeight && value.Italic == (n.FontStyle == FontStyle.Italic)
+      && value.LetterSpacing == TextLayouts.letterSpacing(n) && value.Direction == n.Direction
 
     private func build(source string, transform TextTransform, fontFamily string,
       fontSize float32, fontWeight float64, italic bool, letterSpacing float32,
-      direction Direction) TextAnalysis {
-      return buildInto(TextAnalysis(), source, transform, fontFamily, fontSize, fontWeight,
+      direction Direction) TextAnalysis -> buildInto(TextAnalysis(), source, transform, fontFamily, fontSize, fontWeight,
         italic, letterSpacing, direction)
-    }
 
     private func buildInto(result TextAnalysis, source string, transform TextTransform,
       fontFamily string, fontSize float32, fontWeight float64, italic bool,
-      letterSpacing float32, direction Direction) TextAnalysis {
-      let snapshot = TextSourceSnapshot(source, TextLayouts.transformText(source, transform),
-        transform)
-      result.Snapshot = snapshot
-      result.FontFamily = fontFamily
-      result.FontSize = fontSize
-      result.FontWeight = fontWeight
-      result.Italic = italic
-      result.LetterSpacing = letterSpacing
-      result.Direction = direction
-      result.ParagraphCount = paragraphCount(snapshot.Display)
-      if result.ParagraphCount > 1 {
-        let required = result.ParagraphCount - 1
-        if result.Additional == nil || result.Additional!!.Length < required {
-          result.Additional = [required]TextParagraphAnalysis
-        } else if result.Additional!!.Length > required {
-          Array.Clear(result.Additional!!, required, result.Additional!!.Length - required)
-        }
-      } else {
-        result.Additional = nil
-      }
-      var start int32 = 0
-      var index int32 = 0
-      while start < snapshot.Display.Length {
-        var end = start
-        while end < snapshot.Display.Length && !TextLayouts.isNewline(snapshot.Display[end]) {
-          end++
-        }
-        analyzeParagraph(result, index, start, end)
-        index++
-        if end == snapshot.Display.Length {
-          start = end
+      letterSpacing float32, direction Direction) TextAnalysis{
+        let snapshot = TextSourceSnapshot(source, TextLayouts.transformText(source, transform),
+          transform)
+        result.Snapshot = snapshot
+        result.FontFamily = fontFamily
+        result.FontSize = fontSize
+        result.FontWeight = fontWeight
+        result.Italic = italic
+        result.LetterSpacing = letterSpacing
+        result.Direction = direction
+        result.ParagraphCount = paragraphCount(snapshot.Display)
+        if result.ParagraphCount > 1 {
+          let required = result.ParagraphCount - 1
+          if result.Additional == nil || result.Additional!!.Length < required {
+            result.Additional = [required]TextParagraphAnalysis
+          } else if result.Additional!!.Length > required {
+            Array.Clear(result.Additional!!, required, result.Additional!!.Length - required)
+          }
         } else {
-          start = end + 1
-          if snapshot.Display[end] == '\r' && start < snapshot.Display.Length
-            && snapshot.Display[start] == '\n' {
-            start++
+          result.Additional = nil
+        }
+        var start int32 = 0
+        var index int32 = 0
+        while start < snapshot.Display.Length {
+          var end = start
+          while end < snapshot.Display.Length && !TextLayouts.isNewline(snapshot.Display[end]) {
+            end++
           }
-          if start == snapshot.Display.Length {
-            analyzeParagraph(result, index, start, start)
+          analyzeParagraph(result, index, start, end)
+          index++
+          if end == snapshot.Display.Length {
+            start = end
+          } else {
+            start = end + 1
+            if snapshot.Display[end] == '\r' && start < snapshot.Display.Length
+              && snapshot.Display[start] == '\n' {
+                start++
+              }
+            if start == snapshot.Display.Length {
+              analyzeParagraph(result, index, start, start)
+            }
           }
         }
+        if snapshot.Display == "" { analyzeParagraph(result, 0, 0, 0) }
+        return result
       }
-      if snapshot.Display == "" { analyzeParagraph(result, 0, 0, 0) }
-      return result
-    }
 
     private func paragraphCount(text string) int32 {
       var count int32 = 1

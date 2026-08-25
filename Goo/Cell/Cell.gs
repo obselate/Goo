@@ -28,7 +28,7 @@ public open class Cell {
 
   /// Builds the component tree.
   /// @returns the root blob for this component
-  public open func Build() Blob -> Container{}
+  public open func Build() Blob -> Container {}
 
   /// Requests a rebuild of this component.
   public func Rebuild() {
@@ -221,7 +221,7 @@ public open class Cell {
   /// @typeparam T state value type
   /// @param initial initial value
   /// @returns tracked component state
-  public func Track[T](initial T) State[T] -> State[T]{ raw: initial, invalidate: Rebuild }
+  public func Track[T](initial T) State[T] -> State[T] { raw: initial, invalidate: Rebuild }
 
   /// Creates externally configured state owned by this component; prefer stable named or cached delegates for delegate values.
   /// @typeparam T state value type
@@ -233,25 +233,25 @@ public open class Cell {
   /// @param initial initial value
   /// @returns an animation bridge owned by this component
   public func Animate(initial float64) Anim[float64] ->
-    registerAnim[float64](AnimCore[float64](initial, MotionConverters.Float64, Rebuild))
+  registerAnim[float64](AnimCore[float64](initial, MotionConverters.Float64, Rebuild))
 
   /// Creates a point animated by this component.
   /// @param initial initial value
   /// @returns an animation bridge owned by this component
   public func Animate(initial Point) Anim[Point] ->
-    registerAnim[Point](AnimCore[Point](initial, MotionConverters.Point, Rebuild))
+  registerAnim[Point](AnimCore[Point](initial, MotionConverters.Point, Rebuild))
 
   /// Creates a color animated by this component.
   /// @param initial initial value
   /// @returns an animation bridge owned by this component
   public func Animate(initial Color) Anim[Color] ->
-    registerAnim[Color](AnimCore[Color](initial, MotionConverters.Color, Rebuild))
+  registerAnim[Color](AnimCore[Color](initial, MotionConverters.Color, Rebuild))
 
   /// Creates a fixed-unit length animated by this component.
   /// @param initial pixel or percentage initial value
   /// @returns an animation bridge owned by this component
   public func Animate(initial Length) Anim[Length] ->
-    registerAnim[Length](AnimCore[Length](initial, MotionConverters.ForLength(initial), Rebuild))
+  registerAnim[Length](AnimCore[Length](initial, MotionConverters.ForLength(initial), Rebuild))
 
   /// Creates a value animated by this component with custom coordinates.
   /// @typeparam T animated value type
@@ -259,7 +259,7 @@ public open class Cell {
   /// @param converter maps values to scalar simulation coordinates
   /// @returns an animation bridge owned by this component
   public func Animate[T](initial T, converter MotionConverter[T]) Anim[T] ->
-    registerAnim[T](AnimCore[T](initial, converter, Rebuild))
+  registerAnim[T](AnimCore[T](initial, converter, Rebuild))
 
   private func registerAnim[T](a Anim[T]) Anim[T] {
     if let list = anims {
@@ -331,18 +331,17 @@ public open class Cell {
     }
   }
 
-
   shared {
     /// Describes a child component mount.
     /// @typeparam TCell child component type
     /// @param key stable sibling key, or nil for positional identity
     /// @returns a blob that mounts the child component
     public func Mount[TCell Cell init()](key string?) Blob ->
-      CellElement{
-        Key: key,
-        CellType: typeof(TCell),
-        Factory: () -> TCell(),
-      }
+    CellElement{
+      Key: key,
+      CellType: typeof(TCell),
+      Factory: () -> TCell(),
+    }
 
     /// Describes a child component mount with an immutable input snapshot.
     /// @typeparam TInput component input type
@@ -350,13 +349,13 @@ public open class Cell {
     /// @param key stable sibling key, or nil for positional identity
     /// @param input immutable input snapshot
     /// @returns a blob that mounts the child component
-    public func Mount[TInput any, TCell Cell[TInput] init()](key string?, input TInput) Blob ->
-      CellInputElement[TInput]{
-        Key: key,
-        CellType: typeof(TCell),
-        UseActivator: true,
-        Input: input,
-      }
+    public func Mount[TInput any, TCell Cell[TInput]init()](key string?, input TInput) Blob ->
+    CellInputElement[TInput]{
+      Key: key,
+      CellType: typeof(TCell),
+      UseActivator: true,
+      Input: input,
+    }
 
     /// Describes a child component mount.
     /// @typeparam TCell child component type
@@ -364,7 +363,7 @@ public open class Cell {
     /// @param configure configuration applied during each parent diff; prefer stable named or cached delegates
     /// @returns a blob that mounts the child component
     public func Mount[TCell Cell init()](key string?, configure Action[TCell]?) Blob ->
-      MountSeeded[TCell](key, nil, configure)
+    MountSeeded[TCell](key, nil, configure)
 
     /// Describes a child component mount with one-time initialization.
     /// @typeparam TCell child component type
@@ -374,13 +373,13 @@ public open class Cell {
     /// @returns a blob that mounts the child component
     public func MountSeeded[TCell Cell init()](key string?, seed Action[TCell]?,
       configure Action[TCell]?) Blob ->
-      CellElement{
-        Key: key,
-        CellType: typeof(TCell),
-        Factory: () -> TCell(),
-        Seed: wrapAction[TCell](seed),
-        Configure: wrapAction[TCell](configure),
-      }
+    CellElement{
+      Key: key,
+      CellType: typeof(TCell),
+      Factory: () -> TCell(),
+      Seed: wrapAction[TCell](seed),
+      Configure: wrapAction[TCell](configure),
+    }
 
     internal func wrapAction[TCell Cell](action Action[TCell]?) Action[Cell]? {
       guard let typed = action else { return nil }

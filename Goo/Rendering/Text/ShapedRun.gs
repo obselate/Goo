@@ -6,17 +6,17 @@ import System.Collections.Generic
 internal data struct TextPoint(X float32, Y float32) { }
 
 internal sealed class ShapedRun : IDisposable {
-  internal prop Text string { get; set; }
-  internal prop Family string { get; set; }
-  internal prop Glyphs []uint32 { get; set; }
-  internal prop Points []TextPoint { get; set; }
-  internal prop Clusters []uint32 { get; set; }
-  internal prop LogicalStart int32 { get; set; }
-  internal prop RightToLeft bool { get; set; }
-  internal prop VisualStart float32 { get; set; }
-  internal prop VisualEnd float32 { get; set; }
-  internal prop OwnsTypeface bool { get; set; }
-  internal prop Provider VulkanTextProvider {
+  internal prop Text string{ get; set; }
+  internal prop Family string{ get; set; }
+  internal prop Glyphs []uint32{ get; set; }
+  internal prop Points []TextPoint{ get; set; }
+  internal prop Clusters []uint32{ get; set; }
+  internal prop LogicalStart int32{ get; set; }
+  internal prop RightToLeft bool{ get; set; }
+  internal prop VisualStart float32{ get; set; }
+  internal prop VisualEnd float32{ get; set; }
+  internal prop OwnsTypeface bool{ get; set; }
+  internal prop Provider VulkanTextProvider{
     get {
       guard let lease = typefaceLease else { throw ObjectDisposedException("ShapedRun") }
       return lease.Provider
@@ -28,18 +28,18 @@ internal sealed class ShapedRun : IDisposable {
   internal init(text string, family string, glyphs []uint32, points []TextPoint,
     clusters []uint32, logicalStart int32, rightToLeft bool, visualStart float32,
     visualEnd float32, ownsTypeface bool, lease TypefaceLease?) {
-    Text = text
-    Family = family
-    Glyphs = glyphs
-    Points = points
-    Clusters = clusters
-    LogicalStart = logicalStart
-    RightToLeft = rightToLeft
-    VisualStart = visualStart
-    VisualEnd = visualEnd
-    OwnsTypeface = ownsTypeface
-    typefaceLease = lease
-  }
+      Text = text
+      Family = family
+      Glyphs = glyphs
+      Points = points
+      Clusters = clusters
+      LogicalStart = logicalStart
+      RightToLeft = rightToLeft
+      VisualStart = visualStart
+      VisualEnd = visualEnd
+      OwnsTypeface = ownsTypeface
+      typefaceLease = lease
+    }
 
   internal func Slice(start int32, end int32) ShapedRun? {
     let glyphs = List[uint32]()

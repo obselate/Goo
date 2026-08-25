@@ -12,7 +12,7 @@ public sealed class ShaderEffect {
   private let gate object
   private let code []uint8
   private let parameters []Vector4
-  private var changedCallbacks ([]Action)?
+  private var changedCallbacks([]Action)?
   private let programId uint64
   private let samplesBackdrop bool
   private let backdropOutset float32
@@ -40,20 +40,20 @@ public sealed class ShaderEffect {
     }
     if fragmentSpirv.Length < 20 || fragmentSpirv.Length > MaximumByteCount
       || (fragmentSpirv.Length & 3) != 0 {
-      throw ArgumentOutOfRangeException("fragmentSpirv")
-    }
+        throw ArgumentOutOfRangeException("fragmentSpirv")
+      }
     if readWord(fragmentSpirv, 0) != 0x07230203u {
       throw ArgumentException("Shader effect is not SPIR-V", "fragmentSpirv")
     }
     let spirvVersion = readWord(fragmentSpirv, 4)
     if spirvVersion < 0x00010000u || spirvVersion > 0x00010600u
       || readWord(fragmentSpirv, 12) == 0u || readWord(fragmentSpirv, 16) != 0u {
-      throw ArgumentException("Shader effect SPIR-V header is invalid", "fragmentSpirv")
-    }
+        throw ArgumentException("Shader effect SPIR-V header is invalid", "fragmentSpirv")
+      }
     if !finite(backdropOutset) || backdropOutset < 0.0F
-      || backdropOutset > MaximumBackdropOutset {
-      throw ArgumentOutOfRangeException("backdropOutset")
-    }
+      || backdropOutset > MaximumBackdropOutset{
+        throw ArgumentOutOfRangeException("backdropOutset")
+      }
     if !samplesBackdrop && backdropOutset != 0.0F {
       throw ArgumentException("Backdrop outset requires backdrop sampling", "backdropOutset")
     }
@@ -75,7 +75,7 @@ public sealed class ShaderEffect {
       throw ArgumentOutOfRangeException("value")
     }
     var changed bool
-    var callbacks ([]Action)?
+    var callbacks([]Action)?
     lock gate {
       if parameters[slot] != value {
         parameters[slot] = value
@@ -139,10 +139,10 @@ public sealed class ShaderEffect {
     }
   }
 
-  internal prop ProgramId uint64 { get { return programId } }
-  internal prop FragmentSpirv []uint8 { get { return code } }
-  internal prop SamplesBackdrop bool { get { return samplesBackdrop } }
-  internal prop BackdropOutset float32 { get { return backdropOutset } }
+  internal prop ProgramId uint64{ get { return programId } }
+  internal prop FragmentSpirv []uint8{ get { return code } }
+  internal prop SamplesBackdrop bool{ get { return samplesBackdrop } }
+  internal prop BackdropOutset float32{ get { return backdropOutset } }
 
   internal func CopySnapshot(out snapshot ShaderEffectSnapshot) {
     lock gate {
@@ -164,16 +164,12 @@ public sealed class ShaderEffect {
     }
   }
 
-  private func finite(value float32) bool {
-    return !Single.IsNaN(value) && !Single.IsInfinity(value)
-  }
+  private func finite(value float32) bool -> !Single.IsNaN(value) && !Single.IsInfinity(value)
 
-  private func readWord(bytes []uint8, offset int32) uint32 {
-    return uint32(bytes[offset])
-      | (uint32(bytes[offset + 1]) << 8)
-      | (uint32(bytes[offset + 2]) << 16)
-      | (uint32(bytes[offset + 3]) << 24)
-  }
+  private func readWord(bytes []uint8, offset int32) uint32 -> uint32(bytes[offset])
+  | (uint32(bytes[offset + 1]) << 8)
+  | (uint32(bytes[offset + 2]) << 16)
+  | (uint32(bytes[offset + 3]) << 24)
 }
 
 internal data struct ShaderEffectSnapshot {

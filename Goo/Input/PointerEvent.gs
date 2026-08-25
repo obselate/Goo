@@ -67,35 +67,35 @@ internal class PointerDispatchControl {
 /// Describes a pointer input callback.
 public struct PointerEvent {
   /// Gets the stable identifier for this pointer while it is connected.
-  public prop PointerId int64 {
+  public prop PointerId int64{
     get {
       return if let identity = Identity { identity.Id } else { 0 }
     }
   }
   /// Gets the pointer device type that produced this event.
-  public prop Device PointerDevice {
+  public prop Device PointerDevice{
     get {
       return if let identity = Identity { identity.Device } else { PointerDevice.Mouse }
     }
   }
   /// Reports whether this contact is primary for its active device-type sequence.
-  public prop IsPrimary bool { get; init; }
+  public prop IsPrimary bool{ get; init; }
   /// Gets normalized pressure in the inclusive range from 0 to 1.
-  public prop Pressure float64 { get; init; }
+  public prop Pressure float64{ get; init; }
   /// Gets the pointer position in the current handler coordinates.
-  public prop Position Point { get; init; }
+  public prop Position Point{ get; init; }
   /// Gets the pointer position in logical window coordinates.
-  public prop WindowPosition Point { get; init; }
+  public prop WindowPosition Point{ get; init; }
   /// Gets movement since the preceding pointer position in the current handler coordinates.
-  public prop Delta Point { get; init; }
+  public prop Delta Point{ get; init; }
   /// Gets the pointer button that changed, or None for movement.
-  public prop Button PointerButton { get; init; }
+  public prop Button PointerButton{ get; init; }
   /// Gets the pointer buttons held after the event transition.
-  public prop Buttons PointerButtons { get; init; }
+  public prop Buttons PointerButtons{ get; init; }
   /// Gets the modifier keys held for the event.
-  public prop Modifiers KeyModifiers { get; init; }
+  public prop Modifiers KeyModifiers{ get; init; }
   internal prop Control PointerDispatchControl? { get; init; }
-  internal prop Generation int64 { get; init; }
+  internal prop Generation int64{ get; init; }
   internal prop Identity PointerContact? { get; init; }
 
   /// Stops further callback propagation for this event.

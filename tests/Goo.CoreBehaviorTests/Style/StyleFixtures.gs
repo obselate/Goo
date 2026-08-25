@@ -45,14 +45,13 @@ internal class StyleFixtures {
       || resolved.TransitionMs != 0.0 || low.Opacity != 0.0
       || low.MarginLeft.Value != -1.0F || low.MarginTop.Value != -1.0F
       || low.MarginRight.Value != -1.0F || low.MarginBottom.Value != -1.0F {
-      return false
-    }
+        return false
+      }
     return rejectsInvalidStyleDeclarations()
   }
 
   func ClipPathResolutionStorageAndSnapContract() bool {
-    let path = PathBuilder().MoveTo(0.0, 0.0).LineTo(1.0, 0.0)
-      .LineTo(1.0, 1.0).LineTo(0.0, 1.0).Close().Build()
+    let path = PathBuilder().MoveTo(0.0, 0.0).LineTo(1.0, 0.0).LineTo(1.0, 1.0).LineTo(0.0, 1.0).Close().Build()
     let defaults = Node{ Kind: NodeKind.Container }
     if defaults.HasClipPath || ClipPaths.Get(defaults) != nil || ClipPaths.Fit(defaults) != ShapeFit.Fill {
       return false
@@ -66,8 +65,8 @@ internal class StyleFixtures {
     guard let initial = ClipPaths.Get(root) else { return false }
     if !root.HasClipPath || !samePath(initial.Path, path) || initial.Fit != ShapeFit.Fill
       || resolver.Animating.Count != 0 {
-      return false
-    }
+        return false
+      }
 
     root.Hovered = true
     resolver.Invalidate(root, false)
@@ -75,8 +74,8 @@ internal class StyleFixtures {
     guard let hovered = ClipPaths.Get(root) else { return false }
     if !samePath(hovered.Path, path) || hovered.Fit != ShapeFit.Contain
       || resolver.Animating.Count != 0 {
-      return false
-    }
+        return false
+      }
 
     root.Hovered = false
     resolver.Invalidate(root, false)
@@ -114,8 +113,8 @@ internal class StyleFixtures {
       || ltr.Left.Value != 10.0F || ltr.Right.Value != 12.0F
       || ltr.BorderLeftWidth.Value != 14.0F || ltr.BorderRightWidth.Value != 16.0F
       || !sameColor(ltr.BorderLeftColor, blue) || !sameColor(ltr.BorderRightColor, blue) {
-      return false
-    }
+        return false
+      }
 
     let physicalLater = Reconciler{ Res: Resolver{} }.Mount(Container{
       Direction: Direction.LeftToRight,
@@ -136,8 +135,8 @@ internal class StyleFixtures {
       || rtl.Right.Value != 10.0F || rtl.Left.Value != 12.0F
       || rtl.BorderRightWidth.Value != 14.0F || rtl.BorderLeftWidth.Value != 16.0F
       || !sameColor(rtl.BorderRightColor, blue) || !sameColor(rtl.BorderLeftColor, blue) {
-      return false
-    }
+        return false
+      }
 
     let resolver = Resolver{}
     let root = Reconciler{ Res: resolver }.Mount(Container{
@@ -151,8 +150,8 @@ internal class StyleFixtures {
       || inherited.MarginLeft.Value != 4.0F || inherited.MarginRight.Unit != LengthUnit.Unset
       || inherited.PaddingLeft.Value != 5.0F || inherited.Left.Value != 6.0F
       || inherited.BorderLeftWidth.Value != 7.0F || !sameColor(inherited.BorderLeftColor, red) {
-      return false
-    }
+        return false
+      }
 
     root.BaseStyle = Style{
       Direction: Direction.RightToLeft, TextAlign: TextAlign.Start,
@@ -167,8 +166,8 @@ internal class StyleFixtures {
       || inherited.Left.Unit != LengthUnit.Unset || inherited.Right.Value != 6.0F
       || inherited.BorderLeftWidth.Unit != LengthUnit.Unset || inherited.BorderRightWidth.Value != 7.0F
       || inherited.BorderLeftColor.A != 0.0F || !sameColor(inherited.BorderRightColor, red) {
-      return false
-    }
+        return false
+      }
 
     root.HoverStyle = Style{ MarginStart: 20, PaddingStart: 21, Start: 22,
       BorderStartWidth: 23, BorderStartColor: blue }.Entries()
@@ -178,24 +177,24 @@ internal class StyleFixtures {
     if root.MarginRight.Value != 20.0F || root.PaddingRight.Value != 21.0F
       || root.Right.Value != 22.0F || root.BorderRightWidth.Value != 23.0F
       || !sameColor(root.BorderRightColor, blue) {
-      return false
-    }
+        return false
+      }
     root.Hovered = false
     resolver.Invalidate(root, false)
     resolver.Flush()
     if root.MarginRight.Value != 2.0F || root.PaddingRight.Value != 3.0F
       || root.Right.Value != 4.0F || root.BorderRightWidth.Value != 5.0F
       || !sameColor(root.BorderRightColor, red) {
-      return false
-    }
+        return false
+      }
     root.BaseStyle = nil
     resolver.Invalidate(root, false)
     resolver.Flush()
     if root.MarginRight.Unit != LengthUnit.Unset || root.PaddingRight.Unit != LengthUnit.Unset
       || root.Right.Unit != LengthUnit.Unset || root.BorderRightWidth.Unit != LengthUnit.Unset
       || root.BorderRightColor.A != 0.0F {
-      return false
-    }
+        return false
+      }
 
     let reverse = Node{ Kind: NodeKind.Container }
     let reverseResolver = Resolver{}
@@ -221,25 +220,25 @@ internal class StyleFixtures {
     directionStateResolver.Invalidate(directionState, true)
     directionStateResolver.Flush()
     if directionState.MarginLeft.Value != 1.0F
-      || directionState.MarginRight.Unit != LengthUnit.Unset {
-      return false
-    }
+      || directionState.MarginRight.Unit != LengthUnit.Unset{
+        return false
+      }
     directionState.Hovered = true
     directionStateResolver.Invalidate(directionState, false)
     directionStateResolver.Flush()
     if directionState.Direction != Direction.RightToLeft
       || directionState.MarginLeft.Unit != LengthUnit.Unset
       || directionState.MarginRight.Value != 1.0F {
-      return false
-    }
+        return false
+      }
     directionState.Hovered = false
     directionStateResolver.Invalidate(directionState, false)
     directionStateResolver.Flush()
     if directionState.Direction != Direction.LeftToRight
       || directionState.MarginLeft.Value != 1.0F
-      || directionState.MarginRight.Unit != LengthUnit.Unset {
-      return false
-    }
+      || directionState.MarginRight.Unit != LengthUnit.Unset{
+        return false
+      }
 
     let orderedDirectionState = Node{ Kind: NodeKind.Container }
     let orderedDirectionResolver = Resolver{}
@@ -255,8 +254,8 @@ internal class StyleFixtures {
     if orderedDirectionState.Direction != Direction.RightToLeft
       || orderedDirectionState.MarginLeft.Unit != LengthUnit.Unset
       || orderedDirectionState.MarginRight.Value != 9.0F {
-      return false
-    }
+        return false
+      }
 
     let snap = Node{ Kind: NodeKind.Container }
     let snapResolver = Resolver{}
@@ -282,9 +281,9 @@ internal class StyleFixtures {
     let authored = Style{ Margin: 1, Padding: 2 }
     guard let authoredEntries = authored.Entries() else { return false }
     if authoredEntries.Count != 2 || authoredEntries.At(0).Field != StyleField.Margin
-      || authoredEntries.At(1).Field != StyleField.Padding {
-      return false
-    }
+      || authoredEntries.At(1).Field != StyleField.Padding{
+        return false
+      }
 
     let ltrShorthandLater = Reconciler{ Res: Resolver{} }.Mount(Container{
       Direction: Direction.LeftToRight,
@@ -293,8 +292,8 @@ internal class StyleFixtures {
     })
     if ltrShorthandLater.MarginLeft.Value != 2.0F || ltrShorthandLater.MarginRight.Value != 2.0F
       || ltrShorthandLater.PaddingLeft.Value != 4.0F || ltrShorthandLater.PaddingRight.Value != 4.0F {
-      return false
-    }
+        return false
+      }
 
     let ltrLogicalLater = Reconciler{ Res: Resolver{} }.Mount(Container{
       Direction: Direction.LeftToRight,
@@ -303,8 +302,8 @@ internal class StyleFixtures {
     })
     if ltrLogicalLater.MarginLeft.Value != 1.0F || ltrLogicalLater.MarginRight.Value != 2.0F
       || ltrLogicalLater.PaddingLeft.Value != 3.0F || ltrLogicalLater.PaddingRight.Value != 4.0F {
-      return false
-    }
+        return false
+      }
 
     let rtlShorthandLater = Reconciler{ Res: Resolver{} }.Mount(Container{
       Direction: Direction.RightToLeft,
@@ -313,8 +312,8 @@ internal class StyleFixtures {
     })
     if rtlShorthandLater.MarginRight.Value != 2.0F || rtlShorthandLater.MarginLeft.Value != 2.0F
       || rtlShorthandLater.PaddingRight.Value != 4.0F || rtlShorthandLater.PaddingLeft.Value != 4.0F {
-      return false
-    }
+        return false
+      }
 
     let rtlLogicalLater = Reconciler{ Res: Resolver{} }.Mount(Container{
       Direction: Direction.RightToLeft,
@@ -323,8 +322,8 @@ internal class StyleFixtures {
     })
     if rtlLogicalLater.MarginRight.Value != 1.0F || rtlLogicalLater.MarginLeft.Value != 2.0F
       || rtlLogicalLater.PaddingRight.Value != 3.0F || rtlLogicalLater.PaddingLeft.Value != 4.0F {
-      return false
-    }
+        return false
+      }
 
     let shorthandState = Node{ Kind: NodeKind.Container }
     let shorthandResolver = Resolver{}
@@ -339,8 +338,8 @@ internal class StyleFixtures {
     shorthandResolver.Flush()
     if shorthandState.MarginLeft.Value != 10.0F || shorthandState.MarginRight.Value != 10.0F
       || shorthandState.PaddingLeft.Value != 20.0F || shorthandState.PaddingRight.Value != 20.0F {
-      return false
-    }
+        return false
+      }
 
     let logicalState = Node{ Kind: NodeKind.Container }
     let logicalResolver = Resolver{}
@@ -368,9 +367,9 @@ internal class StyleFixtures {
     guard let entries = declaration.Entries() else { return false }
     if entries.Count != 5 || entries.At(0).Field != StyleField.Width
       || entries.At(1).Field != StyleField.Height || entries.At(2).Field != StyleField.Width
-      || entries.At(3).Field != StyleField.Gap || entries.At(4).Field != StyleField.Width {
-      return false
-    }
+      || entries.At(3).Field != StyleField.Gap || entries.At(4).Field != StyleField.Width{
+        return false
+      }
     let n = Node{ Kind: NodeKind.Container }
     n.BaseStyle = entries
     let resolver = Resolver{}
@@ -410,9 +409,9 @@ internal class StyleFixtures {
     copiedResolver.Flush()
     if boxShadowCount(copied.BoxShadows) != 2
       || boxShadowAt(copied.BoxShadows, 0).OffsetX.Value != 3.0F
-      || !boxShadowAt(copied.BoxShadows, 1).Inset {
-      return false
-    }
+      || !boxShadowAt(copied.BoxShadows, 1).Inset{
+        return false
+      }
 
     let singularThenPlural = Reconciler{ Res: Resolver{} }.Mount(Container{
       BoxShadow: BoxShadow{ OffsetX: 1, Color: red },
@@ -420,8 +419,8 @@ internal class StyleFixtures {
     })
     if boxShadowCount(singularThenPlural.BoxShadows) != 1
       || boxShadowAt(singularThenPlural.BoxShadows, 0).OffsetX.Value != 4.0F {
-      return false
-    }
+        return false
+      }
     let pluralThenSingular = Reconciler{ Res: Resolver{} }.Mount(Container{
       BoxShadows: []BoxShadow{ BoxShadow{ OffsetX: 4, Color: blue } },
       BoxShadow: BoxShadow{ OffsetX: 1, Color: red },
@@ -455,15 +454,15 @@ internal class StyleFixtures {
     let value = TextShadow{ OffsetX: -4, OffsetY: 5, Blur: -6, Color: red }
     if value.OffsetX.Magnitude != -4.0 || value.OffsetY.Magnitude != 5.0
       || value.Blur.Magnitude != 0.0 || !sameColor(value.Color, red) {
-      return false
-    }
+        return false
+      }
     let zero = TextShadow{}
     if !zero.OffsetX.HasMagnitude || zero.OffsetX.Magnitude != 0.0
       || !zero.OffsetY.HasMagnitude || zero.OffsetY.Magnitude != 0.0
       || !zero.Blur.HasMagnitude || zero.Blur.Magnitude != 0.0
       || zero.Color.A != 0.0F {
-      return false
-    }
+        return false
+      }
 
     var percentOffset = false
     var autoBlur = false
@@ -497,8 +496,8 @@ internal class StyleFixtures {
     if !copied.HasTextShadowState || textShadowCount(copied.TextShadows) != 1
       || textShadowAt(copied.TextShadows, 0).OffsetX.Magnitude != 3.0
       || !sameColor(textShadowAt(copied.TextShadows, 0).Color, red) {
-      return false
-    }
+        return false
+      }
 
     let transparent = Reconciler{ Res: Resolver{} }.Mount(Text{
       Content: "zero",
@@ -520,8 +519,8 @@ internal class StyleFixtures {
     })
     if textShadowAt(singularThenPlural.TextShadows, 0).OffsetX.Magnitude != 4.0
       || textShadowAt(pluralThenSingular.TextShadows, 0).OffsetX.Magnitude != 1.0 {
-      return false
-    }
+        return false
+      }
 
     let resolver = Resolver{}
     let root = Reconciler{ Res: resolver }.Mount(Container{
@@ -547,9 +546,9 @@ internal class StyleFixtures {
     if textShadowCount(inherited.TextShadows) != 2 || textShadowCount(entry.TextShadows) != 2
       || textShadowCount(cleared.TextShadows) != 0 || textShadowCount(clearedText.TextShadows) != 0
       || !inherited.HasTextShadowState || !entry.HasTextShadowState
-      || cleared.HasTextShadowState || clearedText.HasTextShadowState {
-      return false
-    }
+      || cleared.HasTextShadowState || clearedText.HasTextShadowState{
+        return false
+      }
     let retainedLayout = TextLayouts.For(inherited, 100.0F)
     root.Hovered = true
     resolver.Invalidate(root, false)
@@ -559,9 +558,9 @@ internal class StyleFixtures {
       || textShadowCount(entry.TextShadows) != 1
       || TextLayouts.For(inherited, 100.0F) != retainedLayout
       || resolver.Animating.Count != 0
-      || resolver.FlushEffects() != ReconcileEffects.Paint {
-      return false
-    }
+      || resolver.FlushEffects() != ReconcileEffects.Paint{
+        return false
+      }
 
     root.Hovered = false
     root.BaseStyle = nil
@@ -569,8 +568,8 @@ internal class StyleFixtures {
     resolver.Flush()
     if root.HasTextShadowState || inherited.HasTextShadowState || entry.HasTextShadowState
       || textShadowCount(root.TextShadows) != 0 || textShadowCount(inherited.TextShadows) != 0 {
-      return false
-    }
+        return false
+      }
 
     let reconciler = Reconciler{ Res: Resolver{} }
     var textNode = reconciler.Mount(Text{
@@ -592,8 +591,8 @@ internal class StyleFixtures {
     let defaults = Node{ Kind: NodeKind.Text }
     if defaults.HasTextStrokeState || defaults.TextStrokeWidth.Unit != LengthUnit.Unset
       || !sameColor(defaults.TextStrokeColor, Color.Transparent) {
-      return false
-    }
+        return false
+      }
 
     let zero = Reconciler{ Res: Resolver{} }.Mount(Text{
       Content: "zero", TextStrokeWidth: 0, TextStrokeColor: Color.Transparent,
@@ -626,8 +625,8 @@ internal class StyleFixtures {
     if TextStroking.Visible(root) == nil || TextStroking.Visible(inherited) == nil
       || TextStroking.Visible(entry) == nil || TextStroking.Visible(widthClear) != nil
       || TextStroking.Visible(colorClear) != nil || TextStroking.Visible(colorClearText) != nil {
-      return false
-    }
+        return false
+      }
 
     root.Hovered = true
     resolver.Invalidate(root, false)
@@ -636,9 +635,9 @@ internal class StyleFixtures {
       || !sameColor(inherited.TextStrokeColor, blue)
       || TextStroking.Visible(widthClear) != nil || TextStroking.Visible(colorClearText) != nil
       || TextLayouts.For(inherited, 100.0F) != retained || resolver.Animating.Count != 0
-      || resolver.FlushEffects() != ReconcileEffects.Paint {
-      return false
-    }
+      || resolver.FlushEffects() != ReconcileEffects.Paint{
+        return false
+      }
 
     root.Hovered = false
     root.BaseStyle = nil
@@ -646,9 +645,9 @@ internal class StyleFixtures {
     resolver.Flush()
     if root.HasTextStrokeState || inherited.HasTextStrokeState || entry.HasTextStrokeState
       || widthClear.HasTextStrokeState || colorClear.HasTextStrokeState
-      || colorClearText.HasTextStrokeState || TextLayouts.For(inherited, 100.0F) != retained {
-      return false
-    }
+      || colorClearText.HasTextStrokeState || TextLayouts.For(inherited, 100.0F) != retained{
+        return false
+      }
 
     let reconciler = Reconciler{ Res: Resolver{} }
     var textNode = reconciler.Mount(Text{
@@ -701,18 +700,18 @@ internal class StyleFixtures {
       OverflowX: Overflow.Hidden,
     })
     if shorthandThenAxis.OverflowX != Overflow.Hidden
-      || shorthandThenAxis.OverflowY != Overflow.Scroll {
-      return false
-    }
+      || shorthandThenAxis.OverflowY != Overflow.Scroll{
+        return false
+      }
 
     let axisThenShorthand = Reconciler{ Res: Resolver{} }.Mount(Container{
       OverflowX: Overflow.Hidden,
       Overflow: Overflow.Scroll,
     })
     if axisThenShorthand.OverflowX != Overflow.Scroll
-      || axisThenShorthand.OverflowY != Overflow.Scroll {
-      return false
-    }
+      || axisThenShorthand.OverflowY != Overflow.Scroll{
+        return false
+      }
 
     let n = Node{ Kind: NodeKind.Container }
     let resolver = Resolver{}
@@ -753,8 +752,8 @@ internal class StyleFixtures {
       || !sameColor(shorthandThenEdge.BorderTopColor, green)
       || !sameColor(shorthandThenEdge.BorderRightColor, red)
       || !sameColor(shorthandThenEdge.BorderBottomColor, red) {
-      return false
-    }
+        return false
+      }
 
     let edgeThenShorthand = Reconciler{ Res: Resolver{} }.Mount(Container{
       BorderLeftWidth: 5,
@@ -764,8 +763,8 @@ internal class StyleFixtures {
     })
     if edgeThenShorthand.BorderLeftWidth.Value != 2.0F
       || !sameColor(edgeThenShorthand.BorderTopColor, red) {
-      return false
-    }
+        return false
+      }
 
     let n = Node{ Kind: NodeKind.Container }
     let resolver = Resolver{}
@@ -778,8 +777,8 @@ internal class StyleFixtures {
     resolver.Flush()
     if n.BorderRightWidth.Value != 4.0F || !sameColor(n.BorderRightColor, blue)
       || n.BorderLeftWidth.Value != 1.0F || !sameColor(n.BorderLeftColor, red) {
-      return false
-    }
+        return false
+      }
     n.Hovered = false
     resolver.Invalidate(n, false)
     resolver.Flush()
@@ -872,8 +871,8 @@ internal class StyleFixtures {
     if n.BorderLeftWidth.Value != 4.0F || n.BorderLeftColor.R < 0.49F
       || n.BorderLeftColor.R > 0.51F || n.BorderLeftColor.B < 0.49F
       || n.BorderLeftColor.B > 0.51F || resolver.Animating.Count != 1 {
-      return false
-    }
+        return false
+      }
     resolver.Advance(0.06)
     return n.BorderLeftWidth.Value == 6.0F && sameColor(n.BorderLeftColor, blue)
       && resolver.Animating.Count == 0
@@ -896,8 +895,8 @@ internal class StyleFixtures {
     if inherited.FontFamily != "base" || inherited.TextAlign != TextAlign.Right
       || !sameColor(inherited.Color, Color.Rgb(255, 0, 0))
       || local.FontFamily != "base" || !sameColor(local.Color, Color.Rgb(0, 0, 255)) {
-      return false
-    }
+        return false
+      }
     root.Hovered = true
     resolver.Invalidate(root, false)
     resolver.Flush()
@@ -927,9 +926,9 @@ internal class StyleFixtures {
     let retained = TextLayouts.For(inherited, 100.0F)
     if inherited.TextTransform != TextTransform.Uppercase
       || local.TextTransform != TextTransform.None
-      || entry.TextTransform != TextTransform.Uppercase {
-      return false
-    }
+      || entry.TextTransform != TextTransform.Uppercase{
+        return false
+      }
 
     root.Hovered = true
     resolver.Invalidate(root, false)
@@ -938,9 +937,9 @@ internal class StyleFixtures {
       || inherited.TextTransform != TextTransform.Lowercase
       || local.TextTransform != TextTransform.None
       || entry.TextTransform != TextTransform.Lowercase
-      || TextLayouts.For(inherited, 100.0F) == retained {
-      return false
-    }
+      || TextLayouts.For(inherited, 100.0F) == retained{
+        return false
+      }
 
     root.Hovered = false
     root.BaseStyle = nil
@@ -972,35 +971,35 @@ internal class StyleFixtures {
     let inherited = root.Children[0]
     let local = root.Children[1]
     if inherited.TextWrap != TextWrap.NoWrap || inherited.TextTrimming != TextTrimming.None
-      || local.TextWrap != TextWrap.Wrap || local.TextTrimming != TextTrimming.Ellipsis {
-      return false
-    }
+      || local.TextWrap != TextWrap.Wrap || local.TextTrimming != TextTrimming.Ellipsis{
+        return false
+      }
 
     root.Hovered = true
     resolver.Invalidate(root, false)
     resolver.Flush()
     if root.TextWrap != TextWrap.Wrap || root.TextTrimming != TextTrimming.None
       || inherited.TextWrap != TextWrap.Wrap || inherited.TextTrimming != TextTrimming.None
-      || local.TextWrap != TextWrap.Wrap || local.TextTrimming != TextTrimming.Ellipsis {
-      return false
-    }
+      || local.TextWrap != TextWrap.Wrap || local.TextTrimming != TextTrimming.Ellipsis{
+        return false
+      }
 
     root.Hovered = false
     resolver.Invalidate(root, false)
     resolver.Flush()
     if root.TextWrap != TextWrap.NoWrap || root.TextTrimming != TextTrimming.Ellipsis
-      || inherited.TextWrap != TextWrap.NoWrap || inherited.TextTrimming != TextTrimming.None {
-      return false
-    }
+      || inherited.TextWrap != TextWrap.NoWrap || inherited.TextTrimming != TextTrimming.None{
+        return false
+      }
 
     root.BaseStyle = nil
     resolver.Invalidate(root, false)
     resolver.Flush()
     if root.TextWrap != TextWrap.Wrap || root.TextTrimming != TextTrimming.None
       || inherited.TextWrap != TextWrap.Wrap || inherited.TextTrimming != TextTrimming.None
-      || local.TextWrap != TextWrap.Wrap || local.TextTrimming != TextTrimming.Ellipsis {
-      return false
-    }
+      || local.TextWrap != TextWrap.Wrap || local.TextTrimming != TextTrimming.Ellipsis{
+        return false
+      }
     return true
   }
 
@@ -1034,9 +1033,9 @@ internal class StyleFixtures {
     resolver.Flush()
     let expanded = TextLayouts.For(n, 100.0F)
     if n.TextMaxLines != 2 || expanded == retained || expanded.Lines.Count != 2
-      || !expanded.Clamped {
-      return false
-    }
+      || !expanded.Clamped{
+        return false
+      }
 
     n.Hovered = false
     n.BaseStyle = nil
@@ -1052,8 +1051,8 @@ internal class StyleFixtures {
     if defaults.HasOutlineState || defaults.OutlineWidth.Unit != LengthUnit.Unset
       || defaults.OutlineOffset.Unit != LengthUnit.Unset
       || !sameColor(defaults.OutlineColor, Color.Transparent) {
-      return false
-    }
+        return false
+      }
 
     let resolver = Resolver{}
     let root = Reconciler{ Res: resolver }.Mount(Container{
@@ -1072,9 +1071,9 @@ internal class StyleFixtures {
     if !root.HasOutlineState || root.OutlineWidth.Value != 2.0F
       || root.OutlineOffset.Value != 1.0F
       || !sameColor(root.OutlineColor, Color.Rgb(255, 0, 0))
-      || child.HasOutlineState {
-      return false
-    }
+      || child.HasOutlineState{
+        return false
+      }
 
     root.Focused = true
     resolver.Invalidate(root, false)
@@ -1082,16 +1081,16 @@ internal class StyleFixtures {
     if root.OutlineWidth.Value != 4.0F || root.OutlineOffset.Value != -2.0F
       || !sameColor(root.OutlineColor, Color.Rgb(0, 0, 255))
       || resolver.Animating.Count != 0 {
-      return false
-    }
+        return false
+      }
 
     root.Focused = false
     resolver.Invalidate(root, false)
     resolver.Flush()
     if root.OutlineWidth.Value != 2.0F || root.OutlineOffset.Value != 1.0F
       || resolver.Animating.Count != 0 {
-      return false
-    }
+        return false
+      }
 
     root.BaseStyle = nil
     resolver.Invalidate(root, false)
@@ -1099,8 +1098,8 @@ internal class StyleFixtures {
     if root.HasOutlineState || root.OutlineWidth.Unit != LengthUnit.Unset
       || root.OutlineOffset.Unit != LengthUnit.Unset
       || !sameColor(root.OutlineColor, Color.Transparent) {
-      return false
-    }
+        return false
+      }
     return true
   }
 
@@ -1113,9 +1112,9 @@ internal class StyleFixtures {
     combined.Visibility = Visibility.Hidden
     combined.Display = Display.Flex
     if combined.Display != Display.Flex || combined.Visibility != Visibility.Hidden
-      || !combined.PaintInputHidden {
-      return false
-    }
+      || !combined.PaintInputHidden{
+        return false
+      }
     combined.Visibility = Visibility.Visible
     if combined.PaintInputHidden { return false }
 
@@ -1136,8 +1135,8 @@ internal class StyleFixtures {
     resolver.Flush()
     if root.Visibility != Visibility.Hidden || child.Visibility != Visibility.Visible
       || resolver.Animating.Count != 0 || canReceiveInput(child) {
-      return false
-    }
+        return false
+      }
 
     root.Hovered = false
     resolver.Invalidate(root, false)
@@ -1173,9 +1172,9 @@ internal class StyleFixtures {
     let retained = TextLayouts.For(inherited, 100.0F)
     if inherited.TextDecoration != TextDecoration.Underline
       || entry.TextDecoration != TextDecoration.Underline
-      || cleared.TextDecoration != TextDecoration.None {
-      return false
-    }
+      || cleared.TextDecoration != TextDecoration.None{
+        return false
+      }
 
     root.Hovered = true
     resolver.Invalidate(root, false)
@@ -1185,8 +1184,8 @@ internal class StyleFixtures {
       || cleared.TextDecoration != TextDecoration.None
       || TextLayouts.For(inherited, 100.0F) != retained
       || resolver.Animating.Count != 0 {
-      return false
-    }
+        return false
+      }
 
     root.Hovered = false
     root.BaseStyle = nil
@@ -1195,9 +1194,9 @@ internal class StyleFixtures {
     if root.TextDecoration != TextDecoration.None
       || inherited.TextDecoration != TextDecoration.None
       || entry.TextDecoration != TextDecoration.None
-      || cleared.TextDecoration != TextDecoration.None {
-      return false
-    }
+      || cleared.TextDecoration != TextDecoration.None{
+        return false
+      }
     return true
   }
 
@@ -1222,9 +1221,9 @@ internal class StyleFixtures {
     resolver.Invalidate(root, false)
     resolver.Flush()
     if root.Cursor != Cursor.Crosshair || inherited.Cursor != Cursor.Crosshair
-      || local.Cursor != Cursor.Pointer {
-      return false
-    }
+      || local.Cursor != Cursor.Pointer{
+        return false
+      }
 
     local.BaseStyle = nil
     resolver.Invalidate(local, false)
@@ -1235,9 +1234,9 @@ internal class StyleFixtures {
     resolver.Invalidate(root, false)
     resolver.Flush()
     if root.Cursor != Cursor.Move || inherited.Cursor != Cursor.Move
-      || local.Cursor != Cursor.Move {
-      return false
-    }
+      || local.Cursor != Cursor.Move{
+        return false
+      }
     return true
   }
 
@@ -1262,9 +1261,9 @@ internal class StyleFixtures {
     resolver.Flush()
     let high = Stacking.Children(root)
     if child.ZIndex != Int32.MaxValue || high[0] != root.Children[1]
-      || high[1] != child {
-      return false
-    }
+      || high[1] != child{
+        return false
+      }
 
     child.Hovered = false
     child.BaseStyle = nil
@@ -1350,9 +1349,9 @@ internal class StyleFixtures {
     let first = blob.TransitionProperties
     if blob.TransitionDelayMs != 0.0 || blob.TransitionEasing != Easing.EaseIn
       || !blob.Focusable || !blob.Disabled || first.Length != 1
-      || first[0] != TransitionProperty.Opacity {
-      return false
-    }
+      || first[0] != TransitionProperty.Opacity{
+        return false
+      }
     first[0] = TransitionProperty.Height
     let second = blob.TransitionProperties
     let defaults = Container{}.TransitionProperties
@@ -1373,8 +1372,8 @@ internal class StyleFixtures {
       || !transitionSelected(marginSelection, StyleField.MarginTop)
       || !transitionSelected(marginSelection, StyleField.MarginRight)
       || !transitionSelected(marginSelection, StyleField.MarginBottom) {
-      return false
-    }
+        return false
+      }
     let marginProperties = transitionSelectionProperties(marginSelection)
     if marginProperties.Length != 1 || marginProperties[0] != TransitionProperty.Margin {
       return false
@@ -1395,16 +1394,16 @@ internal class StyleFixtures {
     marginResolver.Advance(0.05)
     if margin.MarginLeft.Value != 5.0F || margin.MarginTop.Value != 5.0F
       || margin.MarginRight.Value != 5.0F || margin.MarginBottom.Value != 5.0F {
-      return false
-    }
+        return false
+      }
 
     let paddingSelection = makeTransitionSelection([]TransitionProperty{ TransitionProperty.PaddingLeft })
     if !transitionSelected(paddingSelection, StyleField.PaddingLeft)
       || transitionSelected(paddingSelection, StyleField.PaddingTop)
       || transitionSelected(paddingSelection, StyleField.PaddingRight)
       || transitionSelected(paddingSelection, StyleField.PaddingBottom) {
-      return false
-    }
+        return false
+      }
     let paddingProperties = transitionSelectionProperties(paddingSelection)
     if paddingProperties.Length != 1 || paddingProperties[0] != TransitionProperty.PaddingLeft {
       return false
@@ -1424,8 +1423,8 @@ internal class StyleFixtures {
     paddingResolver.Flush()
     if padding.PaddingLeft.Value != 0.0F || padding.PaddingTop.Value != 8.0F
       || padding.PaddingRight.Value != 8.0F || padding.PaddingBottom.Value != 8.0F {
-      return false
-    }
+        return false
+      }
     paddingResolver.Advance(0.05)
     return padding.PaddingLeft.Value == 4.0F
   }
@@ -1490,9 +1489,9 @@ internal class StyleFixtures {
       || boxShadowAt(n.BoxShadows, 0).OffsetX.Value != 5.0F
       || boxShadowAt(n.BoxShadows, 1).Color.A < 0.49F
       || boxShadowAt(n.BoxShadows, 1).Color.A > 0.51F
-      || !boxShadowAt(n.BoxShadows, 1).Inset {
-      return false
-    }
+      || !boxShadowAt(n.BoxShadows, 1).Inset{
+        return false
+      }
     n.Hovered = false
     resolver.Invalidate(n, false)
     resolver.Flush()
@@ -1504,8 +1503,8 @@ internal class StyleFixtures {
     if boxShadowCount(n.BoxShadows) != 1
       || boxShadowAt(n.BoxShadows, 0).OffsetX.Value != 0.0F
       || resolver.Animating.Count != 0 {
-      return false
-    }
+        return false
+      }
 
     let mismatch = Node{ Kind: NodeKind.Container }
     let mismatchResolver = Resolver{}
@@ -1576,24 +1575,24 @@ internal class StyleFixtures {
       || !near(boxShadowAt(n.BoxShadows, 0).Color.A, 0.5)
       || !near(Transforming.TranslateX(n).Value, 5.0)
       || !near(Transforming.Scale(n), 1.5) {
-      return false
-    }
+        return false
+      }
 
     n.Hovered = false
     resolver.Invalidate(n, false)
     resolver.Flush()
     if !near(n.BackgroundColor.A, 0.5)
       || !near(Transforming.TranslateX(n).Value, 5.0) {
-      return false
-    }
+        return false
+      }
     resolver.Advance(0.05)
     if !near(n.BackgroundColor.A, 0.25)
       || !near(boxShadowAt(n.BoxShadows, 0).OffsetX.Magnitude, 2.5)
       || !near(boxShadowAt(n.BoxShadows, 0).Color.A, 0.25)
       || !near(Transforming.TranslateX(n).Value, 2.5)
       || !near(Transforming.Scale(n), 1.25) {
-      return false
-    }
+        return false
+      }
     resolver.Advance(0.06)
     return sameColor(n.BackgroundColor, Color.Transparent)
       && boxShadowCount(n.BoxShadows) == 0
@@ -1621,8 +1620,8 @@ internal class StyleFixtures {
     resolver.Advance(0.025)
     if !near(n.Opacity, 0.25)
       || !near(boxShadowAt(n.BoxShadows, 0).OffsetX.Magnitude, 2.5) {
-      return false
-    }
+        return false
+      }
 
     n = reconciler.Diff(n, Container{
       Opacity: 0.0,
@@ -1638,8 +1637,8 @@ internal class StyleFixtures {
     resolver.Advance(0.025)
     if !near(n.Opacity, 0.5)
       || !near(boxShadowAt(n.BoxShadows, 0).OffsetX.Magnitude, 5.0) {
-      return false
-    }
+        return false
+      }
     resolver.Advance(0.06)
     return n.Opacity == 1.0
       && boxShadowAt(n.BoxShadows, 0).OffsetX.Magnitude == 10.0
@@ -1650,8 +1649,8 @@ internal class StyleFixtures {
     let identity = PanelTransform{}
     if identity.TranslateX.Magnitude != 0.0 || identity.TranslateX.IsPercent
       || identity.TranslateY.Magnitude != 0.0 || identity.Rotate != 0.0 || identity.Scale != 1.0 {
-      return false
-    }
+        return false
+      }
     let equivalent = PanelTransform{ TranslateX: 0, Scale: 1 }
     if identity != equivalent || identity.GetHashCode() != equivalent.GetHashCode() {
       return false
@@ -1682,9 +1681,9 @@ internal class StyleFixtures {
     if Transforming.TranslateX(n).Value != 50.0F || Transforming.TranslateX(n).Unit != LengthUnit.Percent
       || Transforming.TranslateY(n).Value != 5.0F || Transforming.Rotate(n) != 45.0F
       || Transforming.Scale(n) != 1.5F || Transforming.OriginX(n).Value != 25.0F
-      || Transforming.OriginY(n).Value != 25.0F || !n.HasVisualTransform {
-      return false
-    }
+      || Transforming.OriginY(n).Value != 25.0F || !n.HasVisualTransform{
+        return false
+      }
     resolver.Advance(0.06)
     let mapped = TransformGeometry.Map(n, 20.0F, 20.0F)
     let roundTrip = TransformGeometry.Unmap(n, mapped.X, mapped.Y)
@@ -1725,17 +1724,17 @@ internal class StyleFixtures {
     percentResolver.Invalidate(percent, true)
     percentResolver.Flush()
     if !percent.HasTransformState || percent.HasVisualTransform
-      || Transforming.TranslateX(percent).Unit != LengthUnit.Percent {
-      return false
-    }
+      || Transforming.TranslateX(percent).Unit != LengthUnit.Percent{
+        return false
+      }
     percent.Hovered = true
     percentResolver.Invalidate(percent, false)
     percentResolver.Flush()
     percentResolver.Advance(0.05)
     if Transforming.TranslateX(percent).Unit != LengthUnit.Percent
       || Transforming.TranslateX(percent).Value != 25.0F {
-      return false
-    }
+        return false
+      }
 
     let nearSingular = Node{ Kind: NodeKind.Container, Rect: Rect{ W: 20, H: 20 } }
     Transforming.SetScale(nearSingular, 0.0000001F)
@@ -1747,8 +1746,8 @@ internal class StyleFixtures {
     let mirroredRoundTrip = TransformGeometry.Unmap(mirrored, mirroredPoint.X, mirroredPoint.Y)
     if !mirroredPoint.Valid || !mirroredRoundTrip.Valid
       || !near(mirroredRoundTrip.X, 15.0) || !near(mirroredRoundTrip.Y, 25.0) {
-      return false
-    }
+        return false
+      }
 
     let selected = Container{
       TransitionProperties: []TransitionProperty{ TransitionProperty.Transform },
@@ -1757,9 +1756,9 @@ internal class StyleFixtures {
     }
     let properties = selected.TransitionProperties
     if properties.Length != 1 || properties[0] != TransitionProperty.Transform
-      || !selected.Focusable || !selected.Disabled {
-      return false
-    }
+      || !selected.Focusable || !selected.Disabled{
+        return false
+      }
 
     let rec = Reconciler{ Res: Resolver{} }
     let mounted = rec.Mount(Container{ Transform: PanelTransform{ TranslateX: 12, Rotate: 30 } })
@@ -1874,13 +1873,13 @@ internal class StyleFixtures {
     let shape = Node{ Kind: NodeKind.Shape }
     if !styleFieldApplies(container, field)
       || styleFieldApplies(shape, field) != styleFieldAppliesToShape(field) {
-      return false
-    }
+        return false
+      }
     let kindTarget = styleFieldContractTarget(container, field)
     if !styleFieldDeclarationMatchesKind(source, fieldKind(kindTarget))
       || int32(styleEffects(kindTarget)) == 0 {
-      return false
-    }
+        return false
+      }
     let primaryKind = styleFieldUsesShapeStorage(field) ? NodeKind.Shape : NodeKind.Container
     if !styleFieldResolutionContract(field, declaration, source, primaryKind, Direction.Auto) {
       return false
@@ -1888,37 +1887,37 @@ internal class StyleFixtures {
     if isLogicalStyleField(field)
       && !styleFieldResolutionContract(field, declaration, source, NodeKind.Container,
         Direction.RightToLeft) {
-      return false
-    }
+          return false
+        }
     if styleFieldUsesShapeStorage(field)
       && !styleFieldResolutionContract(field, declaration, source, NodeKind.Container,
         Direction.Auto) {
-      return false
-    }
+          return false
+        }
     return true
   }
 
   private func styleFieldResolutionContract(field StyleField, declaration Style,
-    source StyleEntry, kind NodeKind, direction Direction) bool {
-    let n = Node{ Kind: kind, Direction: direction }
-    n.BaseStyle = declaration.Entries()
-    let resolver = Resolver{}
-    resolver.Invalidate(n, true)
-    resolver.Flush()
-    let targets = styleFieldContractTargets(n, field)
-    for target in targets {
-      var expected = source
-      expected.Field = target
-      if !sameEntry(readField(n, target), expected) { return false }
+    source StyleEntry, kind NodeKind, direction Direction) bool{
+      let n = Node{ Kind: kind, Direction: direction }
+      n.BaseStyle = declaration.Entries()
+      let resolver = Resolver{}
+      resolver.Invalidate(n, true)
+      resolver.Flush()
+      let targets = styleFieldContractTargets(n, field)
+      for target in targets {
+        var expected = source
+        expected.Field = target
+        if !sameEntry(readField(n, target), expected) { return false }
+      }
+      n.BaseStyle = nil
+      resolver.Invalidate(n, false)
+      resolver.Flush()
+      for target in targets {
+        if !sameEntry(readField(n, target), defaultStyleEntry(target)) { return false }
+      }
+      return true
     }
-    n.BaseStyle = nil
-    resolver.Invalidate(n, false)
-    resolver.Flush()
-    for target in targets {
-      if !sameEntry(readField(n, target), defaultStyleEntry(target)) { return false }
-    }
-    return true
-  }
 
   private func styleFieldContractTargets(n Node, field StyleField) []StyleField {
     switch field {
@@ -1957,32 +1956,26 @@ internal class StyleFixtures {
     }
   }
 
-  private func styleFieldUsesShapeStorage(field StyleField) bool {
-    return field == StyleField.ShapeStrokeWidth || field == StyleField.ShapeStrokeColor
-  }
+  private func styleFieldUsesShapeStorage(field StyleField) bool -> field == StyleField.ShapeStrokeWidth || field == StyleField.ShapeStrokeColor
 
-  private func styleFieldAppliesToShape(field StyleField) bool {
-    return field != StyleField.BorderLeftWidth && field != StyleField.BorderTopWidth
-      && field != StyleField.BorderRightWidth && field != StyleField.BorderBottomWidth
-      && field != StyleField.BorderLeftColor && field != StyleField.BorderTopColor
-      && field != StyleField.BorderRightColor && field != StyleField.BorderBottomColor
-      && field != StyleField.BorderStartWidth && field != StyleField.BorderEndWidth
-      && field != StyleField.BorderStartColor && field != StyleField.BorderEndColor
-  }
+  private func styleFieldAppliesToShape(field StyleField) bool -> field != StyleField.BorderLeftWidth && field != StyleField.BorderTopWidth
+    && field != StyleField.BorderRightWidth && field != StyleField.BorderBottomWidth
+    && field != StyleField.BorderLeftColor && field != StyleField.BorderTopColor
+    && field != StyleField.BorderRightColor && field != StyleField.BorderBottomColor
+    && field != StyleField.BorderStartWidth && field != StyleField.BorderEndWidth
+    && field != StyleField.BorderStartColor && field != StyleField.BorderEndColor
 
-  private func styleFieldDeclarationMatchesKind(entry StyleEntry, kind FieldKind) bool {
-    return switch kind {
-      case FieldKind.KLength: entry.B == float32(int32(LengthUnit.Px))
-      case FieldKind.KColor: entry.D == 1.0F
-      case FieldKind.KScalar: entry.A != 0.0F
-      case FieldKind.KEnum: entry.A != 0.0F || entry.B != 0.0F
-      case FieldKind.KString: entryText(entry) == "style-field-contract"
-      case FieldKind.KGradient: entry.Payload != nil
-      case FieldKind.KBoxShadows: entry.Payload != nil
-      case FieldKind.KPath: entry.Payload != nil
-      case FieldKind.KImageSource: entry.Payload == nil
-      case FieldKind.KShaderEffect: entry.Payload != nil
-    }
+  private func styleFieldDeclarationMatchesKind(entry StyleEntry, kind FieldKind) bool -> switch kind {
+    case FieldKind.KLength: entry.B == float32(int32(LengthUnit.Px))
+    case FieldKind.KColor: entry.D == 1.0F
+    case FieldKind.KScalar: entry.A != 0.0F
+    case FieldKind.KEnum: entry.A != 0.0F || entry.B != 0.0F
+    case FieldKind.KString: entryText(entry) == "style-field-contract"
+    case FieldKind.KGradient: entry.Payload != nil
+    case FieldKind.KBoxShadows: entry.Payload != nil
+    case FieldKind.KPath: entry.Payload != nil
+    case FieldKind.KImageSource: entry.Payload == nil
+    case FieldKind.KShaderEffect: entry.Payload != nil
   }
 
   private func styleFieldEntry(entries StyleEntries, field StyleField) StyleEntry? {
@@ -2123,10 +2116,7 @@ internal class StyleFixtures {
     }
   }
 
-  private func styleFieldContractPath() VectorPath {
-    return PathBuilder().MoveTo(0.0, 0.0).LineTo(1.0, 0.0)
-      .LineTo(1.0, 1.0).Close().Build()
-  }
+  private func styleFieldContractPath() VectorPath -> PathBuilder().MoveTo(0.0, 0.0).LineTo(1.0, 0.0).LineTo(1.0, 1.0).Close().Build()
 
   private func near(a float64, b float64) bool {
     let d = a - b
@@ -2140,15 +2130,13 @@ internal class StyleFixtures {
       || node.PaddingRight.Unit != theme.Padding.Unit || node.PaddingRight.Value != theme.Padding.Value
       || node.PaddingBottom.Unit != theme.Padding.Unit || node.PaddingBottom.Value != theme.Padding.Value
       || !sameColor(node.BackgroundColor, theme.Surface) || node.Children.Count != 1 {
-      return false
-    }
+        return false
+      }
     let text = node.Children[0]
     return text.Kind == NodeKind.Text && text.Content == label && sameColor(text.Color, theme.Foreground)
   }
 
-  private func sameColor(left Color, right Color) bool {
-    return left.R == right.R && left.G == right.G && left.B == right.B && left.A == right.A
-  }
+  private func sameColor(left Color, right Color) bool -> left.R == right.R && left.G == right.G && left.B == right.B && left.A == right.A
 }
 
 internal data struct CompositionTokens {
@@ -2162,9 +2150,7 @@ internal data struct CompositionCellInput {
   internal var Label string
 }
 
-internal func tokenCard(label string) Container {
-  return compositionCard(Tokens.Get[CompositionTokens](), label)
-}
+internal func tokenCard(label string) Container -> compositionCard(Tokens.Get[CompositionTokens](), label)
 
 internal func tokenCell(label string) Blob {
   let theme = Tokens.Get[CompositionTokens]()
@@ -2173,16 +2159,12 @@ internal func tokenCell(label string) Blob {
     CompositionCellInput{ Theme: theme, Label: label })
 }
 
-internal func compositionCard(theme CompositionTokens, label string) Container {
-  return Container{
-    Padding: theme.Padding,
-    BackgroundColor: theme.Surface,
-    Children: { Text{ Content: label, Color: theme.Foreground } },
-  }
+internal func compositionCard(theme CompositionTokens, label string) Container -> Container {
+  Padding: theme.Padding,
+  BackgroundColor: theme.Surface,
+  Children: { Text{ Content: label, Color: theme.Foreground } },
 }
 
 internal class CompositionCell : Cell[CompositionCellInput] {
-  override func Build() Blob {
-    return compositionCard(Input.Theme, Input.Label)
-  }
+  override func Build() Blob -> compositionCard(Input.Theme, Input.Label)
 }

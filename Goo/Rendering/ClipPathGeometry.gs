@@ -9,9 +9,9 @@ internal class ClipPathGeometry {
         return true
       }
       if x < n.Rect.X || y < n.Rect.Y
-        || x >= n.Rect.X + n.Rect.W || y >= n.Rect.Y + n.Rect.H {
-        return false
-      }
+        || x >= n.Rect.X + n.Rect.W || y >= n.Rect.Y + n.Rect.H{
+          return false
+        }
       let mapping = PathGeometry.Map(clip.Path, clip.Fit,
         n.Rect.X, n.Rect.Y, n.Rect.W, n.Rect.H)
       if !mapping.Valid || mapping.ScaleX == 0.0F || mapping.ScaleY == 0.0F {

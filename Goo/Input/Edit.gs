@@ -10,10 +10,10 @@ internal data struct EditState {
 
 // Pure single-line editing over text, caret, and anchor.
 internal class Edit {
-  internal func HasSelection(s EditState) bool { return s.Caret != s.Anchor }
-  internal func SelStart(s EditState) int32 { return s.Caret < s.Anchor ? s.Caret : s.Anchor }
-  internal func SelEnd(s EditState) int32 { return s.Caret > s.Anchor ? s.Caret : s.Anchor }
-  internal func Selected(s EditState) string { return s.Text.Substring(SelStart(s), SelEnd(s) - SelStart(s)) }
+  internal func HasSelection(s EditState) bool -> s.Caret != s.Anchor
+  internal func SelStart(s EditState) int32 -> s.Caret < s.Anchor ? s.Caret : s.Anchor
+  internal func SelEnd(s EditState) int32 -> s.Caret > s.Anchor ? s.Caret : s.Anchor
+  internal func Selected(s EditState) string -> s.Text.Substring(SelStart(s), SelEnd(s) - SelStart(s))
 
   internal func Insert(s EditState, str string) EditState {
     let lo = SelStart(s)
@@ -43,12 +43,11 @@ internal class Edit {
     return EditState{ Text: text, Caret: start, Anchor: start }
   }
 
+  internal func Home(s EditState, extend bool) EditState -> place(s, 0, extend)
+  internal func End(s EditState, extend bool) EditState -> place(s, s.Text.Length, extend)
 
-  internal func Home(s EditState, extend bool) EditState { return place(s, 0, extend) }
-  internal func End(s EditState, extend bool) EditState { return place(s, s.Text.Length, extend) }
-
-  internal func WordLeft(s EditState, extend bool) EditState { return place(s, prevWord(s.Text, s.Caret), extend) }
-  internal func WordRight(s EditState, extend bool) EditState { return place(s, nextWord(s.Text, s.Caret), extend) }
+  internal func WordLeft(s EditState, extend bool) EditState -> place(s, prevWord(s.Text, s.Caret), extend)
+  internal func WordRight(s EditState, extend bool) EditState -> place(s, nextWord(s.Text, s.Caret), extend)
 
   internal func KillWordLeft(s EditState) EditState {
     if HasSelection(s) { return Insert(s, "") }
@@ -60,9 +59,7 @@ internal class Edit {
     return Insert(EditState{ Text: s.Text, Caret: s.Caret, Anchor: nextWord(s.Text, s.Caret) }, "")
   }
 
-  internal func SelectAll(s EditState) EditState {
-    return EditState{ Text: s.Text, Caret: s.Text.Length, Anchor: 0 }
-  }
+  internal func SelectAll(s EditState) EditState -> EditState { Text: s.Text, Caret: s.Text.Length, Anchor: 0 }
 
   // The caret follows the run. Gaps select the non-word run.
   internal func SelectWordAt(s EditState, index int32) EditState {
@@ -181,7 +178,5 @@ internal class Edit {
     return if low == 0 { 0 } else { starts[low - 1] }
   }
 
-  private func isWord(text string, elementStart int32) bool {
-    return Char.IsLetterOrDigit(text, elementStart)
-  }
+  private func isWord(text string, elementStart int32) bool -> Char.IsLetterOrDigit(text, elementStart)
 }

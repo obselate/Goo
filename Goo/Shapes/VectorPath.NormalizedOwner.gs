@@ -16,69 +16,69 @@ internal sealed class VectorPathNormalizedOwner {
   private var geometryRevision uint64
   private var hasClosedContour bool
 
-  internal prop Quadratics []PathQuadratic { get { return quadratics } }
-  internal prop Contours []PathContour { get { return contours } }
-  internal prop QuadraticCount int32 { get { return quadraticCount } }
-  internal prop ContourCount int32 { get { return contourCount } }
-  internal prop ContentHash uint64 { get { return contentHash } }
-  internal prop GeometryRevision uint64 { get { return geometryRevision } }
-  internal prop HasClosedContour bool { get { return hasClosedContour } }
+  internal prop Quadratics []PathQuadratic{ get { return quadratics } }
+  internal prop Contours []PathContour{ get { return contours } }
+  internal prop QuadraticCount int32{ get { return quadraticCount } }
+  internal prop ContourCount int32{ get { return contourCount } }
+  internal prop ContentHash uint64{ get { return contentHash } }
+  internal prop GeometryRevision uint64{ get { return geometryRevision } }
+  internal prop HasClosedContour bool{ get { return hasClosedContour } }
 
   internal init(quadraticCapacity int32, contourCapacity int32,
-      viewBoxX float64, viewBoxY float64, viewBoxWidth float64, viewBoxHeight float64) {
-    if quadraticCapacity < 0 || contourCapacity < 0 {
-      throw ArgumentOutOfRangeException("capacity")
-    }
-    if !Finite(viewBoxX) || !Finite(viewBoxY) || !Finite(viewBoxWidth)
+    viewBoxX float64, viewBoxY float64, viewBoxWidth float64, viewBoxHeight float64) {
+      if quadraticCapacity < 0 || contourCapacity < 0 {
+        throw ArgumentOutOfRangeException("capacity")
+      }
+      if !Finite(viewBoxX) || !Finite(viewBoxY) || !Finite(viewBoxWidth)
         || !Finite(viewBoxHeight) || viewBoxWidth <= 0.0 || viewBoxHeight <= 0.0 {
-      throw ArgumentOutOfRangeException("viewBox")
+          throw ArgumentOutOfRangeException("viewBox")
+        }
+      this.viewBoxX = viewBoxX
+      this.viewBoxY = viewBoxY
+      storedWidth = viewBoxWidth == 1.0 ? 0.0 : viewBoxWidth
+      storedHeight = viewBoxHeight == 1.0 ? 0.0 : viewBoxHeight
+      quadratics = [quadraticCapacity]PathQuadratic
+      contours = [contourCapacity]PathContour
+      quadraticCount = 0
+      contourCount = 0
+      geometryRevision = 1uL
+      contentHash = ComputeHash()
+      hasClosedContour = false
     }
-    this.viewBoxX = viewBoxX
-    this.viewBoxY = viewBoxY
-    storedWidth = viewBoxWidth == 1.0 ? 0.0 : viewBoxWidth
-    storedHeight = viewBoxHeight == 1.0 ? 0.0 : viewBoxHeight
-    quadratics = [quadraticCapacity]PathQuadratic
-    contours = [contourCapacity]PathContour
-    quadraticCount = 0
-    contourCount = 0
-    geometryRevision = 1uL
-    contentHash = ComputeHash()
-    hasClosedContour = false
-  }
 
   internal func Update(values []PathQuadratic, valueCount int32,
-      contourValues []PathContour, contourValueCount int32) bool {
-    Validate(values, valueCount, contourValues, contourValueCount)
-    if Same(values, valueCount, contourValues, contourValueCount) {
-      return false
+    contourValues []PathContour, contourValueCount int32) bool{
+      Validate(values, valueCount, contourValues, contourValueCount)
+      if Same(values, valueCount, contourValues, contourValueCount) {
+        return false
+      }
+      var index int32 = 0
+      while index < valueCount {
+        quadratics[index] = values[index]
+        index++
+      }
+      index = 0
+      hasClosedContour = false
+      while index < contourValueCount {
+        contours[index] = contourValues[index]
+        if contourValues[index].Closed { hasClosedContour = true }
+        index++
+      }
+      quadraticCount = valueCount
+      contourCount = contourValueCount
+      contentHash = ComputeHash()
+      if geometryRevision == uint64.MaxValue {
+        throw OverflowException("Vector path geometry revision overflow")
+      }
+      geometryRevision = geometryRevision + 1uL
+      return true
     }
-    var index int32 = 0
-    while index < valueCount {
-      quadratics[index] = values[index]
-      index++
-    }
-    index = 0
-    hasClosedContour = false
-    while index < contourValueCount {
-      contours[index] = contourValues[index]
-      if contourValues[index].Closed { hasClosedContour = true }
-      index++
-    }
-    quadraticCount = valueCount
-    contourCount = contourValueCount
-    contentHash = ComputeHash()
-    if geometryRevision == uint64.MaxValue {
-      throw OverflowException("Vector path geometry revision overflow")
-    }
-    geometryRevision = geometryRevision + 1uL
-    return true
-  }
 
   internal func ContentEquals(other VectorPathNormalizedOwner) bool {
     if other == nil || contentHash != other.ContentHash
-        || quadraticCount != other.QuadraticCount || contourCount != other.ContourCount {
-      return false
-    }
+      || quadraticCount != other.QuadraticCount || contourCount != other.ContourCount{
+        return false
+      }
     var index int32 = 0
     while index < quadraticCount {
       if !SameQuadratic(quadratics[index], other.Quadratics[index]) { return false }
@@ -93,76 +93,72 @@ internal sealed class VectorPathNormalizedOwner {
   }
 
   private func Same(values []PathQuadratic, valueCount int32,
-      contourValues []PathContour, contourValueCount int32) bool {
-    if quadraticCount != valueCount || contourCount != contourValueCount {
-      return false
+    contourValues []PathContour, contourValueCount int32) bool{
+      if quadraticCount != valueCount || contourCount != contourValueCount {
+        return false
+      }
+      var index int32 = 0
+      while index < valueCount {
+        if !SameQuadratic(quadratics[index], values[index]) { return false }
+        index++
+      }
+      index = 0
+      while index < contourValueCount {
+        if !SameContour(contours[index], contourValues[index]) { return false }
+        index++
+      }
+      return true
     }
-    var index int32 = 0
-    while index < valueCount {
-      if !SameQuadratic(quadratics[index], values[index]) { return false }
-      index++
-    }
-    index = 0
-    while index < contourValueCount {
-      if !SameContour(contours[index], contourValues[index]) { return false }
-      index++
-    }
-    return true
-  }
 
-  private func SameQuadratic(left PathQuadratic, right PathQuadratic) bool {
-    return left.X0 == right.X0 && left.Y0 == right.Y0 && left.CX == right.CX
-      && left.CY == right.CY && left.X1 == right.X1 && left.Y1 == right.Y1
-  }
+  private func SameQuadratic(left PathQuadratic, right PathQuadratic) bool -> left.X0 == right.X0 && left.Y0 == right.Y0 && left.CX == right.CX
+    && left.CY == right.CY && left.X1 == right.X1 && left.Y1 == right.Y1
 
-  private func SameContour(left PathContour, right PathContour) bool {
-    return left.Start == right.Start && left.End == right.End && left.Closed == right.Closed
-  }
+  private func SameContour(left PathContour, right PathContour) bool -> left.Start == right.Start && left.End == right.End && left.Closed == right.Closed
 
   private func Validate(values []PathQuadratic, valueCount int32,
-      contourValues []PathContour, contourValueCount int32) {
-    if valueCount < 0 || contourValueCount < 0 || valueCount > values.Length
+    contourValues []PathContour, contourValueCount int32) {
+      if valueCount < 0 || contourValueCount < 0 || valueCount > values.Length
         || contourValueCount > contourValues.Length
-        || valueCount > quadratics.Length || contourValueCount > contours.Length {
-      throw ArgumentOutOfRangeException("normalized path")
-    }
-    var index int32 = 0
-    while index < valueCount {
-      let value = values[index]
-      if !Finite(value.X0) || !Finite(value.Y0) || !Finite(value.CX)
+        || valueCount > quadratics.Length || contourValueCount > contours.Length{
+          throw ArgumentOutOfRangeException("normalized path")
+        }
+      var index int32 = 0
+      while index < valueCount {
+        let value = values[index]
+        if !Finite(value.X0) || !Finite(value.Y0) || !Finite(value.CX)
           || !Finite(value.CY) || !Finite(value.X1) || !Finite(value.Y1) {
-        throw ArgumentOutOfRangeException("quadratics")
+            throw ArgumentOutOfRangeException("quadratics")
+          }
+        index++
       }
-      index++
-    }
-    index = 0
-    while index < contourValueCount {
-      let contour = contourValues[index]
-      if contour.Start < 0 || contour.End < contour.Start || contour.End > valueCount
+      index = 0
+      while index < contourValueCount {
+        let contour = contourValues[index]
+        if contour.Start < 0 || contour.End < contour.Start || contour.End > valueCount
           || (contour.Closed && contour.End == contour.Start) {
-        throw ArgumentOutOfRangeException("contours")
-      }
-      if contour.End > contour.Start {
-        let first = values[contour.Start]
-        var curveIndex = contour.Start + 1
-        while curveIndex < contour.End {
-          let previous = values[curveIndex - 1]
-          let current = values[curveIndex]
-          if current.X0 != previous.X1 || current.Y0 != previous.Y1 {
-            throw ArgumentException("quadratic contour is not connected", "contours")
+            throw ArgumentOutOfRangeException("contours")
           }
-          curveIndex++
-        }
-        if contour.Closed {
-          let last = values[contour.End - 1]
-          if last.X1 != first.X0 || last.Y1 != first.Y0 {
-            throw ArgumentException("closed quadratic contour is not closed", "contours")
+        if contour.End > contour.Start {
+          let first = values[contour.Start]
+          var curveIndex = contour.Start + 1
+          while curveIndex < contour.End {
+            let previous = values[curveIndex - 1]
+            let current = values[curveIndex]
+            if current.X0 != previous.X1 || current.Y0 != previous.Y1 {
+              throw ArgumentException("quadratic contour is not connected", "contours")
+            }
+            curveIndex++
+          }
+          if contour.Closed {
+            let last = values[contour.End - 1]
+            if last.X1 != first.X0 || last.Y1 != first.Y0 {
+              throw ArgumentException("closed quadratic contour is not closed", "contours")
+            }
           }
         }
+        index++
       }
-      index++
     }
-  }
 
   private func ComputeHash() uint64 {
     var hash = HashOffset
@@ -194,24 +190,16 @@ internal sealed class VectorPathNormalizedOwner {
     return hash
   }
 
-  private func HashDouble(hash uint64, value float64) uint64 {
-    return Mix(hash, uint64(BitConverter.DoubleToInt64Bits(value == 0.0 ? 0.0 : value)))
-  }
+  private func HashDouble(hash uint64, value float64) uint64 -> Mix(hash, uint64(BitConverter.DoubleToInt64Bits(value == 0.0 ? 0.0 : value)))
 
   private func HashFloat(hash uint64, value float32) uint64 {
     let normalized = value == 0.0F ? 0.0F : value
     return Mix(hash, uint64(BitConverter.SingleToUInt32Bits(normalized)))
   }
 
-  private func Mix(hash uint64, value uint64) uint64 {
-    return (hash ^ value) * HashPrime
-  }
+  private func Mix(hash uint64, value uint64) uint64 -> (hash ^ value) * HashPrime
 
-  private func Finite(value float64) bool {
-    return !Double.IsNaN(value) && !Double.IsInfinity(value)
-  }
+  private func Finite(value float64) bool -> !Double.IsNaN(value) && !Double.IsInfinity(value)
 
-  private func Finite(value float32) bool {
-    return !Single.IsNaN(value) && !Single.IsInfinity(value)
-  }
+  private func Finite(value float32) bool -> !Single.IsNaN(value) && !Single.IsInfinity(value)
 }

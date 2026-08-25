@@ -18,20 +18,20 @@ internal class UnicodeGraphemes {
     }
 
     internal func Starts(text string, scalars List[UnicodeGraphemeScalar],
-      starts List[int32]) List[int32] {
-      if text == nil { throw ArgumentNullException("text") }
-      scalars.Clear()
-      starts.Clear()
-      if scalars.Capacity < text.Length { scalars.Capacity = text.Length }
-      if starts.Capacity < text.Length { starts.Capacity = text.Length }
-      DecodeScalars(text, scalars)
-      if scalars.Count == 0 { return starts }
-      starts.Add(0)
-      for index in 1 ... scalars.Count {
-        if BreakBetween(scalars, index) { starts.Add(scalars[index].Start) }
+      starts List[int32]) List[int32]{
+        if text == nil { throw ArgumentNullException("text") }
+        scalars.Clear()
+        starts.Clear()
+        if scalars.Capacity < text.Length { scalars.Capacity = text.Length }
+        if starts.Capacity < text.Length { starts.Capacity = text.Length }
+        DecodeScalars(text, scalars)
+        if scalars.Count == 0 { return starts }
+        starts.Add(0)
+        for index in 1 ... scalars.Count {
+          if BreakBetween(scalars, index) { starts.Add(scalars[index].Start) }
+        }
+        return starts
       }
-      return starts
-    }
 
     private func DecodeScalars(text string, scalars List[UnicodeGraphemeScalar]) {
       var cursor int32 = 0
@@ -56,14 +56,14 @@ internal class UnicodeGraphemes {
       }
       if IsControl(left.Class) || IsControl(right.Class) { return true }
       if left.Class == UnicodeGraphemeClass.L && (right.Class == UnicodeGraphemeClass.L
-        || right.Class == UnicodeGraphemeClass.V || right.Class == UnicodeGraphemeClass.LV
-        || right.Class == UnicodeGraphemeClass.LVT) { return false }
+          || right.Class == UnicodeGraphemeClass.V || right.Class == UnicodeGraphemeClass.LV
+          || right.Class == UnicodeGraphemeClass.LVT) { return false }
       if (left.Class == UnicodeGraphemeClass.LV || left.Class == UnicodeGraphemeClass.V)
         && (right.Class == UnicodeGraphemeClass.V || right.Class == UnicodeGraphemeClass.T) {
-        return false
-      }
+          return false
+        }
       if (left.Class == UnicodeGraphemeClass.LVT || left.Class == UnicodeGraphemeClass.T)
-        && right.Class == UnicodeGraphemeClass.T { return false }
+        && right.Class == UnicodeGraphemeClass.T{ return false }
       if right.Class == UnicodeGraphemeClass.Extend || right.Class == UnicodeGraphemeClass.ZWJ {
         return false
       }
@@ -72,16 +72,14 @@ internal class UnicodeGraphemes {
       if IsIndicConjunct(scalars, index) { return false }
       if IsExtendedPictographicSequence(scalars, index) { return false }
       if left.Class == UnicodeGraphemeClass.RegionalIndicator
-        && right.Class == UnicodeGraphemeClass.RegionalIndicator {
-        return !IsRegionalPair(scalars, index)
-      }
+        && right.Class == UnicodeGraphemeClass.RegionalIndicator{
+          return !IsRegionalPair(scalars, index)
+        }
       return true
     }
 
-    private func IsControl(value UnicodeGraphemeClass) bool {
-      return value == UnicodeGraphemeClass.CR || value == UnicodeGraphemeClass.LF
-        || value == UnicodeGraphemeClass.Control
-    }
+    private func IsControl(value UnicodeGraphemeClass) bool -> value == UnicodeGraphemeClass.CR || value == UnicodeGraphemeClass.LF
+      || value == UnicodeGraphemeClass.Control
 
     private func IsIndicConjunct(scalars List[UnicodeGraphemeScalar], index int32) bool {
       if scalars[index].InCB != UnicodeGraphemeInCB.Consonant { return false }
@@ -100,13 +98,13 @@ internal class UnicodeGraphemes {
     }
 
     private func IsExtendedPictographicSequence(scalars List[UnicodeGraphemeScalar],
-      index int32) bool {
-      if !scalars[index].ExtendedPictographic
-        || scalars[index - 1].Class != UnicodeGraphemeClass.ZWJ { return false }
-      var cursor = index - 2
-      while cursor >= 0 && scalars[cursor].Class == UnicodeGraphemeClass.Extend { cursor-- }
-      return cursor >= 0 && scalars[cursor].ExtendedPictographic
-    }
+      index int32) bool{
+        if !scalars[index].ExtendedPictographic
+          || scalars[index - 1].Class != UnicodeGraphemeClass.ZWJ{ return false }
+        var cursor = index - 2
+        while cursor >= 0 && scalars[cursor].Class == UnicodeGraphemeClass.Extend { cursor-- }
+        return cursor >= 0 && scalars[cursor].ExtendedPictographic
+      }
 
     private func IsRegionalPair(scalars List[UnicodeGraphemeScalar], index int32) bool {
       var cursor = index - 1

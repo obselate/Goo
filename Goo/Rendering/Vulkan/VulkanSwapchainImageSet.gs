@@ -38,39 +38,39 @@ internal unsafe class VulkanSwapchainImageSet {
     format VkFormat,
     enablePresentFence bool,
     nativeObjectAccounting VulkanObjectAccounting?) {
-    if nativeDevice == nint(0) {
-      throw ArgumentException("Vulkan device is null", "nativeDevice")
+      if nativeDevice == nint(0) {
+        throw ArgumentException("Vulkan device is null", "nativeDevice")
+      }
+      if swapchain == 0uL {
+        throw ArgumentException("Vulkan swapchain is null", "swapchain")
+      }
+      if imageCount <= 0 {
+        throw ArgumentOutOfRangeException("imageCount")
+      }
+      device = nativeDevice
+      dispatch = nativeDispatch
+      objectAccounting = nativeObjectAccounting
+      images = [imageCount]VkImage
+      imageViews = [imageCount]VkImageView
+      renderSemaphores = [imageCount]VkSemaphore
+      presentState = if enablePresentFence {
+        VulkanSwapchainPresentState(imageCount)
+      } else {
+        nil
+      }
+      imageLayouts = [imageCount]VkImageLayout
+      appliedSceneVersions = [imageCount]uint64
+      pendingSceneVersions = [imageCount]uint64
+      try {
+        Create(swapchain, format)
+      } catch (error Exception) {
+        try { DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
+        throw error
+      }
     }
-    if swapchain == 0uL {
-      throw ArgumentException("Vulkan swapchain is null", "swapchain")
-    }
-    if imageCount <= 0 {
-      throw ArgumentOutOfRangeException("imageCount")
-    }
-    device = nativeDevice
-    dispatch = nativeDispatch
-    objectAccounting = nativeObjectAccounting
-    images = [imageCount]VkImage
-    imageViews = [imageCount]VkImageView
-    renderSemaphores = [imageCount]VkSemaphore
-    presentState = if enablePresentFence {
-      VulkanSwapchainPresentState(imageCount)
-    } else {
-      nil
-    }
-    imageLayouts = [imageCount]VkImageLayout
-    appliedSceneVersions = [imageCount]uint64
-    pendingSceneVersions = [imageCount]uint64
-    try {
-      Create(swapchain, format)
-    } catch (error Exception) {
-      try { DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
-      throw error
-    }
-  }
 
-  internal prop Count uint32 { get -> uint32(images.Length) }
-  internal prop PresentFenceEnabled bool { get -> presentState != nil }
+  internal prop Count uint32{ get -> uint32(images.Length) }
+  internal prop PresentFenceEnabled bool{ get -> presentState != nil }
 
   internal func Image(index uint32) VkImage {
     EnsureIndex(index)
@@ -102,8 +102,8 @@ internal unsafe class VulkanSwapchainImageSet {
     let offset = int32(index)
     if imageLayouts[offset] != VkConstants.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
       || pendingSceneVersions[offset] == 0uL {
-      return false
-    }
+        return false
+      }
     appliedSceneVersions[offset] = pendingSceneVersions[offset]
     pendingSceneVersions[offset] = 0uL
     return true
@@ -132,41 +132,41 @@ internal unsafe class VulkanSwapchainImageSet {
   }
 
   internal func TryPreparePresent(index uint32, out fence VkFence,
-    out completedPresentId uint64) VkResult {
-    EnsureIndex(index)
-    fence = 0uL
-    completedPresentId = 0uL
-    if presentState == nil {
+    out completedPresentId uint64) VkResult{
+      EnsureIndex(index)
+      fence = 0uL
+      completedPresentId = 0uL
+      if presentState == nil {
+        return VkConstants.VK_SUCCESS
+      }
+      let offset = int32(index)
+      let present = RequirePresentState()
+      let fences = present.Fences
+      let prepared = present.Prepared
+      let pending = present.Pending
+      let ids = present.PresentIds
+      if prepared[offset] {
+        throw InvalidOperationException("Vulkan swapchain present fence is still prepared")
+      }
+      if pending[offset] {
+        let getFenceStatus = dispatch.vkGetFenceStatus
+        let status = getFenceStatus(device, fences[offset])
+        if status != VkConstants.VK_SUCCESS {
+          return status
+        }
+        completedPresentId = ids[offset]
+        pending[offset] = false
+        ids[offset] = 0uL
+      }
+      fence = fences[offset]
+      let resetFences = dispatch.vkResetFences
+      let resetResult = resetFences(device, 1u, &fence)
+      if resetResult != VkConstants.VK_SUCCESS {
+        return resetResult
+      }
+      prepared[offset] = true
       return VkConstants.VK_SUCCESS
     }
-    let offset = int32(index)
-    let present = RequirePresentState()
-    let fences = present.Fences
-    let prepared = present.Prepared
-    let pending = present.Pending
-    let ids = present.PresentIds
-    if prepared[offset] {
-      throw InvalidOperationException("Vulkan swapchain present fence is still prepared")
-    }
-    if pending[offset] {
-      let getFenceStatus = dispatch.vkGetFenceStatus
-      let status = getFenceStatus(device, fences[offset])
-      if status != VkConstants.VK_SUCCESS {
-        return status
-      }
-      completedPresentId = ids[offset]
-      pending[offset] = false
-      ids[offset] = 0uL
-    }
-    fence = fences[offset]
-    let resetFences = dispatch.vkResetFences
-    let resetResult = resetFences(device, 1u, &fence)
-    if resetResult != VkConstants.VK_SUCCESS {
-      return resetResult
-    }
-    prepared[offset] = true
-    return VkConstants.VK_SUCCESS
-  }
 
   internal func ReconcilePreparedPresent(index uint32, presentAttempted bool) {
     EnsureIndex(index)
@@ -209,14 +209,14 @@ internal unsafe class VulkanSwapchainImageSet {
     if presentState == nil {
       if (result == VkConstants.VK_SUCCESS || result == VkConstants.VK_SUBOPTIMAL_KHR)
         && presentId == 0uL {
-        throw InvalidOperationException(
-          "Vulkan successful presentation must have a nonzero present id")
-      }
+          throw InvalidOperationException(
+            "Vulkan successful presentation must have a nonzero present id")
+        }
       if result != VkConstants.VK_SUCCESS && result != VkConstants.VK_SUBOPTIMAL_KHR
         && presentId != 0uL {
-        throw InvalidOperationException(
-          "Vulkan failed presentation must have a zero present id")
-      }
+          throw InvalidOperationException(
+            "Vulkan failed presentation must have a zero present id")
+        }
       return result
     }
     let offset = int32(index)
@@ -235,21 +235,21 @@ internal unsafe class VulkanSwapchainImageSet {
       pending[offset] = true
       ids[offset] = presentId
     } else if result == VkConstants.VK_ERROR_OUT_OF_DATE_KHR
-      || result == VkConstants.VK_ERROR_SURFACE_LOST_KHR {
-      if presentId != 0uL {
-        throw InvalidOperationException(
-          "Vulkan failed presentation must have a zero present id")
+      || result == VkConstants.VK_ERROR_SURFACE_LOST_KHR{
+        if presentId != 0uL {
+          throw InvalidOperationException(
+            "Vulkan failed presentation must have a zero present id")
+        }
+        pending[offset] = true
+        ids[offset] = 0uL
+      } else {
+        if presentId != 0uL {
+          throw InvalidOperationException(
+            "Vulkan failed presentation must have a zero present id")
+        }
+        pending[offset] = false
+        ids[offset] = 0uL
       }
-      pending[offset] = true
-      ids[offset] = 0uL
-    } else {
-      if presentId != 0uL {
-        throw InvalidOperationException(
-          "Vulkan failed presentation must have a zero present id")
-      }
-      pending[offset] = false
-      ids[offset] = 0uL
-    }
     prepared[offset] = false
     return result
   }
@@ -362,7 +362,7 @@ internal unsafe class VulkanSwapchainImageSet {
   private func Create(swapchain VkSwapchainKHR, format VkFormat) {
     var enumeratedImageCount = uint32(images.Length)
     let getSwapchainImages = dispatch.vkGetSwapchainImagesKHR
-    fixed imagePointer *VkImage = images {
+    fixed imagePointer * VkImage = images{
       let result = getSwapchainImages(device, swapchain, &enumeratedImageCount, imagePointer)
       if result != VkConstants.VK_SUCCESS || enumeratedImageCount != uint32(images.Length) {
         throw InvalidOperationException("Swapchain image enumeration failed")

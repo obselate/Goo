@@ -42,7 +42,7 @@ internal class FrameProfiler {
   private var rendered int32
   private var styleResolveNodes int64
 
-  internal prop Active bool {
+  internal prop Active bool{
     get {
       if enabled {
         return true
@@ -54,7 +54,7 @@ internal class FrameProfiler {
     }
   }
 
-  internal prop Enabled bool { get { return enabled } }
+  internal prop Enabled bool{ get { return enabled } }
 
   internal prop Sink FrameProfileSink? {
     get { return sink }
@@ -67,11 +67,9 @@ internal class FrameProfiler {
     totals = nil
   }
 
-  internal func Start() FrameProfilePoint {
-    return FrameProfilePoint{
-      Ticks: Stopwatch.GetTimestamp(),
-      Bytes: GC.GetAllocatedBytesForCurrentThread(),
-    }
+  internal func Start() FrameProfilePoint -> FrameProfilePoint {
+    Ticks: Stopwatch.GetTimestamp(),
+    Bytes: GC.GetAllocatedBytesForCurrentThread(),
   }
 
   internal func Record(stage FrameProfileStage, start FrameProfilePoint) {
@@ -85,11 +83,9 @@ internal class FrameProfiler {
     }
   }
 
-  internal func Elapsed(start FrameProfilePoint) FrameProfilePoint {
-    return FrameProfilePoint{
-      Ticks: Stopwatch.GetTimestamp() - start.Ticks,
-      Bytes: GC.GetAllocatedBytesForCurrentThread() - start.Bytes,
-    }
+  internal func Elapsed(start FrameProfilePoint) FrameProfilePoint -> FrameProfilePoint {
+    Ticks: Stopwatch.GetTimestamp() - start.Ticks,
+    Bytes: GC.GetAllocatedBytesForCurrentThread() - start.Bytes,
   }
 
   internal func RecordStyleResolveNodes(nodes int64) {
@@ -104,27 +100,26 @@ internal class FrameProfiler {
     buildCalls int64,
     resolveTicks int64,
     resolveBytes int64,
-    resolveCalls int64,
-  ) {
-    if !Active { return }
-    let elapsed = Elapsed(start)
-    let diffTicks = elapsed.Ticks - buildTicks - resolveTicks
-    let diffBytes = elapsed.Bytes - buildBytes - resolveBytes
-    let safeDiffTicks = diffTicks < 0 ? 0 : diffTicks
-    let safeDiffBytes = diffBytes < 0 ? 0 : diffBytes
-    if enabled {
-      Add(FrameProfileStage.Reconcile, elapsed.Ticks, elapsed.Bytes, 1)
-      Add(FrameProfileStage.Build, buildTicks, buildBytes, buildCalls)
-      Add(FrameProfileStage.StyleResolve, resolveTicks, resolveBytes, resolveCalls)
-      Add(FrameProfileStage.Diff, safeDiffTicks, safeDiffBytes, 1)
+    resolveCalls int64,) {
+      if !Active { return }
+      let elapsed = Elapsed(start)
+      let diffTicks = elapsed.Ticks - buildTicks - resolveTicks
+      let diffBytes = elapsed.Bytes - buildBytes - resolveBytes
+      let safeDiffTicks = diffTicks < 0 ? 0 : diffTicks
+      let safeDiffBytes = diffBytes < 0 ? 0 : diffBytes
+      if enabled {
+        Add(FrameProfileStage.Reconcile, elapsed.Ticks, elapsed.Bytes, 1)
+        Add(FrameProfileStage.Build, buildTicks, buildBytes, buildCalls)
+        Add(FrameProfileStage.StyleResolve, resolveTicks, resolveBytes, resolveCalls)
+        Add(FrameProfileStage.Diff, safeDiffTicks, safeDiffBytes, 1)
+      }
+      if let current = sink {
+        current.Record(FrameProfileStage.Reconcile, elapsed.Ticks, elapsed.Bytes)
+        current.Record(FrameProfileStage.Build, buildTicks, buildBytes)
+        current.Record(FrameProfileStage.StyleResolve, resolveTicks, resolveBytes)
+        current.Record(FrameProfileStage.Diff, safeDiffTicks, safeDiffBytes)
+      }
     }
-    if let current = sink {
-      current.Record(FrameProfileStage.Reconcile, elapsed.Ticks, elapsed.Bytes)
-      current.Record(FrameProfileStage.Build, buildTicks, buildBytes)
-      current.Record(FrameProfileStage.StyleResolve, resolveTicks, resolveBytes)
-      current.Record(FrameProfileStage.Diff, safeDiffTicks, safeDiffBytes)
-    }
-  }
 
   private func Add(stage FrameProfileStage, ticks int64, bytes int64, calls int64) {
     let values = totalsOrCreate()
@@ -181,27 +176,25 @@ internal class FrameProfiler {
     Console.WriteLine(sb.ToString())
   }
 
-  private func stageName(stage FrameProfileStage) string {
-    return switch stage {
-      case FrameProfileStage.Events: "events"
-      case FrameProfileStage.Input: "input"
-      case FrameProfileStage.Tree: "tree"
-      case FrameProfileStage.Motion: "motion"
-      case FrameProfileStage.Reconcile: "reconcile"
-      case FrameProfileStage.Build: "build"
-      case FrameProfileStage.Diff: "diff"
-      case FrameProfileStage.StyleResolve: "style_resolve"
-      case FrameProfileStage.Transitions: "transitions"
-      case FrameProfileStage.Layout: "layout"
-      case FrameProfileStage.InputTree: "input_tree"
-      case FrameProfileStage.Render: "render"
-      case FrameProfileStage.TargetBegin: "target_begin"
-      case FrameProfileStage.Paint: "paint"
-      case FrameProfileStage.CanvasFlush: "canvas_flush"
-      case FrameProfileStage.TargetFlush: "target_flush"
-      case FrameProfileStage.Present: "present"
-      default: ""
-    }
+  private func stageName(stage FrameProfileStage) string -> switch stage {
+    case FrameProfileStage.Events: "events"
+    case FrameProfileStage.Input: "input"
+    case FrameProfileStage.Tree: "tree"
+    case FrameProfileStage.Motion: "motion"
+    case FrameProfileStage.Reconcile: "reconcile"
+    case FrameProfileStage.Build: "build"
+    case FrameProfileStage.Diff: "diff"
+    case FrameProfileStage.StyleResolve: "style_resolve"
+    case FrameProfileStage.Transitions: "transitions"
+    case FrameProfileStage.Layout: "layout"
+    case FrameProfileStage.InputTree: "input_tree"
+    case FrameProfileStage.Render: "render"
+    case FrameProfileStage.TargetBegin: "target_begin"
+    case FrameProfileStage.Paint: "paint"
+    case FrameProfileStage.CanvasFlush: "canvas_flush"
+    case FrameProfileStage.TargetFlush: "target_flush"
+    case FrameProfileStage.Present: "present"
+    default: ""
   }
 
   private func time(stage FrameProfileStage) string {

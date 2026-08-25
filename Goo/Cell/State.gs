@@ -15,7 +15,7 @@ public class State[T] {
   }
 
   /// Gets or sets the current value.
-  public prop Value T {
+  public prop Value T{
     get { return raw }
     set(v) {
       if EqualityComparer[T].Default.Equals(raw, v) {

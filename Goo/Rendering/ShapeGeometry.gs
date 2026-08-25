@@ -19,9 +19,9 @@ internal class ShapeGeometry {
       let height = n.Rect.H - paddingTop - paddingBottom - strokeWidth
       if width <= 0.0F || height <= 0.0F
         || x < left - strokeExtent || y < top - strokeExtent
-        || x >= left + width + strokeExtent || y >= top + height + strokeExtent {
-        return !n.ShapePath.HasClosedContour && strokeWidth <= 0.0F
-      }
+        || x >= left + width + strokeExtent || y >= top + height + strokeExtent{
+          return !n.ShapePath.HasClosedContour && strokeWidth <= 0.0F
+        }
       let mapping = PathGeometry.Map(n.ShapePath, n.ShapeFit, left, top, width, height)
       if !mapping.Valid || mapping.ScaleX == 0.0F || mapping.ScaleY == 0.0F {
         return !n.ShapePath.HasClosedContour && strokeWidth <= 0.0F

@@ -12,7 +12,7 @@ internal open class ImageSourceBinding {
   private var sourceChangedHandler Action?
   private var contentVersionSnapshot uint64
   private var currentToken ImageSourceBindingToken?
-  private var ownerPost ((Action) -> void)?
+  private var ownerPost((Action) -> void)?
   private var ownerThreadId int32
 
   internal func SetSourceChanged(callback Action) {
@@ -139,9 +139,9 @@ internal open class ImageSourceBinding {
   }
 
   internal func IsCurrentToken(token ImageSourceBindingToken) bool ->
-    Object.ReferenceEquals(currentToken, token)
+  Object.ReferenceEquals(currentToken, token)
 
-  internal func CurrentToken() ImageSourceBindingToken? -> currentToken
+  internal func CurrentToken() ImageSourceBindingToken ? -> currentToken
 
   internal func CompletedResult() DecodedImage? {
     SourceCompletion?.Dispose()
@@ -174,22 +174,22 @@ internal class ImageSourceBindingToken {
 
   internal init(binding ImageSourceBinding, source ImageSourceProvider, lease ImageSourceLease,
     version uint64) {
-    Binding = binding
-    Source = source
-    Lease = lease
-    Version = version
-  }
+      Binding = binding
+      Source = source
+      Lease = lease
+      Version = version
+    }
 }
 
 internal class ImageLayouts {
   shared {
     private var sourceValues ConditionalWeakTable[Node, ImageSourceBinding]?
 
-    internal func Source(n Node) ImageSourceProvider? -> sourceState(n)?.Source
-    internal func Lease(n Node) ImageSourceLease? -> sourceState(n)?.Lease
-    internal func SourceCompletion(n Node) ImageSourceCompletion? ->
-      sourceState(n)?.SourceCompletion
-    internal func CurrentToken(n Node) ImageSourceBindingToken? -> sourceState(n)?.CurrentToken()
+    internal func Source(n Node) ImageSourceProvider ? -> sourceState(n)?.Source
+    internal func Lease(n Node) ImageSourceLease ? -> sourceState(n)?.Lease
+    internal func SourceCompletion(n Node) ImageSourceCompletion ? ->
+    sourceState(n)?.SourceCompletion
+    internal func CurrentToken(n Node) ImageSourceBindingToken ? -> sourceState(n)?.CurrentToken()
     internal func IsCurrent(n Node, token object) bool {
       if Object.ReferenceEquals(n.ImageRequest, token) {
         return true
@@ -201,72 +201,72 @@ internal class ImageLayouts {
     }
 
     internal func ApplyPath(n Node, path string, fit ImageFit,
-      completed ((Node, object) -> void)?) {
-      n.ImageFit = fit
-      if path == "" {
-        Dispose(n)
-        return
-      }
-      let request = ImageDecoding.Request(path)
-      if n.ImageRequest == request {
-        request.Release()
+      completed((Node, object) -> void)?) {
+        n.ImageFit = fit
+        if path == "" {
+          Dispose(n)
+          return
+        }
+        let request = ImageDecoding.Request(path)
+        if n.ImageRequest == request {
+          request.Release()
+          n.ImagePath = request.Path
+          Refresh(n)
+          return
+        }
+        let intrinsicWidth = n.ImageIntrinsicWidth
+        let intrinsicHeight = n.ImageIntrinsicHeight
+        removeSource(n)
+        n.ImageCompletion?.Dispose()
+        n.ImageRequest?.Release()
         n.ImagePath = request.Path
-        Refresh(n)
-        return
+        n.ImageRequest = request
+        n.ImageCompletion = nil
+        n.DecodedImage = nil
+        n.ImageIntrinsicWidth = intrinsicWidth
+        n.ImageIntrinsicHeight = intrinsicHeight
+        if Refresh(n) {
+          return
+        }
+        n.ImageCompletion = request.OnCompleted(func() {
+          if let callback = completed { callback(n, request) }
+        })
       }
-      let intrinsicWidth = n.ImageIntrinsicWidth
-      let intrinsicHeight = n.ImageIntrinsicHeight
-      removeSource(n)
-      n.ImageCompletion?.Dispose()
-      n.ImageRequest?.Release()
-      n.ImagePath = request.Path
-      n.ImageRequest = request
-      n.ImageCompletion = nil
-      n.DecodedImage = nil
-      n.ImageIntrinsicWidth = intrinsicWidth
-      n.ImageIntrinsicHeight = intrinsicHeight
-      if Refresh(n) {
-        return
-      }
-      n.ImageCompletion = request.OnCompleted(func() {
-        if let callback = completed { callback(n, request) }
-      })
-    }
 
     internal func ApplySource(n Node, source ImageSourceProvider, fit ImageFit,
-      completed ((Node, object) -> void)?) {
-      n.ImageFit = fit
-      let prior = sourceState(n)
-      if prior?.Source == source {
-        Refresh(n)
-        return
+      completed((Node, object) -> void)?) {
+        n.ImageFit = fit
+        let prior = sourceState(n)
+        if prior?.Source == source {
+          Refresh(n)
+          return
+        }
+        let intrinsicWidth = n.ImageIntrinsicWidth
+        let intrinsicHeight = n.ImageIntrinsicHeight
+        n.ImageCompletion?.Dispose()
+        n.ImageRequest?.Release()
+        n.ImageRequest = nil
+        n.ImageCompletion = nil
+        removeSource(n, prior)
+        n.ImagePath = ""
+        n.DecodedImage = nil
+        n.ImageIntrinsicWidth = intrinsicWidth
+        n.ImageIntrinsicHeight = intrinsicHeight
+        let value = ImageSourceBinding()
+        value.SetSourceChanged(func() {
+          ImageLayouts.refreshSource(n, value, completed)
+        })
+        value.BindSource(source)
+        if sourceValues == nil { sourceValues = ConditionalWeakTable[Node, ImageSourceBinding]() }
+        sourceValues?.Add(n, value)
+        n.HasDirectImageSourceState = true
+        if Refresh(n, value) {
+          return
+        }
+        value.WatchSource(func(token ImageSourceBindingToken) {
+          ImageLayouts.invalidateSource(n, value, token, completed)
+        })
       }
-      let intrinsicWidth = n.ImageIntrinsicWidth
-      let intrinsicHeight = n.ImageIntrinsicHeight
-      n.ImageCompletion?.Dispose()
-      n.ImageRequest?.Release()
-      n.ImageRequest = nil
-      n.ImageCompletion = nil
-      removeSource(n, prior)
-      n.ImagePath = ""
-      n.DecodedImage = nil
-      n.ImageIntrinsicWidth = intrinsicWidth
-      n.ImageIntrinsicHeight = intrinsicHeight
-      let value = ImageSourceBinding()
-      value.SetSourceChanged(func() {
-        ImageLayouts.refreshSource(n, value, completed)
-      })
-      value.BindSource(source)
-      if sourceValues == nil { sourceValues = ConditionalWeakTable[Node, ImageSourceBinding]() }
-      sourceValues?.Add(n, value)
-      n.HasDirectImageSourceState = true
-      if Refresh(n, value) {
-        return
-      }
-      value.WatchSource(func(token ImageSourceBindingToken) {
-        ImageLayouts.invalidateSource(n, value, token, completed)
-      })
-    }
 
     internal func Refresh(n Node, known ImageSourceBinding? = nil) bool {
       var decoded DecodedImage?
@@ -290,9 +290,9 @@ internal class ImageLayouts {
       } else { 0.0F }
       if n.DecodedImage == decoded
         && n.ImageIntrinsicWidth == width
-        && n.ImageIntrinsicHeight == height {
-        return false
-      }
+        && n.ImageIntrinsicHeight == height{
+          return false
+        }
       n.DecodedImage = decoded
       n.ImageIntrinsicWidth = width
       n.ImageIntrinsicHeight = height
@@ -320,49 +320,49 @@ internal class ImageLayouts {
     }
 
     internal func Measure(yoga Facebook.Yoga.Node, width float32, widthMode MeasureMode,
-      height float32, heightMode MeasureMode) YGSize {
-      let n = nodeFromYoga(yoga)
-      Refresh(n)
-      var naturalWidth = 0.0F
-      var naturalHeight = 0.0F
-      if let image = n.DecodedImage {
-        if !image.IsValid || image.Width <= 0 || image.Height <= 0 {
-          return YGSize{}
+      height float32, heightMode MeasureMode) YGSize{
+        let n = nodeFromYoga(yoga)
+        Refresh(n)
+        var naturalWidth = 0.0F
+        var naturalHeight = 0.0F
+        if let image = n.DecodedImage {
+          if !image.IsValid || image.Width <= 0 || image.Height <= 0 {
+            return YGSize{}
+          }
+          naturalWidth = float32(image.Width)
+          naturalHeight = float32(image.Height)
+        } else {
+          if sourceState(n) != nil { return YGSize{} }
+          guard let request = n.ImageRequest else { return YGSize{} }
+          if request.IsComplete || n.ImageIntrinsicWidth <= 0.0F || n.ImageIntrinsicHeight <= 0.0F {
+            return YGSize{}
+          }
+          naturalWidth = n.ImageIntrinsicWidth
+          naturalHeight = n.ImageIntrinsicHeight
         }
-        naturalWidth = float32(image.Width)
-        naturalHeight = float32(image.Height)
-      } else {
-        if sourceState(n) != nil { return YGSize{} }
-        guard let request = n.ImageRequest else { return YGSize{} }
-        if request.IsComplete || n.ImageIntrinsicWidth <= 0.0F || n.ImageIntrinsicHeight <= 0.0F {
-          return YGSize{}
-        }
-        naturalWidth = n.ImageIntrinsicWidth
-        naturalHeight = n.ImageIntrinsicHeight
-      }
-      var measuredWidth = naturalWidth
-      var measuredHeight = naturalHeight
-      if widthMode == MeasureMode.Exactly && heightMode != MeasureMode.Exactly {
-        measuredWidth = width
-        measuredHeight = naturalHeight * width / naturalWidth
-      } else if heightMode == MeasureMode.Exactly && widthMode != MeasureMode.Exactly {
-        measuredHeight = height
-        measuredWidth = naturalWidth * height / naturalHeight
-      } else if widthMode == MeasureMode.Exactly && heightMode == MeasureMode.Exactly {
-        measuredWidth = width
-        measuredHeight = height
-      } else {
-        if widthMode == MeasureMode.AtMost && measuredWidth > width {
+        var measuredWidth = naturalWidth
+        var measuredHeight = naturalHeight
+        if widthMode == MeasureMode.Exactly && heightMode != MeasureMode.Exactly {
           measuredWidth = width
           measuredHeight = naturalHeight * width / naturalWidth
-        }
-        if heightMode == MeasureMode.AtMost && measuredHeight > height {
+        } else if heightMode == MeasureMode.Exactly && widthMode != MeasureMode.Exactly {
           measuredHeight = height
           measuredWidth = naturalWidth * height / naturalHeight
+        } else if widthMode == MeasureMode.Exactly && heightMode == MeasureMode.Exactly {
+          measuredWidth = width
+          measuredHeight = height
+        } else {
+          if widthMode == MeasureMode.AtMost && measuredWidth > width {
+            measuredWidth = width
+            measuredHeight = naturalHeight * width / naturalWidth
+          }
+          if heightMode == MeasureMode.AtMost && measuredHeight > height {
+            measuredHeight = height
+            measuredWidth = naturalWidth * height / naturalHeight
+          }
         }
+        return YGSize{ Width: measuredWidth, Height: measuredHeight }
       }
-      return YGSize{ Width: measuredWidth, Height: measuredHeight }
-    }
 
     private func sourceState(n Node) ImageSourceBinding? {
       if !n.HasDirectImageSourceState { return nil }
@@ -380,28 +380,28 @@ internal class ImageLayouts {
       }
     }
     private func refreshSource(n Node, value ImageSourceBinding,
-      completed ((Node, object) -> void)?) {
-      if n.Retired { return }
-      guard let current = sourceState(n) else { return }
-      if current != value { return }
-      if Refresh(n, value) {
-        if let callback = completed, let token = value.CurrentToken() { callback(n, token) }
-        return
+      completed((Node, object) -> void)?) {
+        if n.Retired { return }
+        guard let current = sourceState(n) else { return }
+        if current != value { return }
+        if Refresh(n, value) {
+          if let callback = completed, let token = value.CurrentToken() { callback(n, token) }
+          return
+        }
+        guard let lease = value.Lease else { return }
+        if lease.IsComplete { return }
+        value.WatchSource(func(token ImageSourceBindingToken) {
+          ImageLayouts.invalidateSource(n, value, token, completed)
+        })
       }
-      guard let lease = value.Lease else { return }
-      if lease.IsComplete { return }
-      value.WatchSource(func(token ImageSourceBindingToken) {
-        ImageLayouts.invalidateSource(n, value, token, completed)
-      })
-    }
     private func invalidateSource(n Node, value ImageSourceBinding, token ImageSourceBindingToken,
-      completed ((Node, object) -> void)?) {
-      if n.Retired { return }
-      if let current = sourceState(n) {
-        if current == value && value.IsCurrentToken(token) {
-          if let callback = completed { callback(n, token) }
+      completed((Node, object) -> void)?) {
+        if n.Retired { return }
+        if let current = sourceState(n) {
+          if current == value && value.IsCurrentToken(token) {
+            if let callback = completed { callback(n, token) }
+          }
         }
       }
-    }
   }
 }

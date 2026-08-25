@@ -5,9 +5,7 @@ import System.Collections.Generic
 internal enum HitResult { Miss; Unhandled; Handled; Blocked }
 
 internal class Hit {
-  private func withinMapped(n Node, x float32, y float32) bool {
-    return !n.PaintInputHidden && n.Rect.Contains(x, y)
-  }
+  private func withinMapped(n Node, x float32, y float32) bool -> !n.PaintInputHidden && n.Rect.Contains(x, y)
 
   private func canTraverseMapped(n Node, x float32, y float32) bool {
     if n.PaintInputHidden { return false }
@@ -58,9 +56,7 @@ internal class Hit {
     return hitsMapped(root, point.X, point.Y) ? root : nil
   }
 
-  internal func DispatchClick(root Node, x float32, y float32) bool {
-    return dispatch(root, x, y, nil) == HitResult.Handled
-  }
+  internal func DispatchClick(root Node, x float32, y float32) bool -> dispatch(root, x, y, nil) == HitResult.Handled
 
   internal func Activate(root Node?, target Node) bool {
     guard let tree = root else { return false }

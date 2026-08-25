@@ -15,14 +15,12 @@ public data struct TextCandidateEvent(Candidates IReadOnlyList[string],
 
 internal class TextInputCallbackSet {
   internal var OnTextInput Action[string]?
-  internal var OnTextComposition ((TextCompositionEvent) -> void)?
+  internal var OnTextComposition((TextCompositionEvent) -> void)?
   internal var OnTextCompositionCancel Action?
-  internal var OnTextCandidates ((TextCandidateEvent) -> void)?
+  internal var OnTextCandidates((TextCandidateEvent) -> void)?
 
-  internal func Empty() bool {
-    return OnTextInput == nil && OnTextComposition == nil
-      && OnTextCompositionCancel == nil && OnTextCandidates == nil
-  }
+  internal func Empty() bool -> OnTextInput == nil && OnTextComposition == nil
+    && OnTextCompositionCancel == nil && OnTextCandidates == nil
 }
 
 // Text callbacks are separate from keyboard callbacks so key-only participants stay small.
@@ -31,11 +29,9 @@ internal class TextInputCallbacks {
     private var blobValues ConditionalWeakTable[Blob, TextInputCallbackSet]?
     private var nodeValues ConditionalWeakTable[Node, TextInputCallbackSet]?
     private let emptyCandidates IReadOnlyList[string] =
-      ReadOnlyCollection[string](List[string]())
+    ReadOnlyCollection[string](List[string]())
 
-    internal func EmptyCandidates() IReadOnlyList[string] {
-      return emptyCandidates
-    }
+    internal func EmptyCandidates() IReadOnlyList[string] -> emptyCandidates
 
     internal func SetBlobTextInput(blob Blob, value Action[string]?) bool {
       let callbacks = blobCallbacks(blob, value != nil)
@@ -44,20 +40,16 @@ internal class TextInputCallbacks {
       return finishBlob(blob, callbacks!!)
     }
 
-    internal func BlobTextInput(blob Blob) Action[string]? {
-      return blobCallbacks(blob, false)?.OnTextInput
-    }
+    internal func BlobTextInput(blob Blob) Action[string] ? -> blobCallbacks(blob, false)?.OnTextInput
 
-    internal func SetBlobTextComposition(blob Blob, value ((TextCompositionEvent) -> void)?) bool {
+    internal func SetBlobTextComposition(blob Blob, value((TextCompositionEvent) -> void)?) bool {
       let callbacks = blobCallbacks(blob, value != nil)
       if callbacks == nil { return false }
       callbacks!!.OnTextComposition = value
       return finishBlob(blob, callbacks!!)
     }
 
-    internal func BlobTextComposition(blob Blob) ((TextCompositionEvent) -> void)? {
-      return blobCallbacks(blob, false)?.OnTextComposition
-    }
+    internal func BlobTextComposition(blob Blob)((TextCompositionEvent) -> void) ? -> blobCallbacks(blob, false)?.OnTextComposition
 
     internal func SetBlobTextCompositionCancel(blob Blob, value Action?) bool {
       let callbacks = blobCallbacks(blob, value != nil)
@@ -66,20 +58,16 @@ internal class TextInputCallbacks {
       return finishBlob(blob, callbacks!!)
     }
 
-    internal func BlobTextCompositionCancel(blob Blob) Action? {
-      return blobCallbacks(blob, false)?.OnTextCompositionCancel
-    }
+    internal func BlobTextCompositionCancel(blob Blob) Action ? -> blobCallbacks(blob, false)?.OnTextCompositionCancel
 
-    internal func SetBlobTextCandidates(blob Blob, value ((TextCandidateEvent) -> void)?) bool {
+    internal func SetBlobTextCandidates(blob Blob, value((TextCandidateEvent) -> void)?) bool {
       let callbacks = blobCallbacks(blob, value != nil)
       if callbacks == nil { return false }
       callbacks!!.OnTextCandidates = value
       return finishBlob(blob, callbacks!!)
     }
 
-    internal func BlobTextCandidates(blob Blob) ((TextCandidateEvent) -> void)? {
-      return blobCallbacks(blob, false)?.OnTextCandidates
-    }
+    internal func BlobTextCandidates(blob Blob)((TextCandidateEvent) -> void) ? -> blobCallbacks(blob, false)?.OnTextCandidates
 
     internal func Sync(node Node, blob Blob) bool {
       var source TextInputCallbackSet?
@@ -112,33 +100,21 @@ internal class TextInputCallbacks {
       return sourcePresence != destinationPresence
     }
 
-    internal func HasBlobCallbacks(blob Blob) bool {
-      return if let values = blobValues {
-        values.TryGetValue(blob, out var callbacks) && !callbacks.Empty()
-      } else { false }
-    }
+    internal func HasBlobCallbacks(blob Blob) bool -> if let values = blobValues {
+      values.TryGetValue(blob, out var callbacks) && !callbacks.Empty()
+    } else { false }
 
-    internal func HasNodeCallbacks(node Node) bool {
-      return if let values = nodeValues {
-        values.TryGetValue(node, out var callbacks) && !callbacks.Empty()
-      } else { false }
-    }
+    internal func HasNodeCallbacks(node Node) bool -> if let values = nodeValues {
+      values.TryGetValue(node, out var callbacks) && !callbacks.Empty()
+    } else { false }
 
-    internal func TextInput(node Node) Action[string]? {
-      return nodeCallbacks(node)?.OnTextInput
-    }
+    internal func TextInput(node Node) Action[string] ? -> nodeCallbacks(node)?.OnTextInput
 
-    internal func TextComposition(node Node) ((TextCompositionEvent) -> void)? {
-      return nodeCallbacks(node)?.OnTextComposition
-    }
+    internal func TextComposition(node Node)((TextCompositionEvent) -> void) ? -> nodeCallbacks(node)?.OnTextComposition
 
-    internal func TextCompositionCancel(node Node) Action? {
-      return nodeCallbacks(node)?.OnTextCompositionCancel
-    }
+    internal func TextCompositionCancel(node Node) Action ? -> nodeCallbacks(node)?.OnTextCompositionCancel
 
-    internal func TextCandidates(node Node) ((TextCandidateEvent) -> void)? {
-      return nodeCallbacks(node)?.OnTextCandidates
-    }
+    internal func TextCandidates(node Node)((TextCandidateEvent) -> void) ? -> nodeCallbacks(node)?.OnTextCandidates
 
     private func blobCallbacks(blob Blob, create bool) TextInputCallbackSet? {
       if let values = blobValues {

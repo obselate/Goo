@@ -9,7 +9,7 @@ internal sealed class TypefaceLease : IDisposable {
     this.resource = resource
   }
 
-  internal prop Provider VulkanTextProvider {
+  internal prop Provider VulkanTextProvider{
     get {
       lock (this) {
         guard let value = resource else { throw ObjectDisposedException("TypefaceLease") }
@@ -18,7 +18,7 @@ internal sealed class TypefaceLease : IDisposable {
     }
   }
 
-  internal prop Family string {
+  internal prop Family string{
     get {
       lock (this) {
         guard let value = resource else { throw ObjectDisposedException("TypefaceLease") }
@@ -27,7 +27,7 @@ internal sealed class TypefaceLease : IDisposable {
     }
   }
 
-  internal prop IsRegistered bool {
+  internal prop IsRegistered bool{
     get {
       lock (this) {
         guard let value = resource else { throw ObjectDisposedException("TypefaceLease") }

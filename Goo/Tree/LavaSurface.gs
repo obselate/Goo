@@ -4,14 +4,14 @@ internal sealed class LavaSurface : Blob {
   internal override func coreBlob() {
   }
 
-  internal prop Flow float64 { get; init; }
-  internal prop Form float64 { get; init; }
-  internal prop Blend float64 { get; init; }
-  internal prop Light float64 { get; init; }
-  internal prop Hue float64 { get; init; }
-  internal prop Rainbow bool { get; init; }
-  internal prop Rotation Point { get; init; }
-  internal prop Seed uint32 { get; init; }
+  internal prop Flow float64{ get; init; }
+  internal prop Form float64{ get; init; }
+  internal prop Blend float64{ get; init; }
+  internal prop Light float64{ get; init; }
+  internal prop Hue float64{ get; init; }
+  internal prop Rainbow bool{ get; init; }
+  internal prop Rotation Point{ get; init; }
+  internal prop Seed uint32{ get; init; }
 
   internal init() {
     Flow = 0.42

@@ -16,23 +16,21 @@ class ImageUploadStatePerfCell : Cell {
     source.Value = next
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: Length.Percent(100),
-      Height: Length.Percent(100),
-      BackgroundColor: Color.Rgb(12, 20, 32),
-      Children: {
-        Image{
-          Position: PositionType.Absolute,
-          Left: 8,
-          Top: 8,
-          Width: 64,
-          Height: 64,
-          Source: source.Value,
-          Fit: ImageFit.Fill,
-        },
+  override func Build() Blob -> Container {
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
+    BackgroundColor: Color.Rgb(12, 20, 32),
+    Children: {
+      Image{
+        Position: PositionType.Absolute,
+        Left: 8,
+        Top: 8,
+        Width: 64,
+        Height: 64,
+        Source: source.Value,
+        Fit: ImageFit.Fill,
       },
-    }
+    },
   }
 }
 
@@ -42,14 +40,12 @@ func Require(condition bool, message string) {
   }
 }
 
-func CreateSource(seed uint8) ImageSource {
-  return ImageSource(2, 2, []uint8{
-    seed, 32, 64, 255,
-    64, seed, 96, 255,
-    96, 64, seed, 255,
-    seed, seed, seed, 255,
-  })
-}
+func CreateSource(seed uint8) ImageSource -> ImageSource(2, 2, []uint8 {
+  seed, 32, 64, 255,
+  64, seed, 96, 255,
+  96, 64, seed, 255,
+  seed, seed, seed, 255,
+})
 
 func RequireEquivalent(snapshot VulkanImageUploadPredicateTestSnapshot, phase string) {
   Require(snapshot.Actual == snapshot.Oracle,
@@ -58,7 +54,7 @@ func RequireEquivalent(snapshot VulkanImageUploadPredicateTestSnapshot, phase st
 
 func WaitForHeldSubmit(window Window, timeoutMs int32) {
   let deadline = Stopwatch.GetTimestamp()
-    + int64(float64(Stopwatch.Frequency) * float64(timeoutMs) / 1000.0)
+  +int64(float64(Stopwatch.Frequency) * float64(timeoutMs) / 1000.0)
   while Stopwatch.GetTimestamp() < deadline {
     if ImageUploadStatePerfFixture.WaitForHeldSubmit(10) {
       return
@@ -70,9 +66,9 @@ func WaitForHeldSubmit(window Window, timeoutMs int32) {
 }
 
 func WaitForDeviceLoss(window Window, timeoutMs int32)
-    VulkanImageUploadPredicateTestSnapshot {
+VulkanImageUploadPredicateTestSnapshot{
   let deadline = Stopwatch.GetTimestamp()
-    + int64(float64(Stopwatch.Frequency) * float64(timeoutMs) / 1000.0)
+  +int64(float64(Stopwatch.Frequency) * float64(timeoutMs) / 1000.0)
   var snapshot = ImageUploadStatePerfFixture.Snapshot(window)
   while Stopwatch.GetTimestamp() < deadline {
     ImageUploadStatePerfFixture.PollQueue(window)
@@ -88,7 +84,7 @@ func WaitForDeviceLoss(window Window, timeoutMs int32)
 func ForceRenderAndDrain(window Window, timeoutMs int32) {
   ImageUploadStatePerfFixture.ForceRenderNonblocking(window, 0.0)
   let deadline = Stopwatch.GetTimestamp()
-    + int64(float64(Stopwatch.Frequency) * float64(timeoutMs) / 1000.0)
+  +int64(float64(Stopwatch.Frequency) * float64(timeoutMs) / 1000.0)
   while Stopwatch.GetTimestamp() < deadline {
     ImageUploadStatePerfFixture.PollQueue(window)
     if !ImageUploadStatePerfFixture.QueuePending(window) {
@@ -187,16 +183,16 @@ func Main() {
     Require(closed, "image upload predicate performance window did not close")
 
     let nanosecondsPerCheck = float64(measurement.ElapsedTicks) * 1000000000.0
-      / float64(measurement.StopwatchFrequency) / float64(measurement.Iterations)
+    / float64(measurement.StopwatchFrequency) / float64(measurement.Iterations)
     Console.WriteLine("image-upload-predicate: iterations="
-      + measurement.Iterations.ToString()
-      + " warmup=" + measurement.WarmupIterations.ToString()
-      + " capacity=" + measurement.Capacity.ToString()
-      + " elapsed_ticks=" + measurement.ElapsedTicks.ToString()
-      + " frequency=" + measurement.StopwatchFrequency.ToString()
-      + " ns_per_check=" + nanosecondsPerCheck.ToString("F3")
-      + " allocated_B=" + measurement.AllocatedBytes.ToString()
-      + " record=1 submit=1 abort=1 recovery=1 oracle=1 close=1")
+      +measurement.Iterations.ToString()
+      +" warmup=" + measurement.WarmupIterations.ToString()
+      +" capacity=" + measurement.Capacity.ToString()
+      +" elapsed_ticks=" + measurement.ElapsedTicks.ToString()
+      +" frequency=" + measurement.StopwatchFrequency.ToString()
+      +" ns_per_check=" + nanosecondsPerCheck.ToString("F3")
+      +" allocated_B=" + measurement.AllocatedBytes.ToString()
+      +" record=1 submit=1 abort=1 recovery=1 oracle=1 close=1")
   } finally {
     ImageUploadStatePerfFixture.ReleaseHeldSubmit()
     if let active = window {

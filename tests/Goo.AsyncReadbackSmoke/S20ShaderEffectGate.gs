@@ -19,49 +19,63 @@ class S20ShaderEffectCell : Cell {
     effect = value
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: Length.Percent(100),
-      Height: Length.Percent(100),
-      Position: PositionType.Relative,
-      BackgroundColor: Color.Rgb(12, 20, 32),
-      Children: {
-        Container{
-          Position: PositionType.Absolute,
-          Left: 16,
-          Top: 24,
-          Width: 16,
-          Height: 80,
-          BackgroundColor: Color.Rgb(238, 188, 34),
-        },
-        Container{
-          Position: PositionType.Absolute,
-          Left: 32,
-          Top: 24,
-          Width: 128,
-          Height: 80,
-          BackgroundColor: Color.Rgb(28, 118, 224),
-        },
-        Button{
-          Handle: S20ShaderEffectCell.Target,
-          Position: PositionType.Absolute,
-          Left: 32,
-          Top: 24,
-          Width: 128,
-          Height: 80,
-          BorderRadius: 22,
-          BackgroundColor: Color.Rgb(232, 72, 48),
-          ShaderEffect: effect,
-          OnClick: func() { ClickCount++ },
-        },
+  override func Build() Blob -> Container {
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
+    Position: PositionType.Relative,
+    BackgroundColor: Color.Rgb(12, 20, 32),
+    Children: {
+      Container{
+        Position: PositionType.Absolute,
+        Left: 16,
+        Top: 24,
+        Width: 16,
+        Height: 80,
+        BackgroundColor: Color.Rgb(238, 188, 34),
       },
-    }
+      Container{
+        Position: PositionType.Absolute,
+        Left: 32,
+        Top: 24,
+        Width: 128,
+        Height: 80,
+        BackgroundColor: Color.Rgb(28, 118, 224),
+      },
+      Button{
+        Handle: S20ShaderEffectCell.Target,
+        Position: PositionType.Absolute,
+        Left: 32,
+        Top: 24,
+        Width: 128,
+        Height: 80,
+        BorderRadius: 22,
+        BackgroundColor: Color.Rgb(232, 72, 48),
+        ShaderEffect: effect,
+        OnClick: func() { ClickCount++ },
+      },
+      Container{
+        Position: PositionType.Absolute,
+        Left: 160,
+        Top: 24,
+        Width: 16,
+        Height: 80,
+        BackgroundColor: Color.Rgb(238, 188, 34),
+      },
+      Container{
+        Position: PositionType.Absolute,
+        Left: 160,
+        Top: 24,
+        Width: 16,
+        Height: 80,
+        BackgroundColor: Color.Rgb(232, 72, 48),
+        ShaderEffect: effect,
+        BlendMode: BlendMode.Multiply,
+      },
+    },
   }
 }
 
-func S20Delta(after uint64, before uint64) uint64 {
-  return after >= before ? after - before : uint64.MaxValue
-}
+func S20Delta(after uint64, before uint64) uint64 -> after >= before ? after - before : uint64.MaxValue
 
 func S20Sum(values []int64) int64 {
   var total int64
@@ -125,7 +139,7 @@ func RunS20ShaderEffectGate() {
     S14Require(int32(clippedCorner[2]) > int32(clippedCorner[0]) + 100
         && int32(clippedCorner[2]) > int32(clippedCorner[1]) + 60,
       "S20 shader effect escaped the rounded control source: "
-        + S09RPixelText(clippedCorner))
+      +S09RPixelText(clippedCorner))
 
     WindowReadbackTestFixture.S17QueuePointerMove(opened, targetX, targetY)
     WindowReadbackTestFixture.S17QueuePointerPress(opened, targetX, targetY)
@@ -160,7 +174,12 @@ func RunS20ShaderEffectGate() {
     S14Require(int32(secondCenter[2]) > int32(secondCenter[0]) + 100
         && int32(secondCenter[2]) > int32(secondCenter[1]) + 60,
       "S20 shader effect did not sample the retained backdrop: "
-        + S09RPixelText(secondCenter))
+      +S09RPixelText(secondCenter))
+    let combinedCenter = S09RLogicalPixel(second.Pixels, second.Width, metrics, 168.0, 64.0)
+    S14Require(int32(combinedCenter[1]) > 80
+        && int32(combinedCenter[0]) > int32(combinedCenter[2]) + 60,
+      "S20 combined shader effect did not sample the original parent backdrop: "
+      +S09RPixelText(combinedCenter))
     S14Require(Math.Abs(int32(firstCenter[0]) - int32(secondCenter[0])) > 60,
       "S20 shader parameter mutation did not change the rendered control")
     effect.SetParameter(1, Vector4(-16.0F, 0.0F, 0.0F, 0.0F))
@@ -171,7 +190,7 @@ func RunS20ShaderEffectGate() {
     S14Require(int32(outsetSample[0]) > int32(outsetSample[2]) + 100
         && int32(outsetSample[1]) > int32(outsetSample[2]) + 70,
       "S20 shader effect backdrop outset did not expose neighboring pixels: "
-        + S09RPixelText(outsetSample))
+      +S09RPixelText(outsetSample))
     effect.SetParameter(1, Vector4.Zero)
     let finalBounds = S20ShaderEffectCell.Target.BorderBox
     S14Require(finalBounds.X == initialBounds.X && finalBounds.Y == initialBounds.Y
@@ -184,12 +203,12 @@ func RunS20ShaderEffectGate() {
     var resizeAttempt int32
     var resizedMetrics = WindowReadbackTestFixture.Metrics(opened)
     while (resizedMetrics.LogicalWidth != 176 || resizedMetrics.LogicalHeight != 120)
-        && resizeAttempt < 1000 {
-      WindowReadbackTestFixture.PumpNativeEvents()
-      WindowReadbackTestFixture.Pump(opened, 0.0)
-      resizedMetrics = WindowReadbackTestFixture.Metrics(opened)
-      resizeAttempt++
-    }
+      && resizeAttempt < 1000 {
+        WindowReadbackTestFixture.PumpNativeEvents()
+        WindowReadbackTestFixture.Pump(opened, 0.0)
+        resizedMetrics = WindowReadbackTestFixture.Metrics(opened)
+        resizeAttempt++
+      }
     S14Require(resizedMetrics.LogicalWidth == 176 && resizedMetrics.LogicalHeight == 120,
       "S20 shader effect window did not resize")
     displayScaleX = resizedMetrics.DisplayScaleX
@@ -202,7 +221,7 @@ func RunS20ShaderEffectGate() {
     S14Require(int32(resizedCenter[2]) > int32(resizedCenter[0]) + 100
         && int32(resizedCenter[2]) > int32(resizedCenter[1]) + 60,
       "S20 shader effect output did not survive resize and display scaling: "
-        + S09RPixelText(resizedCenter))
+      +S09RPixelText(resizedCenter))
 
     let recoveryBefore = WindowReadbackTestFixture.DiagnosticCounters(opened).deviceRecoveryCount
     VulkanSharedRuntime.FailNextGraphicsSubmissionForTest()
@@ -219,7 +238,7 @@ func RunS20ShaderEffectGate() {
     S14Require(int32(recoveredCenter[0]) > int32(recoveredCenter[1]) + 80
         && int32(recoveredCenter[0]) > int32(recoveredCenter[2]) + 80,
       "S20 shader effect output was not restored after device recovery: "
-        + S09RPixelText(recoveredCenter))
+      +S09RPixelText(recoveredCenter))
     opened.RequestClose()
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
     S14Require(!opened.IsOpen, "S20 shader effect gate window did not close")
@@ -255,15 +274,15 @@ func RunS20ShaderEffectGate() {
   S14Require(layerResidentBytes == 0uL && layerTargetCount == 0uL
       && layerLeasedCount == 0uL,
     "S20 shader effect gate left layer resources resident after close")
-  Console.WriteLine("s20-shader-effect-gate: control=button backdrop=1 clip=rounded input=click"
-    + " resize=1 dpi=" + displayScaleX.ToString("0.###")
-    + " device_recovery=" + deviceRecoveries.ToString()
-    + " parameter_alloc_B=" + parameterAllocated.ToString()
-    + " warm_vk_objects=" + warmObjectAllocations.ToString()
-    + " warm_device_memory=" + warmDeviceMemoryAllocations.ToString()
-    + " layerPassCount=" + layerPassCount.ToString()
-    + " layerCompositeCount=" + layerCompositeCount.ToString()
-    + " layerCreateCount=" + layerCreateCount.ToString() + " close=1")
+  Console.WriteLine("s20-shader-effect-gate: control=button backdrop=1 blend=multiply combined=1 clip=rounded input=click"
+    +" resize=1 dpi=" + displayScaleX.ToString("0.###")
+    +" device_recovery=" + deviceRecoveries.ToString()
+    +" parameter_alloc_B=" + parameterAllocated.ToString()
+    +" warm_vk_objects=" + warmObjectAllocations.ToString()
+    +" warm_device_memory=" + warmDeviceMemoryAllocations.ToString()
+    +" layerPassCount=" + layerPassCount.ToString()
+    +" layerCompositeCount=" + layerCompositeCount.ToString()
+    +" layerCreateCount=" + layerCreateCount.ToString() + " close=1")
 }
 
 func RunS20ShaderEffectBenchmark() {
@@ -336,22 +355,22 @@ func RunS20ShaderEffectBenchmark() {
       && S20Delta(after.recordCount, before.recordCount) == uint64(samples),
     "S20 shader effect benchmark did not compile and record every changed frame")
   Console.WriteLine("s20-shader-effect-benchmark: warmup=" + warmup.ToString()
-    + " samples=" + samples.ToString()
-    + " frame_p50_ns=" + S14Percentile(frameNs, 0.50).ToString()
-    + " frame_p95_ns=" + S14Percentile(frameNs, 0.95).ToString()
-    + " frame_p99_ns=" + S14Percentile(frameNs, 0.99).ToString()
-    + " frame_p999_ns=" + S14Percentile(frameNs, 0.999).ToString()
-    + " frame_worst_ns=" + S14Max(frameNs).ToString()
-    + " alloc_total_B=" + allocationTotal.ToString()
-    + " alloc_p95_B=" + allocationP95.ToString()
-    + " alloc_worst_B=" + allocationMax.ToString()
-    + " vk_objects=" + objectAllocations.ToString()
-    + " device_memory=" + deviceMemoryAllocations.ToString()
-    + " plan=" + S20Delta(after.planCompileCount, before.planCompileCount).ToString()
-    + " record=" + S20Delta(after.recordCount, before.recordCount).ToString()
-    + " draws=" + S20Delta(after.drawCount, before.drawCount).ToString()
-    + " layer_passes=" + S20Delta(after.layerPoolPassCount, before.layerPoolPassCount).ToString()
-    + " layer_composites="
-      + S20Delta(after.layerPoolCompositeCount, before.layerPoolCompositeCount).ToString()
-    + " close=1")
+    +" samples=" + samples.ToString()
+    +" frame_p50_ns=" + S14Percentile(frameNs, 0.50).ToString()
+    +" frame_p95_ns=" + S14Percentile(frameNs, 0.95).ToString()
+    +" frame_p99_ns=" + S14Percentile(frameNs, 0.99).ToString()
+    +" frame_p999_ns=" + S14Percentile(frameNs, 0.999).ToString()
+    +" frame_worst_ns=" + S14Max(frameNs).ToString()
+    +" alloc_total_B=" + allocationTotal.ToString()
+    +" alloc_p95_B=" + allocationP95.ToString()
+    +" alloc_worst_B=" + allocationMax.ToString()
+    +" vk_objects=" + objectAllocations.ToString()
+    +" device_memory=" + deviceMemoryAllocations.ToString()
+    +" plan=" + S20Delta(after.planCompileCount, before.planCompileCount).ToString()
+    +" record=" + S20Delta(after.recordCount, before.recordCount).ToString()
+    +" draws=" + S20Delta(after.drawCount, before.drawCount).ToString()
+    +" layer_passes=" + S20Delta(after.layerPoolPassCount, before.layerPoolPassCount).ToString()
+    +" layer_composites="
+    +S20Delta(after.layerPoolCompositeCount, before.layerPoolCompositeCount).ToString()
+    +" close=1")
 }

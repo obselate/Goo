@@ -33,14 +33,10 @@ class S16PacingSimulation : Simulation {
     return (to - from) / duration
   }
 
-  public override func Done(elapsed float64) bool {
-    return elapsed >= duration
-  }
+  public override func Done(elapsed float64) bool -> elapsed >= duration
 }
 
-func S16PacingSpec(from float64, to float64, velocity float64) Simulation {
-  return S16PacingSimulation(from, to)
-}
+func S16PacingSpec(from float64, to float64, velocity float64) Simulation -> S16PacingSimulation(from, to)
 
 class S16PacingActiveCell : Cell {
   private let phase Anim[float64]
@@ -62,12 +58,10 @@ class S16PacingActiveCell : Cell {
 }
 
 class S16PacingIdleCell : Cell {
-  override func Build() Blob {
-    return Container{
-      Width: Length.Percent(100),
-      Height: Length.Percent(100),
-      BackgroundColor: Color.Rgb(32, 40, 56),
-    }
+  override func Build() Blob -> Container {
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
+    BackgroundColor: Color.Rgb(32, 40, 56),
   }
 }
 
@@ -109,9 +103,9 @@ func RunS16LiveFramePacingGate() {
       })
       let deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency
       while Interlocked.CompareExchange(&captured, 0, 0) == 0
-          && Stopwatch.GetTimestamp() < deadline {
-        Thread.Sleep(1)
-      }
+        && Stopwatch.GetTimestamp() < deadline{
+          Thread.Sleep(1)
+        }
       activeWindow.RequestClose()
       idleWindow.RequestClose()
     })
@@ -138,10 +132,10 @@ func RunS16LiveFramePacingGate() {
       "S16 live pacing gate idle window rendered after its initial frame")
     let elapsedMs = Math.Round(elapsedSeconds * 1000.0)
     Console.WriteLine("s16-live-frame-pacing-gate: active_vsync=0 elapsed_ms=" + elapsedMs.ToString()
-      + " rate_hz=" + activeRate.ToString()
-      + " active=" + activeCount.ToString()
-      + " idle=" + idleCount.ToString()
-      + " cap=" + maximumActive.ToString() + " close=1")
+      +" rate_hz=" + activeRate.ToString()
+      +" active=" + activeCount.ToString()
+      +" idle=" + idleCount.ToString()
+      +" cap=" + maximumActive.ToString() + " close=1")
   } finally {
     if let current = worker {
       if current.IsAlive {

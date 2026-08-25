@@ -137,7 +137,6 @@ internal class CellFixtures {
     return false
   }
 
-
   func RepeatedRebuildRequestsCoalesce() bool {
     let parent = CellSchedulingSiblingsParent{}
     let window = Window{ Root: parent, Width: 200, Height: 100 }
@@ -292,9 +291,7 @@ internal data struct CellInputFixtureValue {
   internal var Count int32
 }
 
-internal func cellInputFixture(input CellInputFixtureValue) Blob {
-  return Cell.Mount[CellInputFixtureValue, CellInputFixtureCell](nil, input)
-}
+internal func cellInputFixture(input CellInputFixtureValue) Blob -> Cell.Mount[CellInputFixtureValue, CellInputFixtureCell](nil, input)
 
 internal class CellInputFixtureCell : Cell[CellInputFixtureValue] {
   shared { internal var Builds int32 }
@@ -310,9 +307,7 @@ internal data struct CellCallbackInputFixtureValue {
   internal var OnClick Action
 }
 
-internal func cellCallbackInputFixture(input CellCallbackInputFixtureValue) Blob {
-  return Cell.Mount[CellCallbackInputFixtureValue, CellCallbackInputFixtureCell](nil, input)
-}
+internal func cellCallbackInputFixture(input CellCallbackInputFixtureValue) Blob -> Cell.Mount[CellCallbackInputFixtureValue, CellCallbackInputFixtureCell](nil, input)
 
 internal open class CellCallbackInputFixtureCell : Cell[CellCallbackInputFixtureValue] {
   shared {
@@ -336,9 +331,7 @@ internal data struct CellThrowingInputFixtureValue {
   internal var Label string
 }
 
-internal func cellThrowingInputFixture(input CellThrowingInputFixtureValue) Blob {
-  return Cell.Mount[CellThrowingInputFixtureValue, CellThrowingInputFixtureCell](nil, input)
-}
+internal func cellThrowingInputFixture(input CellThrowingInputFixtureValue) Blob -> Cell.Mount[CellThrowingInputFixtureValue, CellThrowingInputFixtureCell](nil, input)
 
 internal open class CellThrowingInputFixtureCell : Cell[CellThrowingInputFixtureValue] {
   shared {
@@ -361,12 +354,10 @@ internal open class CellThrowingInputFixtureCell : Cell[CellThrowingInputFixture
 }
 
 internal class CellSchedulingSiblingsParent : Cell {
-  override func Build() Blob {
-    return Container{ Children: {
-      Cell.Mount[CellSchedulingLeft]("left", nil),
-      Cell.Mount[CellSchedulingRight]("right", nil),
-    } }
-  }
+  override func Build() Blob -> Container { Children: {
+    Cell.Mount[CellSchedulingLeft]("left", nil),
+    Cell.Mount[CellSchedulingRight]("right", nil),
+  } }
 }
 
 internal class CellSchedulingLeft : Cell {
@@ -399,12 +390,10 @@ internal class CellSchedulingRight : Cell {
   }
 }
 internal class CellSchedulingRecoveryParent : Cell {
-  override func Build() Blob {
-    return Container{ Children: {
-      Cell.Mount[CellSchedulingRecoveryFirst]("first", nil),
-      Cell.Mount[CellSchedulingRecoverySecond]("second", nil),
-    } }
-  }
+  override func Build() Blob -> Container { Children: {
+    Cell.Mount[CellSchedulingRecoveryFirst]("first", nil),
+    Cell.Mount[CellSchedulingRecoverySecond]("second", nil),
+  } }
 }
 
 internal class CellSchedulingRecoveryFirst : Cell {
@@ -433,7 +422,6 @@ internal class CellSchedulingRecoverySecond : Cell {
     return Text{ Content: "second" }
   }
 }
-
 
 internal class CellSchedulingOrderParent : Cell {
   shared { internal var Trace string }
@@ -513,12 +501,10 @@ internal class CellSchedulingRemovalChild : Cell, IDisposable {
 }
 
 internal class CellSchedulingDeferredParent : Cell {
-  override func Build() Blob {
-    return Container{ Children: {
-      Cell.Mount[CellSchedulingDeferredFirst]("first", nil),
-      Cell.Mount[CellSchedulingDeferredSecond]("second", nil),
-    } }
-  }
+  override func Build() Blob -> Container { Children: {
+    Cell.Mount[CellSchedulingDeferredFirst]("first", nil),
+    Cell.Mount[CellSchedulingDeferredSecond]("second", nil),
+  } }
 }
 
 internal class CellSchedulingDeferredFirst : Cell {
@@ -557,9 +543,7 @@ internal class CellSchedulingDeferredSecond : Cell {
 }
 
 internal class DirectParentCell : Cell {
-  override func Build() Blob {
-    return Cell.Mount[DirectChildCell](nil)
-  }
+  override func Build() Blob -> Cell.Mount[DirectChildCell](nil)
 }
 
 internal class DirectChildCell : Cell {
@@ -575,35 +559,33 @@ internal class DirectChildCell : Cell {
     Rebuild()
   }
 
-  override func Build() Blob {
-    return Text{ Content: "direct:$count" }
-  }
+  override func Build() Blob -> Text { Content: "direct:$count" }
 }
 
 internal class KeyedDisposableCell : Cell, IDisposable {
   shared { internal var Disposals int32 }
   func Dispose() { Disposals = Disposals + 1 }
-  override func Build() Blob { return Text{ Content: "keyed" } }
+  override func Build() Blob -> Text { Content: "keyed" }
 }
 
 internal class PositionalDisposableCell : Cell, IDisposable {
   shared { internal var Disposals int32 }
   func Dispose() { Disposals = Disposals + 1 }
-  override func Build() Blob { return Text{ Content: "positional" } }
+  override func Build() Blob -> Text { Content: "positional" }
 }
 
 internal class ReplacementDisposableCell : Cell, IDisposable {
   shared { internal var Disposals int32 }
   func Dispose() { Disposals = Disposals + 1 }
-  override func Build() Blob { return Text{ Content: "replacement" } }
+  override func Build() Blob -> Text { Content: "replacement" }
 }
 
 internal class ReplacementOtherCell : Cell {
-  override func Build() Blob { return Text{ Content: "other" } }
+  override func Build() Blob -> Text { Content: "other" }
 }
 
 internal class WindowDisposableCell : Cell, IDisposable {
   shared { internal var Disposals int32 }
   func Dispose() { Disposals = Disposals + 1 }
-  override func Build() Blob { return Text{ Content: "window" } }
+  override func Build() Blob -> Text { Content: "window" }
 }

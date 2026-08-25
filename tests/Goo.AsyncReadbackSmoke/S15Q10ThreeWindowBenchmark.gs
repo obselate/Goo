@@ -5,21 +5,20 @@ import System.Diagnostics
 import Goo
 
 func S15Q10ThreeWindowSelectRoot(index int32,
-    first S15Q10ThreeWindowRoot,
-    second S15Q10ThreeWindowRoot,
-    third S15Q10ThreeWindowRoot) S15Q10ThreeWindowRoot {
-  if index == 0 { return first }
-  if index == 1 { return second }
-  return third
-}
+  first S15Q10ThreeWindowRoot,
+  second S15Q10ThreeWindowRoot,
+  third S15Q10ThreeWindowRoot) S15Q10ThreeWindowRoot{
+    if index == 0 { return first }
+    if index == 1 { return second }
+    return third
+  }
 
 func S15Q10ThreeWindowSelectWindow(index int32,
-    first Window, second Window, third Window) Window {
-  if index == 0 { return first }
-  if index == 1 { return second }
-  return third
-}
-
+  first Window, second Window, third Window) Window{
+    if index == 0 { return first }
+    if index == 1 { return second }
+    return third
+  }
 
 func RunS15Q10ThreeWindowBenchmark() {
   S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
@@ -226,10 +225,10 @@ func RunS15Q10ThreeWindowBenchmark() {
         && firstExtent.Width == firstRoot.Width
         && firstExtent.Height == firstRoot.Height,
       "S15 Q10 three-window first metrics or extent did not match manifest: "
-        + "logical=" + firstMetrics.LogicalWidth.ToString() + "x" + firstMetrics.LogicalHeight.ToString()
-        + " framebuffer=" + firstMetrics.FramebufferWidth.ToString() + "x" + firstMetrics.FramebufferHeight.ToString()
-        + " target_extent=" + firstExtent.Width.ToString() + "x" + firstExtent.Height.ToString()
-        + " expected=" + firstRoot.Width.ToString() + "x" + firstRoot.Height.ToString())
+      +"logical=" + firstMetrics.LogicalWidth.ToString() + "x" + firstMetrics.LogicalHeight.ToString()
+      +" framebuffer=" + firstMetrics.FramebufferWidth.ToString() + "x" + firstMetrics.FramebufferHeight.ToString()
+      +" target_extent=" + firstExtent.Width.ToString() + "x" + firstExtent.Height.ToString()
+      +" expected=" + firstRoot.Width.ToString() + "x" + firstRoot.Height.ToString())
     S14Require(secondMetrics.LogicalWidth == secondRoot.Width
         && secondMetrics.LogicalHeight == secondRoot.Height
         && secondMetrics.FramebufferWidth == secondRoot.Width
@@ -237,10 +236,10 @@ func RunS15Q10ThreeWindowBenchmark() {
         && secondExtent.Width == secondRoot.Width
         && secondExtent.Height == secondRoot.Height,
       "S15 Q10 three-window second metrics or extent did not match manifest: "
-        + "logical=" + secondMetrics.LogicalWidth.ToString() + "x" + secondMetrics.LogicalHeight.ToString()
-        + " framebuffer=" + secondMetrics.FramebufferWidth.ToString() + "x" + secondMetrics.FramebufferHeight.ToString()
-        + " target_extent=" + secondExtent.Width.ToString() + "x" + secondExtent.Height.ToString()
-        + " expected=" + secondRoot.Width.ToString() + "x" + secondRoot.Height.ToString())
+      +"logical=" + secondMetrics.LogicalWidth.ToString() + "x" + secondMetrics.LogicalHeight.ToString()
+      +" framebuffer=" + secondMetrics.FramebufferWidth.ToString() + "x" + secondMetrics.FramebufferHeight.ToString()
+      +" target_extent=" + secondExtent.Width.ToString() + "x" + secondExtent.Height.ToString()
+      +" expected=" + secondRoot.Width.ToString() + "x" + secondRoot.Height.ToString())
     S14Require(thirdMetrics.LogicalWidth == thirdRoot.Width
         && thirdMetrics.LogicalHeight == thirdRoot.Height
         && thirdMetrics.FramebufferWidth == thirdRoot.Width
@@ -248,10 +247,10 @@ func RunS15Q10ThreeWindowBenchmark() {
         && thirdExtent.Width == thirdRoot.Width
         && thirdExtent.Height == thirdRoot.Height,
       "S15 Q10 three-window third metrics or extent did not match manifest: "
-        + "logical=" + thirdMetrics.LogicalWidth.ToString() + "x" + thirdMetrics.LogicalHeight.ToString()
-        + " framebuffer=" + thirdMetrics.FramebufferWidth.ToString() + "x" + thirdMetrics.FramebufferHeight.ToString()
-        + " target_extent=" + thirdExtent.Width.ToString() + "x" + thirdExtent.Height.ToString()
-        + " expected=" + thirdRoot.Width.ToString() + "x" + thirdRoot.Height.ToString())
+      +"logical=" + thirdMetrics.LogicalWidth.ToString() + "x" + thirdMetrics.LogicalHeight.ToString()
+      +" framebuffer=" + thirdMetrics.FramebufferWidth.ToString() + "x" + thirdMetrics.FramebufferHeight.ToString()
+      +" target_extent=" + thirdExtent.Width.ToString() + "x" + thirdExtent.Height.ToString()
+      +" expected=" + thirdRoot.Width.ToString() + "x" + thirdRoot.Height.ToString())
     WindowReadbackTestFixture.SetFocus(openedFirst, true)
     WindowReadbackTestFixture.SetFocus(openedSecond, false)
     WindowReadbackTestFixture.SetFocus(openedThird, false)
@@ -307,7 +306,7 @@ func RunS15Q10ThreeWindowBenchmark() {
             capturedGpuFrames[capturedGpuCount] = snapshot.frame
             capturedGpuWindows[capturedGpuCount] = 0
             capturedGpuElapsed[capturedGpuCount] =
-              int64(snapshot.elapsedNanoseconds)
+            int64(snapshot.elapsedNanoseconds)
             capturedGpuCount = capturedGpuCount + 1
           } else {
             gpuCaptureOverflow = true
@@ -321,7 +320,7 @@ func RunS15Q10ThreeWindowBenchmark() {
             capturedGpuFrames[capturedGpuCount] = snapshot.frame
             capturedGpuWindows[capturedGpuCount] = 1
             capturedGpuElapsed[capturedGpuCount] =
-              int64(snapshot.elapsedNanoseconds)
+            int64(snapshot.elapsedNanoseconds)
             capturedGpuCount = capturedGpuCount + 1
           } else {
             gpuCaptureOverflow = true
@@ -335,7 +334,7 @@ func RunS15Q10ThreeWindowBenchmark() {
             capturedGpuFrames[capturedGpuCount] = snapshot.frame
             capturedGpuWindows[capturedGpuCount] = 2
             capturedGpuElapsed[capturedGpuCount] =
-              int64(snapshot.elapsedNanoseconds)
+            int64(snapshot.elapsedNanoseconds)
             capturedGpuCount = capturedGpuCount + 1
           } else {
             gpuCaptureOverflow = true
@@ -365,8 +364,8 @@ func RunS15Q10ThreeWindowBenchmark() {
     imagePeak = firstCounters.imagePeakResidentBytes
     textAtlasPeak = firstCounters.textAtlasPeakResidentBytes
     resourcePeak = WindowReadbackTestFixture.TargetResidentResourceBytes(firstTarget)
-      + WindowReadbackTestFixture.TargetResidentResourceBytes(secondTarget)
-      + WindowReadbackTestFixture.TargetResidentResourceBytes(thirdTarget)
+    +WindowReadbackTestFixture.TargetResidentResourceBytes(secondTarget)
+    +WindowReadbackTestFixture.TargetResidentResourceBytes(thirdTarget)
     gen0Before = GC.CollectionCount(0)
     gen1Before = GC.CollectionCount(1)
     gen2Before = GC.CollectionCount(2)
@@ -422,26 +421,26 @@ func RunS15Q10ThreeWindowBenchmark() {
           WindowReadbackTestFixture.ForceRender(focusLossWindow, 0.0)
           focusGlobalAfter = WindowReadbackTestFixture.DiagnosticCounters(openedFirst)
           S14Require(focusGlobalAfter.submitCount
-              == focusGlobalBefore.submitCount + 1uL
+            == focusGlobalBefore.submitCount + 1uL
               && focusGlobalAfter.presentCount
-              == focusGlobalBefore.presentCount + 1uL,
+            == focusGlobalBefore.presentCount + 1uL,
             "S15 Q10 three-window focus-loss render did not submit and present once")
         }
         let focusFirst = WindowReadbackTestFixture.FrameSubmissions(openedFirst)
         let focusSecond = WindowReadbackTestFixture.FrameSubmissions(openedSecond)
         let focusThird = WindowReadbackTestFixture.FrameSubmissions(openedThird)
         let focusFirstSlot0Changed = focusFirst.Slot0Serial
-          != firstSubmissionsBefore.Slot0Serial
+        != firstSubmissionsBefore.Slot0Serial
         let focusFirstSlot1Changed = focusFirst.Slot1Serial
-          != firstSubmissionsBefore.Slot1Serial
+        != firstSubmissionsBefore.Slot1Serial
         let focusSecondSlot0Changed = focusSecond.Slot0Serial
-          != secondSubmissionsBefore.Slot0Serial
+        != secondSubmissionsBefore.Slot0Serial
         let focusSecondSlot1Changed = focusSecond.Slot1Serial
-          != secondSubmissionsBefore.Slot1Serial
+        != secondSubmissionsBefore.Slot1Serial
         let focusThirdSlot0Changed = focusThird.Slot0Serial
-          != thirdSubmissionsBefore.Slot0Serial
+        != thirdSubmissionsBefore.Slot0Serial
         let focusThirdSlot1Changed = focusThird.Slot1Serial
-          != thirdSubmissionsBefore.Slot1Serial
+        != thirdSubmissionsBefore.Slot1Serial
         if focusLossDemand {
           if focusLossIndex == 0 {
             S14Require((focusFirstSlot0Changed && !focusFirstSlot1Changed)
@@ -520,41 +519,41 @@ func RunS15Q10ThreeWindowBenchmark() {
       var submitAttempt int32 = 0
       var globalAfter = selectedGlobalBefore
       while submitAttempt < 1000
-          && (globalAfter.submitCount == selectedGlobalBefore.submitCount
+        && (globalAfter.submitCount == selectedGlobalBefore.submitCount
             || globalAfter.presentCount == selectedGlobalBefore.presentCount) {
-        let globalAttemptBefore = WindowReadbackTestFixture.DiagnosticCounters(openedFirst)
-        WindowReadbackTestFixture.ForceRenderNonblocking(selectedWindow,
-          submitAttempt == 0 ? 0.0166666666666667 : 0.0)
-        end = Stopwatch.GetTimestamp()
-        allocatedAfter = GC.GetAllocatedBytesForCurrentThread()
-        WindowReadbackTestFixture.DrainWindowQueue(selectedWindow, 2000)
-        globalAfter = WindowReadbackTestFixture.DiagnosticCounters(openedFirst)
-        if globalAfter.submitCount == globalAttemptBefore.submitCount
-            || globalAfter.presentCount == globalAttemptBefore.presentCount {
-          WindowReadbackTestFixture.PumpNativeEvents()
-        }
-        submitAttempt = submitAttempt + 1
-      }
+              let globalAttemptBefore = WindowReadbackTestFixture.DiagnosticCounters(openedFirst)
+              WindowReadbackTestFixture.ForceRenderNonblocking(selectedWindow,
+                submitAttempt == 0 ? 0.0166666666666667 : 0.0)
+              end = Stopwatch.GetTimestamp()
+              allocatedAfter = GC.GetAllocatedBytesForCurrentThread()
+              WindowReadbackTestFixture.DrainWindowQueue(selectedWindow, 2000)
+              globalAfter = WindowReadbackTestFixture.DiagnosticCounters(openedFirst)
+              if globalAfter.submitCount == globalAttemptBefore.submitCount
+                || globalAfter.presentCount == globalAttemptBefore.presentCount{
+                  WindowReadbackTestFixture.PumpNativeEvents()
+                }
+              submitAttempt = submitAttempt + 1
+            }
       S14Require(globalAfter.submitCount == selectedGlobalBefore.submitCount + 1uL,
         "S15 Q10 three-window measured frame did not submit exactly once")
       S14Require(globalAfter.presentCount == selectedGlobalBefore.presentCount + 1uL,
         "S15 Q10 three-window measured frame did not present exactly once")
       S14Require(globalAfter.submitCount == globalBefore.submitCount
-          + expectedGlobalFrames
+        +expectedGlobalFrames
           && globalAfter.presentCount == globalBefore.presentCount
-          + expectedGlobalFrames,
+        +expectedGlobalFrames,
         "S15 Q10 three-window measured global delta is incorrect")
       expectedGpuFrames[sampleIndex] =
-        WindowReadbackTestFixture.DiagnosticFrameId(selectedWindow)
+      WindowReadbackTestFixture.DiagnosticFrameId(selectedWindow)
       expectedGpuWindows[sampleIndex] = selectedIndex
       let firstSubmissionsAfter = WindowReadbackTestFixture.FrameSubmissions(openedFirst)
       let secondSubmissionsAfter = WindowReadbackTestFixture.FrameSubmissions(openedSecond)
       let thirdSubmissionsAfter = WindowReadbackTestFixture.FrameSubmissions(openedThird)
       if selectedIndex == 0 {
         let slot0Changed = firstSubmissionsAfter.Slot0Serial
-          != stableFirst.Slot0Serial
+        != stableFirst.Slot0Serial
         let slot1Changed = firstSubmissionsAfter.Slot1Serial
-          != stableFirst.Slot1Serial
+        != stableFirst.Slot1Serial
         S14Require((slot0Changed && !slot1Changed)
             || (!slot0Changed && slot1Changed),
           "S15 Q10 three-window selected first window did not change one frame slot")
@@ -562,9 +561,9 @@ func RunS15Q10ThreeWindowBenchmark() {
         window0PresentDelta = window0PresentDelta + 1uL
       } else if selectedIndex == 1 {
         let slot0Changed = secondSubmissionsAfter.Slot0Serial
-          != stableSecond.Slot0Serial
+        != stableSecond.Slot0Serial
         let slot1Changed = secondSubmissionsAfter.Slot1Serial
-          != stableSecond.Slot1Serial
+        != stableSecond.Slot1Serial
         S14Require((slot0Changed && !slot1Changed)
             || (!slot0Changed && slot1Changed),
           "S15 Q10 three-window selected second window did not change one frame slot")
@@ -572,9 +571,9 @@ func RunS15Q10ThreeWindowBenchmark() {
         window1PresentDelta = window1PresentDelta + 1uL
       } else {
         let slot0Changed = thirdSubmissionsAfter.Slot0Serial
-          != stableThird.Slot0Serial
+        != stableThird.Slot0Serial
         let slot1Changed = thirdSubmissionsAfter.Slot1Serial
-          != stableThird.Slot1Serial
+        != stableThird.Slot1Serial
         S14Require((slot0Changed && !slot1Changed)
             || (!slot0Changed && slot1Changed),
           "S15 Q10 three-window selected third window did not change one frame slot")
@@ -583,9 +582,9 @@ func RunS15Q10ThreeWindowBenchmark() {
       }
       if selectedCleanFirst {
         let unchanged = firstSubmissionsAfter.Slot0Serial
-            == stableFirst.Slot0Serial
+        == stableFirst.Slot0Serial
           && firstSubmissionsAfter.Slot1Serial
-            == stableFirst.Slot1Serial
+        == stableFirst.Slot1Serial
         S14Require(unchanged,
           "S15 Q10 three-window clean first window changed a frame slot")
         let cleanDelta = unchanged ? 0uL : 1uL
@@ -594,9 +593,9 @@ func RunS15Q10ThreeWindowBenchmark() {
       }
       if selectedCleanSecond {
         let unchanged = secondSubmissionsAfter.Slot0Serial
-            == stableSecond.Slot0Serial
+        == stableSecond.Slot0Serial
           && secondSubmissionsAfter.Slot1Serial
-            == stableSecond.Slot1Serial
+        == stableSecond.Slot1Serial
         S14Require(unchanged,
           "S15 Q10 three-window clean second window changed a frame slot")
         let cleanDelta = unchanged ? 0uL : 1uL
@@ -605,9 +604,9 @@ func RunS15Q10ThreeWindowBenchmark() {
       }
       if selectedCleanThird {
         let unchanged = thirdSubmissionsAfter.Slot0Serial
-            == stableThird.Slot0Serial
+        == stableThird.Slot0Serial
           && thirdSubmissionsAfter.Slot1Serial
-            == stableThird.Slot1Serial
+        == stableThird.Slot1Serial
         S14Require(unchanged,
           "S15 Q10 three-window clean third window changed a frame slot")
         let cleanDelta = unchanged ? 0uL : 1uL
@@ -628,10 +627,10 @@ func RunS15Q10ThreeWindowBenchmark() {
           "S15 Q10 three-window third focus state is incorrect")
       }
       if selectedRoot.PointerCount != selectedPointerBefore + 1
-          || selectedRoot.KeyCount != selectedKeyBefore + 1
-          || selectedRoot.TextCount != selectedTextBefore + 1 {
-        throw InvalidOperationException("S15 Q10 three-window input callback delta is incorrect")
-      }
+        || selectedRoot.KeyCount != selectedKeyBefore + 1
+        || selectedRoot.TextCount != selectedTextBefore + 1 {
+          throw InvalidOperationException("S15 Q10 three-window input callback delta is incorrect")
+        }
       S14Require(selectedRoot.CallbackOrder == selectedCallbackBefore + 3
           && selectedRoot.PointerOrder < selectedRoot.KeyOrder
           && selectedRoot.KeyOrder < selectedRoot.TextOrder,
@@ -691,9 +690,9 @@ func RunS15Q10ThreeWindowBenchmark() {
       let combinedImagePeak = globalAfter.imagePeakResidentBytes
       let combinedTextAtlasPeak = globalAfter.textAtlasPeakResidentBytes
       let combinedResources =
-        WindowReadbackTestFixture.TargetResidentResourceBytes(firstTarget)
-          + WindowReadbackTestFixture.TargetResidentResourceBytes(secondTarget)
-          + WindowReadbackTestFixture.TargetResidentResourceBytes(thirdTarget)
+      WindowReadbackTestFixture.TargetResidentResourceBytes(firstTarget)
+      +WindowReadbackTestFixture.TargetResidentResourceBytes(secondTarget)
+      +WindowReadbackTestFixture.TargetResidentResourceBytes(thirdTarget)
       if combinedAllocator > allocatorPeak { allocatorPeak = combinedAllocator }
       if combinedVulkanMemory > vulkanMemoryPeak { vulkanMemoryPeak = combinedVulkanMemory }
       if combinedCache > cachePeak { cachePeak = combinedCache }
@@ -725,10 +724,10 @@ func RunS15Q10ThreeWindowBenchmark() {
         var capturedIndex int32 = 0
         while capturedIndex < capturedGpuCount {
           if !capturedGpuMatched[capturedIndex]
-              && capturedGpuWindows[capturedIndex]
-                == expectedGpuWindows[gpuResolveIndex]
-              && capturedGpuFrames[capturedIndex]
-                == expectedGpuFrames[gpuResolveIndex] {
+            && capturedGpuWindows[capturedIndex]
+          == expectedGpuWindows[gpuResolveIndex]
+            && capturedGpuFrames[capturedIndex]
+          == expectedGpuFrames[gpuResolveIndex]{
             gpuNs[gpuResolveIndex] = capturedGpuElapsed[capturedIndex]
             capturedGpuMatched[capturedIndex] = true
             matches = matches + 1
@@ -768,15 +767,15 @@ func RunS15Q10ThreeWindowBenchmark() {
     S14Require(cleanSubmitDelta == 0uL && cleanPresentDelta == 0uL,
       "S15 Q10 three-window clean windows submitted or presented")
     resourceCurrent = WindowReadbackTestFixture.TargetResidentResourceBytes(firstTarget)
-      + WindowReadbackTestFixture.TargetResidentResourceBytes(secondTarget)
-      + WindowReadbackTestFixture.TargetResidentResourceBytes(thirdTarget)
+    +WindowReadbackTestFixture.TargetResidentResourceBytes(secondTarget)
+    +WindowReadbackTestFixture.TargetResidentResourceBytes(thirdTarget)
     openedFirst.RequestClose()
     WindowReadbackTestFixture.ForceRender(openedFirst, 0.0)
     window0CloseVerified = !openedFirst.IsOpen
     S14Require(window0CloseVerified && openedSecond.IsOpen && openedThird.IsOpen,
       "S15 Q10 three-window first close was not independent")
     S14Require(WindowReadbackTestFixture.TargetResidentResourceBytes(firstTarget)
-        == 0uL,
+      == 0uL,
       "S15 Q10 three-window first target retained resources after close")
     firstCloseVerified = window0CloseVerified
     let secondLiveBefore = WindowReadbackTestFixture.FrameSubmissions(openedSecond)
@@ -790,15 +789,15 @@ func RunS15Q10ThreeWindowBenchmark() {
     let secondLiveAfter = WindowReadbackTestFixture.FrameSubmissions(openedSecond)
     let thirdLiveAfter = WindowReadbackTestFixture.FrameSubmissions(openedThird)
     let secondSlotChanged = (secondLiveAfter.Slot0Serial
-          != secondLiveBefore.Slot0Serial
+      != secondLiveBefore.Slot0Serial
         && secondLiveAfter.Slot1Serial == secondLiveBefore.Slot1Serial)
       || (secondLiveAfter.Slot0Serial == secondLiveBefore.Slot0Serial
-        && secondLiveAfter.Slot1Serial != secondLiveBefore.Slot1Serial)
+          && secondLiveAfter.Slot1Serial != secondLiveBefore.Slot1Serial)
     let thirdSlotChanged = (thirdLiveAfter.Slot0Serial
-          != thirdLiveBefore.Slot0Serial
+      != thirdLiveBefore.Slot0Serial
         && thirdLiveAfter.Slot1Serial == thirdLiveBefore.Slot1Serial)
       || (thirdLiveAfter.Slot0Serial == thirdLiveBefore.Slot0Serial
-        && thirdLiveAfter.Slot1Serial != thirdLiveBefore.Slot1Serial)
+          && thirdLiveAfter.Slot1Serial != thirdLiveBefore.Slot1Serial)
     window0LivenessVerified = window0LivenessVerified && window0CloseVerified
     window1LivenessVerified = secondSlotChanged && openedSecond.IsOpen
       && secondRoot.Invariant()
@@ -813,27 +812,27 @@ func RunS15Q10ThreeWindowBenchmark() {
     window1CloseVerified = !openedSecond.IsOpen
     S14Require(window1CloseVerified
         && WindowReadbackTestFixture.TargetResidentResourceBytes(secondTarget)
-          == 0uL,
+      == 0uL,
       "S15 Q10 three-window second target did not close cleanly")
     openedThird.RequestClose()
     WindowReadbackTestFixture.ForceRender(openedThird, 0.0)
     window2CloseVerified = !openedThird.IsOpen
     S14Require(window2CloseVerified
         && WindowReadbackTestFixture.TargetResidentResourceBytes(thirdTarget)
-          == 0uL,
+      == 0uL,
       "S15 Q10 three-window third target did not close cleanly")
     S14Require(!openedFirst.IsOpen && !openedSecond.IsOpen && !openedThird.IsOpen,
       "S15 Q10 three-window final close did not close all windows")
     finalCloseVerified = window0CloseVerified && window1CloseVerified
       && window2CloseVerified
     let resourceAfterFirstClose =
-      WindowReadbackTestFixture.TargetResidentResourceBytes(firstTarget)
+    WindowReadbackTestFixture.TargetResidentResourceBytes(firstTarget)
     let resourceAfterSecondClose =
-      WindowReadbackTestFixture.TargetResidentResourceBytes(secondTarget)
+    WindowReadbackTestFixture.TargetResidentResourceBytes(secondTarget)
     let resourceAfterThirdClose =
-      WindowReadbackTestFixture.TargetResidentResourceBytes(thirdTarget)
+    WindowReadbackTestFixture.TargetResidentResourceBytes(thirdTarget)
     resourceEnd = resourceAfterFirstClose + resourceAfterSecondClose
-      + resourceAfterThirdClose
+    +resourceAfterThirdClose
     finalZeroResources = resourceAfterFirstClose == 0uL
       && resourceAfterSecondClose == 0uL
       && resourceAfterThirdClose == 0uL
@@ -934,181 +933,181 @@ func RunS15Q10ThreeWindowBenchmark() {
       && secondTextSlot1 && thirdTextSlot0 && thirdTextSlot1,
     "S15 Q10 three-window did not exercise text frame slots 0 and 1 for every window")
   Console.WriteLine("s15-q10: workload=three-window"
-    + " seed=" + S15Q10ThreeWindowRoot.ManifestSeed.ToString()
-    + " windows=3"
-    + " width0=" + S15Q10ThreeWindowRoot.PrimaryWidth.ToString()
-    + " height0=" + S15Q10ThreeWindowRoot.PrimaryHeight.ToString()
-    + " width1=" + S15Q10ThreeWindowRoot.SecondaryWidth.ToString()
-    + " height1=" + S15Q10ThreeWindowRoot.SecondaryHeight.ToString()
-    + " width2=" + S15Q10ThreeWindowRoot.SecondaryWidth.ToString()
-    + " height2=" + S15Q10ThreeWindowRoot.SecondaryHeight.ToString()
-    + " logical_width0=" + actualLogicalWidth0.ToString()
-    + " logical_height0=" + actualLogicalHeight0.ToString()
-    + " framebuffer_width0=" + actualFramebufferWidth0.ToString()
-    + " framebuffer_height0=" + actualFramebufferHeight0.ToString()
-    + " logical_width1=" + actualLogicalWidth1.ToString()
-    + " logical_height1=" + actualLogicalHeight1.ToString()
-    + " framebuffer_width1=" + actualFramebufferWidth1.ToString()
-    + " framebuffer_height1=" + actualFramebufferHeight1.ToString()
-    + " logical_width2=" + actualLogicalWidth2.ToString()
-    + " logical_height2=" + actualLogicalHeight2.ToString()
-    + " framebuffer_width2=" + actualFramebufferWidth2.ToString()
-    + " framebuffer_height2=" + actualFramebufferHeight2.ToString()
-    + " logical=" + firstRoot.LogicalCount.ToString()
-    + " logical_edges=" + firstRoot.LogicalEdges.ToString()
-    + " visible_edges=" + firstRoot.VisibleEdges.ToString()
-    + " visible=" + firstRoot.VisibleCount.ToString()
-    + " mounted=" + firstRoot.MountedCount.ToString()
-    + " mounted_bound=" + firstRoot.MountedBound.ToString()
-    + " mutations=" + firstRoot.MutationCount.ToString()
-    + " warmup=" + warmup.ToString()
-    + " samples=" + samples.ToString()
-    + " cpu_p50_ns=" + S14Percentile(frameNs, 0.50).ToString()
-    + " cpu_p95_ns=" + S14Percentile(frameNs, 0.95).ToString()
-    + " cpu_p99_ns=" + S14Percentile(frameNs, 0.99).ToString()
-    + " cpu_p999_ns=" + S14Percentile(frameNs, 0.999).ToString()
-    + " cpu_worst_ns=" + S14Max(frameNs).ToString()
-    + " managed_alloc_p50_B=" + allocationP50.ToString()
-    + " managed_alloc_p95_B=" + allocationP95.ToString()
-    + " managed_alloc_p99_B=" + allocationP99.ToString()
-    + " managed_alloc_p999_B=" + allocationP999.ToString()
-    + " managed_alloc_worst_B=" + allocationWorst.ToString()
-    + " managed_alloc_total_B=" + allocationSum.ToString()
-    + " managed_live_start_B=" + managedLiveStart.ToString()
-    + " managed_live_end_B=" + managedLiveEnd.ToString()
-    + " managed_live_peak_B=" + managedLivePeak.ToString()
-    + " managed_retained_start_B=" + managedRetainedStart.ToString()
-    + " managed_retained_end_B=" + managedRetainedEnd.ToString()
-    + " working_set_start_B=" + workingSetStart.ToString()
-    + " working_set_end_B=" + workingSetEnd.ToString()
-    + " working_set_peak_B=" + workingSetPeak.ToString()
-    + " private_memory_start_B=" + privateMemoryStart.ToString()
-    + " private_memory_end_B=" + privateMemoryEnd.ToString()
-    + " private_memory_peak_B=" + privateMemoryPeak.ToString()
-    + " private_dirty_start_B=" + privateDirtyStart.ToString()
-    + " private_dirty_end_B=" + privateDirtyEnd.ToString()
-    + " allocator_current_B=" + firstFinal.allocatorBytes.ToString()
-    + " allocator_peak_B=" + allocatorPeak.ToString()
-    + " vk_memory_current_B=" + firstFinal.vulkanDeviceMemoryBytes.ToString()
-    + " vk_memory_peak_B=" + vulkanMemoryPeak.ToString()
-    + " image_current_B=" + firstFinal.imageResidentBytes.ToString()
-    + " text_atlas_current_B=" + firstFinal.textAtlasResidentBytes.ToString()
-    + " cache_current_B=" + firstFinal.cacheBytes.ToString()
-    + " cache_peak_B=" + cachePeak.ToString()
-    + " image_peak_B=" + imagePeak.ToString()
-    + " text_atlas_peak_B=" + textAtlasPeak.ToString()
-    + " resource_current_B=" + resourceCurrent.ToString()
-    + " resource_peak_B=" + resourcePeak.ToString()
-    + " resource_end_B=" + resourceEnd.ToString()
-    + " gc_gen0_delta=" + (gen0After - gen0Before).ToString()
-    + " gc_gen1_delta=" + (gen1After - gen1Before).ToString()
-    + " gc_gen2_delta=" + (gen2After - gen2Before).ToString()
-    + " gc_pause_ns=" + ((pauseTicksAfter - pauseTicksBefore) * 100L).ToString()
-    + " managed_diagnostic_B=" + firstFinal.managedAllocatedBytes.ToString()
-    + " vk_object_alloc_delta="
-      + S15Q10Delta(firstFinal.vulkanObjectAllocationCount,
-          baselineFirst.vulkanObjectAllocationCount).ToString()
-    + " vk_device_alloc_delta="
-      + S15Q10Delta(firstFinal.vulkanDeviceMemoryAllocationCount,
-          baselineFirst.vulkanDeviceMemoryAllocationCount).ToString()
-    + " warm_vk_object_alloc_delta="
-      + S15Q10Delta(firstFinal.vulkanObjectAllocationCount,
-          baselineFirst.vulkanObjectAllocationCount).ToString()
-    + " warm_vk_device_alloc_delta="
-      + S15Q10Delta(firstFinal.vulkanDeviceMemoryAllocationCount,
-          baselineFirst.vulkanDeviceMemoryAllocationCount).ToString()
-    + " rebuild_delta=" + S15Q10Delta(finalRebuild, beforeRebuild).ToString()
-    + " layout_delta=" + S15Q10Delta(finalLayout, beforeLayout).ToString()
-    + " upload_delta=" + S15Q10Delta(finalUpload, beforeUpload).ToString()
-    + " plan_delta=" + S15Q10Delta(finalPlan, beforePlan).ToString()
-    + " record_delta=" + S15Q10Delta(finalRecord, beforeRecord).ToString()
-    + " draw_delta=" + S15Q10Delta(finalDraw, beforeDraw).ToString()
-    + " pass_delta=" + S15Q10Delta(finalPass, beforePass).ToString()
-    + " barrier_delta=" + S15Q10Delta(finalBarrier, beforeBarrier).ToString()
-    + " submit_delta=" + submitDelta.ToString()
-    + " present_delta=" + presentDelta.ToString()
-    + " clean_submit_delta=" + cleanSubmitDelta.ToString()
-    + " clean_present_delta=" + cleanPresentDelta.ToString()
-    + " damage_delta=" + S15Q10Delta(finalDamage, beforeDamage).ToString()
-    + " damage_area_delta=" + S15Q10Delta(finalDamageArea, beforeDamageArea).ToString()
-    + " damage_x=" + finalScene.DamageX.ToString()
-    + " damage_y=" + finalScene.DamageY.ToString()
-    + " damage_width=" + finalScene.DamageWidth.ToString()
-    + " damage_height=" + finalScene.DamageHeight.ToString()
-    + " primitive_written_B=" + finalPrimitive.TotalWrittenBytes.ToString()
-    + " primitive_skipped_B=" + finalPrimitive.TotalSkippedBytes.ToString()
-    + " primitive_dirty=" + finalPrimitive.TotalDirtyRecordCount.ToString()
-    + " primitive_ranges=" + finalPrimitive.TotalUploadRangeCount.ToString()
-    + " primitive_full_uploads=" + finalPrimitive.TotalFullUploads.ToString()
-    + " primitive_mapped_writes=" + finalPrimitive.TotalMappedWrites.ToString()
-    + " primitive_flushes=" + finalPrimitive.TotalFlushes.ToString()
-    + " primitive_retained_reuse=" + finalPrimitive.TotalRetainedReuse.ToString()
-    + " text_written_B=" + finalText.TotalWrittenBytes.ToString()
-    + " text_skipped_B=" + finalText.TotalSkippedBytes.ToString()
-    + " text_dirty=" + finalText.TotalDirtySegmentCount.ToString()
-    + " text_ranges=" + finalText.TotalUploadRangeCount.ToString()
-    + " text_full_uploads=" + finalText.TotalFullUploads.ToString()
-    + " text_mapped_writes=" + finalText.TotalMappedWrites.ToString()
-    + " text_flushes=" + finalText.TotalFlushes.ToString()
-    + " text_retained_reuse=" + finalText.TotalRetainedReuse.ToString()
-    + " gpu_supported=" + (timestampSupported ? "1" : "0")
-    + " gpu_samples=" + gpu.Count.ToString()
-    + " gpu_main_p50_ns=" + gpu.P50.ToString()
-    + " gpu_main_p95_ns=" + gpu.P95.ToString()
-    + " gpu_main_p99_ns=" + gpu.P99.ToString()
-    + " gpu_main_p999_ns=" + gpu.P999.ToString()
-    + " gpu_main_worst_ns=" + gpu.Worst.ToString()
-    + " power_proxy=external"
-    + " focus_rotations=" + focusRotations.ToString()
-    + " focus_loss_submits=" + focusLossSubmitCount.ToString()
-    + " fairness0=" + fairness0.ToString()
-    + " fairness1=" + fairness1.ToString()
-    + " fairness2=" + fairness2.ToString()
-    + " window0_submit_delta=" + window0SubmitDelta.ToString()
-    + " window1_submit_delta=" + window1SubmitDelta.ToString()
-    + " window2_submit_delta=" + window2SubmitDelta.ToString()
-    + " window0_present_delta=" + window0PresentDelta.ToString()
-    + " window1_present_delta=" + window1PresentDelta.ToString()
-    + " window2_present_delta=" + window2PresentDelta.ToString()
-    + " pointer_count=" + (window0Pointer + window1Pointer + window2Pointer).ToString()
-    + " key_count=" + (window0Key + window1Key + window2Key).ToString()
-    + " text_count=" + (window0Text + window1Text + window2Text).ToString()
-    + " callback_count=" + (window0Callback + window1Callback + window2Callback).ToString()
-    + " window0_pointer=" + window0Pointer.ToString()
-    + " window1_pointer=" + window1Pointer.ToString()
-    + " window2_pointer=" + window2Pointer.ToString()
-    + " window0_key=" + window0Key.ToString()
-    + " window1_key=" + window1Key.ToString()
-    + " window2_key=" + window2Key.ToString()
-    + " window0_text=" + window0Text.ToString()
-    + " window1_text=" + window1Text.ToString()
-    + " window2_text=" + window2Text.ToString()
-    + " window0_callback_order=" + window0Callback.ToString()
-    + " window1_callback_order=" + window1Callback.ToString()
-    + " window2_callback_order=" + window2Callback.ToString()
-    + " window0_pointer_order=" + firstRoot.PointerOrder.ToString()
-    + " window1_pointer_order=" + secondRoot.PointerOrder.ToString()
-    + " window2_pointer_order=" + thirdRoot.PointerOrder.ToString()
-    + " window0_key_order=" + firstRoot.KeyOrder.ToString()
-    + " window1_key_order=" + secondRoot.KeyOrder.ToString()
-    + " window2_key_order=" + thirdRoot.KeyOrder.ToString()
-    + " window0_text_order=" + firstRoot.TextOrder.ToString()
-    + " window1_text_order=" + secondRoot.TextOrder.ToString()
-    + " window2_text_order=" + thirdRoot.TextOrder.ToString()
-    + " slot0=" + ((firstSlot0 && secondSlot0 && thirdSlot0) ? "1" : "0")
-    + " slot1=" + ((firstSlot1 && secondSlot1 && thirdSlot1) ? "1" : "0")
-    + " both_slots=" + ((firstSlot0 && firstSlot1 && secondSlot0
-      && secondSlot1 && thirdSlot0 && thirdSlot1) ? "1" : "0")
-    + " text_both_slots=" + ((firstTextSlot0 && firstTextSlot1 && secondTextSlot0
-      && secondTextSlot1 && thirdTextSlot0 && thirdTextSlot1) ? "1" : "0")
-    + " first_close=" + (firstCloseVerified ? "1" : "0")
-    + " remaining_liveness=" + (remainingLivenessVerified ? "1" : "0")
-    + " resource_zero=" + (finalZeroResources ? "1" : "0")
-    + " window0_liveness=" + (window0LivenessVerified ? "1" : "0")
-    + " window1_liveness=" + (window1LivenessVerified ? "1" : "0")
-    + " window2_liveness=" + (window2LivenessVerified ? "1" : "0")
-    + " window0_close=" + (window0CloseVerified ? "1" : "0")
-    + " window1_close=" + (window1CloseVerified ? "1" : "0")
-    + " window2_close=" + (window2CloseVerified ? "1" : "0")
-    + " close=" + (finalCloseVerified ? "1" : "0"))
+    +" seed=" + S15Q10ThreeWindowRoot.ManifestSeed.ToString()
+    +" windows=3"
+    +" width0=" + S15Q10ThreeWindowRoot.PrimaryWidth.ToString()
+    +" height0=" + S15Q10ThreeWindowRoot.PrimaryHeight.ToString()
+    +" width1=" + S15Q10ThreeWindowRoot.SecondaryWidth.ToString()
+    +" height1=" + S15Q10ThreeWindowRoot.SecondaryHeight.ToString()
+    +" width2=" + S15Q10ThreeWindowRoot.SecondaryWidth.ToString()
+    +" height2=" + S15Q10ThreeWindowRoot.SecondaryHeight.ToString()
+    +" logical_width0=" + actualLogicalWidth0.ToString()
+    +" logical_height0=" + actualLogicalHeight0.ToString()
+    +" framebuffer_width0=" + actualFramebufferWidth0.ToString()
+    +" framebuffer_height0=" + actualFramebufferHeight0.ToString()
+    +" logical_width1=" + actualLogicalWidth1.ToString()
+    +" logical_height1=" + actualLogicalHeight1.ToString()
+    +" framebuffer_width1=" + actualFramebufferWidth1.ToString()
+    +" framebuffer_height1=" + actualFramebufferHeight1.ToString()
+    +" logical_width2=" + actualLogicalWidth2.ToString()
+    +" logical_height2=" + actualLogicalHeight2.ToString()
+    +" framebuffer_width2=" + actualFramebufferWidth2.ToString()
+    +" framebuffer_height2=" + actualFramebufferHeight2.ToString()
+    +" logical=" + firstRoot.LogicalCount.ToString()
+    +" logical_edges=" + firstRoot.LogicalEdges.ToString()
+    +" visible_edges=" + firstRoot.VisibleEdges.ToString()
+    +" visible=" + firstRoot.VisibleCount.ToString()
+    +" mounted=" + firstRoot.MountedCount.ToString()
+    +" mounted_bound=" + firstRoot.MountedBound.ToString()
+    +" mutations=" + firstRoot.MutationCount.ToString()
+    +" warmup=" + warmup.ToString()
+    +" samples=" + samples.ToString()
+    +" cpu_p50_ns=" + S14Percentile(frameNs, 0.50).ToString()
+    +" cpu_p95_ns=" + S14Percentile(frameNs, 0.95).ToString()
+    +" cpu_p99_ns=" + S14Percentile(frameNs, 0.99).ToString()
+    +" cpu_p999_ns=" + S14Percentile(frameNs, 0.999).ToString()
+    +" cpu_worst_ns=" + S14Max(frameNs).ToString()
+    +" managed_alloc_p50_B=" + allocationP50.ToString()
+    +" managed_alloc_p95_B=" + allocationP95.ToString()
+    +" managed_alloc_p99_B=" + allocationP99.ToString()
+    +" managed_alloc_p999_B=" + allocationP999.ToString()
+    +" managed_alloc_worst_B=" + allocationWorst.ToString()
+    +" managed_alloc_total_B=" + allocationSum.ToString()
+    +" managed_live_start_B=" + managedLiveStart.ToString()
+    +" managed_live_end_B=" + managedLiveEnd.ToString()
+    +" managed_live_peak_B=" + managedLivePeak.ToString()
+    +" managed_retained_start_B=" + managedRetainedStart.ToString()
+    +" managed_retained_end_B=" + managedRetainedEnd.ToString()
+    +" working_set_start_B=" + workingSetStart.ToString()
+    +" working_set_end_B=" + workingSetEnd.ToString()
+    +" working_set_peak_B=" + workingSetPeak.ToString()
+    +" private_memory_start_B=" + privateMemoryStart.ToString()
+    +" private_memory_end_B=" + privateMemoryEnd.ToString()
+    +" private_memory_peak_B=" + privateMemoryPeak.ToString()
+    +" private_dirty_start_B=" + privateDirtyStart.ToString()
+    +" private_dirty_end_B=" + privateDirtyEnd.ToString()
+    +" allocator_current_B=" + firstFinal.allocatorBytes.ToString()
+    +" allocator_peak_B=" + allocatorPeak.ToString()
+    +" vk_memory_current_B=" + firstFinal.vulkanDeviceMemoryBytes.ToString()
+    +" vk_memory_peak_B=" + vulkanMemoryPeak.ToString()
+    +" image_current_B=" + firstFinal.imageResidentBytes.ToString()
+    +" text_atlas_current_B=" + firstFinal.textAtlasResidentBytes.ToString()
+    +" cache_current_B=" + firstFinal.cacheBytes.ToString()
+    +" cache_peak_B=" + cachePeak.ToString()
+    +" image_peak_B=" + imagePeak.ToString()
+    +" text_atlas_peak_B=" + textAtlasPeak.ToString()
+    +" resource_current_B=" + resourceCurrent.ToString()
+    +" resource_peak_B=" + resourcePeak.ToString()
+    +" resource_end_B=" + resourceEnd.ToString()
+    +" gc_gen0_delta=" + (gen0After - gen0Before).ToString()
+    +" gc_gen1_delta=" + (gen1After - gen1Before).ToString()
+    +" gc_gen2_delta=" + (gen2After - gen2Before).ToString()
+    +" gc_pause_ns=" + ((pauseTicksAfter - pauseTicksBefore) * 100L).ToString()
+    +" managed_diagnostic_B=" + firstFinal.managedAllocatedBytes.ToString()
+    +" vk_object_alloc_delta="
+    +S15Q10Delta(firstFinal.vulkanObjectAllocationCount,
+      baselineFirst.vulkanObjectAllocationCount).ToString()
+    +" vk_device_alloc_delta="
+    +S15Q10Delta(firstFinal.vulkanDeviceMemoryAllocationCount,
+      baselineFirst.vulkanDeviceMemoryAllocationCount).ToString()
+    +" warm_vk_object_alloc_delta="
+    +S15Q10Delta(firstFinal.vulkanObjectAllocationCount,
+      baselineFirst.vulkanObjectAllocationCount).ToString()
+    +" warm_vk_device_alloc_delta="
+    +S15Q10Delta(firstFinal.vulkanDeviceMemoryAllocationCount,
+      baselineFirst.vulkanDeviceMemoryAllocationCount).ToString()
+    +" rebuild_delta=" + S15Q10Delta(finalRebuild, beforeRebuild).ToString()
+    +" layout_delta=" + S15Q10Delta(finalLayout, beforeLayout).ToString()
+    +" upload_delta=" + S15Q10Delta(finalUpload, beforeUpload).ToString()
+    +" plan_delta=" + S15Q10Delta(finalPlan, beforePlan).ToString()
+    +" record_delta=" + S15Q10Delta(finalRecord, beforeRecord).ToString()
+    +" draw_delta=" + S15Q10Delta(finalDraw, beforeDraw).ToString()
+    +" pass_delta=" + S15Q10Delta(finalPass, beforePass).ToString()
+    +" barrier_delta=" + S15Q10Delta(finalBarrier, beforeBarrier).ToString()
+    +" submit_delta=" + submitDelta.ToString()
+    +" present_delta=" + presentDelta.ToString()
+    +" clean_submit_delta=" + cleanSubmitDelta.ToString()
+    +" clean_present_delta=" + cleanPresentDelta.ToString()
+    +" damage_delta=" + S15Q10Delta(finalDamage, beforeDamage).ToString()
+    +" damage_area_delta=" + S15Q10Delta(finalDamageArea, beforeDamageArea).ToString()
+    +" damage_x=" + finalScene.DamageX.ToString()
+    +" damage_y=" + finalScene.DamageY.ToString()
+    +" damage_width=" + finalScene.DamageWidth.ToString()
+    +" damage_height=" + finalScene.DamageHeight.ToString()
+    +" primitive_written_B=" + finalPrimitive.TotalWrittenBytes.ToString()
+    +" primitive_skipped_B=" + finalPrimitive.TotalSkippedBytes.ToString()
+    +" primitive_dirty=" + finalPrimitive.TotalDirtyRecordCount.ToString()
+    +" primitive_ranges=" + finalPrimitive.TotalUploadRangeCount.ToString()
+    +" primitive_full_uploads=" + finalPrimitive.TotalFullUploads.ToString()
+    +" primitive_mapped_writes=" + finalPrimitive.TotalMappedWrites.ToString()
+    +" primitive_flushes=" + finalPrimitive.TotalFlushes.ToString()
+    +" primitive_retained_reuse=" + finalPrimitive.TotalRetainedReuse.ToString()
+    +" text_written_B=" + finalText.TotalWrittenBytes.ToString()
+    +" text_skipped_B=" + finalText.TotalSkippedBytes.ToString()
+    +" text_dirty=" + finalText.TotalDirtySegmentCount.ToString()
+    +" text_ranges=" + finalText.TotalUploadRangeCount.ToString()
+    +" text_full_uploads=" + finalText.TotalFullUploads.ToString()
+    +" text_mapped_writes=" + finalText.TotalMappedWrites.ToString()
+    +" text_flushes=" + finalText.TotalFlushes.ToString()
+    +" text_retained_reuse=" + finalText.TotalRetainedReuse.ToString()
+    +" gpu_supported=" + (timestampSupported ? "1" : "0")
+    +" gpu_samples=" + gpu.Count.ToString()
+    +" gpu_main_p50_ns=" + gpu.P50.ToString()
+    +" gpu_main_p95_ns=" + gpu.P95.ToString()
+    +" gpu_main_p99_ns=" + gpu.P99.ToString()
+    +" gpu_main_p999_ns=" + gpu.P999.ToString()
+    +" gpu_main_worst_ns=" + gpu.Worst.ToString()
+    +" power_proxy=external"
+    +" focus_rotations=" + focusRotations.ToString()
+    +" focus_loss_submits=" + focusLossSubmitCount.ToString()
+    +" fairness0=" + fairness0.ToString()
+    +" fairness1=" + fairness1.ToString()
+    +" fairness2=" + fairness2.ToString()
+    +" window0_submit_delta=" + window0SubmitDelta.ToString()
+    +" window1_submit_delta=" + window1SubmitDelta.ToString()
+    +" window2_submit_delta=" + window2SubmitDelta.ToString()
+    +" window0_present_delta=" + window0PresentDelta.ToString()
+    +" window1_present_delta=" + window1PresentDelta.ToString()
+    +" window2_present_delta=" + window2PresentDelta.ToString()
+    +" pointer_count=" + (window0Pointer + window1Pointer + window2Pointer).ToString()
+    +" key_count=" + (window0Key + window1Key + window2Key).ToString()
+    +" text_count=" + (window0Text + window1Text + window2Text).ToString()
+    +" callback_count=" + (window0Callback + window1Callback + window2Callback).ToString()
+    +" window0_pointer=" + window0Pointer.ToString()
+    +" window1_pointer=" + window1Pointer.ToString()
+    +" window2_pointer=" + window2Pointer.ToString()
+    +" window0_key=" + window0Key.ToString()
+    +" window1_key=" + window1Key.ToString()
+    +" window2_key=" + window2Key.ToString()
+    +" window0_text=" + window0Text.ToString()
+    +" window1_text=" + window1Text.ToString()
+    +" window2_text=" + window2Text.ToString()
+    +" window0_callback_order=" + window0Callback.ToString()
+    +" window1_callback_order=" + window1Callback.ToString()
+    +" window2_callback_order=" + window2Callback.ToString()
+    +" window0_pointer_order=" + firstRoot.PointerOrder.ToString()
+    +" window1_pointer_order=" + secondRoot.PointerOrder.ToString()
+    +" window2_pointer_order=" + thirdRoot.PointerOrder.ToString()
+    +" window0_key_order=" + firstRoot.KeyOrder.ToString()
+    +" window1_key_order=" + secondRoot.KeyOrder.ToString()
+    +" window2_key_order=" + thirdRoot.KeyOrder.ToString()
+    +" window0_text_order=" + firstRoot.TextOrder.ToString()
+    +" window1_text_order=" + secondRoot.TextOrder.ToString()
+    +" window2_text_order=" + thirdRoot.TextOrder.ToString()
+    +" slot0=" + ((firstSlot0 && secondSlot0 && thirdSlot0) ? "1" : "0")
+    +" slot1=" + ((firstSlot1 && secondSlot1 && thirdSlot1) ? "1" : "0")
+    +" both_slots=" + ((firstSlot0 && firstSlot1 && secondSlot0
+        && secondSlot1 && thirdSlot0 && thirdSlot1) ? "1" : "0")
+    +" text_both_slots=" + ((firstTextSlot0 && firstTextSlot1 && secondTextSlot0
+        && secondTextSlot1 && thirdTextSlot0 && thirdTextSlot1) ? "1" : "0")
+    +" first_close=" + (firstCloseVerified ? "1" : "0")
+    +" remaining_liveness=" + (remainingLivenessVerified ? "1" : "0")
+    +" resource_zero=" + (finalZeroResources ? "1" : "0")
+    +" window0_liveness=" + (window0LivenessVerified ? "1" : "0")
+    +" window1_liveness=" + (window1LivenessVerified ? "1" : "0")
+    +" window2_liveness=" + (window2LivenessVerified ? "1" : "0")
+    +" window0_close=" + (window0CloseVerified ? "1" : "0")
+    +" window1_close=" + (window1CloseVerified ? "1" : "0")
+    +" window2_close=" + (window2CloseVerified ? "1" : "0")
+    +" close=" + (finalCloseVerified ? "1" : "0"))
 }

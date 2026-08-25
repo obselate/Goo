@@ -14,13 +14,13 @@ public class ElementHandle {
   }
 
   /// Reports whether this handle is currently attached to an element.
-  public prop IsMounted bool {
+  public prop IsMounted bool{
     get { return mountedNode() != nil }
   }
 
   /// Gets the transformed border box in window logical coordinates.
   /// An unmounted handle returns an empty rectangle.
-  public prop BorderBox ElementRect {
+  public prop BorderBox ElementRect{
     get {
       guard let n = mountedNode() else { return ElementRect{} }
       return ElementHandles.BorderBox(n)
@@ -29,7 +29,7 @@ public class ElementHandle {
 
   /// Gets the transformed content box in window logical coordinates.
   /// An unmounted handle returns an empty rectangle.
-  public prop ContentBox ElementRect {
+  public prop ContentBox ElementRect{
     get {
       guard let n = mountedNode() else { return ElementRect{} }
       return ElementHandles.ContentBox(n)
@@ -38,7 +38,7 @@ public class ElementHandle {
 
   /// Gets the current logical scroll offset.
   /// An unmounted handle returns the origin.
-  public prop ScrollOffset Point {
+  public prop ScrollOffset Point{
     get {
       guard let n = mountedNode() else { return Point{} }
       return Point{ X: float64(n.ScrollX), Y: float64(n.ScrollY) }
@@ -47,9 +47,9 @@ public class ElementHandle {
 
   /// Occurs after this mounted element reaches a new stable geometry or scroll state.
   /// Callbacks run on the window UI thread after reconciliation and layout.
-  public event MetricsChanged Action[ElementMetrics] {
-    add { MetricSubscriptions.AddElement(this, value) }
-    remove { MetricSubscriptions.RemoveElement(this, value) }
+  public event MetricsChanged Action[ElementMetrics]{
+    add{ MetricSubscriptions.AddElement(this, value) }
+    remove{ MetricSubscriptions.RemoveElement(this, value) }
   }
 
   /// Moves keyboard focus to this focusable mounted element.
@@ -95,30 +95,30 @@ public class ElementHandle {
   /// Gets the retained text position nearest to a point.
   /// @returns False when this is unmounted, not a text primitive, or has no current retained layout.
   public func TryGetTextPositionAt(point Point, space TextCoordinateSpace,
-    out position TextPosition) bool {
-    position = TextPosition{}
-    guard let n = mountedNode() else { return false }
-    return TextGeometryQueries.PositionAt(n, point, space, out position)
-  }
+    out position TextPosition) bool{
+      position = TextPosition{}
+      guard let n = mountedNode() else { return false }
+      return TextGeometryQueries.PositionAt(n, point, space, out position)
+    }
 
   /// Gets the retained caret rectangle for a source UTF-16 text position.
   /// @returns False when this is unmounted, not a text primitive, or the position is not retained.
   public func TryGetTextCaretRect(position TextPosition, space TextCoordinateSpace,
-    out rect ElementRect) bool {
-    rect = ElementRect{}
-    guard let n = mountedNode() else { return false }
-    return TextGeometryQueries.CaretRect(n, position, space, out rect)
-  }
+    out rect ElementRect) bool{
+      rect = ElementRect{}
+      guard let n = mountedNode() else { return false }
+      return TextGeometryQueries.CaretRect(n, position, space, out rect)
+    }
 
   /// Copies retained rectangles for a source UTF-16 range into destination.
   /// @param required Receives the full rectangle count, including rectangles that did not fit.
   /// @returns False when this is unmounted, not a text primitive, the range is invalid, or no current retained layout exists.
   public func TryCopyTextRangeRects(textRange TextRange, space TextCoordinateSpace,
-    destination Span[ElementRect], out required int32) bool {
-    required = 0
-    guard let n = mountedNode() else { return false }
-    return TextGeometryQueries.CopyRangeRects(n, textRange, space, destination, out required)
-  }
+    destination Span[ElementRect], out required int32) bool{
+      required = 0
+      guard let n = mountedNode() else { return false }
+      return TextGeometryQueries.CopyRangeRects(n, textRange, space, destination, out required)
+    }
 
   internal func Attach(n Node, owner Window?) {
     if let current = node {
@@ -137,9 +137,9 @@ public class ElementHandle {
     }
   }
 
-  internal func AttachedNode() Node? { return node }
+  internal func AttachedNode() Node ? -> node
 
-  internal func AttachedWindow() Window? { return window }
+  internal func AttachedWindow() Window ? -> window
 
   internal func AttachedNodeFor(owner Window) Node? {
     if window != owner { return nil }
@@ -163,16 +163,14 @@ public class ElementHandle {
     return nil
   }
 
-  private func validScrollOffset(value float64) bool {
-    return !Double.IsNaN(value) && !Double.IsInfinity(value) && value >= 0.0
-  }
+  private func validScrollOffset(value float64) bool -> !Double.IsNaN(value) && !Double.IsInfinity(value) && value >= 0.0
 
   private func validateTextInputArea(area ElementRect) {
     if !Double.IsFinite(area.X) || !Double.IsFinite(area.Y)
       || !Double.IsFinite(area.Width) || !Double.IsFinite(area.Height)
       || area.Width < 0.0 || area.Height < 0.0 {
-      throw ArgumentOutOfRangeException("area")
-    }
+        throw ArgumentOutOfRangeException("area")
+      }
     let left = Math.Floor(area.X)
     let top = Math.Floor(area.Y)
     let right = Math.Ceiling(area.X + area.Width)
@@ -183,8 +181,8 @@ public class ElementHandle {
       || left < float64(Int32.MinValue) || top < float64(Int32.MinValue)
       || right > float64(Int32.MaxValue) || bottom > float64(Int32.MaxValue)
       || width > float64(Int32.MaxValue) || height > float64(Int32.MaxValue) {
-      throw ArgumentOutOfRangeException("area")
-    }
+        throw ArgumentOutOfRangeException("area")
+      }
   }
 }
 
@@ -196,13 +194,13 @@ public data struct ElementMetrics {
   private var scrollOffset Point
 
   /// Reports whether the element is mounted.
-  public prop IsMounted bool { get { return isMounted } init { isMounted = value } }
+  public prop IsMounted bool{ get { return isMounted } init{ isMounted = value } }
   /// Gets the transformed border box in window logical coordinates.
-  public prop BorderBox ElementRect { get { return borderBox } init { borderBox = value } }
+  public prop BorderBox ElementRect{ get { return borderBox } init{ borderBox = value } }
   /// Gets the transformed content box in window logical coordinates.
-  public prop ContentBox ElementRect { get { return contentBox } init { contentBox = value } }
+  public prop ContentBox ElementRect{ get { return contentBox } init{ contentBox = value } }
   /// Gets the current logical scroll offset.
-  public prop ScrollOffset Point { get { return scrollOffset } init { scrollOffset = value } }
+  public prop ScrollOffset Point{ get { return scrollOffset } init{ scrollOffset = value } }
 }
 
 /// Specifies the coordinate space used by mounted text geometry queries.
@@ -216,36 +214,36 @@ public data struct ElementRect {
   private var height float64
 
   /// Gets the horizontal origin.
-  public prop X float64 {
+  public prop X float64{
     get { return x }
-    init { x = value }
+    init{ x = value }
   }
 
   /// Gets the vertical origin.
-  public prop Y float64 {
+  public prop Y float64{
     get { return y }
-    init { y = value }
+    init{ y = value }
   }
 
   /// Gets the width.
-  public prop Width float64 {
+  public prop Width float64{
     get { return width }
-    init { width = value }
+    init{ width = value }
   }
 
   /// Gets the height.
-  public prop Height float64 {
+  public prop Height float64{
     get { return height }
-    init { height = value }
+    init{ height = value }
   }
 }
 
 internal class ElementHandles {
   shared {
     private let blobValues ConditionalWeakTable[Blob, ElementHandle] =
-      ConditionalWeakTable[Blob, ElementHandle]()
+    ConditionalWeakTable[Blob, ElementHandle]()
     private let values ConditionalWeakTable[Node, ElementHandle] =
-      ConditionalWeakTable[Node, ElementHandle]()
+    ConditionalWeakTable[Node, ElementHandle]()
     @ThreadStatic
     private var owners Stack[Window]?
 
@@ -365,7 +363,7 @@ internal class ElementHandles {
       return owners!!.Peek()
     }
 
-    internal func CurrentOwner() Window? { return currentOwner() }
+    internal func CurrentOwner() Window ? -> currentOwner()
 
     internal func BorderBox(n Node) ElementRect {
       let bounds = TransformGeometry.BoundsToWindow(n)
@@ -402,7 +400,7 @@ internal class ElementMetricSubscription {
   internal var HasLast bool
   internal var Registration ElementMetricRegistration?
 
-  internal prop HasCallbacks bool { get { return Callbacks != nil } }
+  internal prop HasCallbacks bool{ get { return Callbacks != nil } }
 
   internal func AddCallback(callback Action[ElementMetrics]) {
     Callbacks += callback
@@ -439,7 +437,7 @@ internal class WindowMetricSubscription {
   internal var ElementsDelivering bool
   internal var ElementsNeedCompaction bool
 
-  internal prop HasCallbacks bool { get { return Callbacks != nil } }
+  internal prop HasCallbacks bool{ get { return Callbacks != nil } }
 
   internal func AddCallback(callback Action[WindowMetrics]) {
     Callbacks += callback
@@ -563,24 +561,24 @@ internal class MetricSubscriptions {
 
     internal func ReportWindowMetrics(owner Window, logicalWidth int32, logicalHeight int32,
       framebufferWidth int32, framebufferHeight int32) {
-      guard let state = windowState(owner, false) else {
-        return
-      }
-      let scaleX = logicalWidth > 0 && framebufferWidth > 0
+        guard let state = windowState(owner, false) else {
+          return
+        }
+        let scaleX = logicalWidth > 0 && framebufferWidth > 0
         ? float64(framebufferWidth) / float64(logicalWidth) : 0.0
-      let scaleY = logicalHeight > 0 && framebufferHeight > 0
+        let scaleY = logicalHeight > 0 && framebufferHeight > 0
         ? float64(framebufferHeight) / float64(logicalHeight) : 0.0
-      state.Reported = WindowMetrics{
-        LogicalWidth: logicalWidth,
-        LogicalHeight: logicalHeight,
-        FramebufferWidth: framebufferWidth,
-        FramebufferHeight: framebufferHeight,
-        DisplayScaleX: scaleX,
-        DisplayScaleY: scaleY,
+        state.Reported = WindowMetrics{
+          LogicalWidth: logicalWidth,
+          LogicalHeight: logicalHeight,
+          FramebufferWidth: framebufferWidth,
+          FramebufferHeight: framebufferHeight,
+          DisplayScaleX: scaleX,
+          DisplayScaleY: scaleY,
+        }
+        state.HasReported = true
+        MarkWindowDirty(owner)
       }
-      state.HasReported = true
-      MarkWindowDirty(owner)
-    }
 
     internal func ReportedWindowMetrics(owner Window) WindowMetrics? {
       guard let state = windowState(owner, false) else {
@@ -666,7 +664,7 @@ internal class MetricSubscriptions {
         return
       }
       for i in 0 ... count {
-        let registration = state.Elements!![i]
+        let registration = state.Elements!! [i]
         notifyElement(registration.Handle)
       }
     }
@@ -803,21 +801,15 @@ internal class MetricSubscriptions {
   }
 }
 
-private func sameElementMetrics(left ElementMetrics, right ElementMetrics) bool {
-  return left.IsMounted == right.IsMounted && sameElementRect(left.BorderBox, right.BorderBox)
-    && sameElementRect(left.ContentBox, right.ContentBox)
-    && left.ScrollOffset.X == right.ScrollOffset.X && left.ScrollOffset.Y == right.ScrollOffset.Y
-}
+private func sameElementMetrics(left ElementMetrics, right ElementMetrics) bool -> left.IsMounted == right.IsMounted && sameElementRect(left.BorderBox, right.BorderBox)
+  && sameElementRect(left.ContentBox, right.ContentBox)
+  && left.ScrollOffset.X == right.ScrollOffset.X && left.ScrollOffset.Y == right.ScrollOffset.Y
 
-private func sameElementRect(left ElementRect, right ElementRect) bool {
-  return left.X == right.X && left.Y == right.Y && left.Width == right.Width && left.Height == right.Height
-}
+private func sameElementRect(left ElementRect, right ElementRect) bool -> left.X == right.X && left.Y == right.Y && left.Width == right.Width && left.Height == right.Height
 
-private func sameWindowMetrics(left WindowMetrics, right WindowMetrics) bool {
-  return left.LogicalWidth == right.LogicalWidth && left.LogicalHeight == right.LogicalHeight
-    && left.FramebufferWidth == right.FramebufferWidth && left.FramebufferHeight == right.FramebufferHeight
-    && left.DisplayScaleX == right.DisplayScaleX && left.DisplayScaleY == right.DisplayScaleY
-}
+private func sameWindowMetrics(left WindowMetrics, right WindowMetrics) bool -> left.LogicalWidth == right.LogicalWidth && left.LogicalHeight == right.LogicalHeight
+  && left.FramebufferWidth == right.FramebufferWidth && left.FramebufferHeight == right.FramebufferHeight
+  && left.DisplayScaleX == right.DisplayScaleX && left.DisplayScaleY == right.DisplayScaleY
 
 internal class TextGeometryQueries {
   shared {
@@ -832,48 +824,48 @@ internal class TextGeometryQueries {
     }
 
     internal func PositionAt(n Node, point Point, space TextCoordinateSpace,
-      out position TextPosition) bool {
-      position = TextPosition{}
-      guard let local = toElementPoint(n, point, space) else { return false }
-      return switch n.Kind {
-        case NodeKind.Text: staticPositionAt(n, local, out position)
-        case NodeKind.Entry: entryPositionAt(n, local, out position)
-        case NodeKind.Editor: editorPositionAt(n, local, out position)
-        default: false
+      out position TextPosition) bool{
+        position = TextPosition{}
+        guard let local = toElementPoint(n, point, space) else { return false }
+        return switch n.Kind {
+          case NodeKind.Text: staticPositionAt(n, local, out position)
+          case NodeKind.Entry: entryPositionAt(n, local, out position)
+          case NodeKind.Editor: editorPositionAt(n, local, out position)
+          default: false
+        }
       }
-    }
 
     internal func CaretRect(n Node, position TextPosition, space TextCoordinateSpace,
-      out rect ElementRect) bool {
-      rect = ElementRect{}
-      if !validSpace(space) || !validAffinity(position.Affinity) { return false }
-      var local Rect
-      var found = switch n.Kind {
-        case NodeKind.Text: staticCaretRect(n, position, out local)
-        case NodeKind.Entry: entryCaretRect(n, position, out local)
-        case NodeKind.Editor: TextEditorLayouts.TryCaretRectForGeometry(n, position, out local)
-        default: false
+      out rect ElementRect) bool{
+        rect = ElementRect{}
+        if !validSpace(space) || !validAffinity(position.Affinity) { return false }
+        var local Rect
+        let found = switch n.Kind {
+          case NodeKind.Text: staticCaretRect(n, position, out local)
+          case NodeKind.Entry: entryCaretRect(n, position, out local)
+          case NodeKind.Editor: TextEditorLayouts.TryCaretRectForGeometry(n, position, out local)
+          default: false
+        }
+        if !found { return false }
+        return convertRect(n, local, space, out rect)
       }
-      if !found { return false }
-      return convertRect(n, local, space, out rect)
-    }
 
     internal func CopyRangeRects(n Node, textRange TextRange, space TextCoordinateSpace,
-      destination Span[ElementRect], out required int32) bool {
-      required = 0
-      if !validSpace(space) || textRange.Start < 0 || textRange.Length < 0 {
-        return false
+      destination Span[ElementRect], out required int32) bool{
+        required = 0
+        if !validSpace(space) || textRange.Start < 0 || textRange.Length < 0 {
+          return false
+        }
+        if space == TextCoordinateSpace.Window && !windowMappingValid(n) {
+          return false
+        }
+        return switch n.Kind {
+          case NodeKind.Text: copyStaticRange(n, textRange, space, destination, out required)
+          case NodeKind.Entry: copyEntryRange(n, textRange, space, destination, out required)
+          case NodeKind.Editor: copyEditorRange(n, textRange, space, destination, out required)
+          default: false
+        }
       }
-      if space == TextCoordinateSpace.Window && !windowMappingValid(n) {
-        return false
-      }
-      return switch n.Kind {
-        case NodeKind.Text: copyStaticRange(n, textRange, space, destination, out required)
-        case NodeKind.Entry: copyEntryRange(n, textRange, space, destination, out required)
-        case NodeKind.Editor: copyEditorRange(n, textRange, space, destination, out required)
-        default: false
-      }
-    }
 
     private func staticPositionAt(n Node, local Point, out position TextPosition) bool {
       position = TextPosition{}
@@ -894,10 +886,10 @@ internal class TextGeometryQueries {
       let hit = shape.HitTest(x)
       let display = geometryLine.DisplayStart + hit.Index
       if geometryLine.VisibleEnd < geometryLine.DisplayEnd
-        && hit.Index >= geometryLine.VisibleEnd - geometryLine.DisplayStart {
-        position = TextPosition{ Offset: geometryLine.VisibleEnd, Affinity: TextAffinity.Upstream }
-        return true
-      }
+        && hit.Index >= geometryLine.VisibleEnd - geometryLine.DisplayStart{
+          position = TextPosition{ Offset: geometryLine.VisibleEnd, Affinity: TextAffinity.Upstream }
+          return true
+        }
       let retainedDisplay = display > geometryLine.VisibleEnd ? geometryLine.VisibleEnd : display
       position = TextPosition{ Offset: retainedDisplay, Affinity: TextAffinity(hit.Affinity) }
       return true
@@ -913,10 +905,8 @@ internal class TextGeometryQueries {
       return true
     }
 
-    private func editorPositionAt(n Node, local Point, out position TextPosition) bool {
-      return TextEditorLayouts.TryHitTestForGeometry(n, float32(local.X), float32(local.Y),
-        out position)
-    }
+    private func editorPositionAt(n Node, local Point, out position TextPosition) bool -> TextEditorLayouts.TryHitTestForGeometry(n, float32(local.X), float32(local.Y),
+      out position)
 
     private func staticCaretRect(n Node, position TextPosition, out rect Rect) bool {
       rect = Rect{}
@@ -927,8 +917,8 @@ internal class TextGeometryQueries {
       var display = position.Offset
       if display > 0 && display < n.Content.Length && n.Content[display] == 10
         && n.Content[display - 1] == 13 {
-        display = display - 1
-      }
+          display = display - 1
+        }
       let lineIndex = staticLineForDisplay(layout, geometry, display, position.Affinity)
       if lineIndex < 0 { return false }
       let line = layout.Lines[lineIndex]
@@ -941,7 +931,7 @@ internal class TextGeometryQueries {
       let contentY = TextLayouts.ContentTop(n) - n.Rect.Y
       let height = TextLayouts.resolvedLineHeight(n)
       rect = Rect{ X: contentX + TextLayouts.lineOffset(n, line, TextLayouts.ContentWidth(n))
-        + shape.CaretX(localIndex, int32(position.Affinity)),
+        +shape.CaretX(localIndex, int32(position.Affinity)),
         Y: contentY + float32(lineIndex) * height, W: 1.5F, H: height }
       return true
     }
@@ -954,47 +944,82 @@ internal class TextGeometryQueries {
       let height = shape.Descent - shape.Ascent
       let top = TextLayouts.ContentTop(n) - n.Rect.Y + (contentHeight - height) * 0.5F
       rect = Rect{ X: TextLayouts.ContentLeft(n) - n.Rect.X + entryOffset(n, shape) - n.EditScrollX
-        + shape.CaretX(entryDisplayOffset(n.EntryShape!!, position.Offset, position.Affinity),
+        +shape.CaretX(entryDisplayOffset(n.EntryShape!!, position.Offset, position.Affinity),
           int32(position.Affinity)), Y: top, W: 1.5F, H: height }
       return true
     }
 
     private func copyStaticRange(n Node, textRange TextRange, space TextCoordinateSpace,
-      destination Span[ElementRect], out required int32) bool {
-      required = 0
-      if !validRange(textRange, n.Content.Length) { return false }
-      guard let layout = TextLayouts.CurrentForGeometry(n) else { return false }
-      guard let geometry = TextLayoutGeometries.Get(layout) else { return false }
-      if geometry.Lines.Count != layout.Lines.Count { return false }
-      let start = textRange.Start
-      let end = textRange.Start + textRange.Length
-      if end < start { return false }
-      let contentX = TextLayouts.ContentLeft(n) - n.Rect.X
-      let contentY = TextLayouts.ContentTop(n) - n.Rect.Y
-      let height = TextLayouts.resolvedLineHeight(n)
-      var values = stackalloc [64]float32
-      for i in 0 ... layout.Lines.Count {
-        let line = layout.Lines[i]
-        let geometryLine = geometry.Lines[i]
-        if end <= geometryLine.DisplayStart || start >= geometryLine.VisibleEnd { continue }
-        guard let shape = line.Shape else { continue }
-        var lineStart = start > geometryLine.DisplayStart ? start : geometryLine.DisplayStart
-        var lineEnd = end < geometryLine.VisibleEnd ? end : geometryLine.VisibleEnd
-        if lineStart < geometryLine.DisplayStart { lineStart = geometryLine.DisplayStart }
-        if lineEnd > geometryLine.DisplayStart + line.Content.Length {
-          lineEnd = geometryLine.DisplayStart + line.Content.Length
+      destination Span[ElementRect], out required int32) bool{
+        required = 0
+        if !validRange(textRange, n.Content.Length) { return false }
+        guard let layout = TextLayouts.CurrentForGeometry(n) else { return false }
+        guard let geometry = TextLayoutGeometries.Get(layout) else { return false }
+        if geometry.Lines.Count != layout.Lines.Count { return false }
+        let start = textRange.Start
+        let end = textRange.Start + textRange.Length
+        if end < start { return false }
+        let contentX = TextLayouts.ContentLeft(n) - n.Rect.X
+        let contentY = TextLayouts.ContentTop(n) - n.Rect.Y
+        let height = TextLayouts.resolvedLineHeight(n)
+        let values = stackalloc[64]float32
+        for i in 0 ... layout.Lines.Count {
+          let line = layout.Lines[i]
+          let geometryLine = geometry.Lines[i]
+          if end <= geometryLine.DisplayStart || start >= geometryLine.VisibleEnd { continue }
+          guard let shape = line.Shape else { continue }
+          var lineStart = start > geometryLine.DisplayStart ? start : geometryLine.DisplayStart
+          var lineEnd = end < geometryLine.VisibleEnd ? end : geometryLine.VisibleEnd
+          if lineStart < geometryLine.DisplayStart { lineStart = geometryLine.DisplayStart }
+          if lineEnd > geometryLine.DisplayStart + line.Content.Length {
+            lineEnd = geometryLine.DisplayStart + line.Content.Length
+          }
+          if lineEnd <= lineStart { continue }
+          let rectCount = shape.SelectionRectCount(lineStart - geometryLine.DisplayStart,
+            lineEnd - geometryLine.DisplayStart)
+          var rectOffset int32 = 0
+          while rectOffset < rectCount {
+            let copied = shape.CopySelectionRects(lineStart - geometryLine.DisplayStart,
+              lineEnd - geometryLine.DisplayStart, rectOffset, values)
+            var value int32 = 0
+            while value + 1 < copied {
+              let raw = Rect{ X: contentX + TextLayouts.lineOffset(n, line, TextLayouts.ContentWidth(n))
+                +values[value], Y: contentY + float32(i) * height,
+                W: values[value + 1] - values[value], H: height }
+              if !appendRect(n, raw, space, destination, required) {
+                required = 0
+                return false
+              }
+              required++
+              value = value + 2
+            }
+            if copied == 0 { break }
+            rectOffset = rectOffset + copied / 2
+          }
         }
-        if lineEnd <= lineStart { continue }
-        let rectCount = shape.SelectionRectCount(lineStart - geometryLine.DisplayStart,
-          lineEnd - geometryLine.DisplayStart)
+        return true
+      }
+
+    private func copyEntryRange(n Node, textRange TextRange, space TextCoordinateSpace,
+      destination Span[ElementRect], out required int32) bool{
+        required = 0
+        if !validRange(textRange, n.Buffer.Length) { return false }
+        guard let shape = cachedEntryShape(n) else { return false }
+        let contentHeight = TextLayouts.ContentHeight(n)
+        let height = shape.Descent - shape.Ascent
+        let top = TextLayouts.ContentTop(n) - n.Rect.Y + (contentHeight - height) * 0.5F
+        let x = TextLayouts.ContentLeft(n) - n.Rect.X + entryOffset(n, shape) - n.EditScrollX
+        let start = entryDisplayOffset(n.EntryShape!!, textRange.Start, TextAffinity.Downstream)
+        let end = entryDisplayOffset(n.EntryShape!!, textRange.Start + textRange.Length,
+          TextAffinity.Upstream)
+        let rectCount = shape.SelectionRectCount(start, end)
         var rectOffset int32 = 0
+        let values = stackalloc[64]float32
         while rectOffset < rectCount {
-          let copied = shape.CopySelectionRects(lineStart - geometryLine.DisplayStart,
-            lineEnd - geometryLine.DisplayStart, rectOffset, values)
+          let copied = shape.CopySelectionRects(start, end, rectOffset, values)
           var value int32 = 0
           while value + 1 < copied {
-            let raw = Rect{ X: contentX + TextLayouts.lineOffset(n, line, TextLayouts.ContentWidth(n))
-              + values[value], Y: contentY + float32(i) * height,
+            let raw = Rect{ X: x + values[value], Y: top,
               W: values[value + 1] - values[value], H: height }
             if !appendRect(n, raw, space, destination, required) {
               required = 0
@@ -1006,91 +1031,56 @@ internal class TextGeometryQueries {
           if copied == 0 { break }
           rectOffset = rectOffset + copied / 2
         }
+        return true
       }
-      return true
-    }
-
-    private func copyEntryRange(n Node, textRange TextRange, space TextCoordinateSpace,
-      destination Span[ElementRect], out required int32) bool {
-      required = 0
-      if !validRange(textRange, n.Buffer.Length) { return false }
-      guard let shape = cachedEntryShape(n) else { return false }
-      let contentHeight = TextLayouts.ContentHeight(n)
-      let height = shape.Descent - shape.Ascent
-      let top = TextLayouts.ContentTop(n) - n.Rect.Y + (contentHeight - height) * 0.5F
-      let x = TextLayouts.ContentLeft(n) - n.Rect.X + entryOffset(n, shape) - n.EditScrollX
-      let start = entryDisplayOffset(n.EntryShape!!, textRange.Start, TextAffinity.Downstream)
-      let end = entryDisplayOffset(n.EntryShape!!, textRange.Start + textRange.Length,
-        TextAffinity.Upstream)
-      let rectCount = shape.SelectionRectCount(start, end)
-      var rectOffset int32 = 0
-      var values = stackalloc [64]float32
-      while rectOffset < rectCount {
-        let copied = shape.CopySelectionRects(start, end, rectOffset, values)
-        var value int32 = 0
-        while value + 1 < copied {
-          let raw = Rect{ X: x + values[value], Y: top,
-            W: values[value + 1] - values[value], H: height }
-          if !appendRect(n, raw, space, destination, required) {
-            required = 0
-            return false
-          }
-          required++
-          value = value + 2
-        }
-        if copied == 0 { break }
-        rectOffset = rectOffset + copied / 2
-      }
-      return true
-    }
 
     private func copyEditorRange(n Node, textRange TextRange, space TextCoordinateSpace,
-      destination Span[ElementRect], out required int32) bool {
-      required = 0
-      guard let state = n.EditorState else { return false }
-      if !validRange(textRange, state.Document.Length) { return false }
-      guard let layout = TextEditorLayouts.CurrentForGeometry(n) else { return false }
-      let start = textRange.Start
-      let end = textRange.Start + textRange.Length
-      let contentX = TextLayouts.ContentLeft(n) - n.Rect.X
-      let contentY = TextLayouts.ContentTop(n) - n.Rect.Y
-      let scrollX = float32(state.Controller.ScrollTargetX)
-      let scrollY = float32(state.Controller.ScrollTargetY)
-      var values = stackalloc [64]float32
-      for i in 0 ... layout.Lines.Count {
-        let line = layout.Lines[i]
-        if end <= line.SourceStart || start >= line.SourceEnd { continue }
-        guard let shape = line.Shape else { continue }
-        let lineStart = start > line.SourceStart ? start : line.SourceStart
-        let lineEnd = end < line.SourceEnd ? end : line.SourceEnd
-        if lineEnd <= lineStart { continue }
-        let displayStart = TextEditorLayouts.DisplayOffsetForSource(line.Paragraph, lineStart,
-          TextAffinity.Downstream) - line.DisplayStart
-        let displayEnd = TextEditorLayouts.DisplayOffsetForSource(line.Paragraph, lineEnd,
-          TextAffinity.Upstream) - line.DisplayStart
-        let x = contentX + TextEditorLayouts.editorLineOffset(n, line, TextLayouts.ContentWidth(n)) - scrollX
-        var rectOffset int32 = 0
-        var rectCount int32 = 0
-        while rectOffset < rectCount || rectOffset == 0 {
-          let copied = TextEditorLayouts.CopySelectionRectsForGeometry(line, displayStart,
-            displayEnd, rectOffset, values, out rectCount)
-          var value int32 = 0
-          while value + 1 < copied {
-            let raw = Rect{ X: x + values[value], Y: contentY + line.Top - scrollY,
-              W: values[value + 1] - values[value], H: line.Height }
-            if !appendRect(n, raw, space, destination, required) {
-              required = 0
-              return false
+      destination Span[ElementRect], out required int32) bool{
+        required = 0
+        guard let state = n.EditorState else { return false }
+        if !validRange(textRange, state.Document.Length) { return false }
+        guard let layout = TextEditorLayouts.CurrentForGeometry(n) else { return false }
+        let start = textRange.Start
+        let end = textRange.Start + textRange.Length
+        let contentX = TextLayouts.ContentLeft(n) - n.Rect.X
+        let contentY = TextLayouts.ContentTop(n) - n.Rect.Y
+        let scrollX = float32(state.Controller.ScrollTargetX)
+        let scrollY = float32(state.Controller.ScrollTargetY)
+        let values = stackalloc[64]float32
+        for i in 0 ... layout.Lines.Count {
+          let line = layout.Lines[i]
+          if end <= line.SourceStart || start >= line.SourceEnd { continue }
+          guard let shape = line.Shape else { continue }
+          let lineStart = start > line.SourceStart ? start : line.SourceStart
+          let lineEnd = end < line.SourceEnd ? end : line.SourceEnd
+          if lineEnd <= lineStart { continue }
+          let displayStart = TextEditorLayouts.DisplayOffsetForSource(line.Paragraph, lineStart,
+            TextAffinity.Downstream) - line.DisplayStart
+          let displayEnd = TextEditorLayouts.DisplayOffsetForSource(line.Paragraph, lineEnd,
+            TextAffinity.Upstream) - line.DisplayStart
+          let x = contentX + TextEditorLayouts.editorLineOffset(n, line, TextLayouts.ContentWidth(n)) - scrollX
+          var rectOffset int32 = 0
+          var rectCount int32 = 0
+          while rectOffset < rectCount || rectOffset == 0 {
+            let copied = TextEditorLayouts.CopySelectionRectsForGeometry(line, displayStart,
+              displayEnd, rectOffset, values, out rectCount)
+            var value int32 = 0
+            while value + 1 < copied {
+              let raw = Rect{ X: x + values[value], Y: contentY + line.Top - scrollY,
+                W: values[value + 1] - values[value], H: line.Height }
+              if !appendRect(n, raw, space, destination, required) {
+                required = 0
+                return false
+              }
+              required++
+              value = value + 2
             }
-            required++
-            value = value + 2
+            if copied == 0 { break }
+            rectOffset = rectOffset + copied / 2
           }
-          if copied == 0 { break }
-          rectOffset = rectOffset + copied / 2
         }
+        return true
       }
-      return true
-    }
 
     private func toElementPoint(n Node, point Point, space TextCoordinateSpace) Point? {
       if !validSpace(space) || !motionFinite(point.X) || !motionFinite(point.Y) { return nil }
@@ -1107,57 +1097,57 @@ internal class TextGeometryQueries {
     }
 
     private func convertRect(n Node, raw Rect, space TextCoordinateSpace,
-      out rect ElementRect) bool {
-      rect = ElementRect{}
-      if space == TextCoordinateSpace.Element {
-        rect = ElementRect{ X: float64(raw.X), Y: float64(raw.Y), Width: float64(raw.W),
-          Height: float64(raw.H) }
+      out rect ElementRect) bool{
+        rect = ElementRect{}
+        if space == TextCoordinateSpace.Element {
+          rect = ElementRect{ X: float64(raw.X), Y: float64(raw.Y), Width: float64(raw.W),
+            Height: float64(raw.H) }
+          return true
+        }
+        if space == TextCoordinateSpace.Content {
+          rect = ElementRect{ X: float64(raw.X - (TextLayouts.ContentLeft(n) - n.Rect.X)
+            +textScrollX(n)),
+            Y: float64(raw.Y - (TextLayouts.ContentTop(n) - n.Rect.Y) + textScrollY(n)),
+            Width: float64(raw.W), Height: float64(raw.H) }
+          return true
+        }
+        let x = n.Rect.X + raw.X
+        let y = n.Rect.Y + raw.Y
+        let p0 = TransformGeometry.NodeToWindow(n, x, y)
+        let p1 = TransformGeometry.NodeToWindow(n, x + raw.W, y)
+        let p2 = TransformGeometry.NodeToWindow(n, x, y + raw.H)
+        let p3 = TransformGeometry.NodeToWindow(n, x + raw.W, y + raw.H)
+        if !p0.Valid || !p1.Valid || !p2.Valid || !p3.Valid { return false }
+        let left = TransformGeometry.min4(p0.X, p1.X, p2.X, p3.X)
+        let top = TransformGeometry.min4(p0.Y, p1.Y, p2.Y, p3.Y)
+        let right = TransformGeometry.max4(p0.X, p1.X, p2.X, p3.X)
+        let bottom = TransformGeometry.max4(p0.Y, p1.Y, p2.Y, p3.Y)
+        rect = ElementRect{ X: float64(left), Y: float64(top), Width: float64(right - left),
+          Height: float64(bottom - top) }
         return true
       }
-      if space == TextCoordinateSpace.Content {
-        rect = ElementRect{ X: float64(raw.X - (TextLayouts.ContentLeft(n) - n.Rect.X)
-            + textScrollX(n)),
-          Y: float64(raw.Y - (TextLayouts.ContentTop(n) - n.Rect.Y) + textScrollY(n)),
-          Width: float64(raw.W), Height: float64(raw.H) }
-        return true
-      }
-      let x = n.Rect.X + raw.X
-      let y = n.Rect.Y + raw.Y
-      let p0 = TransformGeometry.NodeToWindow(n, x, y)
-      let p1 = TransformGeometry.NodeToWindow(n, x + raw.W, y)
-      let p2 = TransformGeometry.NodeToWindow(n, x, y + raw.H)
-      let p3 = TransformGeometry.NodeToWindow(n, x + raw.W, y + raw.H)
-      if !p0.Valid || !p1.Valid || !p2.Valid || !p3.Valid { return false }
-      let left = TransformGeometry.min4(p0.X, p1.X, p2.X, p3.X)
-      let top = TransformGeometry.min4(p0.Y, p1.Y, p2.Y, p3.Y)
-      let right = TransformGeometry.max4(p0.X, p1.X, p2.X, p3.X)
-      let bottom = TransformGeometry.max4(p0.Y, p1.Y, p2.Y, p3.Y)
-      rect = ElementRect{ X: float64(left), Y: float64(top), Width: float64(right - left),
-        Height: float64(bottom - top) }
-      return true
-    }
 
     private func appendRect(n Node, raw Rect, space TextCoordinateSpace,
-      destination Span[ElementRect], index int32) bool {
-      var converted ElementRect
-      if !convertRect(n, raw, space, out converted) { return false }
-      if index < destination.Length { destination[index] = converted }
-      return true
-    }
+      destination Span[ElementRect], index int32) bool{
+        var converted ElementRect
+        if !convertRect(n, raw, space, out converted) { return false }
+        if index < destination.Length { destination[index] = converted }
+        return true
+      }
 
     private func staticLineForDisplay(layout TextLayout, geometry TextLayoutGeometry, display int32,
-      affinity TextAffinity) int32 {
-      var fallback = -1
-      for i in 0 ... layout.Lines.Count {
-        let line = geometry.Lines[i]
-        if display < line.DisplayStart || display > line.DisplayEnd { continue }
-        fallback = i
-        if display > line.DisplayStart && display < line.DisplayEnd { return i }
-        if display == line.DisplayStart && affinity == TextAffinity.Downstream { return i }
-        if display == line.DisplayEnd && affinity == TextAffinity.Upstream { return i }
+      affinity TextAffinity) int32{
+        var fallback = -1
+        for i in 0 ... layout.Lines.Count {
+          let line = geometry.Lines[i]
+          if display < line.DisplayStart || display > line.DisplayEnd { continue }
+          fallback = i
+          if display > line.DisplayStart && display < line.DisplayEnd { return i }
+          if display == line.DisplayStart && affinity == TextAffinity.Downstream { return i }
+          if display == line.DisplayEnd && affinity == TextAffinity.Upstream { return i }
+        }
+        return fallback
       }
-      return fallback
-    }
 
     private func cachedEntryShape(n Node) ShapedText? {
       guard let cached = n.EntryShape, let shape = cached.Shape else { return nil }
@@ -1165,9 +1155,9 @@ internal class TextGeometryQueries {
         || cached.FontSize != TextLayouts.fontSize(n) || cached.FontWeight != n.FontWeight
         || cached.Italic != (n.FontStyle == FontStyle.Italic)
         || cached.Spacing != TextLayouts.letterSpacing(n) || cached.Direction != int32(n.Direction)
-        || cached.Password != n.Password {
-        return nil
-      }
+        || cached.Password != n.Password{
+          return nil
+        }
       return shape
     }
 
@@ -1198,22 +1188,14 @@ internal class TextGeometryQueries {
       return 0.0F
     }
 
-    private func validSpace(space TextCoordinateSpace) bool {
-      return space == TextCoordinateSpace.Element || space == TextCoordinateSpace.Content
-        || space == TextCoordinateSpace.Window
-    }
+    private func validSpace(space TextCoordinateSpace) bool -> space == TextCoordinateSpace.Element || space == TextCoordinateSpace.Content
+      || space == TextCoordinateSpace.Window
 
-    private func validAffinity(value TextAffinity) bool {
-      return value == TextAffinity.Upstream || value == TextAffinity.Downstream
-    }
+    private func validAffinity(value TextAffinity) bool -> value == TextAffinity.Upstream || value == TextAffinity.Downstream
 
-    private func validRange(value TextRange, length int32) bool {
-      return value.Start >= 0 && value.Start <= length && value.Length >= 0
-        && value.Length <= length - value.Start
-    }
+    private func validRange(value TextRange, length int32) bool -> value.Start >= 0 && value.Start <= length && value.Length >= 0
+      && value.Length <= length - value.Start
 
-    private func windowMappingValid(n Node) bool {
-      return TransformGeometry.NodeToWindow(n, n.Rect.X, n.Rect.Y).Valid
-    }
+    private func windowMappingValid(n Node) bool -> TransformGeometry.NodeToWindow(n, n.Rect.X, n.Rect.Y).Valid
   }
 }

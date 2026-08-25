@@ -23,6 +23,4 @@ public data struct TextChange(Range TextRange, InsertedText string) { }
 public data struct TextDocumentChange(BeforeVersion int64, AfterVersion int64,
   Changes IReadOnlyList[TextChange]) { }
 
-internal func freezeTextChanges(values IReadOnlyList[TextChange]) IReadOnlyList[TextChange] {
-  return ReadOnlyCollection[TextChange](List[TextChange](values))
-}
+internal func freezeTextChanges(values IReadOnlyList[TextChange]) IReadOnlyList[TextChange] -> ReadOnlyCollection[TextChange](List[TextChange](values))

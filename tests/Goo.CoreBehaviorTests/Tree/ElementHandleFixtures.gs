@@ -21,8 +21,8 @@ internal class ElementHandleFixtures {
     TextLayouts.DisposeTree(node)
     if handle.IsMounted || handle.Focus() || handle.Blur() || handle.ScrollTo(0.0, 0.0)
       || handle.ScrollIntoView() {
-      return false
-    }
+        return false
+      }
     node = mount(rec, owner, Text{ Handle: handle, Key: "item", Content: "remounted" })
     let remounted = handle.IsMounted
     TextLayouts.DisposeTree(node)
@@ -77,16 +77,16 @@ internal class ElementHandleFixtures {
     let inner = root.Children[1]
     if !innerHandle.ScrollTo(0.0, 50.0) || inner.ScrollTargetY != 50.0F
       || innerHandle.ScrollOffset.Y != 0.0 {
-      return false
-    }
+        return false
+      }
     if !childHandle.ScrollIntoView() || inner.ScrollTargetY != 50.0F
       || root.ScrollTargetY != 100.0F {
-      return false
-    }
+        return false
+      }
     if !childHandle.ScrollIntoView() || inner.ScrollTargetY != 50.0F
       || root.ScrollTargetY != 100.0F {
-      return false
-    }
+        return false
+      }
     TextLayouts.DisposeTree(root)
     return !rootHandle.ScrollTo(0.0, 0.0)
   }
@@ -202,8 +202,8 @@ internal class ElementHandleFixtures {
     let initial = snapshots[0]
     if !initial.IsMounted || initial.BorderBox.Width != 100.0 || initial.BorderBox.Height != 60.0
       || initial.ScrollOffset.Y != 0.0 {
-      return false
-    }
+        return false
+      }
     window.UpdateTree()
     if snapshots.Count != 1 {
       return false
@@ -410,28 +410,22 @@ internal class ElementHandleFixtures {
 internal class ElementHandleNestedCell : Cell {
   shared { var Target ElementHandle? }
 
-  override func Build() Blob {
-    return Text{ Handle: Target, Content: "nested" }
-  }
+  override func Build() Blob -> Text { Handle: Target, Content: "nested" }
 }
 
 internal class ElementHandleRollbackCell : Cell {
   shared { var Target ElementHandle? }
 
-  override func Build() Blob {
-    return Text{ Handle: Target, Content: "rollback" }
-  }
+  override func Build() Blob -> Text { Handle: Target, Content: "rollback" }
 }
 
 internal class ElementHandleFailureCell : Cell {
   shared { var Target ElementHandle? }
 
-  override func Build() Blob {
-    return Container{ Children: {
-      Text{ Handle: Target, Content: "first" },
-      Text{ Handle: Target, Content: "second" },
-    } }
-  }
+  override func Build() Blob -> Container { Children: {
+    Text{ Handle: Target, Content: "first" },
+    Text{ Handle: Target, Content: "second" },
+  } }
 }
 
 internal class ElementMetricsFixtureCell : Cell {
@@ -465,12 +459,10 @@ internal class ElementMetricsPairCell : Cell {
     Width = Track(100)
   }
 
-  override func Build() Blob {
-    return Container{ Children: {
-      Container{ Handle: First, Width: Width.Value, Height: 30 },
-      Container{ Handle: Second, Width: 100, Height: 30 },
-    } }
-  }
+  override func Build() Blob -> Container { Children: {
+    Container{ Handle: First, Width: Width.Value, Height: 30 },
+    Container{ Handle: Second, Width: 100, Height: 30 },
+  } }
 }
 
 internal class ElementMetricsVirtualListCell : Cell {

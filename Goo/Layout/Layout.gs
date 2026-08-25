@@ -44,8 +44,8 @@ internal class Layout {
     if laidOut && root == lastRoot
       && width == lastWidth && height == lastHeight
       && !YGNodeAPI.YGNodeIsDirty(yg) {
-      return
-    }
+        return
+      }
     YGNodeAPI.YGNodeCalculateLayout(yg, width, height, yogaDirection(root.Direction))
     lastRoot = root
     lastWidth = width
@@ -60,7 +60,6 @@ internal class Layout {
     structureDirty = true
     scrollListDirty = true
   }
-
 
   // Cached flat list of scrolling nodes so per-pump scroll work is
   // O(scrollers), not O(tree). Rebuilt on structure or Overflow changes.
@@ -83,10 +82,7 @@ internal class Layout {
     }
   }
 
-
-  internal func NeedsLayout(root Node) bool {
-    return NeedsLayout(root, lastWidth, lastHeight)
-  }
+  internal func NeedsLayout(root Node) bool -> NeedsLayout(root, lastWidth, lastHeight)
 
   internal func NeedsLayout(root Node, width float32, height float32) bool {
     if structureDirty || root != lastRoot {
@@ -146,13 +142,18 @@ internal class Layout {
     if childrenAlreadyMatch(yg, n) {
       return
     }
-    YGNodeAPI.YGNodeRemoveAllChildren(yg)
+    syncChildren(yg, n)
+  }
+
+  private func syncChildren(yg Facebook.Yoga.Node, n Node) {
+    let children = [n.Children.Count]Facebook.Yoga.Node
     for i in 0 ... n.Children.Count {
       guard let childYg = n.Children[i].Yoga else {
-        continue
+        throw InvalidOperationException("child Yoga node is unavailable")
       }
-      YGNodeAPI.YGNodeInsertChild(yg, childYg, nuint(i))
+      children[i] = childYg
     }
+    YGNodeAPI.YGNodeSetChildrenRetaining(yg, children)
   }
 
   // Rect-only refresh for scroll changes; Yoga is untouched so it is cheap.
@@ -268,13 +269,11 @@ internal func applyAll(yg Facebook.Yoga.Node, n Node, isRoot bool) {
   applyDisplay(yg, n)
 }
 
-internal func yogaDirection(direction Direction) YGDirection {
-  return switch direction {
-    case Direction.Auto: YGDirection.LTR
-    case Direction.LeftToRight: YGDirection.LTR
-    case Direction.RightToLeft: YGDirection.RTL
-    case _: throw NotSupportedException("Layout.yogaDirection: unhandled Direction " + direction.ToString())
-  }
+internal func yogaDirection(direction Direction) YGDirection -> switch direction {
+  case Direction.Auto: YGDirection.LTR
+  case Direction.LeftToRight: YGDirection.LTR
+  case Direction.RightToLeft: YGDirection.RTL
+  case _: throw NotSupportedException("Layout.yogaDirection: unhandled Direction " + direction.ToString())
 }
 
 internal func applyDirection(yg Facebook.Yoga.Node, n Node) {
@@ -350,83 +349,83 @@ internal func syncYogaField(n Node, f StyleField) {
 }
 
 internal func markYogaStyle(n Node, field StyleField) {
-    n.YogaStyleMask = styleMaskWith(n.YogaStyleMask, field)
-  }
+  n.YogaStyleMask = styleMaskWith(n.YogaStyleMask, field)
+}
 
-  internal func clearYogaStyle(n Node, field StyleField) bool {
-    if !styleMaskHas(n.YogaStyleMask, field) {
-      return false
+internal func clearYogaStyle(n Node, field StyleField) bool {
+  if !styleMaskHas(n.YogaStyleMask, field) {
+    return false
+  }
+  n.YogaStyleMask = styleMaskWithout(n.YogaStyleMask, field)
+  return true
+}
+
+internal func applySize(yg Facebook.Yoga.Node, n Node) {
+  switch n.Width.Unit {
+    case LengthUnit.Px {
+      YGNodeStyleAPI.YGNodeStyleSetWidth(yg, n.Width.Value)
+      markYogaStyle(n, StyleField.Width)
     }
-    n.YogaStyleMask = styleMaskWithout(n.YogaStyleMask, field)
-    return true
-  }
-
-  internal func applySize(yg Facebook.Yoga.Node, n Node) {
-    switch n.Width.Unit {
-      case LengthUnit.Px {
-        YGNodeStyleAPI.YGNodeStyleSetWidth(yg, n.Width.Value)
-        markYogaStyle(n, StyleField.Width)
-      }
-      case LengthUnit.Percent {
-        YGNodeStyleAPI.YGNodeStyleSetWidthPercent(yg, n.Width.Value)
-        markYogaStyle(n, StyleField.Width)
-      }
-      case LengthUnit.Auto {
+    case LengthUnit.Percent {
+      YGNodeStyleAPI.YGNodeStyleSetWidthPercent(yg, n.Width.Value)
+      markYogaStyle(n, StyleField.Width)
+    }
+    case LengthUnit.Auto {
+      YGNodeStyleAPI.YGNodeStyleSetWidthAuto(yg)
+      markYogaStyle(n, StyleField.Width)
+    }
+    default {
+      if clearYogaStyle(n, StyleField.Width) {
         YGNodeStyleAPI.YGNodeStyleSetWidthAuto(yg)
-        markYogaStyle(n, StyleField.Width)
-      }
-      default {
-        if clearYogaStyle(n, StyleField.Width) {
-          YGNodeStyleAPI.YGNodeStyleSetWidthAuto(yg)
-        }
       }
     }
-    switch n.Height.Unit {
-      case LengthUnit.Px {
-        YGNodeStyleAPI.YGNodeStyleSetHeight(yg, n.Height.Value)
+  }
+  switch n.Height.Unit {
+    case LengthUnit.Px {
+      YGNodeStyleAPI.YGNodeStyleSetHeight(yg, n.Height.Value)
+      markYogaStyle(n, StyleField.Height)
+    }
+    case LengthUnit.Percent {
+      YGNodeStyleAPI.YGNodeStyleSetHeightPercent(yg, n.Height.Value)
+      markYogaStyle(n, StyleField.Height)
+    }
+    case LengthUnit.Auto {
+      YGNodeStyleAPI.YGNodeStyleSetHeightAuto(yg)
+      markYogaStyle(n, StyleField.Height)
+    }
+    default {
+      if n.Kind == NodeKind.Entry {
+        YGNodeStyleAPI.YGNodeStyleSetHeight(yg, n.FontSize.Value * float32(n.LineHeight))
         markYogaStyle(n, StyleField.Height)
-      }
-      case LengthUnit.Percent {
-        YGNodeStyleAPI.YGNodeStyleSetHeightPercent(yg, n.Height.Value)
-        markYogaStyle(n, StyleField.Height)
-      }
-      case LengthUnit.Auto {
+      } else if clearYogaStyle(n, StyleField.Height) {
         YGNodeStyleAPI.YGNodeStyleSetHeightAuto(yg)
-        markYogaStyle(n, StyleField.Height)
-      }
-      default {
-        if n.Kind == NodeKind.Entry {
-          YGNodeStyleAPI.YGNodeStyleSetHeight(yg, n.FontSize.Value * float32(n.LineHeight))
-          markYogaStyle(n, StyleField.Height)
-        } else if clearYogaStyle(n, StyleField.Height) {
-          YGNodeStyleAPI.YGNodeStyleSetHeightAuto(yg)
-        }
       }
     }
   }
+}
 
-  internal func applyEdges(yg Facebook.Yoga.Node, n Node) {
-    applyPaddingEdge(yg, n, YGEdge.All, n.Padding, StyleField.Padding)
-    applyPaddingEdge(yg, n, YGEdge.Left, n.PaddingLeft, StyleField.PaddingLeft)
-    applyPaddingEdge(yg, n, YGEdge.Top, n.PaddingTop, StyleField.PaddingTop)
-    applyPaddingEdge(yg, n, YGEdge.Right, n.PaddingRight, StyleField.PaddingRight)
-    applyPaddingEdge(yg, n, YGEdge.Bottom, n.PaddingBottom, StyleField.PaddingBottom)
+internal func applyEdges(yg Facebook.Yoga.Node, n Node) {
+  applyPaddingEdge(yg, n, YGEdge.All, n.Padding, StyleField.Padding)
+  applyPaddingEdge(yg, n, YGEdge.Left, n.PaddingLeft, StyleField.PaddingLeft)
+  applyPaddingEdge(yg, n, YGEdge.Top, n.PaddingTop, StyleField.PaddingTop)
+  applyPaddingEdge(yg, n, YGEdge.Right, n.PaddingRight, StyleField.PaddingRight)
+  applyPaddingEdge(yg, n, YGEdge.Bottom, n.PaddingBottom, StyleField.PaddingBottom)
 
-    applyBorderEdges(yg, n)
+  applyBorderEdges(yg, n)
 
-    applyMarginEdge(yg, n, YGEdge.All, n.Margin, StyleField.Margin)
-    applyMarginEdge(yg, n, YGEdge.Left, n.MarginLeft, StyleField.MarginLeft)
-    applyMarginEdge(yg, n, YGEdge.Top, n.MarginTop, StyleField.MarginTop)
-    applyMarginEdge(yg, n, YGEdge.Right, n.MarginRight, StyleField.MarginRight)
-    applyMarginEdge(yg, n, YGEdge.Bottom, n.MarginBottom, StyleField.MarginBottom)
+  applyMarginEdge(yg, n, YGEdge.All, n.Margin, StyleField.Margin)
+  applyMarginEdge(yg, n, YGEdge.Left, n.MarginLeft, StyleField.MarginLeft)
+  applyMarginEdge(yg, n, YGEdge.Top, n.MarginTop, StyleField.MarginTop)
+  applyMarginEdge(yg, n, YGEdge.Right, n.MarginRight, StyleField.MarginRight)
+  applyMarginEdge(yg, n, YGEdge.Bottom, n.MarginBottom, StyleField.MarginBottom)
 
-    applyGapEdge(yg, n, YGGutter.All, n.Gap, StyleField.Gap)
-    applyGapEdge(yg, n, YGGutter.Row, n.RowGap, StyleField.RowGap)
-    applyGapEdge(yg, n, YGGutter.Column, n.ColumnGap, StyleField.ColumnGap)
-  }
+  applyGapEdge(yg, n, YGGutter.All, n.Gap, StyleField.Gap)
+  applyGapEdge(yg, n, YGGutter.Row, n.RowGap, StyleField.RowGap)
+  applyGapEdge(yg, n, YGGutter.Column, n.ColumnGap, StyleField.ColumnGap)
+}
 
-  internal func applyPaddingEdge(
-    yg Facebook.Yoga.Node, n Node, edge YGEdge, v Length, field StyleField) {
+internal func applyPaddingEdge(
+  yg Facebook.Yoga.Node, n Node, edge YGEdge, v Length, field StyleField) {
     switch v.Unit {
       case LengthUnit.Px {
         YGNodeStyleAPI.YGNodeStyleSetPadding(yg, edge, v.Value)
@@ -444,29 +443,29 @@ internal func markYogaStyle(n Node, field StyleField) {
     }
   }
 
-  internal func applyBorderEdge(yg Facebook.Yoga.Node, edge YGEdge, width Length) {
-    let value = width.Unit == LengthUnit.Px ? width.Value : 0.0F
-    if YGNodeStyleAPI.YGNodeStyleGetBorder(yg, edge) != value {
-      YGNodeStyleAPI.YGNodeStyleSetBorder(yg, edge, value)
-    }
+internal func applyBorderEdge(yg Facebook.Yoga.Node, edge YGEdge, width Length) {
+  let value = width.Unit == LengthUnit.Px ? width.Value : 0.0F
+  if YGNodeStyleAPI.YGNodeStyleGetBorder(yg, edge) != value {
+    YGNodeStyleAPI.YGNodeStyleSetBorder(yg, edge, value)
   }
+}
 
-  internal func applyBorderEdges(yg Facebook.Yoga.Node, n Node) {
-    if n.Kind == NodeKind.Shape {
-      applyBorderEdge(yg, YGEdge.Left, n.BorderLeftWidth)
-      applyBorderEdge(yg, YGEdge.Top, n.BorderLeftWidth)
-      applyBorderEdge(yg, YGEdge.Right, n.BorderLeftWidth)
-      applyBorderEdge(yg, YGEdge.Bottom, n.BorderLeftWidth)
-      return
-    }
+internal func applyBorderEdges(yg Facebook.Yoga.Node, n Node) {
+  if n.Kind == NodeKind.Shape {
     applyBorderEdge(yg, YGEdge.Left, n.BorderLeftWidth)
-    applyBorderEdge(yg, YGEdge.Top, n.BorderTopWidth)
-    applyBorderEdge(yg, YGEdge.Right, n.BorderRightWidth)
-    applyBorderEdge(yg, YGEdge.Bottom, n.BorderBottomWidth)
+    applyBorderEdge(yg, YGEdge.Top, n.BorderLeftWidth)
+    applyBorderEdge(yg, YGEdge.Right, n.BorderLeftWidth)
+    applyBorderEdge(yg, YGEdge.Bottom, n.BorderLeftWidth)
+    return
   }
+  applyBorderEdge(yg, YGEdge.Left, n.BorderLeftWidth)
+  applyBorderEdge(yg, YGEdge.Top, n.BorderTopWidth)
+  applyBorderEdge(yg, YGEdge.Right, n.BorderRightWidth)
+  applyBorderEdge(yg, YGEdge.Bottom, n.BorderBottomWidth)
+}
 
-  internal func applyMarginEdge(
-    yg Facebook.Yoga.Node, n Node, edge YGEdge, v Length, field StyleField) {
+internal func applyMarginEdge(
+  yg Facebook.Yoga.Node, n Node, edge YGEdge, v Length, field StyleField) {
     switch v.Unit {
       case LengthUnit.Px {
         YGNodeStyleAPI.YGNodeStyleSetMargin(yg, edge, v.Value)
@@ -484,8 +483,8 @@ internal func markYogaStyle(n Node, field StyleField) {
     }
   }
 
-  internal func applyGapEdge(
-    yg Facebook.Yoga.Node, n Node, gutter YGGutter, v Length, field StyleField) {
+internal func applyGapEdge(
+  yg Facebook.Yoga.Node, n Node, gutter YGGutter, v Length, field StyleField) {
     switch v.Unit {
       case LengthUnit.Px {
         YGNodeStyleAPI.YGNodeStyleSetGap(yg, gutter, v.Value)
@@ -503,207 +502,198 @@ internal func markYogaStyle(n Node, field StyleField) {
     }
   }
 
-  internal func applyFlex(yg Facebook.Yoga.Node, n Node) {
-    YGNodeStyleAPI.YGNodeStyleSetFlexGrow(yg, float32(n.FlexGrow))
-    YGNodeStyleAPI.YGNodeStyleSetFlexShrink(yg, float32(n.FlexShrink))
-  }
+internal func applyFlex(yg Facebook.Yoga.Node, n Node) {
+  YGNodeStyleAPI.YGNodeStyleSetFlexGrow(yg, float32(n.FlexGrow))
+  YGNodeStyleAPI.YGNodeStyleSetFlexShrink(yg, float32(n.FlexShrink))
+}
 
-  internal func applyMinMax(yg Facebook.Yoga.Node, n Node) {
-    switch n.MinWidth.Unit {
-      case LengthUnit.Px {
-        YGNodeStyleAPI.YGNodeStyleSetMinWidth(yg, n.MinWidth.Value)
-        markYogaStyle(n, StyleField.MinWidth)
-      }
-      case LengthUnit.Percent {
-        YGNodeStyleAPI.YGNodeStyleSetMinWidthPercent(yg, n.MinWidth.Value)
-        markYogaStyle(n, StyleField.MinWidth)
-      }
-      default {
-        if clearYogaStyle(n, StyleField.MinWidth) {
-          YGNodeStyleAPI.YGNodeStyleSetMinWidth(yg, YogaValue.YGValueUndefined.Value)
-        }
-      }
+internal func applyMinMax(yg Facebook.Yoga.Node, n Node) {
+  switch n.MinWidth.Unit {
+    case LengthUnit.Px {
+      YGNodeStyleAPI.YGNodeStyleSetMinWidth(yg, n.MinWidth.Value)
+      markYogaStyle(n, StyleField.MinWidth)
     }
-    switch n.MinHeight.Unit {
-      case LengthUnit.Px {
-        YGNodeStyleAPI.YGNodeStyleSetMinHeight(yg, n.MinHeight.Value)
-        markYogaStyle(n, StyleField.MinHeight)
-      }
-      case LengthUnit.Percent {
-        YGNodeStyleAPI.YGNodeStyleSetMinHeightPercent(yg, n.MinHeight.Value)
-        markYogaStyle(n, StyleField.MinHeight)
-      }
-      default {
-        if clearYogaStyle(n, StyleField.MinHeight) {
-          YGNodeStyleAPI.YGNodeStyleSetMinHeight(yg, YogaValue.YGValueUndefined.Value)
-        }
-      }
+    case LengthUnit.Percent {
+      YGNodeStyleAPI.YGNodeStyleSetMinWidthPercent(yg, n.MinWidth.Value)
+      markYogaStyle(n, StyleField.MinWidth)
     }
-    switch n.MaxWidth.Unit {
-      case LengthUnit.Px {
-        YGNodeStyleAPI.YGNodeStyleSetMaxWidth(yg, n.MaxWidth.Value)
-        markYogaStyle(n, StyleField.MaxWidth)
-      }
-      case LengthUnit.Percent {
-        YGNodeStyleAPI.YGNodeStyleSetMaxWidthPercent(yg, n.MaxWidth.Value)
-        markYogaStyle(n, StyleField.MaxWidth)
-      }
-      default {
-        if clearYogaStyle(n, StyleField.MaxWidth) {
-          YGNodeStyleAPI.YGNodeStyleSetMaxWidth(yg, YogaValue.YGValueUndefined.Value)
-        }
-      }
-    }
-    switch n.MaxHeight.Unit {
-      case LengthUnit.Px {
-        YGNodeStyleAPI.YGNodeStyleSetMaxHeight(yg, n.MaxHeight.Value)
-        markYogaStyle(n, StyleField.MaxHeight)
-      }
-      case LengthUnit.Percent {
-        YGNodeStyleAPI.YGNodeStyleSetMaxHeightPercent(yg, n.MaxHeight.Value)
-        markYogaStyle(n, StyleField.MaxHeight)
-      }
-      default {
-        if clearYogaStyle(n, StyleField.MaxHeight) {
-          YGNodeStyleAPI.YGNodeStyleSetMaxHeight(yg, YogaValue.YGValueUndefined.Value)
-        }
+    default {
+      if clearYogaStyle(n, StyleField.MinWidth) {
+        YGNodeStyleAPI.YGNodeStyleSetMinWidth(yg, YogaValue.YGValueUndefined.Value)
       }
     }
   }
+  switch n.MinHeight.Unit {
+    case LengthUnit.Px {
+      YGNodeStyleAPI.YGNodeStyleSetMinHeight(yg, n.MinHeight.Value)
+      markYogaStyle(n, StyleField.MinHeight)
+    }
+    case LengthUnit.Percent {
+      YGNodeStyleAPI.YGNodeStyleSetMinHeightPercent(yg, n.MinHeight.Value)
+      markYogaStyle(n, StyleField.MinHeight)
+    }
+    default {
+      if clearYogaStyle(n, StyleField.MinHeight) {
+        YGNodeStyleAPI.YGNodeStyleSetMinHeight(yg, YogaValue.YGValueUndefined.Value)
+      }
+    }
+  }
+  switch n.MaxWidth.Unit {
+    case LengthUnit.Px {
+      YGNodeStyleAPI.YGNodeStyleSetMaxWidth(yg, n.MaxWidth.Value)
+      markYogaStyle(n, StyleField.MaxWidth)
+    }
+    case LengthUnit.Percent {
+      YGNodeStyleAPI.YGNodeStyleSetMaxWidthPercent(yg, n.MaxWidth.Value)
+      markYogaStyle(n, StyleField.MaxWidth)
+    }
+    default {
+      if clearYogaStyle(n, StyleField.MaxWidth) {
+        YGNodeStyleAPI.YGNodeStyleSetMaxWidth(yg, YogaValue.YGValueUndefined.Value)
+      }
+    }
+  }
+  switch n.MaxHeight.Unit {
+    case LengthUnit.Px {
+      YGNodeStyleAPI.YGNodeStyleSetMaxHeight(yg, n.MaxHeight.Value)
+      markYogaStyle(n, StyleField.MaxHeight)
+    }
+    case LengthUnit.Percent {
+      YGNodeStyleAPI.YGNodeStyleSetMaxHeightPercent(yg, n.MaxHeight.Value)
+      markYogaStyle(n, StyleField.MaxHeight)
+    }
+    default {
+      if clearYogaStyle(n, StyleField.MaxHeight) {
+        YGNodeStyleAPI.YGNodeStyleSetMaxHeight(yg, YogaValue.YGValueUndefined.Value)
+      }
+    }
+  }
+}
 
-  // Explicit enum mapping prevents ordinal drift. Compare before Yoga enum writes.
-  internal func applyFlexLayout(yg Facebook.Yoga.Node, n Node, isRoot bool) {
-    let flexDirection = switch n.FlexDirection {
-      case FlexDirection.Column: YGFlexDirection.Column
-      case FlexDirection.ColumnReverse: YGFlexDirection.ColumnReverse
-      case FlexDirection.Row: YGFlexDirection.Row
-      case FlexDirection.RowReverse: YGFlexDirection.RowReverse
-      case _: throw NotSupportedException("Layout.applyFlexLayout: unhandled FlexDirection " + n.FlexDirection.ToString())
+// Explicit enum mapping prevents ordinal drift. Compare before Yoga enum writes.
+internal func applyFlexLayout(yg Facebook.Yoga.Node, n Node, isRoot bool) {
+  let flexDirection = switch n.FlexDirection {
+    case FlexDirection.Column: YGFlexDirection.Column
+    case FlexDirection.ColumnReverse: YGFlexDirection.ColumnReverse
+    case FlexDirection.Row: YGFlexDirection.Row
+    case FlexDirection.RowReverse: YGFlexDirection.RowReverse
+    case _: throw NotSupportedException("Layout.applyFlexLayout: unhandled FlexDirection " + n.FlexDirection.ToString())
+  }
+  if YGNodeStyleAPI.YGNodeStyleGetFlexDirection(yg) != flexDirection {
+    YGNodeStyleAPI.YGNodeStyleSetFlexDirection(yg, flexDirection)
+  }
+  let flexWrap = switch n.FlexWrap {
+    case FlexWrap.NoWrap: YGWrap.NoWrap
+    case FlexWrap.Wrap: YGWrap.Wrap
+    case FlexWrap.WrapReverse: YGWrap.WrapReverse
+    case _: throw NotSupportedException("Layout.applyFlexLayout: unhandled FlexWrap " + n.FlexWrap.ToString())
+  }
+  if YGNodeStyleAPI.YGNodeStyleGetFlexWrap(yg) != flexWrap {
+    YGNodeStyleAPI.YGNodeStyleSetFlexWrap(yg, flexWrap)
+  }
+  let justifyContent = switch n.JustifyContent {
+    case JustifyContent.FlexStart: YGJustify.FlexStart
+    case JustifyContent.Center: YGJustify.Center
+    case JustifyContent.FlexEnd: YGJustify.FlexEnd
+    case JustifyContent.SpaceBetween: YGJustify.SpaceBetween
+    case JustifyContent.SpaceAround: YGJustify.SpaceAround
+    case JustifyContent.SpaceEvenly: YGJustify.SpaceEvenly
+    case _: throw NotSupportedException("Layout.applyFlexLayout: unhandled JustifyContent " + n.JustifyContent.ToString())
+  }
+  if YGNodeStyleAPI.YGNodeStyleGetJustifyContent(yg) != justifyContent {
+    YGNodeStyleAPI.YGNodeStyleSetJustifyContent(yg, justifyContent)
+  }
+  let alignItems = mapAlignItems(n.AlignItems)
+  if YGNodeStyleAPI.YGNodeStyleGetAlignItems(yg) != alignItems {
+    YGNodeStyleAPI.YGNodeStyleSetAlignItems(yg, alignItems)
+  }
+  let alignSelf = mapAlignSelf(n.AlignSelf)
+  if YGNodeStyleAPI.YGNodeStyleGetAlignSelf(yg) != alignSelf {
+    YGNodeStyleAPI.YGNodeStyleSetAlignSelf(yg, alignSelf)
+  }
+  let alignContent = mapAlignContent(n.AlignContent)
+  if YGNodeStyleAPI.YGNodeStyleGetAlignContent(yg) != alignContent {
+    YGNodeStyleAPI.YGNodeStyleSetAlignContent(yg, alignContent)
+  }
+  switch n.FlexBasis.Unit {
+    case LengthUnit.Px {
+      YGNodeStyleAPI.YGNodeStyleSetFlexBasis(yg, n.FlexBasis.Value)
+      markYogaStyle(n, StyleField.FlexBasis)
     }
-    if YGNodeStyleAPI.YGNodeStyleGetFlexDirection(yg) != flexDirection {
-      YGNodeStyleAPI.YGNodeStyleSetFlexDirection(yg, flexDirection)
+    case LengthUnit.Percent {
+      YGNodeStyleAPI.YGNodeStyleSetFlexBasisPercent(yg, n.FlexBasis.Value)
+      markYogaStyle(n, StyleField.FlexBasis)
     }
-    let flexWrap = switch n.FlexWrap {
-      case FlexWrap.NoWrap: YGWrap.NoWrap
-      case FlexWrap.Wrap: YGWrap.Wrap
-      case FlexWrap.WrapReverse: YGWrap.WrapReverse
-      case _: throw NotSupportedException("Layout.applyFlexLayout: unhandled FlexWrap " + n.FlexWrap.ToString())
+    case LengthUnit.Auto {
+      YGNodeStyleAPI.YGNodeStyleSetFlexBasisAuto(yg)
+      markYogaStyle(n, StyleField.FlexBasis)
     }
-    if YGNodeStyleAPI.YGNodeStyleGetFlexWrap(yg) != flexWrap {
-      YGNodeStyleAPI.YGNodeStyleSetFlexWrap(yg, flexWrap)
-    }
-    let justifyContent = switch n.JustifyContent {
-      case JustifyContent.FlexStart: YGJustify.FlexStart
-      case JustifyContent.Center: YGJustify.Center
-      case JustifyContent.FlexEnd: YGJustify.FlexEnd
-      case JustifyContent.SpaceBetween: YGJustify.SpaceBetween
-      case JustifyContent.SpaceAround: YGJustify.SpaceAround
-      case JustifyContent.SpaceEvenly: YGJustify.SpaceEvenly
-      case _: throw NotSupportedException("Layout.applyFlexLayout: unhandled JustifyContent " + n.JustifyContent.ToString())
-    }
-    if YGNodeStyleAPI.YGNodeStyleGetJustifyContent(yg) != justifyContent {
-      YGNodeStyleAPI.YGNodeStyleSetJustifyContent(yg, justifyContent)
-    }
-    let alignItems = mapAlignItems(n.AlignItems)
-    if YGNodeStyleAPI.YGNodeStyleGetAlignItems(yg) != alignItems {
-      YGNodeStyleAPI.YGNodeStyleSetAlignItems(yg, alignItems)
-    }
-    let alignSelf = mapAlignSelf(n.AlignSelf)
-    if YGNodeStyleAPI.YGNodeStyleGetAlignSelf(yg) != alignSelf {
-      YGNodeStyleAPI.YGNodeStyleSetAlignSelf(yg, alignSelf)
-    }
-    let alignContent = mapAlignContent(n.AlignContent)
-    if YGNodeStyleAPI.YGNodeStyleGetAlignContent(yg) != alignContent {
-      YGNodeStyleAPI.YGNodeStyleSetAlignContent(yg, alignContent)
-    }
-    switch n.FlexBasis.Unit {
-      case LengthUnit.Px {
-        YGNodeStyleAPI.YGNodeStyleSetFlexBasis(yg, n.FlexBasis.Value)
-        markYogaStyle(n, StyleField.FlexBasis)
-      }
-      case LengthUnit.Percent {
-        YGNodeStyleAPI.YGNodeStyleSetFlexBasisPercent(yg, n.FlexBasis.Value)
-        markYogaStyle(n, StyleField.FlexBasis)
-      }
-      case LengthUnit.Auto {
+    default {
+      if clearYogaStyle(n, StyleField.FlexBasis) {
         YGNodeStyleAPI.YGNodeStyleSetFlexBasisAuto(yg)
-        markYogaStyle(n, StyleField.FlexBasis)
-      }
-      default {
-        if clearYogaStyle(n, StyleField.FlexBasis) {
-          YGNodeStyleAPI.YGNodeStyleSetFlexBasisAuto(yg)
-        }
       }
     }
-    // Unsized non-root Shapes inherit their view-box aspect.
-    let aspect = if n.AspectRatio <= 0.0 && !isRoot && n.Kind == NodeKind.Shape
-      && !(isSized(n.Width) && isSized(n.Height)) {
+  }
+  // Unsized non-root Shapes inherit their view-box aspect.
+  let aspect = if n.AspectRatio <= 0.0 && !isRoot && n.Kind == NodeKind.Shape
+    && !(isSized(n.Width) && isSized(n.Height)) {
       n.ShapePath.ViewBoxWidth / n.ShapePath.ViewBoxHeight
     } else {
       n.AspectRatio
     }
-    let yogaAspect = float32(aspect)
-    if aspect > 0.0 && yogaAspect > 0.0F && !Single.IsInfinity(yogaAspect) {
-      YGNodeStyleAPI.YGNodeStyleSetAspectRatio(yg, yogaAspect)
-      markYogaStyle(n, StyleField.AspectRatio)
-    } else if clearYogaStyle(n, StyleField.AspectRatio) {
-      YGNodeStyleAPI.YGNodeStyleSetAspectRatio(yg, YogaValue.YGValueUndefined.Value)
-    }
+  let yogaAspect = float32(aspect)
+  if aspect > 0.0 && yogaAspect > 0.0F && !Single.IsInfinity(yogaAspect) {
+    YGNodeStyleAPI.YGNodeStyleSetAspectRatio(yg, yogaAspect)
+    markYogaStyle(n, StyleField.AspectRatio)
+  } else if clearYogaStyle(n, StyleField.AspectRatio) {
+    YGNodeStyleAPI.YGNodeStyleSetAspectRatio(yg, YogaValue.YGValueUndefined.Value)
   }
+}
 
-  internal func isSized(v Length) bool {
-    return v.Unit == LengthUnit.Px || v.Unit == LengthUnit.Percent
+internal func isSized(v Length) bool -> v.Unit == LengthUnit.Px || v.Unit == LengthUnit.Percent
+
+internal func mapAlignItems(a AlignItems) YGAlign -> switch a {
+  case AlignItems.Stretch: YGAlign.Stretch
+  case AlignItems.FlexStart: YGAlign.FlexStart
+  case AlignItems.Center: YGAlign.Center
+  case AlignItems.FlexEnd: YGAlign.FlexEnd
+  case AlignItems.Baseline: YGAlign.Baseline
+  case _: throw NotSupportedException("Layout.mapAlignItems: unhandled AlignItems " + a.ToString())
+}
+
+internal func mapAlignSelf(a AlignSelf) YGAlign -> switch a {
+  case AlignSelf.Auto: YGAlign.Auto
+  case AlignSelf.Stretch: YGAlign.Stretch
+  case AlignSelf.FlexStart: YGAlign.FlexStart
+  case AlignSelf.Center: YGAlign.Center
+  case AlignSelf.FlexEnd: YGAlign.FlexEnd
+  case AlignSelf.Baseline: YGAlign.Baseline
+  case _: throw NotSupportedException("Layout.mapAlignSelf: unhandled AlignSelf " + a.ToString())
+}
+
+internal func mapAlignContent(a AlignContent) YGAlign -> switch a {
+  case AlignContent.FlexStart: YGAlign.FlexStart
+  case AlignContent.Center: YGAlign.Center
+  case AlignContent.FlexEnd: YGAlign.FlexEnd
+  case AlignContent.Stretch: YGAlign.Stretch
+  case AlignContent.SpaceBetween: YGAlign.SpaceBetween
+  case AlignContent.SpaceAround: YGAlign.SpaceAround
+  case _: throw NotSupportedException("Layout.mapAlignContent: unhandled AlignContent " + a.ToString())
+}
+
+internal func applyPosition(yg Facebook.Yoga.Node, n Node) {
+  let positionType = n.Position == PositionType.Absolute ? YGPositionType.Absolute : n.Position == PositionType.Static ? YGPositionType.Static : YGPositionType.Relative
+  if YGNodeStyleAPI.YGNodeStyleGetPositionType(yg) != positionType {
+    YGNodeStyleAPI.YGNodeStyleSetPositionType(yg, positionType)
   }
+  applyPositionEdge(yg, n, YGEdge.Left, n.Left, StyleField.Left)
+  applyPositionEdge(yg, n, YGEdge.Top, n.Top, StyleField.Top)
+  applyPositionEdge(yg, n, YGEdge.Right, n.Right, StyleField.Right)
+  applyPositionEdge(yg, n, YGEdge.Bottom, n.Bottom, StyleField.Bottom)
+}
 
-  internal func mapAlignItems(a AlignItems) YGAlign {
-    return switch a {
-      case AlignItems.Stretch: YGAlign.Stretch
-      case AlignItems.FlexStart: YGAlign.FlexStart
-      case AlignItems.Center: YGAlign.Center
-      case AlignItems.FlexEnd: YGAlign.FlexEnd
-      case AlignItems.Baseline: YGAlign.Baseline
-      case _: throw NotSupportedException("Layout.mapAlignItems: unhandled AlignItems " + a.ToString())
-    }
-  }
-
-  internal func mapAlignSelf(a AlignSelf) YGAlign {
-    return switch a {
-      case AlignSelf.Auto: YGAlign.Auto
-      case AlignSelf.Stretch: YGAlign.Stretch
-      case AlignSelf.FlexStart: YGAlign.FlexStart
-      case AlignSelf.Center: YGAlign.Center
-      case AlignSelf.FlexEnd: YGAlign.FlexEnd
-      case AlignSelf.Baseline: YGAlign.Baseline
-      case _: throw NotSupportedException("Layout.mapAlignSelf: unhandled AlignSelf " + a.ToString())
-    }
-  }
-
-  internal func mapAlignContent(a AlignContent) YGAlign {
-    return switch a {
-      case AlignContent.FlexStart: YGAlign.FlexStart
-      case AlignContent.Center: YGAlign.Center
-      case AlignContent.FlexEnd: YGAlign.FlexEnd
-      case AlignContent.Stretch: YGAlign.Stretch
-      case AlignContent.SpaceBetween: YGAlign.SpaceBetween
-      case AlignContent.SpaceAround: YGAlign.SpaceAround
-      case _: throw NotSupportedException("Layout.mapAlignContent: unhandled AlignContent " + a.ToString())
-    }
-  }
-
-  internal func applyPosition(yg Facebook.Yoga.Node, n Node) {
-    let positionType = n.Position == PositionType.Absolute ? YGPositionType.Absolute
-      : n.Position == PositionType.Static ? YGPositionType.Static : YGPositionType.Relative
-    if YGNodeStyleAPI.YGNodeStyleGetPositionType(yg) != positionType {
-      YGNodeStyleAPI.YGNodeStyleSetPositionType(yg, positionType)
-    }
-    applyPositionEdge(yg, n, YGEdge.Left, n.Left, StyleField.Left)
-    applyPositionEdge(yg, n, YGEdge.Top, n.Top, StyleField.Top)
-    applyPositionEdge(yg, n, YGEdge.Right, n.Right, StyleField.Right)
-    applyPositionEdge(yg, n, YGEdge.Bottom, n.Bottom, StyleField.Bottom)
-  }
-
-  internal func applyPositionEdge(
-    yg Facebook.Yoga.Node, n Node, edge YGEdge, v Length, field StyleField) {
+internal func applyPositionEdge(
+  yg Facebook.Yoga.Node, n Node, edge YGEdge, v Length, field StyleField) {
     switch v.Unit {
       case LengthUnit.Px {
         YGNodeStyleAPI.YGNodeStyleSetPosition(yg, edge, v.Value)
@@ -721,42 +711,42 @@ internal func markYogaStyle(n Node, field StyleField) {
     }
   }
 
-  internal func applyDisplay(yg Facebook.Yoga.Node, n Node) {
-    let display = switch n.Display {
-      case Display.Flex: YGDisplay.Flex
-      case Display.None: YGDisplay.None
-      case _: throw NotSupportedException("Layout.applyDisplay: unhandled Display " + n.Display.ToString())
-    }
-    if YGNodeStyleAPI.YGNodeStyleGetDisplay(yg) != display {
-      YGNodeStyleAPI.YGNodeStyleSetDisplay(yg, display)
-    }
-    let overflow = if n.OverflowX == Overflow.Scroll || n.OverflowY == Overflow.Scroll {
-      YGOverflow.Scroll
-    } else if n.OverflowX == Overflow.Hidden || n.OverflowY == Overflow.Hidden {
-      YGOverflow.Hidden
-    } else {
-      YGOverflow.Visible
-    }
-    if YGNodeStyleAPI.YGNodeStyleGetOverflow(yg) != overflow {
-      YGNodeStyleAPI.YGNodeStyleSetOverflow(yg, overflow)
-    }
+internal func applyDisplay(yg Facebook.Yoga.Node, n Node) {
+  let display = switch n.Display {
+    case Display.Flex: YGDisplay.Flex
+    case Display.None: YGDisplay.None
+    case _: throw NotSupportedException("Layout.applyDisplay: unhandled Display " + n.Display.ToString())
   }
+  if YGNodeStyleAPI.YGNodeStyleGetDisplay(yg) != display {
+    YGNodeStyleAPI.YGNodeStyleSetDisplay(yg, display)
+  }
+  let overflow = if n.OverflowX == Overflow.Scroll || n.OverflowY == Overflow.Scroll {
+    YGOverflow.Scroll
+  } else if n.OverflowX == Overflow.Hidden || n.OverflowY == Overflow.Hidden {
+    YGOverflow.Hidden
+  } else {
+    YGOverflow.Visible
+  }
+  if YGNodeStyleAPI.YGNodeStyleGetOverflow(yg) != overflow {
+    YGNodeStyleAPI.YGNodeStyleSetOverflow(yg, overflow)
+  }
+}
 
 // Reference equality per slot: Diff reuses Node instances, and syncNode reuses
 // their Yoga nodes, so an unchanged child list is the same handles in order.
 internal func childrenAlreadyMatch(yg Facebook.Yoga.Node, n Node) bool {
-    if uint32(YGNodeAPI.YGNodeGetChildCount(yg)) != uint32(n.Children.Count) {
+  if uint32(YGNodeAPI.YGNodeGetChildCount(yg)) != uint32(n.Children.Count) {
+    return false
+  }
+  for i in 0 ... n.Children.Count {
+    guard let childYg = n.Children[i].Yoga else {
       return false
     }
-    for i in 0 ... n.Children.Count {
-      guard let childYg = n.Children[i].Yoga else {
-        return false
-      }
-      if YGNodeAPI.YGNodeGetChild(yg, nuint(i)) != childYg {
-        return false
-      }
+    if YGNodeAPI.YGNodeGetChild(yg, nuint(i)) != childYg {
+      return false
     }
-    return true
+  }
+  return true
 }
 
 internal func clampOffset(v float32, max float32) float32 {

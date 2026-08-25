@@ -65,14 +65,14 @@ func S16QueueIsolationPump(first Window, second Window, third Window, dt float64
 
 func S16QueueIsolationDrain(first Window, second Window, third Window, timeoutMs int32) {
   let deadline = Stopwatch.GetTimestamp()
-    + int64(float64(Stopwatch.Frequency) * float64(timeoutMs) / 1000.0)
+  +int64(float64(Stopwatch.Frequency) * float64(timeoutMs) / 1000.0)
   while Stopwatch.GetTimestamp() < deadline {
     S16QueueIsolationPump(first, second, third, 0.0)
     if !WindowReadbackTestFixture.S16QueueWorkPending(first)
-        && !WindowReadbackTestFixture.S16QueueWorkPending(second)
-        && !WindowReadbackTestFixture.S16QueueWorkPending(third) {
-      return
-    }
+      && !WindowReadbackTestFixture.S16QueueWorkPending(second)
+      && !WindowReadbackTestFixture.S16QueueWorkPending(third) {
+        return
+      }
     Thread.Yield()
   }
   throw InvalidOperationException("S16 queue work did not drain within the timeout")
@@ -82,9 +82,7 @@ func S16QueueIsolationPost(window Window, cell S16QueueIsolationCell) {
   window.Post(func() { cell.RecordService() })
 }
 
-func S16QueueIsolationSerialCount(snapshot VulkanFrameSubmissionTestSnapshot) uint64 {
-  return snapshot.Slot0Serial + snapshot.Slot1Serial
-}
+func S16QueueIsolationSerialCount(snapshot VulkanFrameSubmissionTestSnapshot) uint64 -> snapshot.Slot0Serial + snapshot.Slot1Serial
 
 func S16QueueIsolationClose(window Window) {
   if window.IsOpen {
@@ -161,7 +159,7 @@ func RunS16QueueIsolationGate() {
     WindowReadbackTestFixture.ForceRenderNonblocking(openedFirst, 0.0166666666666667)
     var submitHeld = false
     let submitDeadline = Stopwatch.GetTimestamp()
-      + int64(float64(Stopwatch.Frequency) * 2.0)
+    +int64(float64(Stopwatch.Frequency) * 2.0)
     while Stopwatch.GetTimestamp() < submitDeadline {
       S16QueueIsolationPump(openedFirst, openedSecond, openedThird, 0.0)
       if WindowReadbackTestFixture.S16WaitForHeldQueueCall(openedFirst, 10) {
@@ -172,13 +170,13 @@ func RunS16QueueIsolationGate() {
     }
     S16QueueIsolationRequire(submitHeld,
       "S16 submit hold did not reach the queue worker: pending="
-        + WindowReadbackTestFixture.S16QueueWorkPending(openedFirst).ToString()
-        + " submitCount="
-        + WindowReadbackTestFixture.DiagnosticCounters(openedFirst).submitCount.ToString())
+      +WindowReadbackTestFixture.S16QueueWorkPending(openedFirst).ToString()
+      +" submitCount="
+      +WindowReadbackTestFixture.DiagnosticCounters(openedFirst).submitCount.ToString())
     let firstHeldSubmit = WindowReadbackTestFixture.FrameSubmissions(openedFirst)
     S16QueueIsolationRequire(
       S16QueueIsolationSerialCount(firstHeldSubmit)
-        == S16QueueIsolationSerialCount(firstBeforeSubmit),
+      == S16QueueIsolationSerialCount(firstBeforeSubmit),
       "S16 submit hold changed the target submission serial before release")
     var pump int32 = 0
     while pump < 4 {
@@ -197,7 +195,7 @@ func RunS16QueueIsolationGate() {
     siblingServiceVerified = true
     S16QueueIsolationRequire(
       S16QueueIsolationSerialCount(WindowReadbackTestFixture.FrameSubmissions(openedFirst))
-        == S16QueueIsolationSerialCount(firstBeforeSubmit),
+      == S16QueueIsolationSerialCount(firstBeforeSubmit),
       "S16 submit hold produced a duplicate target packet")
     submitHoldVerified = true
     WindowReadbackTestFixture.S16ReleaseHeldQueueCall()
@@ -205,7 +203,7 @@ func RunS16QueueIsolationGate() {
     let firstAfterSubmit = WindowReadbackTestFixture.FrameSubmissions(openedFirst)
     S16QueueIsolationRequire(
       S16QueueIsolationSerialCount(firstAfterSubmit)
-        > S16QueueIsolationSerialCount(firstBeforeSubmit),
+      > S16QueueIsolationSerialCount(firstBeforeSubmit),
       "S16 submit hold did not converge after release")
     convergenceVerified = true
 
@@ -221,7 +219,7 @@ func RunS16QueueIsolationGate() {
     WindowReadbackTestFixture.ForceRenderNonblocking(openedFirst, 0.0)
     var presentHeld = false
     let presentDeadline = Stopwatch.GetTimestamp()
-      + int64(float64(Stopwatch.Frequency) * 2.0)
+    +int64(float64(Stopwatch.Frequency) * 2.0)
     while Stopwatch.GetTimestamp() < presentDeadline {
       S16QueueIsolationPump(openedFirst, openedSecond, openedThird, 0.0)
       if WindowReadbackTestFixture.S16WaitForHeldQueueCall(openedFirst, 10) {
@@ -248,14 +246,14 @@ func RunS16QueueIsolationGate() {
       "S16 present hold rebuilt the target without a released packet")
     S16QueueIsolationRequire(
       S16QueueIsolationSerialCount(WindowReadbackTestFixture.FrameSubmissions(openedFirst))
-        == S16QueueIsolationSerialCount(firstHeldPresent),
+      == S16QueueIsolationSerialCount(firstHeldPresent),
       "S16 present hold produced a duplicate target packet")
     presentHoldVerified = true
     WindowReadbackTestFixture.S16ReleaseHeldQueueCall()
     S16QueueIsolationDrain(openedFirst, openedSecond, openedThird, 2000)
     S16QueueIsolationRequire(
       S16QueueIsolationSerialCount(WindowReadbackTestFixture.FrameSubmissions(openedFirst))
-        > S16QueueIsolationSerialCount(firstBeforePresent),
+      > S16QueueIsolationSerialCount(firstBeforePresent),
       "S16 present hold did not converge after release")
     convergenceVerified = true
 
@@ -269,7 +267,7 @@ func RunS16QueueIsolationGate() {
     WindowReadbackTestFixture.ForceRenderNonblocking(openedFirst, 0.0)
     let deferredTarget = deferredBefore + 1L
     let deferredDeadline = Stopwatch.GetTimestamp()
-      + int64(float64(Stopwatch.Frequency) * 2.0)
+    +int64(float64(Stopwatch.Frequency) * 2.0)
     while Stopwatch.GetTimestamp() < deferredDeadline {
       let deferredCurrent = WindowReadbackTestFixture.S16DeferredQueueEnqueueCount()
       if deferredCurrent >= deferredTarget {
@@ -282,12 +280,12 @@ func RunS16QueueIsolationGate() {
     S16QueueIsolationRequire(deferredAfter == deferredBefore + 1L,
       "S16 deferred queue enqueue was not consumed by the initial attempt")
     let retryDeadline = Stopwatch.GetTimestamp()
-      + int64(float64(Stopwatch.Frequency) * 2.0)
+    +int64(float64(Stopwatch.Frequency) * 2.0)
     while Stopwatch.GetTimestamp() < retryDeadline {
       S16QueueIsolationPump(openedFirst, openedSecond, openedThird, 0.0)
       if !WindowReadbackTestFixture.S16QueueWorkPending(openedFirst)
-          && S16QueueIsolationSerialCount(WindowReadbackTestFixture.FrameSubmissions(openedFirst))
-            > S16QueueIsolationSerialCount(firstBeforeRetry) {
+        && S16QueueIsolationSerialCount(WindowReadbackTestFixture.FrameSubmissions(openedFirst))
+      > S16QueueIsolationSerialCount(firstBeforeRetry) {
         retryVerified = true
         break
       }
@@ -313,7 +311,7 @@ func RunS16QueueIsolationGate() {
     if let active = second { S16QueueIsolationClose(active) }
     if let active = third { S16QueueIsolationClose(active) }
     let closeDeadline = Stopwatch.GetTimestamp()
-      + int64(float64(Stopwatch.Frequency) * 2.0)
+    +int64(float64(Stopwatch.Frequency) * 2.0)
     while Stopwatch.GetTimestamp() < closeDeadline {
       if let active = first {
         if active.IsOpen { WindowReadbackTestFixture.Pump(active, 0.0) }
@@ -337,8 +335,8 @@ func RunS16QueueIsolationGate() {
       if let activeSecond = second {
         if let activeThird = third {
           drainedBeforeClose = !WindowReadbackTestFixture.S16QueueWorkPending(activeFirst)
-              && !WindowReadbackTestFixture.S16QueueWorkPending(activeSecond)
-              && !WindowReadbackTestFixture.S16QueueWorkPending(activeThird)
+            && !WindowReadbackTestFixture.S16QueueWorkPending(activeSecond)
+            && !WindowReadbackTestFixture.S16QueueWorkPending(activeThird)
         }
       }
     }
@@ -355,8 +353,8 @@ func RunS16QueueIsolationGate() {
   let presentCount = S14Counter(diagnostics, "presentCount")
   let resultCount = S14Counter(diagnostics, "resultCount")
   Console.WriteLine("s16-queue-isolation-gate: submit_hold=1 present_hold=1"
-    + " sibling_service=1 retry=1 convergence=1 close=1"
-    + " submitCount=" + submitCount.ToString()
-    + " presentCount=" + presentCount.ToString()
-    + " resultCount=" + resultCount.ToString())
+    +" sibling_service=1 retry=1 convergence=1 close=1"
+    +" submitCount=" + submitCount.ToString()
+    +" presentCount=" + presentCount.ToString()
+    +" resultCount=" + resultCount.ToString())
 }

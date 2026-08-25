@@ -6,15 +6,15 @@ internal class VulkanDeviceRecoveryCoordinator {
   private const InitialTargetCapacity int32 = 8
 
   shared {
-    private var targets ([]VulkanWindowTarget?)? = nil
+    private var targets([]VulkanWindowTarget?)? = nil
     private var targetCount int32
     private var recoveryInProgress bool
 
-    internal prop Count int32 {
+    internal prop Count int32{
       get -> targetCount
     }
 
-    internal prop InProgress bool {
+    internal prop InProgress bool{
       get -> recoveryInProgress
     }
 

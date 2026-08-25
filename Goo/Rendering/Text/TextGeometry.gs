@@ -6,9 +6,7 @@ import System.Collections.Generic
 internal data struct TextHit(Index int32, Affinity int32) { }
 
 internal data struct TextHitPosition(Index int32, Affinity int32, X float32) {
-  internal func Hit() TextHit {
-    return TextHit(Index, Affinity)
-  }
+  internal func Hit() TextHit -> TextHit(Index, Affinity)
 }
 
 internal data struct TextGlyphBox(LogicalStart int32, LogicalEnd int32, X0 float32, X1 float32) { }
@@ -26,51 +24,51 @@ internal class TextGeometry {
 
   private init(upstream []float32, downstream []float32, stops []TextHitPosition,
     boxes []TextGlyphBox) {
-    this.upstream = upstream
-    this.downstream = downstream
-    this.stops = stops
-    this.boxes = boxes
-  }
+      this.upstream = upstream
+      this.downstream = downstream
+      this.stops = stops
+      this.boxes = boxes
+    }
 
   shared {
-  internal func Build(text string, runs List[ShapedRun], width float32,
-    rightToLeft bool) TextGeometry {
-    let upstream = [text.Length + 1]float32
-    let downstream = [text.Length + 1]float32
-    for i in 0 ... upstream.Length {
-      upstream[i] = Single.NaN
-      downstream[i] = Single.NaN
-    }
-    let boxes = List[TextGlyphBox]()
-    for run in runs {
-      AddRun(run, upstream, downstream, boxes)
-    }
+    internal func Build(text string, runs List[ShapedRun], width float32,
+      rightToLeft bool) TextGeometry{
+        let upstream = [text.Length + 1]float32
+        let downstream = [text.Length + 1]float32
+        for i in 0 ... upstream.Length {
+          upstream[i] = Single.NaN
+          downstream[i] = Single.NaN
+        }
+        let boxes = List[TextGlyphBox]()
+        for run in runs {
+          AddRun(run, upstream, downstream, boxes)
+        }
 
-    let fallback = rightToLeft ? width : 0.0F
-    if Single.IsNaN(downstream[0]) { downstream[0] = fallback }
-    if Single.IsNaN(upstream[text.Length]) {
-      upstream[text.Length] = rightToLeft ? 0.0F : width
-    }
+        let fallback = rightToLeft ? width : 0.0F
+        if Single.IsNaN(downstream[0]) { downstream[0] = fallback }
+        if Single.IsNaN(upstream[text.Length]) {
+          upstream[text.Length] = rightToLeft ? 0.0F : width
+        }
 
-    let boundaries = List[int32]()
-    let parsed = UnicodeGraphemes.Starts(text)
-    for boundary in parsed { boundaries.Add(boundary) }
-    if boundaries.Count == 0 || boundaries[0] != 0 { boundaries.Insert(0, 0) }
-    if boundaries[boundaries.Count - 1] != text.Length { boundaries.Add(text.Length) }
+        let boundaries = List[int32]()
+        let parsed = UnicodeGraphemes.Starts(text)
+        for boundary in parsed { boundaries.Add(boundary) }
+        if boundaries.Count == 0 || boundaries[0] != 0 { boundaries.Insert(0, 0) }
+        if boundaries[boundaries.Count - 1] != text.Length { boundaries.Add(text.Length) }
 
-    let positions = List[TextHitPosition](boundaries.Count * 2)
-    for boundary in boundaries {
-      let up = upstream[boundary]
-      let down = downstream[boundary]
-      if !Single.IsNaN(up) { positions.Add(TextHitPosition(boundary, 0, up)) }
-      if !Single.IsNaN(down) && (Single.IsNaN(up) || MathF.Abs(down - up) > 0.01F) {
-        positions.Add(TextHitPosition(boundary, 1, down))
+        let positions = List[TextHitPosition](boundaries.Count * 2)
+        for boundary in boundaries {
+          let up = upstream[boundary]
+          let down = downstream[boundary]
+          if !Single.IsNaN(up) { positions.Add(TextHitPosition(boundary, 0, up)) }
+          if !Single.IsNaN(down) && (Single.IsNaN(up) || MathF.Abs(down - up) > 0.01F) {
+            positions.Add(TextHitPosition(boundary, 1, down))
+          }
+        }
+        sortPositions(positions)
+
+        return TextGeometry(upstream, downstream, positions.ToArray(), boxes.ToArray())
       }
-    }
-    sortPositions(positions)
-
-    return TextGeometry(upstream, downstream, positions.ToArray(), boxes.ToArray())
-  }
 
   }
 
@@ -118,25 +116,23 @@ internal class TextGeometry {
     return stops[next].Hit()
   }
 
-  internal func LineEdge(end bool) TextHit {
-    return if end { TextHit(upstream.Length - 1, 0) } else { TextHit(0, 1) }
-  }
+  internal func LineEdge(end bool) TextHit -> if end { TextHit(upstream.Length - 1, 0) } else { TextHit(0, 1) }
 
   internal func Collapse(index int32, affinity int32, anchorIndex int32, anchorAffinity int32,
-    delta int32) TextHit {
-    let segments = SelectionRects(index, anchorIndex)
-    if segments.Length != 0 {
-      return HitTest(if delta < 0 { segments[0] } else { segments[segments.Length - 1] })
-    }
-    let caretX = CaretX(index, affinity)
-    let anchorX = CaretX(anchorIndex, anchorAffinity)
-    if delta < 0 {
-      return if caretX <= anchorX { TextHit(index, affinity) }
+    delta int32) TextHit{
+      let segments = SelectionRects(index, anchorIndex)
+      if segments.Length != 0 {
+        return HitTest(if delta < 0 { segments[0] } else { segments[segments.Length - 1] })
+      }
+      let caretX = CaretX(index, affinity)
+      let anchorX = CaretX(anchorIndex, anchorAffinity)
+      if delta < 0 {
+        return if caretX <= anchorX { TextHit(index, affinity) }
         else { TextHit(anchorIndex, anchorAffinity) }
-    }
-    return if caretX >= anchorX { TextHit(index, affinity) }
+      }
+      return if caretX >= anchorX { TextHit(index, affinity) }
       else { TextHit(anchorIndex, anchorAffinity) }
-  }
+    }
 
   internal func SelectionRects(start int32, end int32) []float32 {
     var from = start
@@ -199,42 +195,42 @@ internal class TextGeometry {
   }
 
   internal func CopySelectionRects(start int32, end int32, rectOffset int32,
-    destination Span[float32]) int32 {
-    var from = start
-    var to = end
-    normalizeSelection(ref from, ref to)
-    if from == to || destination.Length < 2 { return 0 }
-    var rectIndex int32 = 0
-    var written int32 = 0
-    var hasSegment = false
-    var x0 = 0.0F
-    var x1 = 0.0F
-    for box in boxes {
-      if box.LogicalStart >= to || box.LogicalEnd <= from || box.X1 <= box.X0 { continue }
-      if !hasSegment {
-        x0 = box.X0
-        x1 = box.X1
-        hasSegment = true
-      } else if box.X0 <= x1 + 0.01F {
-        x1 = MathF.Max(x1, box.X1)
-      } else {
-        if rectIndex >= rectOffset && written + 1 < destination.Length {
-          destination[written] = x0
-          destination[written + 1] = x1
-          written = written + 2
+    destination Span[float32]) int32{
+      var from = start
+      var to = end
+      normalizeSelection(ref from, ref to)
+      if from == to || destination.Length < 2 { return 0 }
+      var rectIndex int32 = 0
+      var written int32 = 0
+      var hasSegment = false
+      var x0 = 0.0F
+      var x1 = 0.0F
+      for box in boxes {
+        if box.LogicalStart >= to || box.LogicalEnd <= from || box.X1 <= box.X0 { continue }
+        if !hasSegment {
+          x0 = box.X0
+          x1 = box.X1
+          hasSegment = true
+        } else if box.X0 <= x1 + 0.01F {
+          x1 = MathF.Max(x1, box.X1)
+        } else {
+          if rectIndex >= rectOffset && written + 1 < destination.Length {
+            destination[written] = x0
+            destination[written + 1] = x1
+            written = written + 2
+          }
+          rectIndex++
+          x0 = box.X0
+          x1 = box.X1
         }
-        rectIndex++
-        x0 = box.X0
-        x1 = box.X1
       }
+      if hasSegment && rectIndex >= rectOffset && written + 1 < destination.Length {
+        destination[written] = x0
+        destination[written + 1] = x1
+        written = written + 2
+      }
+      return written
     }
-    if hasSegment && rectIndex >= rectOffset && written + 1 < destination.Length {
-      destination[written] = x0
-      destination[written + 1] = x1
-      written = written + 2
-    }
-    return written
-  }
 
   private func normalizeSelection(ref start int32, ref end int32) {
     start = Math.Clamp(start, 0, upstream.Length - 1)
@@ -272,45 +268,45 @@ internal class TextGeometry {
     return nearest
   }
 
-  }
+}
 
 internal func sortPositions(values List[TextHitPosition]) {
-    var i int32 = 1
-    while i < values.Count {
-      let value = values[i]
-      var j = i
-      while j > 0 && comparePositions(values[j - 1], value) > 0 {
-        values[j] = values[j - 1]
-        j--
-      }
-      values[j] = value
-      i++
+  var i int32 = 1
+  while i < values.Count {
+    let value = values[i]
+    var j = i
+    while j > 0 && comparePositions(values[j - 1], value) > 0 {
+      values[j] = values[j - 1]
+      j--
     }
+    values[j] = value
+    i++
   }
+}
 
 internal func comparePositions(left TextHitPosition, right TextHitPosition) int32 {
-    let x = left.X.CompareTo(right.X)
-    if x != 0 { return x }
-    let index = left.Index.CompareTo(right.Index)
-    return if index != 0 { index } else { left.Affinity.CompareTo(right.Affinity) }
+  let x = left.X.CompareTo(right.X)
+  if x != 0 { return x }
+  let index = left.Index.CompareTo(right.Index)
+  return if index != 0 { index } else { left.Affinity.CompareTo(right.Affinity) }
 }
 
 internal func lowerBoundTextStops(values []TextHitPosition, x float32) int32 {
-    var low int32 = 0
-    var high = values.Length
-    while low < high {
-      let middle = low + (high - low) / 2
-      if values[middle].X < x {
-        low = middle + 1
-      } else {
-        high = middle
-      }
+  var low int32 = 0
+  var high = values.Length
+  while low < high {
+    let middle = low + (high - low) / 2
+    if values[middle].X < x {
+      low = middle + 1
+    } else {
+      high = middle
     }
-    return low
   }
+  return low
+}
 
 internal func AddRun(run ShapedRun, upstream []float32, downstream []float32,
-    boxes List[TextGlyphBox]) {
+  boxes List[TextGlyphBox]) {
     if run.Text.Length == 0 { return }
     let visualClusters = List[TextVisualCluster]()
     var glyph int32 = 0
@@ -351,18 +347,18 @@ internal func AddRun(run ShapedRun, upstream []float32, downstream []float32,
       var logical int32 = 0
       while logical < logicalClusters.Count && logicalClusters[logical] != cluster.LogicalStart { logical++ }
       let localEnd = if logical + 1 < logicalClusters.Count
-        { logicalClusters[logical + 1] } else { run.Text.Length }
+      { logicalClusters[logical + 1] } else { run.Text.Length }
       let localText = run.Text.Substring(cluster.LogicalStart, localEnd - cluster.LogicalStart)
       let localBoundaries = UnicodeGraphemes.Starts(localText)
       let segmentCount = Math.Max(localBoundaries.Length, 1)
       var i int32 = 0
       while i <= segmentCount {
         let local = if i == segmentCount { localEnd }
-          else { cluster.LogicalStart + localBoundaries[i] }
+        else { cluster.LogicalStart + localBoundaries[i] }
         let ratio = float32(i) / float32(segmentCount)
         let x = if run.RightToLeft
-          { cluster.X1 - (cluster.X1 - cluster.X0) * ratio }
-          else { cluster.X0 + (cluster.X1 - cluster.X0) * ratio }
+        { cluster.X1 - (cluster.X1 - cluster.X0) * ratio }
+        else { cluster.X0 + (cluster.X1 - cluster.X0) * ratio }
         let absolute = run.LogicalStart + local
         if i == 0 { setIfNaN(ref downstream[absolute], x) }
         else if i == segmentCount { setIfNaN(ref upstream[absolute], x) }
@@ -378,5 +374,5 @@ internal func AddRun(run ShapedRun, upstream []float32, downstream []float32,
   }
 
 internal func setIfNaN(ref target float32, value float32) {
-    if Single.IsNaN(target) { target = value }
+  if Single.IsNaN(target) { target = value }
 }

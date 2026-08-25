@@ -35,9 +35,7 @@ public partial class Window {
     }
   }
 
-  private func hasPostedActions() bool {
-    return Interlocked.CompareExchange(&pendingPostedActions, 0, 0) != 0
-  }
+  private func hasPostedActions() bool -> Interlocked.CompareExchange(&pendingPostedActions, 0, 0) != 0
 
   internal func drainPostedActions() {
     var count int32

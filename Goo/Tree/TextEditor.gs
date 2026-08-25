@@ -13,32 +13,32 @@ public class TextEditor : Blob {
   }
 
   /// Gets the edited document.
-  public prop Document TextDocument { get { return document } }
+  public prop Document TextDocument{ get { return document } }
   /// Gets the per-view editing controller.
-  public prop Controller TextEditorController { get { return controller } }
+  public prop Controller TextEditorController{ get { return controller } }
   /// Gets the ordered presentation layers.
-  public prop Layers []TextPresentationLayer {
+  public prop Layers []TextPresentationLayer{
     get { return copyEditorLayers(layers) }
-    init {
+    init{
       validateEditorLayers(document, value)
       layers = copyEditorLayers(value)
     }
   }
-  internal prop LayerValues []TextPresentationLayer { get { return layers } }
+  internal prop LayerValues []TextPresentationLayer{ get { return layers } }
   /// Gets whether editing commands are disabled.
-  public prop ReadOnly bool { get; init; }
+  public prop ReadOnly bool{ get; init; }
   /// Gets the placeholder shown for an empty document.
-  public prop Placeholder string { get; init; }
+  public prop Placeholder string{ get; init; }
   /// Gets the selection highlight color.
-  public prop SelectionColor Color { get; init; }
+  public prop SelectionColor Color{ get; init; }
   /// Gets the caret color.
-  public prop CaretColor Color { get; init; }
+  public prop CaretColor Color{ get; init; }
   /// Gets the current-line highlight color.
-  public prop CurrentLineColor Color { get; init; }
+  public prop CurrentLineColor Color{ get; init; }
   /// Gets the logical-line overscan used by viewport layout.
-  public prop OverscanLines int32 {
+  public prop OverscanLines int32{
     get { return overscanLines }
-    init {
+    init{
       if value < 0 { throw ArgumentOutOfRangeException("OverscanLines") }
       overscanLines = value
     }
@@ -61,8 +61,8 @@ public class TextEditor : Blob {
   /// @param handle The consumer-owned mounted element handle.
   public convenience init(document TextDocument, controller TextEditorController,
     handle ElementHandle?) {
-    init(document, controller, []TextPresentationLayer{}, handle)
-  }
+      init(document, controller, []TextPresentationLayer{}, handle)
+    }
 
   /// Creates an editor with ordered presentation layers and a mounted handle.
   /// @param document The document to edit.
@@ -71,9 +71,9 @@ public class TextEditor : Blob {
   /// @param handle The consumer-owned mounted element handle.
   public convenience init(document TextDocument, controller TextEditorController,
     layers []TextPresentationLayer, handle ElementHandle?) {
-    init(document, controller, layers)
-    Handle = handle
-  }
+      init(document, controller, layers)
+      Handle = handle
+    }
 
   /// Creates an editor with ordered presentation layers.
   /// @param document The document to edit.
@@ -81,21 +81,21 @@ public class TextEditor : Blob {
   /// @param layers The ordered presentation layers.
   public init(document TextDocument, controller TextEditorController,
     layers []TextPresentationLayer) {
-    if document == nil { throw ArgumentNullException("document") }
-    if controller == nil { throw ArgumentNullException("controller") }
-    if controller.Document != document {
-      throw ArgumentException("The controller must use the editor document", "controller")
+      if document == nil { throw ArgumentNullException("document") }
+      if controller == nil { throw ArgumentNullException("controller") }
+      if controller.Document != document {
+        throw ArgumentException("The controller must use the editor document", "controller")
+      }
+      this.document = document
+      this.controller = controller
+      validateEditorLayers(document, layers)
+      this.layers = copyEditorLayers(layers)
+      Placeholder = ""
+      SelectionColor = defaultSelectionColor()
+      CaretColor = Color.White
+      CurrentLineColor = Color.Transparent
+      overscanLines = 3
     }
-    this.document = document
-    this.controller = controller
-    validateEditorLayers(document, layers)
-    this.layers = copyEditorLayers(layers)
-    Placeholder = ""
-    SelectionColor = defaultSelectionColor()
-    CaretColor = Color.White
-    CurrentLineColor = Color.Transparent
-    overscanLines = 3
-  }
 }
 
 internal func copyEditorLayers(values []TextPresentationLayer) []TextPresentationLayer {

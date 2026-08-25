@@ -1,5 +1,6 @@
 package Goo
 
+import System
 import System.Collections.Generic
 import Facebook.Yoga
 
@@ -21,8 +22,8 @@ internal class LayoutFixtures {
       || nested.Rect.Y != 48.0F || leaf.Rect.X != 5.0F || leaf.Rect.Y != 53.0F
       || growOne.Rect.Y != 82.0F || growOne.Rect.H != 70.0F
       || growTwo.Rect.Y != 156.0F || growTwo.Rect.H != 140.0F {
-      return false
-    }
+        return false
+      }
 
     root = reconciler.Diff(root, layoutScene(50.0))
     layout.Calculate(root, 400.0F, 296.0F)
@@ -56,15 +57,87 @@ internal class LayoutFixtures {
     return other.Rect.W == 200.0F && other.Children[0].Rect.W == 200.0F
   }
 
-  func RetainedYogaReset(family int32) bool {
-    return switch family {
-      case 0: resetSizeAndPadding()
-      case 1: resetRootSize()
-      case 2: resetEdgesAndGaps()
-      case 3: resetMinMaxAndFlexBasis()
-      case 4: resetPositionAndAspectRatio()
-      case _: false
+  func KeyedReorderRetainsYogaLayouts() bool {
+    let reconciler = Reconciler{ Res: Resolver{} }
+    var root = reconciler.Mount(Container{
+      Width: 90, Height: 20, FlexDirection: FlexDirection.Row,
+      Children: {
+        Container{ Key: "a", Width: 10, Height: 10 },
+        Container{ Key: "b", Width: 20, Height: 10 },
+        Container{ Key: "c", Width: 30, Height: 10 },
+      },
+    })
+    let layout = Layout()
+    layout.Calculate(root, 90.0F, 20.0F)
+    let a = root.Children[0]
+    let b = root.Children[1]
+    let c = root.Children[2]
+    guard let aYoga = a.Yoga else { return false }
+    guard let bYoga = b.Yoga else { return false }
+    guard let cYoga = c.Yoga else { return false }
+    let aLayout = aYoga.GetLayout()
+    let bLayout = bYoga.GetLayout()
+    let cLayout = cYoga.GetLayout()
+
+    root = reconciler.Diff(root, Container{
+      Width: 90, Height: 20, FlexDirection: FlexDirection.Row,
+      Children: {
+        Container{ Key: "c", Width: 30, Height: 10 },
+        Container{ Key: "a", Width: 10, Height: 10 },
+        Container{ Key: "b", Width: 20, Height: 10 },
+      },
+    })
+    layout.MarkStructureDirty()
+    layout.Calculate(root, 90.0F, 20.0F)
+
+    if !Object.ReferenceEquals(root.Children[0], c)
+      || !Object.ReferenceEquals(root.Children[1], a)
+      || !Object.ReferenceEquals(root.Children[2], b) {
+        throw InvalidOperationException("keyed node identity changed")
+      }
+    if !Object.ReferenceEquals(aYoga.GetLayout(), aLayout)
+      || !Object.ReferenceEquals(bYoga.GetLayout(), bLayout)
+      || !Object.ReferenceEquals(cYoga.GetLayout(), cLayout) {
+        throw InvalidOperationException("Yoga layout storage changed")
+      }
+    if c.Rect.X != 0.0F || a.Rect.X != 30.0F || b.Rect.X != 40.0F {
+      throw InvalidOperationException(c.Rect.X.ToString() + "," + a.Rect.X.ToString()
+        +"," + b.Rect.X.ToString())
     }
+
+    root = reconciler.Diff(root, Container{
+      Width: 90, Height: 20, FlexDirection: FlexDirection.Row,
+      Children: {
+        Container{ Key: "a", Width: 10, Height: 10 },
+        Container{ Key: "d", Width: 40, Height: 10 },
+        Container{ Key: "c", Width: 30, Height: 10 },
+      },
+    })
+    layout.MarkStructureDirty()
+    layout.Calculate(root, 90.0F, 20.0F)
+    guard let rootYoga = root.Yoga else { return false }
+    guard let dYoga = root.Children[1].Yoga else { return false }
+    if bYoga.GetOwner() != nil || Object.ReferenceEquals(bYoga.GetLayout(), bLayout) {
+      throw InvalidOperationException("removed Yoga child retained state")
+    }
+    if !Object.ReferenceEquals(aYoga.GetLayout(), aLayout)
+      || !Object.ReferenceEquals(cYoga.GetLayout(), cLayout) {
+        throw InvalidOperationException("retained Yoga child lost state")
+      }
+    if dYoga.GetOwner() != rootYoga
+      || a.Rect.X != 0.0F || root.Children[1].Rect.X != 10.0F || c.Rect.X != 50.0F {
+        throw InvalidOperationException("mixed Yoga child sync failed")
+      }
+    return true
+  }
+
+  func RetainedYogaReset(family int32) bool -> switch family {
+    case 0: resetSizeAndPadding()
+    case 1: resetRootSize()
+    case 2: resetEdgesAndGaps()
+    case 3: resetMinMaxAndFlexBasis()
+    case 4: resetPositionAndAspectRatio()
+    case _: false
   }
 
   func StaticPositionIgnoresInsets() bool {
@@ -119,8 +192,8 @@ internal class LayoutFixtures {
     if ltr.Children[0].Rect.X != 10.0F || rtl.Children[0].Rect.X != 70.0F
       || ltrPadding.Children[0].Rect.X != 10.0F || rtlPadding.Children[0].Rect.X != 70.0F
       || ltrAbsolute.Children[0].Rect.X != 10.0F || rtlAbsolute.Children[0].Rect.X != 70.0F {
-      return false
-    }
+        return false
+      }
 
     let dynamicResolver = Resolver{}
     let dynamic = Reconciler{ Res: dynamicResolver }.Mount(Container{
@@ -138,22 +211,20 @@ internal class LayoutFixtures {
     return dynamic.Children[0].Rect.X == 70.0F
   }
 
-  private func layoutScene(firstHeight float64) Container {
-    return Container{
-      Width: 400,
-      Height: 296,
-      Gap: 4,
-      Children: {
-        Container{ Key: "hidden", Width: 50, Height: 50, Display: Display.None },
-        Container{ Key: "percent", Width: Length.Percent(50), Height: firstHeight },
-        Container{ Key: "unset", Height: 20 },
-        Container{ Key: "nested", Height: 30, Padding: 5, Children: {
-          Container{ Key: "leaf", Width: 10, Height: 10 },
-        } },
-        Container{ Key: "grow-one", FlexGrow: 1.0 },
-        Container{ Key: "grow-two", FlexGrow: 2.0 },
-      },
-    }
+  private func layoutScene(firstHeight float64) Container -> Container {
+    Width: 400,
+    Height: 296,
+    Gap: 4,
+    Children: {
+      Container{ Key: "hidden", Width: 50, Height: 50, Display: Display.None },
+      Container{ Key: "percent", Width: Length.Percent(50), Height: firstHeight },
+      Container{ Key: "unset", Height: 20 },
+      Container{ Key: "nested", Height: 30, Padding: 5, Children: {
+        Container{ Key: "leaf", Width: 10, Height: 10 },
+      } },
+      Container{ Key: "grow-one", FlexGrow: 1.0 },
+      Container{ Key: "grow-two", FlexGrow: 2.0 },
+    },
   }
 
   private func snapshot(node Node, values List[float32]) {
@@ -282,8 +353,8 @@ internal class LayoutFixtures {
     if node.Children[0].Rect.W != 80.0F
       || node.Children[1].Rect.W != 40.0F
       || node.Children[2].Rect.W != 70.0F {
-      return false
-    }
+        return false
+      }
 
     reconciler.Diff(node, second)
     layout.Calculate(node, 300.0F, 100.0F)

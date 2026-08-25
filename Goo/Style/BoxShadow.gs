@@ -13,46 +13,46 @@ public data struct BoxShadow {
   private var inset bool
 
   /// Gets the horizontal offset in pixels.
-  public prop OffsetX Length {
+  public prop OffsetX Length{
     get { return normalizedDefault(offsetX) }
-    init { offsetX = validateShadowGeometry("BoxShadow", value, "OffsetX") }
+    init{ offsetX = validateShadowGeometry("BoxShadow", value, "OffsetX") }
   }
 
   /// Gets the vertical offset in pixels.
-  public prop OffsetY Length {
+  public prop OffsetY Length{
     get { return normalizedDefault(offsetY) }
-    init { offsetY = validateShadowGeometry("BoxShadow", value, "OffsetY") }
+    init{ offsetY = validateShadowGeometry("BoxShadow", value, "OffsetY") }
   }
 
   /// Gets the non-negative blur radius in pixels.
-  public prop Blur Length {
+  public prop Blur Length{
     get { return normalizedDefault(blur) }
-    init { blur = normalizeShadowBlur("BoxShadow", value) }
+    init{ blur = normalizeShadowBlur("BoxShadow", value) }
   }
 
   /// Gets the spread radius in pixels.
-  public prop Spread Length {
+  public prop Spread Length{
     get { return normalizedDefault(spread) }
-    init { spread = validateShadowGeometry("BoxShadow", value, "Spread") }
+    init{ spread = validateShadowGeometry("BoxShadow", value, "Spread") }
   }
 
   /// Gets the shadow color.
-  public prop Color Color {
+  public prop Color Color{
     get { return color }
-    init { color = value }
+    init{ color = value }
   }
 
   /// Gets whether the shadow is clipped inside the painted box or Shape silhouette.
-  public prop Inset bool {
+  public prop Inset bool{
     get { return inset }
-    init { inset = value }
+    init{ inset = value }
   }
 }
 
 internal class BoxShadowStack {
   internal let Items []BoxShadow
 
-  internal prop Count int32 { get { return Items.Length } }
+  internal prop Count int32{ get { return Items.Length } }
 
   internal init(items []BoxShadow) {
     Items = items
@@ -73,15 +73,13 @@ internal func singleBoxShadow(value BoxShadow) BoxShadowStack {
   return BoxShadowStack(copy)
 }
 
-internal func normalizeBoxShadow(value BoxShadow) BoxShadow {
-  return BoxShadow{
-    OffsetX: value.OffsetX,
-    OffsetY: value.OffsetY,
-    Blur: value.Blur,
-    Spread: value.Spread,
-    Color: value.Color,
-    Inset: value.Inset,
-  }
+internal func normalizeBoxShadow(value BoxShadow) BoxShadow -> BoxShadow {
+  OffsetX: value.OffsetX,
+  OffsetY: value.OffsetY,
+  Blur: value.Blur,
+  Spread: value.Spread,
+  Color: value.Color,
+  Inset: value.Inset,
 }
 
 internal func sameBoxShadows(left BoxShadowStack?, right BoxShadowStack?) bool {
@@ -114,9 +112,9 @@ internal func boxShadowListsCompatible(left BoxShadowStack?, right BoxShadowStac
   let count = Math.Max(leftCount, rightCount)
   for i in 0 ... count {
     if i < leftCount && i < rightCount
-      && boxShadowAt(left, i).Inset != boxShadowAt(right, i).Inset {
-      return false
-    }
+      && boxShadowAt(left, i).Inset != boxShadowAt(right, i).Inset{
+        return false
+      }
   }
   return true
 }
@@ -136,9 +134,7 @@ internal func paddedBoxShadows(value BoxShadowStack?, counterpart BoxShadowStack
   return BoxShadowStack(items)
 }
 
-internal func newBoxShadowWork(count int32) BoxShadowStack {
-  return BoxShadowStack([count]BoxShadow)
-}
+internal func newBoxShadowWork(count int32) BoxShadowStack -> BoxShadowStack([count]BoxShadow)
 
 internal func lerpBoxShadows(from BoxShadowStack, to BoxShadowStack, work BoxShadowStack, t float32) {
   for i in 0 ... work.Count {
@@ -159,9 +155,7 @@ internal func lerpBoxShadows(from BoxShadowStack, to BoxShadowStack, work BoxSha
   }
 }
 
-internal func lerpShadowLength(from Length, to Length, t float32) Length {
-  return Length{ Unit: LengthUnit.Px, Value: from.Value + (to.Value - from.Value) * t }
-}
+internal func lerpShadowLength(from Length, to Length, t float32) Length -> Length { Unit: LengthUnit.Px, Value: from.Value + (to.Value - from.Value) * t }
 
 internal func normalizedDefault(value Length) Length {
   if value.Unit == LengthUnit.Unset {

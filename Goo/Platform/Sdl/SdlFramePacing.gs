@@ -11,7 +11,7 @@ internal class SdlFramePacing {
       uncappedBenchmark = value
     }
 
-    internal prop UncappedBenchmark bool { get { return uncappedBenchmark } }
+    internal prop UncappedBenchmark bool{ get { return uncappedBenchmark } }
   }
 
   private var displayId uint32
@@ -21,9 +21,9 @@ internal class SdlFramePacing {
   private var retryDeadlineTicks float64
   private var hasValidSample bool
 
-  internal prop DisplayId uint32 { get { return displayId } }
-  internal prop RefreshRate float64 { get { return refreshRate } }
-  internal prop HasValidSample bool { get { return hasValidSample } }
+  internal prop DisplayId uint32{ get { return displayId } }
+  internal prop RefreshRate float64{ get { return refreshRate } }
+  internal prop HasValidSample bool{ get { return hasValidSample } }
 
   internal init() {
     refreshRate = 60.0
@@ -85,8 +85,7 @@ internal class SdlFramePacing {
 
   internal func Defer(nowTicks float64) {
     let retryTicks = intervalTicks > 0.0
-      ? intervalTicks
-      : float64(Stopwatch.Frequency) / 60.0
+    ? intervalTicks : float64(Stopwatch.Frequency) / 60.0
     retryDeadlineTicks = nowTicks + retryTicks
   }
 

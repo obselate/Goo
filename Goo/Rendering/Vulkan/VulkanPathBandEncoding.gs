@@ -87,116 +87,116 @@ internal sealed class PathBandEncoding {
     horizontalBands []PathAnalyticBand, verticalBands []PathAnalyticBand,
     horizontalCurveIndices []uint32, verticalCurveIndices []uint32,
     curves []PathAnalyticCurve, fillRuleMask uint32, revision uint64 = 1uL) {
-    this.minimumX = minimumX
-    this.minimumY = minimumY
-    this.maximumX = maximumX
-    this.maximumY = maximumY
-    horizontalBandBuffer = List[PathAnalyticBand](horizontalBands.Length)
-    verticalBandBuffer = List[PathAnalyticBand](verticalBands.Length)
-    horizontalIndexBuffer = List[uint32](horizontalCurveIndices.Length)
-    verticalIndexBuffer = List[uint32](verticalCurveIndices.Length)
-    curveBuffer = List[PathAnalyticCurve](curves.Length)
-    this.horizontalBands = ReadOnlyCollection[PathAnalyticBand](horizontalBandBuffer)
-    this.verticalBands = ReadOnlyCollection[PathAnalyticBand](verticalBandBuffer)
-    this.horizontalCurveIndices = ReadOnlyCollection[uint32](horizontalIndexBuffer)
-    this.verticalCurveIndices = ReadOnlyCollection[uint32](verticalIndexBuffer)
-    this.curves = ReadOnlyCollection[PathAnalyticCurve](curveBuffer)
-    words = []uint32{}
-    wordCount = 0
-    Rebuild(minimumX, minimumY, maximumX, maximumY, horizontalBands,
-      verticalBands, horizontalCurveIndices, verticalCurveIndices, curves,
-      fillRuleMask, revision)
-  }
+      this.minimumX = minimumX
+      this.minimumY = minimumY
+      this.maximumX = maximumX
+      this.maximumY = maximumY
+      horizontalBandBuffer = List[PathAnalyticBand](horizontalBands.Length)
+      verticalBandBuffer = List[PathAnalyticBand](verticalBands.Length)
+      horizontalIndexBuffer = List[uint32](horizontalCurveIndices.Length)
+      verticalIndexBuffer = List[uint32](verticalCurveIndices.Length)
+      curveBuffer = List[PathAnalyticCurve](curves.Length)
+      this.horizontalBands = ReadOnlyCollection[PathAnalyticBand](horizontalBandBuffer)
+      this.verticalBands = ReadOnlyCollection[PathAnalyticBand](verticalBandBuffer)
+      this.horizontalCurveIndices = ReadOnlyCollection[uint32](horizontalIndexBuffer)
+      this.verticalCurveIndices = ReadOnlyCollection[uint32](verticalIndexBuffer)
+      this.curves = ReadOnlyCollection[PathAnalyticCurve](curveBuffer)
+      words = []uint32{}
+      wordCount = 0
+      Rebuild(minimumX, minimumY, maximumX, maximumY, horizontalBands,
+        verticalBands, horizontalCurveIndices, verticalCurveIndices, curves,
+        fillRuleMask, revision)
+    }
 
-  internal prop Format uint32 { get { return FormatVersion } }
-  internal prop MinimumX float32 { get { return minimumX } }
-  internal prop MinimumY float32 { get { return minimumY } }
-  internal prop MaximumX float32 { get { return maximumX } }
-  internal prop MaximumY float32 { get { return maximumY } }
-  internal prop HorizontalBands IReadOnlyList[PathAnalyticBand] { get { return horizontalBands } }
-  internal prop VerticalBands IReadOnlyList[PathAnalyticBand] { get { return verticalBands } }
-  internal prop HorizontalCurveIndices IReadOnlyList[uint32] { get { return horizontalCurveIndices } }
-  internal prop VerticalCurveIndices IReadOnlyList[uint32] { get { return verticalCurveIndices } }
-  internal prop Curves IReadOnlyList[PathAnalyticCurve] { get { return curves } }
-  internal prop Header PathAnalyticHeader { get { return header } }
-  internal prop Words []uint32 { get { return words } }
-  internal prop WordCount int32 { get { return wordCount } }
-  internal prop FillRuleMask uint32 { get { return fillRuleMask } }
-  internal prop GeometryRevision uint64 { get { return geometryRevision } }
-  internal prop HorizontalBandCount int32 { get { return horizontalBands.Count } }
-  internal prop VerticalBandCount int32 { get { return verticalBands.Count } }
-  internal prop HorizontalCurveIndexCount int32 { get { return horizontalCurveIndices.Count } }
-  internal prop VerticalCurveIndexCount int32 { get { return verticalCurveIndices.Count } }
-  internal prop CurveCount int32 { get { return curves.Count } }
-  internal prop ByteCount int64 { get { return byteCount } }
-  internal prop HeaderByteCount int64 { get { return HeaderByteStride } }
-  internal prop BandByteCount int64 {
+  internal prop Format uint32{ get { return FormatVersion } }
+  internal prop MinimumX float32{ get { return minimumX } }
+  internal prop MinimumY float32{ get { return minimumY } }
+  internal prop MaximumX float32{ get { return maximumX } }
+  internal prop MaximumY float32{ get { return maximumY } }
+  internal prop HorizontalBands IReadOnlyList[PathAnalyticBand]{ get { return horizontalBands } }
+  internal prop VerticalBands IReadOnlyList[PathAnalyticBand]{ get { return verticalBands } }
+  internal prop HorizontalCurveIndices IReadOnlyList[uint32]{ get { return horizontalCurveIndices } }
+  internal prop VerticalCurveIndices IReadOnlyList[uint32]{ get { return verticalCurveIndices } }
+  internal prop Curves IReadOnlyList[PathAnalyticCurve]{ get { return curves } }
+  internal prop Header PathAnalyticHeader{ get { return header } }
+  internal prop Words []uint32{ get { return words } }
+  internal prop WordCount int32{ get { return wordCount } }
+  internal prop FillRuleMask uint32{ get { return fillRuleMask } }
+  internal prop GeometryRevision uint64{ get { return geometryRevision } }
+  internal prop HorizontalBandCount int32{ get { return horizontalBands.Count } }
+  internal prop VerticalBandCount int32{ get { return verticalBands.Count } }
+  internal prop HorizontalCurveIndexCount int32{ get { return horizontalCurveIndices.Count } }
+  internal prop VerticalCurveIndexCount int32{ get { return verticalCurveIndices.Count } }
+  internal prop CurveCount int32{ get { return curves.Count } }
+  internal prop ByteCount int64{ get { return byteCount } }
+  internal prop HeaderByteCount int64{ get { return HeaderByteStride } }
+  internal prop BandByteCount int64{
     get { return int64(horizontalBands.Count + verticalBands.Count) * BandByteStride }
   }
-  internal prop IndexByteCount int64 {
+  internal prop IndexByteCount int64{
     get { return int64(horizontalCurveIndices.Count + verticalCurveIndices.Count) * IndexByteStride }
   }
-  internal prop CurveByteCount int64 { get { return int64(curves.Count) * CurveByteStride } }
+  internal prop CurveByteCount int64{ get { return int64(curves.Count) * CurveByteStride } }
 
   internal func Rebuild(minimumX float32, minimumY float32, maximumX float32, maximumY float32,
-      nextHorizontalBands IReadOnlyList[PathAnalyticBand],
-      nextVerticalBands IReadOnlyList[PathAnalyticBand],
-      nextHorizontalIndices IReadOnlyList[uint32],
-      nextVerticalIndices IReadOnlyList[uint32],
-      nextCurves IReadOnlyList[PathAnalyticCurve], nextFillRuleMask uint32,
-      revision uint64) {
-    this.minimumX = minimumX
-    this.minimumY = minimumY
-    this.maximumX = maximumX
-    this.maximumY = maximumY
-    horizontalBandBuffer.Clear()
-    verticalBandBuffer.Clear()
-    horizontalIndexBuffer.Clear()
-    verticalIndexBuffer.Clear()
-    curveBuffer.Clear()
-    var index int32 = 0
-    while index < nextHorizontalBands.Count {
-      horizontalBandBuffer.Add(nextHorizontalBands[index])
-      index++
+    nextHorizontalBands IReadOnlyList[PathAnalyticBand],
+    nextVerticalBands IReadOnlyList[PathAnalyticBand],
+    nextHorizontalIndices IReadOnlyList[uint32],
+    nextVerticalIndices IReadOnlyList[uint32],
+    nextCurves IReadOnlyList[PathAnalyticCurve], nextFillRuleMask uint32,
+    revision uint64) {
+      this.minimumX = minimumX
+      this.minimumY = minimumY
+      this.maximumX = maximumX
+      this.maximumY = maximumY
+      horizontalBandBuffer.Clear()
+      verticalBandBuffer.Clear()
+      horizontalIndexBuffer.Clear()
+      verticalIndexBuffer.Clear()
+      curveBuffer.Clear()
+      var index int32 = 0
+      while index < nextHorizontalBands.Count {
+        horizontalBandBuffer.Add(nextHorizontalBands[index])
+        index++
+      }
+      index = 0
+      while index < nextVerticalBands.Count {
+        verticalBandBuffer.Add(nextVerticalBands[index])
+        index++
+      }
+      index = 0
+      while index < nextHorizontalIndices.Count {
+        horizontalIndexBuffer.Add(nextHorizontalIndices[index])
+        index++
+      }
+      index = 0
+      while index < nextVerticalIndices.Count {
+        verticalIndexBuffer.Add(nextVerticalIndices[index])
+        index++
+      }
+      index = 0
+      while index < nextCurves.Count {
+        curveBuffer.Add(nextCurves[index])
+        index++
+      }
+      fillRuleMask = nextFillRuleMask
+      geometryRevision = revision == 0uL ? 1uL : revision
+      header = PathAnalyticHeader{
+        Format: FormatVersion,
+        FillRuleMask: fillRuleMask,
+        HorizontalBandCount: uint32(horizontalBandBuffer.Count),
+        VerticalBandCount: uint32(verticalBandBuffer.Count),
+        HorizontalCurveIndexCount: uint32(horizontalIndexBuffer.Count),
+        VerticalCurveIndexCount: uint32(verticalIndexBuffer.Count),
+        CurveCount: uint32(curveBuffer.Count),
+        Reserved: 0u,
+        MinimumX: minimumX,
+        MinimumY: minimumY,
+        MaximumX: maximumX,
+        MaximumY: maximumY,
+      }
+      Repack()
     }
-    index = 0
-    while index < nextVerticalBands.Count {
-      verticalBandBuffer.Add(nextVerticalBands[index])
-      index++
-    }
-    index = 0
-    while index < nextHorizontalIndices.Count {
-      horizontalIndexBuffer.Add(nextHorizontalIndices[index])
-      index++
-    }
-    index = 0
-    while index < nextVerticalIndices.Count {
-      verticalIndexBuffer.Add(nextVerticalIndices[index])
-      index++
-    }
-    index = 0
-    while index < nextCurves.Count {
-      curveBuffer.Add(nextCurves[index])
-      index++
-    }
-    fillRuleMask = nextFillRuleMask
-    geometryRevision = revision == 0uL ? 1uL : revision
-    header = PathAnalyticHeader{
-      Format: FormatVersion,
-      FillRuleMask: fillRuleMask,
-      HorizontalBandCount: uint32(horizontalBandBuffer.Count),
-      VerticalBandCount: uint32(verticalBandBuffer.Count),
-      HorizontalCurveIndexCount: uint32(horizontalIndexBuffer.Count),
-      VerticalCurveIndexCount: uint32(verticalIndexBuffer.Count),
-      CurveCount: uint32(curveBuffer.Count),
-      Reserved: 0u,
-      MinimumX: minimumX,
-      MinimumY: minimumY,
-      MaximumX: maximumX,
-      MaximumY: maximumY,
-    }
-    Repack()
-  }
 
   internal func Reset(revision uint64) {
     this.minimumX = 0.0F
@@ -225,59 +225,59 @@ internal sealed class PathBandEncoding {
   }
 
   private func Repack() {
-      let requiredWordCount = int32(HeaderByteStride / 4)
-        + (horizontalBands.Count + verticalBands.Count) * int32(BandByteStride / 4)
-        + (horizontalCurveIndices.Count + verticalCurveIndices.Count) * int32(IndexByteStride / 4)
-        + curves.Count * int32(CurveByteStride / 4)
-      if requiredWordCount > words.Length {
-        var capacity = words.Length
-        if capacity == 0 { capacity = requiredWordCount }
-        while capacity < requiredWordCount {
-          if capacity > Int32.MaxValue / 2 { capacity = requiredWordCount }
-          else { capacity = capacity * 2 }
-        }
-        words = [capacity]uint32
+    let requiredWordCount = int32(HeaderByteStride / 4)
+    +(horizontalBands.Count + verticalBands.Count) * int32(BandByteStride / 4)
+    +(horizontalCurveIndices.Count + verticalCurveIndices.Count) * int32(IndexByteStride / 4)
+    +curves.Count * int32(CurveByteStride / 4)
+    if requiredWordCount > words.Length {
+      var capacity = words.Length
+      if capacity == 0 { capacity = requiredWordCount }
+      while capacity < requiredWordCount {
+        if capacity > Int32.MaxValue / 2 { capacity = requiredWordCount }
+        else { capacity = capacity * 2 }
       }
-      wordCount = requiredWordCount
-      var offset int32 = 0
-      appendHeader(words, ref offset, header)
-      appendBands(words, ref offset, horizontalBands)
-      appendBands(words, ref offset, verticalBands)
-      appendIndices(words, ref offset, horizontalCurveIndices)
-      appendIndices(words, ref offset, verticalCurveIndices)
-      appendCurves(words, ref offset, curves)
-      byteCount = int64(wordCount) * 4
+      words = [capacity]uint32
     }
+    wordCount = requiredWordCount
+    var offset int32 = 0
+    appendHeader(words, ref offset, header)
+    appendBands(words, ref offset, horizontalBands)
+    appendBands(words, ref offset, verticalBands)
+    appendIndices(words, ref offset, horizontalCurveIndices)
+    appendIndices(words, ref offset, verticalCurveIndices)
+    appendCurves(words, ref offset, curves)
+    byteCount = int64(wordCount) * 4
+  }
 
-    private func appendHeader(words []uint32, ref offset int32, header PathAnalyticHeader) {
-      words[offset] = header.Format
-      offset++
-      words[offset] = header.FillRuleMask
-      offset++
-      words[offset] = header.HorizontalBandCount
-      offset++
-      words[offset] = header.VerticalBandCount
-      offset++
-      words[offset] = header.HorizontalCurveIndexCount
-      offset++
-      words[offset] = header.VerticalCurveIndexCount
-      offset++
-      words[offset] = header.CurveCount
-      offset++
-      words[offset] = header.Reserved
-      offset++
-      words[offset] = BitConverter.SingleToUInt32Bits(header.MinimumX)
-      offset++
-      words[offset] = BitConverter.SingleToUInt32Bits(header.MinimumY)
-      offset++
-      words[offset] = BitConverter.SingleToUInt32Bits(header.MaximumX)
-      offset++
-      words[offset] = BitConverter.SingleToUInt32Bits(header.MaximumY)
-      offset++
-    }
+  private func appendHeader(words []uint32, ref offset int32, header PathAnalyticHeader) {
+    words[offset] = header.Format
+    offset++
+    words[offset] = header.FillRuleMask
+    offset++
+    words[offset] = header.HorizontalBandCount
+    offset++
+    words[offset] = header.VerticalBandCount
+    offset++
+    words[offset] = header.HorizontalCurveIndexCount
+    offset++
+    words[offset] = header.VerticalCurveIndexCount
+    offset++
+    words[offset] = header.CurveCount
+    offset++
+    words[offset] = header.Reserved
+    offset++
+    words[offset] = BitConverter.SingleToUInt32Bits(header.MinimumX)
+    offset++
+    words[offset] = BitConverter.SingleToUInt32Bits(header.MinimumY)
+    offset++
+    words[offset] = BitConverter.SingleToUInt32Bits(header.MaximumX)
+    offset++
+    words[offset] = BitConverter.SingleToUInt32Bits(header.MaximumY)
+    offset++
+  }
 
-    private func appendBands(words []uint32, ref offset int32,
-      values IReadOnlyList[PathAnalyticBand]) {
+  private func appendBands(words []uint32, ref offset int32,
+    values IReadOnlyList[PathAnalyticBand]) {
       for i in 0 ... values.Count {
         let value = values[i]
         words[offset] = BitConverter.SingleToUInt32Bits(value.Minimum)
@@ -299,16 +299,16 @@ internal sealed class PathBandEncoding {
       }
     }
 
-    private func appendIndices(words []uint32, ref offset int32,
-      values IReadOnlyList[uint32]) {
+  private func appendIndices(words []uint32, ref offset int32,
+    values IReadOnlyList[uint32]) {
       for i in 0 ... values.Count {
         words[offset] = values[i]
         offset++
       }
     }
 
-    private func appendCurves(words []uint32, ref offset int32,
-      values IReadOnlyList[PathAnalyticCurve]) {
+  private func appendCurves(words []uint32, ref offset int32,
+    values IReadOnlyList[PathAnalyticCurve]) {
       for i in 0 ... values.Count {
         let value = values[i]
         words[offset] = BitConverter.SingleToUInt32Bits(value.X0)
@@ -329,4 +329,4 @@ internal sealed class PathBandEncoding {
         offset++
       }
     }
-  }
+}

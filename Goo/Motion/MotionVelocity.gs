@@ -7,7 +7,7 @@ import System
 public struct MotionVelocity {
   private let uniform bool
   private let value float64
-  private let components []?float64
+  private let components [] ? float64
   private let valid bool
 
   shared {
@@ -24,7 +24,7 @@ public struct MotionVelocity {
     /// Creates velocities ordered by converter dimension.
     /// @param values one finite velocity per converter dimension
     /// @returns a component velocity command
-    public func Components(values ...float64) MotionVelocity {
+    public func Components(values ... float64) MotionVelocity {
       if values.Length == 0 {
         throw ArgumentException("components must not be empty", "values")
       }
@@ -73,7 +73,7 @@ public struct MotionVelocity {
     return MotionVelocity{ uniform: false, value: 0.0, components: summed, valid: true }
   }
 
-  private func sumChecked(length int32, at (int32) -> float64) []float64 {
+  private func sumChecked(length int32, at(int32) -> float64) []float64 {
     let summed = [length]float64
     for var i = 0; i < length; i++ {
       summed[i] = at(i)

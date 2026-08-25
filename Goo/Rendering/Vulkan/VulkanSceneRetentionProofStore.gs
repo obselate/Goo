@@ -39,35 +39,35 @@ internal class VulkanSceneRetentionProofStore {
     nextCachedTextSegments = [capacity]CachedTextSegmentRefRecord
   }
 
-  internal prop Ready bool {
+  internal prop Ready bool{
     get -> ready
   }
 
-  internal prop ChunkCount int32 {
+  internal prop ChunkCount int32{
     get -> chunkCount
   }
 
-  internal prop Chunks []VulkanSceneChunkIdentity {
+  internal prop Chunks []VulkanSceneChunkIdentity{
     get -> chunks
   }
 
-  internal prop Draws []VulkanSceneDrawIdentity {
+  internal prop Draws []VulkanSceneDrawIdentity{
     get -> draws
   }
 
-  internal prop Resources []ResourceId {
+  internal prop Resources []ResourceId{
     get -> resources
   }
 
-  internal prop TextProofs []VulkanSceneTextChunkProof {
+  internal prop TextProofs []VulkanSceneTextChunkProof{
     get -> textProofs
   }
 
-  internal prop CachedTextSegments []CachedTextSegmentRefRecord {
+  internal prop CachedTextSegments []CachedTextSegmentRefRecord{
     get -> cachedTextSegments
   }
 
-  internal prop CachedTextSegmentCount int32 {
+  internal prop CachedTextSegmentCount int32{
     get -> cachedTextSegmentCount
   }
 
@@ -132,10 +132,10 @@ internal class VulkanSceneRetentionProofStore {
               textProof.CachedTextSegmentStart = segmentCursor
             }
             nextCachedTextSegments[segmentCursor] =
-              frame.CachedTextSegments[reference.Index]
+            frame.CachedTextSegments[reference.Index]
             segmentCursor = segmentCursor + 1
             textProof.CachedTextSegmentCount =
-              textProof.CachedTextSegmentCount + 1
+            textProof.CachedTextSegmentCount + 1
           } else {
             proofValid = false
           }
@@ -155,8 +155,8 @@ internal class VulkanSceneRetentionProofStore {
       var exactLeafKind SceneDrawKind = SceneDrawKind.SolidBox
       if current.RetentionState != SceneChunkRetentionState.Generic
         && current.DrawCount == 1 {
-        exactLeafKind = frame.DrawRefs[current.FirstDraw].Kind
-      }
+          exactLeafKind = frame.DrawRefs[current.FirstDraw].Kind
+        }
       chunks[index] = VulkanSceneChunkIdentity{
         OwnerId: current.OwnerId,
         Version: current.Version,
@@ -262,5 +262,5 @@ internal class VulkanSceneRetentionProofStore {
   }
 
   private func Max(left int32, right int32) int32
-    -> left > right ? left : right
+  -> left > right ? left : right
 }

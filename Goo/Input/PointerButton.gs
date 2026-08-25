@@ -23,21 +23,15 @@ public enum PointerButtons {
   Forward = 16;
 }
 
-internal func pointerButtonMask(button PointerButton) PointerButtons {
-  return switch button {
-    case PointerButton.Primary: PointerButtons.Primary
-    case PointerButton.Secondary: PointerButtons.Secondary
-    case PointerButton.Middle: PointerButtons.Middle
-    case PointerButton.Back: PointerButtons.Back
-    case PointerButton.Forward: PointerButtons.Forward
-    case _: PointerButtons.None
-  }
+internal func pointerButtonMask(button PointerButton) PointerButtons -> switch button {
+  case PointerButton.Primary: PointerButtons.Primary
+  case PointerButton.Secondary: PointerButtons.Secondary
+  case PointerButton.Middle: PointerButtons.Middle
+  case PointerButton.Back: PointerButtons.Back
+  case PointerButton.Forward: PointerButtons.Forward
+  case _: PointerButtons.None
 }
 
-internal func addPointerButton(buttons PointerButtons, button PointerButton) PointerButtons {
-  return PointerButtons(int32(buttons) | int32(pointerButtonMask(button)))
-}
+internal func addPointerButton(buttons PointerButtons, button PointerButton) PointerButtons -> PointerButtons(int32(buttons) | int32(pointerButtonMask(button)))
 
-internal func removePointerButton(buttons PointerButtons, button PointerButton) PointerButtons {
-  return PointerButtons(int32(buttons) & (int32(-1) ^ int32(pointerButtonMask(button))))
-}
+internal func removePointerButton(buttons PointerButtons, button PointerButton) PointerButtons -> PointerButtons(int32(buttons) & (int32(-1) ^ int32(pointerButtonMask(button))))

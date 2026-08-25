@@ -31,13 +31,7 @@ class S15TextViewportCullCell : Cell {
 
   shared {
     let ScrollViewport ElementHandle = ElementHandle{}
-    let ClipPath VectorPath = PathBuilder()
-      .MoveTo(0.5, 0.0)
-      .LineTo(1.0, 0.5)
-      .LineTo(0.5, 1.0)
-      .LineTo(0.0, 0.5)
-      .Close()
-      .Build()
+    let ClipPath VectorPath = PathBuilder().MoveTo(0.5, 0.0).LineTo(1.0, 0.5).LineTo(0.5, 1.0).LineTo(0.0, 0.5).Close().Build()
   }
 
   init(shader ShaderEffect) {
@@ -77,9 +71,7 @@ class S15TextViewportCullCell : Cell {
     Rebuild()
   }
 
-  func ScrollTo(x float64, y float64) bool {
-    return ScrollViewport.ScrollTo(x, y)
-  }
+  func ScrollTo(x float64, y float64) bool -> ScrollViewport.ScrollTo(x, y)
 
   override func Build() Blob {
     let nested = SceneMode.Value == 1
@@ -104,7 +96,7 @@ class S15TextViewportCullCell : Cell {
     }
     let textLeft = Revealed.Value ? Left.Value : 80.0
     let textColor = ColorMode.Value == 1
-      ? Color.Rgb(48, 220, 96) : Color.Rgb(220, 64, 48)
+    ? Color.Rgb(48, 220, 96) : Color.Rgb(220, 64, 48)
     var sceneEffect ShaderEffect? = nil
     if effected {
       sceneEffect = effect
@@ -125,8 +117,7 @@ class S15TextViewportCullCell : Cell {
           OverflowY: mixedAxis ? Overflow.Visible : Overflow.Hidden,
           BorderRadius: rounded ? 8 : 0,
           Transform: transformed
-            ? PanelTransform{ Rotate: 18, ScaleX: 0.9, ScaleY: 1.1 }
-            : PanelTransform{},
+          ? PanelTransform{ Rotate: 18, ScaleX: 0.9, ScaleY: 1.1 } : PanelTransform{},
           ClipPath: if pathClipped {
             S15TextViewportCullCell.ClipPath
           } else {
@@ -184,29 +175,29 @@ func S15TextViewportRequirePixelsEqual(first []uint8, second []uint8, name strin
   while index < first.Length {
     if first[index] != second[index] {
       throw InvalidOperationException("S15 text viewport " + name
-        + " readback pixels differ at byte " + index.ToString())
+        +" readback pixels differ at byte " + index.ToString())
     }
     index = index + 1
   }
 }
 
 func S15TextViewportRequirePixelsDifferent(first []uint8, second []uint8,
-    name string) {
-  S14Require(first.Length == second.Length,
-    "S15 text viewport " + name + " readback lengths differ")
-  var index int32 = 0
-  while index < first.Length {
-    if first[index] != second[index] {
-      return
+  name string) {
+    S14Require(first.Length == second.Length,
+      "S15 text viewport " + name + " readback lengths differ")
+    var index int32 = 0
+    while index < first.Length {
+      if first[index] != second[index] {
+        return
+      }
+      index = index + 1
     }
-    index = index + 1
+    throw InvalidOperationException("S15 text viewport " + name
+      +" readback did not change")
   }
-  throw InvalidOperationException("S15 text viewport " + name
-    + " readback did not change")
-}
 
 func S15TextViewportCapture(window Window, metrics WindowMetrics)
-    S15TextViewportArm {
+S15TextViewportArm{
   let result = S09RReadback(window, metrics)
   return S15TextViewportArm{
     Pixels: result.Pixels,
@@ -216,103 +207,103 @@ func S15TextViewportCapture(window Window, metrics WindowMetrics)
 }
 
 func S15TextViewportRequireGreenText(pixels []uint8, width uint32,
-    metrics WindowMetrics, name string) {
-  var coverage int32 = 0
-  var y int32 = 8
-  while y < 48 {
-    var x int32 = 8
-    while x < 80 {
-      let pixel = S09RLogicalPixel(pixels, width, metrics,
-        float64(x), float64(y))
-      if int32(pixel[1]) > int32(pixel[0]) + 32
+  metrics WindowMetrics, name string) {
+    var coverage int32 = 0
+    var y int32 = 8
+    while y < 48 {
+      var x int32 = 8
+      while x < 80 {
+        let pixel = S09RLogicalPixel(pixels, width, metrics,
+          float64(x), float64(y))
+        if int32(pixel[1]) > int32(pixel[0]) + 32
           && int32(pixel[1]) > int32(pixel[2]) + 16
           && pixel[3] >= uint8(240) {
-        coverage = coverage + 1
+            coverage = coverage + 1
+          }
+        x = x + 1
       }
-      x = x + 1
+      y = y + 1
     }
-    y = y + 1
+    S14Require(coverage > 2,
+      "S15 text viewport " + name + " has no mutated color coverage")
   }
-  S14Require(coverage > 2,
-    "S15 text viewport " + name + " has no mutated color coverage")
-}
 
 func S15TextViewportCompareCase(window Window, root S15TextViewportCullCell,
-    item S15TextViewportCase) {
-  root.SetCase(item)
-  WindowReadbackTestFixture.ForceRender(window, 0.0)
-  if item.SceneMode == 2 {
-    S14Require(root.ScrollTo(24.0, 8.0),
-      "S15 text viewport scroll request was rejected")
-  }
-  let metrics = WindowReadbackTestFixture.Metrics(window)
-  WindowReadbackTestFixture.SetExactTextClipCull(window, false)
-  WindowReadbackTestFixture.ForceRender(window, 0.0)
-  WindowReadbackTestFixture.ForceRender(window, 0.0)
-  let control = S15TextViewportCapture(window, metrics)
-  WindowReadbackTestFixture.SetExactTextClipCull(window, true)
-  WindowReadbackTestFixture.ForceRender(window, 0.0)
-  WindowReadbackTestFixture.ForceRender(window, 0.0)
-  let enabled = S15TextViewportCapture(window, metrics)
-  S15TextViewportRequirePixelsEqual(control.Pixels, enabled.Pixels, item.Name)
-  if item.Unsupported {
-    S14Require(enabled.Scene.ExactTextClipCandidateCount == 0
-        && enabled.Scene.ExactTextClipCullCount == 0
-        && enabled.Scene.TextLayoutRequestCount > 0,
-      "S15 text viewport " + item.Name
-        + " unexpectedly used exact clipped-text culling")
-    S14Require(control.Scene.DrawCount == enabled.Scene.DrawCount
-        && control.Scene.ResourceCount == enabled.Scene.ResourceCount
-        && control.Scene.TextSegmentCount == enabled.Scene.TextSegmentCount
-        && control.Text.SegmentCount == enabled.Text.SegmentCount
-        && control.Text.RecordCount == enabled.Text.RecordCount,
-      "S15 text viewport " + item.Name
-        + " changed unsupported text output topology")
-  } else if item.Outside {
-    S14Require(control.Scene.ExactTextClipCullCount == 0
-        && control.Scene.TextLayoutRequestCount > 0
-        && control.Scene.TextSegmentCount > 0,
-      "S15 text viewport " + item.Name
-        + " disabled control did not take the full text path")
-    S14Require(enabled.Scene.ExactTextClipCandidateCount > 0
-        && enabled.Scene.ExactTextClipCullCount > 0
-        && enabled.Scene.CachedTextPaintCullCount == 0
-        && enabled.Scene.TextLayoutRequestCount == 0
-        && enabled.Scene.TextSegmentCount == 0
-        && enabled.Text.SegmentCount == 0
-        && enabled.Text.RecordCount == 0,
-      "S15 text viewport " + item.Name
-        + " did not cull before text layout")
+  item S15TextViewportCase) {
+    root.SetCase(item)
     WindowReadbackTestFixture.ForceRender(window, 0.0)
-    let stable = S15TextViewportCapture(window, metrics)
-    S14Require(stable.Scene.DrawCount == enabled.Scene.DrawCount
-        && stable.Scene.ResourceCount == enabled.Scene.ResourceCount
-        && stable.Scene.TextSegmentCount == enabled.Scene.TextSegmentCount
-        && stable.Text.SegmentCount == enabled.Text.SegmentCount
-        && stable.Text.RecordCount == enabled.Text.RecordCount,
-      "S15 text viewport " + item.Name
-        + " changed cull output topology on a warm frame")
-  } else {
-    S14Require(control.Scene.ExactTextClipCullCount == 0
-        && control.Scene.TextLayoutRequestCount > 0,
-      "S15 text viewport " + item.Name
-        + " disabled control did not request full text layout")
-    S14Require(enabled.Scene.ExactTextClipCandidateCount > 0
-        && enabled.Scene.ExactTextClipCullCount == 0
-        && enabled.Scene.CachedTextPaintCullCount == 0
-        && enabled.Scene.TextLayoutRequestCount > 0,
-      "S15 text viewport " + item.Name
-        + " partial text did not use the full logical path")
-    S14Require(control.Scene.DrawCount == enabled.Scene.DrawCount
-        && control.Scene.ResourceCount == enabled.Scene.ResourceCount
-        && control.Scene.TextSegmentCount == enabled.Scene.TextSegmentCount
-        && control.Text.SegmentCount == enabled.Text.SegmentCount
-        && control.Text.RecordCount == enabled.Text.RecordCount
-        && control.Text.ByteCount == enabled.Text.ByteCount,
-      "S15 text viewport " + item.Name
-        + " changed partial text topology")
+    if item.SceneMode == 2 {
+      S14Require(root.ScrollTo(24.0, 8.0),
+        "S15 text viewport scroll request was rejected")
+    }
+    let metrics = WindowReadbackTestFixture.Metrics(window)
+    WindowReadbackTestFixture.SetExactTextClipCull(window, false)
+    WindowReadbackTestFixture.ForceRender(window, 0.0)
+    WindowReadbackTestFixture.ForceRender(window, 0.0)
+    let control = S15TextViewportCapture(window, metrics)
+    WindowReadbackTestFixture.SetExactTextClipCull(window, true)
+    WindowReadbackTestFixture.ForceRender(window, 0.0)
+    WindowReadbackTestFixture.ForceRender(window, 0.0)
+    let enabled = S15TextViewportCapture(window, metrics)
+    S15TextViewportRequirePixelsEqual(control.Pixels, enabled.Pixels, item.Name)
+    if item.Unsupported {
+      S14Require(enabled.Scene.ExactTextClipCandidateCount == 0
+          && enabled.Scene.ExactTextClipCullCount == 0
+          && enabled.Scene.TextLayoutRequestCount > 0,
+        "S15 text viewport " + item.Name
+        +" unexpectedly used exact clipped-text culling")
+      S14Require(control.Scene.DrawCount == enabled.Scene.DrawCount
+          && control.Scene.ResourceCount == enabled.Scene.ResourceCount
+          && control.Scene.TextSegmentCount == enabled.Scene.TextSegmentCount
+          && control.Text.SegmentCount == enabled.Text.SegmentCount
+          && control.Text.RecordCount == enabled.Text.RecordCount,
+        "S15 text viewport " + item.Name
+        +" changed unsupported text output topology")
+    } else if item.Outside {
+      S14Require(control.Scene.ExactTextClipCullCount == 0
+          && control.Scene.TextLayoutRequestCount > 0
+          && control.Scene.TextSegmentCount > 0,
+        "S15 text viewport " + item.Name
+        +" disabled control did not take the full text path")
+      S14Require(enabled.Scene.ExactTextClipCandidateCount > 0
+          && enabled.Scene.ExactTextClipCullCount > 0
+          && enabled.Scene.CachedTextPaintCullCount == 0
+          && enabled.Scene.TextLayoutRequestCount == 0
+          && enabled.Scene.TextSegmentCount == 0
+          && enabled.Text.SegmentCount == 0
+          && enabled.Text.RecordCount == 0,
+        "S15 text viewport " + item.Name
+        +" did not cull before text layout")
+      WindowReadbackTestFixture.ForceRender(window, 0.0)
+      let stable = S15TextViewportCapture(window, metrics)
+      S14Require(stable.Scene.DrawCount == enabled.Scene.DrawCount
+          && stable.Scene.ResourceCount == enabled.Scene.ResourceCount
+          && stable.Scene.TextSegmentCount == enabled.Scene.TextSegmentCount
+          && stable.Text.SegmentCount == enabled.Text.SegmentCount
+          && stable.Text.RecordCount == enabled.Text.RecordCount,
+        "S15 text viewport " + item.Name
+        +" changed cull output topology on a warm frame")
+    } else {
+      S14Require(control.Scene.ExactTextClipCullCount == 0
+          && control.Scene.TextLayoutRequestCount > 0,
+        "S15 text viewport " + item.Name
+        +" disabled control did not request full text layout")
+      S14Require(enabled.Scene.ExactTextClipCandidateCount > 0
+          && enabled.Scene.ExactTextClipCullCount == 0
+          && enabled.Scene.CachedTextPaintCullCount == 0
+          && enabled.Scene.TextLayoutRequestCount > 0,
+        "S15 text viewport " + item.Name
+        +" partial text did not use the full logical path")
+      S14Require(control.Scene.DrawCount == enabled.Scene.DrawCount
+          && control.Scene.ResourceCount == enabled.Scene.ResourceCount
+          && control.Scene.TextSegmentCount == enabled.Scene.TextSegmentCount
+          && control.Text.SegmentCount == enabled.Text.SegmentCount
+          && control.Text.RecordCount == enabled.Text.RecordCount
+          && control.Text.ByteCount == enabled.Text.ByteCount,
+        "S15 text viewport " + item.Name
+        +" changed partial text topology")
+    }
   }
-}
 
 func RunS15TextViewportCullGate() {
   S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
@@ -591,10 +582,10 @@ func RunS15TextViewportCullGate() {
         && mutated.Scene.TextSegmentCount == 0
         && mutated.Text.RecordCount == 0,
       "S15 text viewport offscreen mutation contract failed: exactCull="
-        + mutated.Scene.ExactTextClipCullCount.ToString()
-        + " layout=" + mutated.Scene.TextLayoutRequestCount.ToString()
-        + " segments=" + mutated.Scene.TextSegmentCount.ToString()
-        + " records=" + mutated.Text.RecordCount.ToString())
+      +mutated.Scene.ExactTextClipCullCount.ToString()
+      +" layout=" + mutated.Scene.TextLayoutRequestCount.ToString()
+      +" segments=" + mutated.Scene.TextSegmentCount.ToString()
+      +" records=" + mutated.Text.RecordCount.ToString())
     root.Reveal()
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
@@ -605,10 +596,10 @@ func RunS15TextViewportCullGate() {
         && revealed.Scene.TextSegmentCount > 0
         && revealed.Text.RecordCount > 0,
       "S15 text viewport reveal contract failed: exactCull="
-        + revealed.Scene.ExactTextClipCullCount.ToString()
-        + " layout=" + revealed.Scene.TextLayoutRequestCount.ToString()
-        + " segments=" + revealed.Scene.TextSegmentCount.ToString()
-        + " records=" + revealed.Text.RecordCount.ToString())
+      +revealed.Scene.ExactTextClipCullCount.ToString()
+      +" layout=" + revealed.Scene.TextLayoutRequestCount.ToString()
+      +" segments=" + revealed.Scene.TextSegmentCount.ToString()
+      +" records=" + revealed.Text.RecordCount.ToString())
     S15TextViewportRequireGreenText(revealed.Pixels,
       uint32(WindowReadbackTestFixture.Metrics(opened).FramebufferWidth),
       WindowReadbackTestFixture.Metrics(opened), "mutation reveal")
@@ -676,19 +667,18 @@ func RunS15TextViewportCullGate() {
       Unsupported: true,
     })
 
-
     root.SetCase(initialCase)
     opened.Width = 80
     opened.Height = 56
     var resizeMetrics = WindowReadbackTestFixture.Metrics(opened)
     var resizeAttempt int32 = 0
     while (resizeMetrics.LogicalWidth != 80 || resizeMetrics.LogicalHeight != 56)
-        && resizeAttempt < 1000 {
-      WindowReadbackTestFixture.PumpNativeEvents()
-      WindowReadbackTestFixture.Pump(opened, 0.0)
-      resizeMetrics = WindowReadbackTestFixture.Metrics(opened)
-      resizeAttempt = resizeAttempt + 1
-    }
+      && resizeAttempt < 1000 {
+        WindowReadbackTestFixture.PumpNativeEvents()
+        WindowReadbackTestFixture.Pump(opened, 0.0)
+        resizeMetrics = WindowReadbackTestFixture.Metrics(opened)
+        resizeAttempt = resizeAttempt + 1
+      }
     S14Require(resizeMetrics.LogicalWidth == 80 && resizeMetrics.LogicalHeight == 56,
       "S15 text viewport window did not resize")
     WindowReadbackTestFixture.SetExactTextClipCull(opened, false)
@@ -717,5 +707,5 @@ func RunS15TextViewportCullGate() {
   }
   S14ValidateCommonDiagnostics(capturedError.ToString())
   Console.WriteLine("s15-text-viewport-cull-gate: exact_outside=1 partial_full_shape=1"
-    + " mutation_reveal=1 fallback=1 pixel_equality=1 resize=1 close=1")
+    +" mutation_reveal=1 fallback=1 pixel_equality=1 resize=1 close=1")
 }

@@ -36,22 +36,22 @@ internal class InputCoordinator {
     }
     host.TextEditingCandidates += func(candidates IReadOnlyList[string], selected int32,
       horizontal bool) {
-      QueueCompositionCandidates(candidates, selected, horizontal)
-    }
+        QueueCompositionCandidates(candidates, selected, horizontal)
+      }
     host.TextCompositionCanceled += func() {
       QueueCompositionCancel()
     }
   }
 
   internal func Drain(root Node?, resolver Resolver, timeS float64,
-    onKeyPress ((Key, KeyModifiers) -> void)?) bool ->
-    Drain(root, resolver, timeS, onKeyPress, 0)
+    onKeyPress((Key, KeyModifiers) -> void)?) bool ->
+  Drain(root, resolver, timeS, onKeyPress, 0)
 
   internal func Drain(root Node?, resolver Resolver, timeS float64,
-    onKeyPress ((Key, KeyModifiers) -> void)?, repeatStartTicks int64) bool {
-    let pointerChanged = pointer.Drain(root, resolver, timeS, text)
-    return keyboard.Drain(root, resolver, text, onKeyPress, repeatStartTicks) || pointerChanged
-  }
+    onKeyPress((Key, KeyModifiers) -> void)?, repeatStartTicks int64) bool{
+      let pointerChanged = pointer.Drain(root, resolver, timeS, text)
+      return keyboard.Drain(root, resolver, text, onKeyPress, repeatStartTicks) || pointerChanged
+    }
 
   internal func AfterTreeUpdated(root Node?, resolver Resolver, rebuilt bool) {
     if !rebuilt {
@@ -91,7 +91,7 @@ internal class InputCoordinator {
 
   // Shortens idle waits to the next caret blink or key-repeat edge.
   internal func NextTickDeadlineSeconds() float64 ->
-    Math.Min(text.BlinkDeadlineSeconds(), keyboard.RepeatDeadlineSeconds())
+  Math.Min(text.BlinkDeadlineSeconds(), keyboard.RepeatDeadlineSeconds())
 
   internal func RefreshHover(root Node?, resolver Resolver) bool {
     try {
@@ -121,7 +121,7 @@ internal class InputCoordinator {
     return text.FocusedNode() == target
   }
 
-  internal func FocusedNode() Node? -> text.FocusedNode()
+  internal func FocusedNode() Node ? -> text.FocusedNode()
 
   internal func BlurElement(resolver Resolver, target Node) bool {
     if target.Retired || text.FocusedNode() != target {
@@ -150,10 +150,10 @@ internal class InputCoordinator {
   }
 
   internal func HandleClick(root Node?, x float32, y float32) bool ->
-    pointer.HandleClick(root, x, y)
+  pointer.HandleClick(root, x, y)
 
   internal func HandleWheel(root Node?, x float32, y float32, dx float32, dy float32) bool ->
-    pointer.HandleWheel(root, x, y, dx, dy)
+  pointer.HandleWheel(root, x, y, dx, dy)
 
   internal func HandleWheel(root Node?, x float32, y float32, dx float32, dy float32,
     modifiers KeyModifiers) bool -> pointer.HandleWheel(root, x, y, dx, dy, modifiers)
@@ -183,7 +183,7 @@ internal class InputCoordinator {
   }
 
   internal func HandleKey(root Node?, resolver Resolver, key Key, shift bool, ctrl bool) bool ->
-    HandleKey(root, resolver, key, KeyModifiers{ Shift: shift, Ctrl: ctrl })
+  HandleKey(root, resolver, key, KeyModifiers{ Shift: shift, Ctrl: ctrl })
 
   internal func HandleKey(root Node?, resolver Resolver, key Key, modifiers KeyModifiers) bool {
     try {
@@ -206,11 +206,11 @@ internal class InputCoordinator {
   }
 
   internal func AccessibilitySetSelection(resolver Resolver, target Node, start int32,
-    length int32) bool {
-    let result = text.AccessibilitySetSelection(target, start, length)
-    if result { resolver.Invalidate(target, false) }
-    return result
-  }
+    length int32) bool{
+      let result = text.AccessibilitySetSelection(target, start, length)
+      if result { resolver.Invalidate(target, false) }
+      return result
+    }
 
   internal func QueueKeyPress(key Key, modifiers KeyModifiers) {
     keyboard.QueueKeyPress(key, modifiers)
@@ -230,8 +230,8 @@ internal class InputCoordinator {
 
   internal func QueueCompositionCandidates(candidates IReadOnlyList[string], selected int32,
     horizontal bool) {
-    keyboard.QueueCompositionCandidates(candidates, selected, horizontal, text.FocusGeneration())
-  }
+      keyboard.QueueCompositionCandidates(candidates, selected, horizontal, text.FocusGeneration())
+    }
 
   internal func QueueCompositionCancel() {
     keyboard.QueueCompositionCancel(text.FocusGeneration())
@@ -263,8 +263,8 @@ internal class InputCoordinator {
 
   internal func QueuePointerWheel(x float32, y float32, dx float32, dy float32,
     modifiers KeyModifiers) {
-    pointer.QueueWheel(x, y, dx, dy, modifiers)
-  }
+      pointer.QueueWheel(x, y, dx, dy, modifiers)
+    }
 
   internal func QueuePointerMove(x float32, y float32, modifiers KeyModifiers) {
     pointer.QueueMove(x, y, modifiers)
@@ -272,39 +272,39 @@ internal class InputCoordinator {
 
   internal func QueuePointerMove(pointerId int64, device PointerDevice, x float32, y float32,
     modifiers KeyModifiers) {
-    pointer.QueueMove(pointerId, device, x, y, modifiers)
-  }
+      pointer.QueueMove(pointerId, device, x, y, modifiers)
+    }
 
   internal func QueuePointerMove(pointerId int64, device PointerDevice, x float32, y float32,
     modifiers KeyModifiers, pressure float32) {
-    pointer.QueueMove(pointerId, device, x, y, modifiers, pressure)
-  }
+      pointer.QueueMove(pointerId, device, x, y, modifiers, pressure)
+    }
 
   internal func QueuePointerPress(pointerId int64, device PointerDevice, x float32, y float32,
     button PointerButton, modifiers KeyModifiers) {
-    pointer.QueuePress(pointerId, device, x, y, button, modifiers)
-  }
+      pointer.QueuePress(pointerId, device, x, y, button, modifiers)
+    }
 
   internal func QueuePointerPress(pointerId int64, device PointerDevice, x float32, y float32,
     button PointerButton, modifiers KeyModifiers, pressure float32) {
-    pointer.QueuePress(pointerId, device, x, y, button, modifiers, pressure)
-  }
+      pointer.QueuePress(pointerId, device, x, y, button, modifiers, pressure)
+    }
 
   internal func QueuePointerRelease(pointerId int64, device PointerDevice, x float32, y float32,
     button PointerButton, modifiers KeyModifiers) {
-    pointer.QueueRelease(pointerId, device, x, y, button, modifiers)
-  }
+      pointer.QueueRelease(pointerId, device, x, y, button, modifiers)
+    }
 
   internal func QueuePointerRelease(pointerId int64, device PointerDevice, x float32, y float32,
     button PointerButton, modifiers KeyModifiers, pressure float32) {
-    pointer.QueueRelease(pointerId, device, x, y, button, modifiers, pressure)
-  }
+      pointer.QueueRelease(pointerId, device, x, y, button, modifiers, pressure)
+    }
 
   internal func QueuePointerCancel(pointerId int64, device PointerDevice) {
     pointer.QueueCancel(pointerId, device)
   }
 
-  internal func DispatchKeyPress(root Node?, resolver Resolver, key Key, modifiers KeyModifiers, onKeyPress ((Key, KeyModifiers) -> void)?) bool {
+  internal func DispatchKeyPress(root Node?, resolver Resolver, key Key, modifiers KeyModifiers, onKeyPress((Key, KeyModifiers) -> void)?) bool {
     try {
       if let callback = onKeyPress {
         callback(key, modifiers)
@@ -320,7 +320,7 @@ internal class InputCoordinator {
   }
 
   internal func HitInfo(root Node?, x float32, y float32) InputHitInfo ->
-    pointer.HitInfo(root, x, y)
+  pointer.HitInfo(root, x, y)
 
   private func hasUnavailableFocus(n Node, hidden bool, disabled bool) bool {
     let nowHidden = hidden || n.PaintInputHidden

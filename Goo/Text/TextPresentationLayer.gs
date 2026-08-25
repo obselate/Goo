@@ -36,13 +36,13 @@ public class TextPresentationProjection {
   }
 
   /// Gets the stable projection key within its presentation layer.
-  public prop Key string { get { return key } }
+  public prop Key string{ get { return key } }
   /// Gets the projection behavior.
-  public prop Kind TextProjectionKind { get { return kind } }
+  public prop Kind TextProjectionKind{ get { return kind } }
   /// Gets the source range replaced or hidden by this projection.
-  public prop Range TextRange { get { return textRange } }
+  public prop Range TextRange{ get { return textRange } }
   /// Gets replacement text, or an empty string for non-text projections.
-  public prop Text string { get { return text } }
+  public prop Text string{ get { return text } }
   /// Gets the retained Goo slot content, or nil for text projections.
   public prop Content Blob? { get { return content } }
 
@@ -67,11 +67,11 @@ internal sealed class TextProjectionHistory {
 
   internal init(projection TextPresentationProjection,
     transaction TextHistoryTransaction, index int32, originalRange TextRange) {
-    Projection = projection
-    Transaction = transaction
-    OriginalRange = originalRange
-    Index = index
-  }
+      Projection = projection
+      Transaction = transaction
+      OriginalRange = originalRange
+      Index = index
+    }
 }
 
 internal sealed class TextStyleHistory {
@@ -82,10 +82,10 @@ internal sealed class TextStyleHistory {
 
   internal init(key string, transaction TextHistoryTransaction,
     originalRange TextRange) {
-    Key = key
-    Transaction = transaction
-    OriginalRange = originalRange
-  }
+      Key = key
+      Transaction = transaction
+      OriginalRange = originalRange
+    }
 }
 
 internal sealed class TextStyleRangeEntry {
@@ -115,12 +115,12 @@ public class TextPresentationLayer : IDisposable {
   private let projectionRangeIndex List[TextPresentationProjection]
   private let styleRangeIndex List[TextStyleRangeEntry]
   private var stylePrefixMaxEnd []int32
-  private var cachedStyleSpans []?TextStyleSpan
-  private var cachedProjections []?TextPresentationProjection
+  private var cachedStyleSpans [] ? TextStyleSpan
+  private var cachedProjections [] ? TextPresentationProjection
   private var revision int64
   private var disposed bool
 
-  internal var Changed ((TextPresentationLayerChange) -> void)?
+  internal var Changed((TextPresentationLayerChange) -> void)?
 
   /// Creates a presentation layer bound to one document.
   /// @param document The document whose source ranges this layer references.
@@ -141,14 +141,14 @@ public class TextPresentationLayer : IDisposable {
   }
 
   /// Gets the document whose source ranges this layer references.
-  public prop Document TextDocument { get { return document } }
-  internal prop Identity int64 { get { return identity } }
+  public prop Document TextDocument{ get { return document } }
+  internal prop Identity int64{ get { return identity } }
   /// Gets the monotonic revision of presentation-layer mutations.
-  public prop Revision int64 { get { return revision } }
+  public prop Revision int64{ get { return revision } }
   /// Gets a snapshot of keyed style spans in layer order.
-  public prop StyleSpans []TextStyleSpan { get { return copyStyleSpans(ReadStyleSpans()) } }
+  public prop StyleSpans []TextStyleSpan{ get { return copyStyleSpans(ReadStyleSpans()) } }
   /// Gets a snapshot of atomic projections in layer order.
-  public prop Projections []TextPresentationProjection { get { return copyProjections(ReadProjections()) } }
+  public prop Projections []TextPresentationProjection{ get { return copyProjections(ReadProjections()) } }
 
   /// Adds or updates a keyed style span.
   /// @param key The stable style-span key.
@@ -247,7 +247,7 @@ public class TextPresentationLayer : IDisposable {
     var changedRange = style >= 0 ? styleSpans[style].Range : projections[projection].Range
     let slotChanged = projection >= 0
       && (projections[projection].Kind == TextProjectionKind.InlineSlot
-        || projections[projection].Kind == TextProjectionKind.BlockSlot)
+          || projections[projection].Kind == TextProjectionKind.BlockSlot)
     if style >= 0 { styleSpans.RemoveAt(style) }
     if projection >= 0 {
       changedRange = rangeUnion(changedRange, projections[projection].Range)
@@ -269,10 +269,10 @@ public class TextPresentationLayer : IDisposable {
       var slotChanged = false
       for projection in projections {
         if projection.Kind == TextProjectionKind.InlineSlot
-          || projection.Kind == TextProjectionKind.BlockSlot {
-          slotChanged = true
-          break
-        }
+          || projection.Kind == TextProjectionKind.BlockSlot{
+            slotChanged = true
+            break
+          }
       }
       styleSpans.Clear()
       projections.Clear()
@@ -318,7 +318,7 @@ public class TextPresentationLayer : IDisposable {
     let previous = existing < 0 ? textRange : projections[existing].Range
     let previousSlot = existing >= 0
       && (projections[existing].Kind == TextProjectionKind.InlineSlot
-        || projections[existing].Kind == TextProjectionKind.BlockSlot)
+          || projections[existing].Kind == TextProjectionKind.BlockSlot)
     let nextSlot = kind == TextProjectionKind.InlineSlot || kind == TextProjectionKind.BlockSlot
     let slotChanged = previousSlot != nextSlot
       || (nextSlot && (existing < 0 || projections[existing].Content != content))
@@ -358,13 +358,9 @@ public class TextPresentationLayer : IDisposable {
     return left.Start < right.Start + right.Length && right.Start < left.Start + left.Length
   }
 
-  private func styleIndex(key string) int32 {
-    return styleSpans.FindIndex(value -> value.Key == key)
-  }
+  private func styleIndex(key string) int32 -> styleSpans.FindIndex(value -> value.Key == key)
 
-  private func projectionIndex(key string) int32 {
-    return projections.FindIndex(value -> value.Key == key)
-  }
+  private func projectionIndex(key string) int32 -> projections.FindIndex(value -> value.Key == key)
 
   private func discardProjectionHistory(key string) {
     projectionHistory.RemoveAll(history -> {
@@ -425,21 +421,21 @@ public class TextPresentationLayer : IDisposable {
     if let current = mutation {
       if current.Kind == TextDocumentMutationKind.Undo
         && projectionHistoryTransactions.TryGetValue(current.Transaction, out var histories) {
-        for history in histories {
-          if history.Active || !projectionRangeAvailable(history.Projection, history.OriginalRange)
-            || !TextEditorLayerBindings.CanRestoreNonOverlapping(this, history.OriginalRange) {
-            continue
+          for history in histories {
+            if history.Active || !projectionRangeAvailable(history.Projection, history.OriginalRange)
+              || !TextEditorLayerBindings.CanRestoreNonOverlapping(this, history.OriginalRange) {
+                continue
+              }
+            history.Projection.Rebase(history.OriginalRange)
+            let index = history.Index < projections.Count ? history.Index : projections.Count
+            projections.Insert(index, history.Projection)
+            insertProjectionRange(history.Projection)
+            history.Active = true
+            if history.Projection.Kind == TextProjectionKind.InlineSlot
+              || history.Projection.Kind == TextProjectionKind.BlockSlot{ slotChanged = true }
+            changedLayer = true
           }
-          history.Projection.Rebase(history.OriginalRange)
-          let index = history.Index < projections.Count ? history.Index : projections.Count
-          projections.Insert(index, history.Projection)
-          insertProjectionRange(history.Projection)
-          history.Active = true
-          if history.Projection.Kind == TextProjectionKind.InlineSlot
-            || history.Projection.Kind == TextProjectionKind.BlockSlot { slotChanged = true }
-          changedLayer = true
         }
-      }
     }
     let firstStyle = firstAffectedStyle(change.Changes)
     for i in firstStyle ... styleRangeIndex.Count {
@@ -480,8 +476,7 @@ public class TextPresentationLayer : IDisposable {
         collapsed
       } else {
         span.Range.Length == 0
-          ? rebaseNonExpandingRange(span.Range, change.Changes)
-          : rebaseTextRange(span.Range, change.Changes)
+        ? rebaseNonExpandingRange(span.Range, change.Changes) : rebaseTextRange(span.Range, change.Changes)
       }
       if next != span.Range {
         styleSpans[indexed.Index] = TextStyleSpan{ Key: span.Key, Range: next, Style: span.Style }
@@ -499,32 +494,32 @@ public class TextPresentationLayer : IDisposable {
   }
 
   private func projectionRangeAvailable(value TextPresentationProjection,
-    textRange TextRange) bool {
-    for projection in projections {
-      if projection != value && rangesOverlap(projection.Range, textRange) { return false }
+    textRange TextRange) bool{
+      for projection in projections {
+        if projection != value && rangesOverlap(projection.Range, textRange) { return false }
+      }
+      return true
     }
-    return true
-  }
 
   private func projectionHistoryFor(projection TextPresentationProjection,
     transaction TextHistoryTransaction) TextProjectionHistory? {
-    if projectionHistoryTransactions.TryGetValue(transaction, out var values) {
-      for history in values {
-        if history.Projection == projection { return history }
+      if projectionHistoryTransactions.TryGetValue(transaction, out var values) {
+        for history in values {
+          if history.Projection == projection { return history }
+        }
       }
+      return nil
     }
-    return nil
-  }
 
   private func styleHistoryFor(key string,
     transaction TextHistoryTransaction) TextStyleHistory? {
-    if styleHistoryTransactions.TryGetValue(transaction, out var values) {
-      for history in values {
-        if history.Key == key { return history }
+      if styleHistoryTransactions.TryGetValue(transaction, out var values) {
+        for history in values {
+          if history.Key == key { return history }
+        }
       }
+      return nil
     }
-    return nil
-  }
 
   private func addProjectionHistory(history TextProjectionHistory) {
     projectionHistory.Add(history)
@@ -704,37 +699,33 @@ private func validatePresentationStyle(style Style) {
   }
 }
 
-internal func inlinePresentationStyleField(field StyleField) bool {
-  return field == StyleField.Color || field == StyleField.FontFamily
-    || field == StyleField.FontSize || field == StyleField.FontStyle
-    || field == StyleField.FontWeight || field == StyleField.LetterSpacing
-    || field == StyleField.LineHeight || field == StyleField.TextDecoration
-    || field == StyleField.TextShadows || field == StyleField.TextStrokeWidth
-    || field == StyleField.TextStrokeColor || field == StyleField.Direction
-    || field == StyleField.TextTransform
-}
+internal func inlinePresentationStyleField(field StyleField) bool -> field == StyleField.Color || field == StyleField.FontFamily
+  || field == StyleField.FontSize || field == StyleField.FontStyle
+  || field == StyleField.FontWeight || field == StyleField.LetterSpacing
+  || field == StyleField.LineHeight || field == StyleField.TextDecoration
+  || field == StyleField.TextShadows || field == StyleField.TextStrokeWidth
+  || field == StyleField.TextStrokeColor || field == StyleField.Direction
+  || field == StyleField.TextTransform
 
 internal func textEditorSlotKey(layer TextPresentationLayer,
-  projection TextPresentationProjection) string {
-  return "\u001Eeditor-slot:" + layer.Identity.ToString() + ":" + projection.Key
-}
+  projection TextPresentationProjection) string -> "\u001Eeditor-slot:" + layer.Identity.ToString() + ":" + projection.Key
 
 private func rebaseNonExpandingRange(textRange TextRange,
-  changes IReadOnlyList[TextChange]) TextRange {
-  let start = rebaseTextPosition(TextPosition{ Offset: textRange.Start,
-    Affinity: TextAffinity.Downstream }, changes)
-  let end = rebaseTextPosition(TextPosition{ Offset: textRange.Start + textRange.Length,
-    Affinity: TextAffinity.Upstream }, changes)
-  return TextRange{ Start: start.Offset,
-    Length: Math.Max(0, end.Offset - start.Offset) }
-}
+  changes IReadOnlyList[TextChange]) TextRange{
+    let start = rebaseTextPosition(TextPosition{ Offset: textRange.Start,
+      Affinity: TextAffinity.Downstream }, changes)
+    let end = rebaseTextPosition(TextPosition{ Offset: textRange.Start + textRange.Length,
+      Affinity: TextAffinity.Upstream }, changes)
+    return TextRange{ Start: start.Offset,
+      Length: Math.Max(0, end.Offset - start.Offset) }
+  }
 
 private func collapseDeletedRange(textRange TextRange,
-  changes IReadOnlyList[TextChange]) TextRange {
-  let start = rebaseTextPosition(TextPosition{ Offset: textRange.Start,
-    Affinity: TextAffinity.Upstream }, changes)
-  return TextRange{ Start: start.Offset, Length: 0 }
-}
+  changes IReadOnlyList[TextChange]) TextRange{
+    let start = rebaseTextPosition(TextPosition{ Offset: textRange.Start,
+      Affinity: TextAffinity.Upstream }, changes)
+    return TextRange{ Start: start.Offset, Length: 0 }
+  }
 
 private func rangeUnion(left TextRange, right TextRange) TextRange {
   let start = Math.Min(left.Start, right.Start)

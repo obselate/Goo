@@ -23,14 +23,14 @@ internal class TextEditorInputFixtures {
       if controller.Composition == nil || controller.Composition!!.Text != "a\u0301"
         || controller.Composition!!.SelectionStart != 0
         || controller.Composition!!.SelectionLength != 0 {
-        return false
-      }
+          return false
+        }
       driver.Input.QueueComposition("yz", -1, -1)
       driver.Drain()
       if document.GetText() != "Xab" || controller.Composition == nil
         || controller.Composition!!.Text != "yz" || controller.Composition!!.SelectionStart != 0 {
-        return false
-      }
+          return false
+        }
       driver.Input.QueueCompositionCandidates([]string{ "yz", "yx" }, 0, false)
       driver.Input.QueueText("yz")
       driver.Drain()
@@ -140,59 +140,57 @@ internal class TextEditorInputFixtures {
     }
   }
 
-  func NewVerticalRepeatDoesNotUsePreInputTime() bool {
-    return verticalRepeatWaits(Key.Down, 0, 2, 4)
-      && verticalRepeatWaits(Key.Up, 4, 2, 0)
-      && stalledVerticalTapDoesNotRepeat(Key.Down, 0, 2)
-      && stalledVerticalTapDoesNotRepeat(Key.Up, 4, 2)
-  }
+  func NewVerticalRepeatDoesNotUsePreInputTime() bool -> verticalRepeatWaits(Key.Down, 0, 2, 4)
+    && verticalRepeatWaits(Key.Up, 4, 2, 0)
+    && stalledVerticalTapDoesNotRepeat(Key.Down, 0, 2)
+    && stalledVerticalTapDoesNotRepeat(Key.Up, 4, 2)
 
   private func verticalRepeatWaits(key Key, startOffset int32, firstOffset int32,
-    repeatOffset int32) bool {
-    let document = TextDocument("a\nb\nc")
-    using let controller = TextEditorController(document)
-    let driver = InputFixtureDriver(TextEditorInputCell(document, controller), 320, 120)
-    let start = editorPoint(driver.Window.Tree!!,
-      TextPosition{ Offset: startOffset, Affinity: TextAffinity.Upstream })
-    driver.Press(start.X, start.Y)
+    repeatOffset int32) bool{
+      let document = TextDocument("a\nb\nc")
+      using let controller = TextEditorController(document)
+      let driver = InputFixtureDriver(TextEditorInputCell(document, controller), 320, 120)
+      let start = editorPoint(driver.Window.Tree!!,
+        TextPosition{ Offset: startOffset, Affinity: TextAffinity.Upstream })
+      driver.Press(start.X, start.Y)
 
-    driver.Input.QueueKeyPress(key, KeyModifiers{})
-    let startTicks = Stopwatch.GetTimestamp()
-    driver.Input.Drain(driver.Window.Tree, driver.Resolver, driver.Time,
-      driver.Window.OnKeyPress, startTicks)
-    driver.Update()
-    if controller.Selection.Active.Offset != firstOffset { return false }
+      driver.Input.QueueKeyPress(key, KeyModifiers{})
+      let startTicks = Stopwatch.GetTimestamp()
+      driver.Input.Drain(driver.Window.Tree, driver.Resolver, driver.Time,
+        driver.Window.OnKeyPress, startTicks)
+      driver.Update()
+      if controller.Selection.Active.Offset != firstOffset { return false }
 
-    let delayTicks = int64(Math.Ceiling(0.4 * float64(Stopwatch.Frequency)))
-    driver.Input.Step(driver.Window.Tree, driver.Resolver, 1.0, startTicks)
-    if controller.Selection.Active.Offset != firstOffset { return false }
-    driver.Input.Step(driver.Window.Tree, driver.Resolver, 1.0, startTicks + delayTicks - 1)
-    if controller.Selection.Active.Offset != firstOffset { return false }
-    driver.Input.Step(driver.Window.Tree, driver.Resolver, 0.0, startTicks + delayTicks)
-    return controller.Selection.Active.Offset == repeatOffset
-  }
+      let delayTicks = int64(Math.Ceiling(0.4 * float64(Stopwatch.Frequency)))
+      driver.Input.Step(driver.Window.Tree, driver.Resolver, 1.0, startTicks)
+      if controller.Selection.Active.Offset != firstOffset { return false }
+      driver.Input.Step(driver.Window.Tree, driver.Resolver, 1.0, startTicks + delayTicks - 1)
+      if controller.Selection.Active.Offset != firstOffset { return false }
+      driver.Input.Step(driver.Window.Tree, driver.Resolver, 0.0, startTicks + delayTicks)
+      return controller.Selection.Active.Offset == repeatOffset
+    }
 
   private func stalledVerticalTapDoesNotRepeat(key Key, startOffset int32,
-    firstOffset int32) bool {
-    let document = TextDocument("a\nb\nc")
-    using let controller = TextEditorController(document)
-    let driver = InputFixtureDriver(TextEditorInputCell(document, controller), 320, 120)
-    let start = editorPoint(driver.Window.Tree!!,
-      TextPosition{ Offset: startOffset, Affinity: TextAffinity.Upstream })
-    driver.Press(start.X, start.Y)
-    let startTicks = Stopwatch.GetTimestamp()
-    let delayTicks = int64(Math.Ceiling(0.4 * float64(Stopwatch.Frequency)))
-    driver.Input.QueueKeyPress(key, KeyModifiers{})
-    driver.Input.Drain(driver.Window.Tree, driver.Resolver, driver.Time,
-      driver.Window.OnKeyPress, startTicks)
-    driver.Update()
-    driver.Input.Step(driver.Window.Tree, driver.Resolver, 1.0, startTicks + delayTicks)
-    if controller.Selection.Active.Offset != firstOffset { return false }
-    driver.Input.QueueKeyRelease(key)
-    driver.Drain()
-    driver.Input.Step(driver.Window.Tree, driver.Resolver, 1.0, startTicks + delayTicks * 2)
-    return controller.Selection.Active.Offset == firstOffset
-  }
+    firstOffset int32) bool{
+      let document = TextDocument("a\nb\nc")
+      using let controller = TextEditorController(document)
+      let driver = InputFixtureDriver(TextEditorInputCell(document, controller), 320, 120)
+      let start = editorPoint(driver.Window.Tree!!,
+        TextPosition{ Offset: startOffset, Affinity: TextAffinity.Upstream })
+      driver.Press(start.X, start.Y)
+      let startTicks = Stopwatch.GetTimestamp()
+      let delayTicks = int64(Math.Ceiling(0.4 * float64(Stopwatch.Frequency)))
+      driver.Input.QueueKeyPress(key, KeyModifiers{})
+      driver.Input.Drain(driver.Window.Tree, driver.Resolver, driver.Time,
+        driver.Window.OnKeyPress, startTicks)
+      driver.Update()
+      driver.Input.Step(driver.Window.Tree, driver.Resolver, 1.0, startTicks + delayTicks)
+      if controller.Selection.Active.Offset != firstOffset { return false }
+      driver.Input.QueueKeyRelease(key)
+      driver.Drain()
+      driver.Input.Step(driver.Window.Tree, driver.Resolver, 1.0, startTicks + delayTicks * 2)
+      return controller.Selection.Active.Offset == firstOffset
+    }
 
   private func editorPoint(editor Node, position TextPosition) TextEditorInputPoint {
     let rect = TextEditorLayouts.CaretRect(editor, position)
@@ -213,14 +211,12 @@ internal class TextEditorInputCell : Cell {
     Controller = controller
   }
 
-  override func Build() Blob {
-    return TextEditor(Document, Controller){
-      Key = "editor",
-      Width = 300.0,
-      Height = 100.0,
-      FontSize = 16.0,
-      OnSubmit = () -> { Submits++ },
-    }
+  override func Build() Blob -> TextEditor(Document, Controller) {
+    Key = "editor",
+    Width = 300.0,
+    Height = 100.0,
+    FontSize = 16.0,
+    OnSubmit = () -> { Submits++ },
   }
 }
 
@@ -233,21 +229,19 @@ internal class TextEditorInputReadOnlyCell : Cell {
     Controller = controller
   }
 
-  override func Build() Blob {
-    return Container{
-      Width: 320.0,
-      Height: 120.0,
-      FlexDirection: FlexDirection.Row,
-      Children: {
-        TextEditor(Document, Controller){
-          Key = "editor",
-          Width = 250.0,
-          Height = 100.0,
-          ReadOnly = true,
-        },
-        Container{ Key: "after", Width: 40.0, Height: 40.0, Focusable: true },
+  override func Build() Blob -> Container {
+    Width: 320.0,
+    Height: 120.0,
+    FlexDirection: FlexDirection.Row,
+    Children: {
+      TextEditor(Document, Controller) {
+        Key = "editor",
+        Width = 250.0,
+        Height = 100.0,
+        ReadOnly = true,
       },
-    }
+      Container{ Key: "after", Width: 40.0, Height: 40.0, Focusable: true },
+    },
   }
 }
 

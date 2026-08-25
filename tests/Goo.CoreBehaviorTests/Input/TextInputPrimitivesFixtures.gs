@@ -251,16 +251,16 @@ internal class TextInputPrimitivesFixtures {
       if cell.Committed != "commit" || cell.Composition != "a😀b" || cell.SelectionStart != 1
         || cell.SelectionLength != 2 || cell.Candidate != "one" || !cell.Horizontal
         || cell.Cancellations != 1 {
-        return false
-      }
+          return false
+        }
       if !cell.Second.Focus() || cell.First.SetTextInputArea(area)
-        || cell.Second.SetTextInputArea(area) != nativeTextInput {
-        return false
-      }
+        || cell.Second.SetTextInputArea(area) != nativeTextInput{
+          return false
+        }
       cell.FirstAttached.Value = false
       window.UpdateTree()
       if cell.First.SetTextInputArea(area)
-        || cell.Second.SetTextInputArea(area) != nativeTextInput { return false }
+        || cell.Second.SetTextInputArea(area) != nativeTextInput{ return false }
       window.Close()
       return !cell.Second.SetTextInputArea(area)
     } finally {
@@ -351,13 +351,9 @@ public partial class Window {
     input.QueueCompositionCancel()
   }
 
-  internal func DrainTextInputForTest() bool {
-    return input.Drain(node, resolver, timeS, nil)
-  }
+  internal func DrainTextInputForTest() bool -> input.Drain(node, resolver, timeS, nil)
 
-  internal func NativeTextInputActiveForTest() bool {
-    return host?.IsTextInputActive == true
-  }
+  internal func NativeTextInputActiveForTest() bool -> host?.IsTextInputActive == true
 
   internal func NativeFocusLostForTest() {
     input.FocusLost(resolver)
@@ -454,7 +450,7 @@ internal class NativeTextInputLifecycleCell : Cell {
       OnTextInput: (value string) -> {},
     })
     root.Children.Add(TextEntry{ Key: "entry", Handle: Entry, Width: 80, Height: 20 })
-    let editor = TextEditor(Document, Controller){
+    let editor = TextEditor(Document, Controller) {
       Key = "editor", Handle = Editor, Width = 80, Height = 20,
     }
     root.Children.Add(editor)

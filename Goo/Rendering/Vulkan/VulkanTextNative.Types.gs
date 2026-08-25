@@ -6,16 +6,16 @@ import System.Runtime.InteropServices
 import System.Text
 
 internal class VulkanTextProviderAbi {
-    shared {
-        const Version uint32 = 1u
-        const Success uint32 = 0u
-        const InvalidArgument uint32 = 1u
-        const CapacityExceeded uint32 = 2u
-        const NativeFailure uint32 = 3u
-        const OutputUnavailable uint32 = 4u
-        const Disposed uint32 = 5u
-        const StatusLimit uint32 = 6u
-    }
+  shared {
+    const Version uint32 = 1u
+    const Success uint32 = 0u
+    const InvalidArgument uint32 = 1u
+    const CapacityExceeded uint32 = 2u
+    const NativeFailure uint32 = 3u
+    const OutputUnavailable uint32 = 4u
+    const Disposed uint32 = 5u
+    const StatusLimit uint32 = 6u
+  }
 }
 
 @DllImport("goo-harfbuzz", EntryPoint: "hb_blob_create", CallingConvention: CallingConvention.Cdecl)
@@ -68,7 +68,7 @@ internal func hb_ot_color_has_layers(face nint) uint32;
 
 @DllImport("goo-harfbuzz", EntryPoint: "hb_ot_color_glyph_get_layers", CallingConvention: CallingConvention.Cdecl)
 internal func hb_ot_color_glyph_get_layers(face nint, glyph uint32, startOffset uint32,
-    ref layerCount uint32, layers nint) uint32;
+  ref layerCount uint32, layers nint) uint32;
 
 @DllImport("goo-harfbuzz", EntryPoint: "hb_ot_color_glyph_has_paint", CallingConvention: CallingConvention.Cdecl)
 internal func hb_ot_color_glyph_has_paint(face nint, glyph uint32) uint32;
@@ -110,10 +110,10 @@ internal func hb_shape_full(font nint, buffer nint, features nint, featureCount 
 internal func hb_buffer_get_length(buffer nint) uint32;
 
 @DllImport("goo-harfbuzz", EntryPoint: "hb_buffer_get_glyph_infos", CallingConvention: CallingConvention.Cdecl)
-internal unsafe func hb_buffer_get_glyph_infos(buffer nint, ref length uint32) *VulkanHarfBuzzGlyphInfo;
+internal unsafe func hb_buffer_get_glyph_infos(buffer nint, ref length uint32) * VulkanHarfBuzzGlyphInfo;
 
 @DllImport("goo-harfbuzz", EntryPoint: "hb_buffer_get_glyph_positions", CallingConvention: CallingConvention.Cdecl)
-internal unsafe func hb_buffer_get_glyph_positions(buffer nint, ref length uint32) *VulkanHarfBuzzGlyphPosition;
+internal unsafe func hb_buffer_get_glyph_positions(buffer nint, ref length uint32) * VulkanHarfBuzzGlyphPosition;
 
 @DllImport("goo-harfbuzz-gpu", EntryPoint: "hb_gpu_draw_create_or_fail", CallingConvention: CallingConvention.Cdecl)
 internal func hb_gpu_draw_create_or_fail() nint;
@@ -155,181 +155,181 @@ internal unsafe func hb_gpu_paint_encode(paint nint, ref extents VulkanTextGlyph
 internal func hb_gpu_paint_recycle_blob(paint nint, blob nint) void;
 
 internal unsafe data struct VulkanHarfBuzzGlyphInfo {
-    var codepoint uint32
-    var mask uint32
-    var cluster uint32
-    var var1 uint32
-    var var2 uint32
+  var codepoint uint32
+  var mask uint32
+  var cluster uint32
+  var var1 uint32
+  var var2 uint32
 }
 
 internal unsafe data struct VulkanHarfBuzzGlyphPosition {
-    var xAdvance int32
-    var yAdvance int32
-    var xOffset int32
-    var yOffset int32
-    var var1 int32
+  var xAdvance int32
+  var yAdvance int32
+  var xOffset int32
+  var yOffset int32
+  var var1 int32
 }
 
 internal unsafe data struct VulkanHarfBuzzFontExtents {
-    var ascender int32
-    var descender int32
-    var lineGap int32
-    var reserved9 int32
-    var reserved8 int32
-    var reserved7 int32
-    var reserved6 int32
-    var reserved5 int32
-    var reserved4 int32
-    var reserved3 int32
-    var reserved2 int32
-    var reserved1 int32
+  var ascender int32
+  var descender int32
+  var lineGap int32
+  var reserved9 int32
+  var reserved8 int32
+  var reserved7 int32
+  var reserved6 int32
+  var reserved5 int32
+  var reserved4 int32
+  var reserved3 int32
+  var reserved2 int32
+  var reserved1 int32
 }
 
 internal unsafe data struct VulkanTextGlyphExtents {
-    var XBearing int32
-    var YBearing int32
-    var Width int32
-    var Height int32
+  var XBearing int32
+  var YBearing int32
+  var Width int32
+  var Height int32
 }
 
 internal data struct VulkanHarfBuzzMetrics {
-    var UnitsPerEm uint32
-    var GlyphCount uint32
-    var Scale int32
-    var Ascender int32
-    var Descender int32
-    var LineGap int32
+  var UnitsPerEm uint32
+  var GlyphCount uint32
+  var Scale int32
+  var Ascender int32
+  var Descender int32
+  var LineGap int32
 }
 
 internal data struct VulkanTextProviderResult {
-    var AbiVersion uint32
-    var Status uint32
-    var Count int32
-    var Required int32
+  var AbiVersion uint32
+  var Status uint32
+  var Count int32
+  var Required int32
 }
 
 internal sealed class VulkanTextProviderWorkspace {
-    shared {
-        const MaxByteCapacity int32 = 268435456
+  shared {
+    const MaxByteCapacity int32 = 268435456
+  }
+
+  private let byteBuffer []uint8
+  private var byteCount int32
+  private var requiredByteCount int32
+  private var glyphExtents VulkanTextGlyphExtents
+  private var glyphScale int32
+  private var glyphPalette uint32
+
+  internal prop ByteBuffer []uint8{ get { return byteBuffer } }
+  internal prop ByteCapacity int32{ get { return byteBuffer.Length } }
+  internal prop ByteCount int32{ get { return byteCount } }
+  internal prop RequiredByteCount int32{ get { return requiredByteCount } }
+  internal prop GlyphExtents VulkanTextGlyphExtents{ get { return glyphExtents } }
+  internal prop GlyphScale int32{ get { return glyphScale } }
+  internal prop GlyphPalette uint32{ get { return glyphPalette } }
+
+  internal init(bytes []uint8) {
+    if bytes.Length > MaxByteCapacity {
+      throw ArgumentOutOfRangeException("bytes")
     }
+    byteBuffer = bytes
+    Reset()
+  }
 
-    private let byteBuffer []uint8
-    private var byteCount int32
-    private var requiredByteCount int32
-    private var glyphExtents VulkanTextGlyphExtents
-    private var glyphScale int32
-    private var glyphPalette uint32
+  internal func Reset() {
+    byteCount = 0
+    requiredByteCount = 0
+    glyphExtents = VulkanTextGlyphExtents{}
+    glyphScale = 0
+    glyphPalette = 0u
+  }
 
-    internal prop ByteBuffer []uint8 { get { return byteBuffer } }
-    internal prop ByteCapacity int32 { get { return byteBuffer.Length } }
-    internal prop ByteCount int32 { get { return byteCount } }
-    internal prop RequiredByteCount int32 { get { return requiredByteCount } }
-    internal prop GlyphExtents VulkanTextGlyphExtents { get { return glyphExtents } }
-    internal prop GlyphScale int32 { get { return glyphScale } }
-    internal prop GlyphPalette uint32 { get { return glyphPalette } }
+  internal func SetRequiredByteCount(value int32) {
+    requiredByteCount = value
+  }
 
-    internal init(bytes []uint8) {
-        if bytes.Length > MaxByteCapacity {
-            throw ArgumentOutOfRangeException("bytes")
-        }
-        byteBuffer = bytes
-        Reset()
-    }
-
-    internal func Reset() {
-        byteCount = 0
-        requiredByteCount = 0
-        glyphExtents = VulkanTextGlyphExtents{}
-        glyphScale = 0
-        glyphPalette = 0u
-    }
-
-    internal func SetRequiredByteCount(value int32) {
-        requiredByteCount = value
-    }
-
-    internal func SetEncoding(byteLength int32, extents VulkanTextGlyphExtents,
-        scale int32, palette uint32) {
-        byteCount = byteLength
-        glyphExtents = extents
-        glyphScale = scale
-        glyphPalette = palette
+  internal func SetEncoding(byteLength int32, extents VulkanTextGlyphExtents,
+    scale int32, palette uint32) {
+      byteCount = byteLength
+      glyphExtents = extents
+      glyphScale = scale
+      glyphPalette = palette
     }
 }
 
 internal sealed class VulkanTextShapingWorkspace {
-    shared {
-        const MaxGlyphCapacity int32 = 1048576
+  shared {
+    const MaxGlyphCapacity int32 = 1048576
+  }
+
+  private let glyphBuffer []VulkanTextGlyph
+  private var glyphCount int32
+
+  internal prop GlyphBuffer []VulkanTextGlyph{ get { return glyphBuffer } }
+  internal prop GlyphCapacity int32{ get { return glyphBuffer.Length } }
+  internal prop GlyphCount int32{ get { return glyphCount } }
+
+  internal init(capacity int32) {
+    if capacity < 0 || capacity > MaxGlyphCapacity {
+      throw ArgumentOutOfRangeException("capacity")
     }
+    glyphBuffer = [capacity]VulkanTextGlyph
+    glyphCount = 0
+  }
 
-    private let glyphBuffer []VulkanTextGlyph
-    private var glyphCount int32
+  internal func Reset() {
+    glyphCount = 0
+  }
 
-    internal prop GlyphBuffer []VulkanTextGlyph { get { return glyphBuffer } }
-    internal prop GlyphCapacity int32 { get { return glyphBuffer.Length } }
-    internal prop GlyphCount int32 { get { return glyphCount } }
-
-    internal init(capacity int32) {
-        if capacity < 0 || capacity > MaxGlyphCapacity {
-            throw ArgumentOutOfRangeException("capacity")
-        }
-        glyphBuffer = [capacity]VulkanTextGlyph
-        glyphCount = 0
+  internal func SetGlyphCount(value int32) {
+    if value < 0 || value > glyphBuffer.Length {
+      throw ArgumentOutOfRangeException("value")
     }
-
-    internal func Reset() {
-        glyphCount = 0
-    }
-
-    internal func SetGlyphCount(value int32) {
-        if value < 0 || value > glyphBuffer.Length {
-            throw ArgumentOutOfRangeException("value")
-        }
-        glyphCount = value
-    }
+    glyphCount = value
+  }
 }
 
 internal interface VulkanTextProvider {
-    prop AbiVersion uint32 { get; }
-    prop Metrics VulkanHarfBuzzMetrics { get; }
-    func ShapeInto(text string, options VulkanTextShapingOptions,
-        workspace VulkanTextShapingWorkspace) VulkanTextProviderResult;
-    func EncodeGlyphInto(glyphId uint32,
-        workspace VulkanTextProviderWorkspace) VulkanTextProviderResult;
-    func EncodePaintGlyphInto(glyphId uint32, paletteIndex uint32,
-        workspace VulkanTextProviderWorkspace) VulkanTextProviderResult;
-    func HasColorPaint() bool;
-    func HasColorLayers() bool;
-    func GlyphHasColorPaint(glyphId uint32) bool;
-    func GlyphHasColorLayers(glyphId uint32) bool;
+  prop AbiVersion uint32 { get; }
+  prop Metrics VulkanHarfBuzzMetrics { get; }
+  func ShapeInto(text string, options VulkanTextShapingOptions,
+    workspace VulkanTextShapingWorkspace) VulkanTextProviderResult;
+  func EncodeGlyphInto(glyphId uint32,
+    workspace VulkanTextProviderWorkspace) VulkanTextProviderResult;
+  func EncodePaintGlyphInto(glyphId uint32, paletteIndex uint32,
+    workspace VulkanTextProviderWorkspace) VulkanTextProviderResult;
+  func HasColorPaint() bool;
+  func HasColorLayers() bool;
+  func GlyphHasColorPaint(glyphId uint32) bool;
+  func GlyphHasColorLayers(glyphId uint32) bool;
 }
 
 internal data struct VulkanTextVariation {
-    var Tag uint32
-    var Value float32
+  var Tag uint32
+  var Value float32
 }
 
 internal data struct VulkanTextFeature {
-    var Tag uint32
-    var Value uint32
-    var Start uint32
-    var End uint32
+  var Tag uint32
+  var Value uint32
+  var Start uint32
+  var End uint32
 }
 
 internal data struct VulkanTextShapingOptions {
-    var Direction uint32
-    var Script uint32
-    var Language string?
-    var ClusterLevel uint32
-    var Flags uint32
-    var Features ([]VulkanTextFeature)?
+  var Direction uint32
+  var Script uint32
+  var Language string?
+  var ClusterLevel uint32
+  var Flags uint32
+  var Features([]VulkanTextFeature)?
 }
 
 internal data struct VulkanTextGlyph {
-    var GlyphId uint32
-    var Cluster uint32
-    var XAdvance int32
-    var YAdvance int32
-    var XOffset int32
-    var YOffset int32
+  var GlyphId uint32
+  var Cluster uint32
+  var XAdvance int32
+  var YAdvance int32
+  var XOffset int32
+  var YOffset int32
 }

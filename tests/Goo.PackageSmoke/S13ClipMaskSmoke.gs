@@ -11,25 +11,13 @@ class S13ClipMaskPressureCell : Cell {
 
   shared {
     let Root ElementHandle = ElementHandle{}
-    let GrowingPath VectorPath = PathBuilder(0.0, 0.0, 100.0, 48.0)
-      .MoveTo(0.0, 0.0)
-      .LineTo(100.0, 0.0)
-      .LineTo(100.0, 48.0)
-      .LineTo(0.0, 48.0)
-      .Close()
-      .Build()
+    let GrowingPath VectorPath = PathBuilder(0.0, 0.0, 100.0, 48.0).MoveTo(0.0, 0.0).LineTo(100.0, 0.0).LineTo(100.0, 48.0).LineTo(0.0, 48.0).Close().Build()
 
     func MaskPath(index int32, phase int32) VectorPath {
       let inset = float64((index + phase) % 4)
       let right = 100.0 - inset
       let bottom = 48.0 - inset
-      return PathBuilder(0.0, 0.0, 100.0, 48.0)
-        .MoveTo(inset, inset)
-        .LineTo(right, inset)
-        .LineTo(right, bottom)
-        .LineTo(inset, bottom)
-        .Close()
-        .Build()
+      return PathBuilder(0.0, 0.0, 100.0, 48.0).MoveTo(inset, inset).LineTo(right, inset).LineTo(right, bottom).LineTo(inset, bottom).Close().Build()
     }
   }
 
@@ -124,8 +112,8 @@ func RunS13ClipMaskSmoke() {
     if !opened.IsOpen || !S13ClipMaskPressureCell.Root.IsMounted
       || S13ClipMaskPressureCell.Root.BorderBox.Width <= 0.0
       || S13ClipMaskPressureCell.Root.BorderBox.Height <= 0.0 {
-      throw InvalidOperationException("S13 clip mask pressure smoke did not retain visible geometry")
-    }
+        throw InvalidOperationException("S13 clip mask pressure smoke did not retain visible geometry")
+      }
     if !CloseWindow(opened) {
       throw InvalidOperationException("S13 clip mask pressure smoke window did not close")
     }
@@ -149,21 +137,21 @@ func RunS13ClipMaskSmoke() {
       || pressureEvents == 0uL || evictionCount == 0uL
       || pressureFailures != 0uL || objectCount != 0uL
       || validationErrors != 0uL || resultFailures != 0uL {
-      Console.SetError(originalError)
-      originalError.Write(diagnostics)
-      throw InvalidOperationException("S13 clip mask atlas pressure did not qualify: budget="
-        + byteBudget.ToString() + " resident=" + residentBytes.ToString()
-        + " regions=" + regionCount.ToString() + " activeLayers=" + activeLayerCount.ToString()
-        + " maximumLayers=" + maximumLayerCount.ToString() + " pressureEvents="
-        + pressureEvents.ToString() + " evictionCount=" + evictionCount.ToString()
-        + " pressureFailures=" + pressureFailures.ToString() + " objects=" + objectCount.ToString()
-        + " validationErrors=" + validationErrors.ToString() + " resultFailures="
-        + resultFailures.ToString())
-    }
+        Console.SetError(originalError)
+        originalError.Write(diagnostics)
+        throw InvalidOperationException("S13 clip mask atlas pressure did not qualify: budget="
+          +byteBudget.ToString() + " resident=" + residentBytes.ToString()
+          +" regions=" + regionCount.ToString() + " activeLayers=" + activeLayerCount.ToString()
+          +" maximumLayers=" + maximumLayerCount.ToString() + " pressureEvents="
+          +pressureEvents.ToString() + " evictionCount=" + evictionCount.ToString()
+          +" pressureFailures=" + pressureFailures.ToString() + " objects=" + objectCount.ToString()
+          +" validationErrors=" + validationErrors.ToString() + " resultFailures="
+          +resultFailures.ToString())
+      }
     Console.SetError(originalError)
     Console.WriteLine("s13-clip-mask: pressureEvents=" + pressureEvents.ToString()
-      + " evictionCount=" + evictionCount.ToString()
-      + " pressureFailures=0 cleanup=1 close=1")
+      +" evictionCount=" + evictionCount.ToString()
+      +" pressureFailures=0 cleanup=1 close=1")
   } finally {
     Console.SetError(originalError)
     if let active = window {

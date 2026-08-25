@@ -29,9 +29,7 @@ public class Tokens {
     /// Gets the token set active in the current synchronous scope.
     /// @typeparam T The token-set type.
     /// @returns The active token set.
-    public func Get[T]() T {
-      return TokenScope[T].Get()
-    }
+    public func Get[T]() T -> TokenScope[T].Get()
   }
 }
 

@@ -37,13 +37,13 @@ public class AccessibilityValue {
   private var text string
 
   /// Gets the current numeric value, when one exists.
-  public prop Now float64? { get { return now } init { now = validateOptionalNumber(value, "Now") } }
+  public prop Now float64? { get { return now } init{ now = validateOptionalNumber(value, "Now") } }
   /// Gets the minimum numeric value, when one exists.
-  public prop Minimum float64? { get { return minimum } init { minimum = validateOptionalNumber(value, "Minimum") } }
+  public prop Minimum float64? { get { return minimum } init{ minimum = validateOptionalNumber(value, "Minimum") } }
   /// Gets the maximum numeric value, when one exists.
-  public prop Maximum float64? { get { return maximum } init { maximum = validateOptionalNumber(value, "Maximum") } }
+  public prop Maximum float64? { get { return maximum } init{ maximum = validateOptionalNumber(value, "Maximum") } }
   /// Gets the localized value text, when one exists.
-  public prop Text string { get { return text } init { text = requireString(value, "Text") } }
+  public prop Text string{ get { return text } init{ text = requireString(value, "Text") } }
 
   /// Initializes an empty range value.
   public init() { text = "" }
@@ -76,44 +76,44 @@ public class AccessibilityRelationships {
   private var activeDescendant ElementHandle?
 
   /// Gets or sets the elements that label this element.
-  public prop LabelledBy []ElementHandle {
+  public prop LabelledBy []ElementHandle{
     get { return copyValues(labelledBy) }
-    init { labelledBy = cloneHandles(value, "LabelledBy") }
+    init{ labelledBy = cloneHandles(value, "LabelledBy") }
   }
   /// Gets or sets the elements that describe this element.
-  public prop DescribedBy []ElementHandle {
+  public prop DescribedBy []ElementHandle{
     get { return copyValues(describedBy) }
-    init { describedBy = cloneHandles(value, "DescribedBy") }
+    init{ describedBy = cloneHandles(value, "DescribedBy") }
   }
   /// Gets or sets the elements controlled by this element.
-  public prop Controls []ElementHandle {
+  public prop Controls []ElementHandle{
     get { return copyValues(controls) }
-    init { controls = cloneHandles(value, "Controls") }
+    init{ controls = cloneHandles(value, "Controls") }
   }
   /// Gets or sets the elements owned by this element.
-  public prop Owns []ElementHandle {
+  public prop Owns []ElementHandle{
     get { return copyValues(owns) }
-    init { owns = cloneHandles(value, "Owns") }
+    init{ owns = cloneHandles(value, "Owns") }
   }
   /// Gets or sets the next logical reading targets for this element.
-  public prop FlowTo []ElementHandle {
+  public prop FlowTo []ElementHandle{
     get { return copyValues(flowTo) }
-    init { flowTo = cloneHandles(value, "FlowTo") }
+    init{ flowTo = cloneHandles(value, "FlowTo") }
   }
   /// Gets or sets the elements that describe a current error.
-  public prop ErrorMessage []ElementHandle {
+  public prop ErrorMessage []ElementHandle{
     get { return copyValues(errorMessage) }
-    init { errorMessage = cloneHandles(value, "ErrorMessage") }
+    init{ errorMessage = cloneHandles(value, "ErrorMessage") }
   }
   /// Gets or sets the active descendant, when one is mounted.
-  public prop ActiveDescendant ElementHandle? { get { return activeDescendant } init { activeDescendant = value } }
+  public prop ActiveDescendant ElementHandle? { get { return activeDescendant } init{ activeDescendant = value } }
 
-  internal prop RawLabelledBy []ElementHandle { get { return labelledBy } }
-  internal prop RawDescribedBy []ElementHandle { get { return describedBy } }
-  internal prop RawControls []ElementHandle { get { return controls } }
-  internal prop RawOwns []ElementHandle { get { return owns } }
-  internal prop RawFlowTo []ElementHandle { get { return flowTo } }
-  internal prop RawErrorMessage []ElementHandle { get { return errorMessage } }
+  internal prop RawLabelledBy []ElementHandle{ get { return labelledBy } }
+  internal prop RawDescribedBy []ElementHandle{ get { return describedBy } }
+  internal prop RawControls []ElementHandle{ get { return controls } }
+  internal prop RawOwns []ElementHandle{ get { return owns } }
+  internal prop RawFlowTo []ElementHandle{ get { return flowTo } }
+  internal prop RawErrorMessage []ElementHandle{ get { return errorMessage } }
 
   internal func Validate() {
     validateHandles(labelledBy, "LabelledBy")
@@ -144,19 +144,19 @@ public class Accessibility {
   private var value string
 
   /// Gets the role. Auto selects a neutral primitive default when one exists.
-  public prop Role AccessibilityRole { get; init; }
+  public prop Role AccessibilityRole{ get; init; }
   /// Gets the platform-specific custom role name for AccessibilityRole.Custom.
-  public prop CustomRole string { get { return customRole } init { customRole = requireString(value, "CustomRole") } }
+  public prop CustomRole string{ get { return customRole } init{ customRole = requireString(value, "CustomRole") } }
   /// Gets the accessible name.
-  public prop Name string { get { return name } init { name = requireString(value, "Name") } }
+  public prop Name string{ get { return name } init{ name = requireString(value, "Name") } }
   /// Gets the accessible description.
-  public prop Description string { get { return description } init { description = requireString(value, "Description") } }
+  public prop Description string{ get { return description } init{ description = requireString(value, "Description") } }
   /// Gets the string value.
-  public prop Value string { get { return value } init { this.value = requireString(value, "Value") } }
+  public prop Value string{ get { return value } init{ this.value = requireString(value, "Value") } }
   /// Gets the optional numeric value metadata.
   public prop Range AccessibilityValue? { get; init; }
   /// Gets the check state.
-  public prop Checked AccessibilityChecked { get; init; }
+  public prop Checked AccessibilityChecked{ get; init; }
   /// Gets whether the item is selected when explicitly specified.
   public prop Selected bool? { get; init; }
   /// Gets whether the item is expanded when explicitly specified.
@@ -172,7 +172,7 @@ public class Accessibility {
   /// Gets the heading level when explicitly specified.
   public prop Level int32? { get; init; }
   /// Gets the orientation when explicitly specified.
-  public prop Orientation AccessibilityOrientation { get; init; }
+  public prop Orientation AccessibilityOrientation{ get; init; }
   /// Gets whether the item is modal when explicitly specified.
   public prop Modal bool? { get; init; }
   /// Gets whether the item is multiline when explicitly specified.
@@ -182,22 +182,22 @@ public class Accessibility {
   /// Gets whether the item opens a popup when explicitly specified.
   public prop HasPopup bool? { get; init; }
   /// Gets live-region announcement behavior.
-  public prop Live AccessibilityLive { get; init; }
+  public prop Live AccessibilityLive{ get; init; }
   /// Gets whether a live-region update is atomic when explicitly specified.
   public prop Atomic bool? { get; init; }
   /// Gets semantic relationships based on mounted ElementHandle identity.
   public prop Relationships AccessibilityRelationships? { get; init; }
   /// Gets whether this element and its descendants are excluded from the semantic tree.
-  public prop Hidden bool { get; init; }
+  public prop Hidden bool{ get; init; }
   /// Gets or sets actions advertised by a composed control.
-  public prop Actions []AccessibilityAction {
+  public prop Actions []AccessibilityAction{
     get { return copyValues(actions) }
-    init { actions = cloneActions(value) }
+    init{ actions = cloneActions(value) }
   }
   /// Gets the handler for advertised composed-control actions.
-  public prop OnAction ((AccessibilityActionRequest) -> bool)? { get; init; }
+  public prop OnAction((AccessibilityActionRequest) -> bool)? { get; init; }
 
-  internal prop RawActions []AccessibilityAction { get { return actions } }
+  internal prop RawActions []AccessibilityAction{ get { return actions } }
 
   /// Initializes a neutral semantic declaration.
   public init() {
@@ -244,21 +244,21 @@ public class AccessibilityActionRequest {
   private var scrollY float64
 
   /// Gets the requested operation.
-  public prop Action AccessibilityAction { get { return action } }
+  public prop Action AccessibilityAction{ get { return action } }
   /// Gets text supplied for SetValue.
-  public prop Value string { get { return value } }
+  public prop Value string{ get { return value } }
   /// Gets the UTF-16 selection start in the exposed semantic value supplied for SetSelection.
-  public prop SelectionStart int32 {
+  public prop SelectionStart int32{
     get { return selectionStart }
   }
   /// Gets the UTF-16 selection length in the exposed semantic value supplied for SetSelection.
-  public prop SelectionLength int32 {
+  public prop SelectionLength int32{
     get { return selectionLength }
   }
   /// Gets the horizontal logical target supplied for Scroll.
-  public prop ScrollX float64 { get { return scrollX } }
+  public prop ScrollX float64{ get { return scrollX } }
   /// Gets the vertical logical target supplied for Scroll.
-  public prop ScrollY float64 { get { return scrollY } }
+  public prop ScrollY float64{ get { return scrollY } }
 
   /// Initializes an action request with neutral optional data.
   /// @param action The requested operation.
@@ -338,12 +338,12 @@ internal class RetainedAccessibilityRelationshipIds : AccessibilityRelationshipI
   private var errorMessage []AccessibilityId
   private var activeDescendant AccessibilityId?
 
-  public prop LabelledBy IReadOnlyList[AccessibilityId] { get { return labelledBy } }
-  public prop DescribedBy IReadOnlyList[AccessibilityId] { get { return describedBy } }
-  public prop Controls IReadOnlyList[AccessibilityId] { get { return controls } }
-  public prop Owns IReadOnlyList[AccessibilityId] { get { return owns } }
-  public prop FlowTo IReadOnlyList[AccessibilityId] { get { return flowTo } }
-  public prop ErrorMessage IReadOnlyList[AccessibilityId] { get { return errorMessage } }
+  public prop LabelledBy IReadOnlyList[AccessibilityId]{ get { return labelledBy } }
+  public prop DescribedBy IReadOnlyList[AccessibilityId]{ get { return describedBy } }
+  public prop Controls IReadOnlyList[AccessibilityId]{ get { return controls } }
+  public prop Owns IReadOnlyList[AccessibilityId]{ get { return owns } }
+  public prop FlowTo IReadOnlyList[AccessibilityId]{ get { return flowTo } }
+  public prop ErrorMessage IReadOnlyList[AccessibilityId]{ get { return errorMessage } }
   public prop ActiveDescendant AccessibilityId? { get { return activeDescendant } }
 
   internal init() {
@@ -357,43 +357,41 @@ internal class RetainedAccessibilityRelationshipIds : AccessibilityRelationshipI
 
   internal func Apply(labelledBy []AccessibilityId, describedBy []AccessibilityId,
     controls []AccessibilityId, owns []AccessibilityId, flowTo []AccessibilityId,
-    errorMessage []AccessibilityId, activeDescendant AccessibilityId?) bool {
-    if sameArray(this.labelledBy, labelledBy) && sameArray(this.describedBy, describedBy)
-      && sameArray(this.controls, controls) && sameArray(this.owns, owns)
-      && sameArray(this.flowTo, flowTo) && sameArray(this.errorMessage, errorMessage)
-      && sameOptionalId(this.activeDescendant, activeDescendant) {
-      return false
+    errorMessage []AccessibilityId, activeDescendant AccessibilityId?) bool{
+      if sameArray(this.labelledBy, labelledBy) && sameArray(this.describedBy, describedBy)
+        && sameArray(this.controls, controls) && sameArray(this.owns, owns)
+        && sameArray(this.flowTo, flowTo) && sameArray(this.errorMessage, errorMessage)
+        && sameOptionalId(this.activeDescendant, activeDescendant) {
+          return false
+        }
+      this.labelledBy = labelledBy
+      this.describedBy = describedBy
+      this.controls = controls
+      this.owns = owns
+      this.flowTo = flowTo
+      this.errorMessage = errorMessage
+      this.activeDescendant = activeDescendant
+      return true
     }
-    this.labelledBy = labelledBy
-    this.describedBy = describedBy
-    this.controls = controls
-    this.owns = owns
-    this.flowTo = flowTo
-    this.errorMessage = errorMessage
-    this.activeDescendant = activeDescendant
-    return true
-  }
 
   internal func Matches(manager AccessibilityManager, labelledBy []ElementHandle,
     describedBy []ElementHandle, controls []ElementHandle, owns []ElementHandle,
-    flowTo []ElementHandle, errorMessage []ElementHandle, activeDescendant ElementHandle?) bool {
-    return matches(manager, this.labelledBy, labelledBy) && matches(manager, this.describedBy,
+    flowTo []ElementHandle, errorMessage []ElementHandle, activeDescendant ElementHandle?) bool -> matches(manager, this.labelledBy, labelledBy) && matches(manager, this.describedBy,
       describedBy) && matches(manager, this.controls, controls) && matches(manager, this.owns, owns)
-      && matches(manager, this.flowTo, flowTo) && matches(manager, this.errorMessage, errorMessage)
-      && sameOptionalId(this.activeDescendant, manager.IdFor(activeDescendant))
-  }
+    && matches(manager, this.flowTo, flowTo) && matches(manager, this.errorMessage, errorMessage)
+    && sameOptionalId(this.activeDescendant, manager.IdFor(activeDescendant))
 
   private func matches(manager AccessibilityManager, current []AccessibilityId,
-    handles []ElementHandle) bool {
-    var index int32
-    for handle in handles {
-      if let id = manager.IdFor(handle) {
-        if index >= current.Length || current[index] != id { return false }
-        index++
+    handles []ElementHandle) bool{
+      var index int32
+      for handle in handles {
+        if let id = manager.IdFor(handle) {
+          if index >= current.Length || current[index] != id { return false }
+          index++
+        }
       }
+      return index == current.Length
     }
-    return index == current.Length
-  }
 }
 
 /// Represents one retained semantic node. Adapters may retain this mutable view.
@@ -507,45 +505,45 @@ internal class RetainedAccessibilityNode : AccessibilityNode {
   private var children List[AccessibilityNode]?
   private var relationships RetainedAccessibilityRelationshipIds?
 
-  public prop Id AccessibilityId { get { return id } }
-  public prop Role AccessibilityRole { get { return role } }
-  public prop CustomRole string { get { return customRole } }
-  public prop Name string { get { return name } }
-  public prop Description string { get { return description } }
-  public prop Value string { get { return value } }
-  public prop ValueText string { get { return valueText } }
+  public prop Id AccessibilityId{ get { return id } }
+  public prop Role AccessibilityRole{ get { return role } }
+  public prop CustomRole string{ get { return customRole } }
+  public prop Name string{ get { return name } }
+  public prop Description string{ get { return description } }
+  public prop Value string{ get { return value } }
+  public prop ValueText string{ get { return valueText } }
   public prop ValueNow float64? { get { return valueNow } }
   public prop ValueMinimum float64? { get { return valueMinimum } }
   public prop ValueMaximum float64? { get { return valueMaximum } }
-  public prop Checked AccessibilityChecked { get { return checked } }
+  public prop Checked AccessibilityChecked{ get { return checked } }
   public prop Selected bool? { get { return selected } }
   public prop Expanded bool? { get { return expanded } }
-  public prop Disabled bool { get { return disabled } }
+  public prop Disabled bool{ get { return disabled } }
   public prop ReadOnly bool? { get { return readOnly } }
   public prop Required bool? { get { return required } }
   public prop Invalid bool? { get { return invalid } }
   public prop Busy bool? { get { return busy } }
   public prop Level int32? { get { return level } }
-  public prop Orientation AccessibilityOrientation { get { return orientation } }
+  public prop Orientation AccessibilityOrientation{ get { return orientation } }
   public prop Modal bool? { get { return modal } }
   public prop Multiline bool? { get { return multiline } }
   public prop MultiSelectable bool? { get { return multiSelectable } }
   public prop HasPopup bool? { get { return hasPopup } }
-  public prop Live AccessibilityLive { get { return live } }
+  public prop Live AccessibilityLive{ get { return live } }
   public prop Atomic bool? { get { return atomic } }
-  public prop Focused bool { get { return focused } }
-  public prop Bounds ElementRect { get { return bounds } }
+  public prop Focused bool{ get { return focused } }
+  public prop Bounds ElementRect{ get { return bounds } }
   public prop TextSnapshot TextSnapshot? { get { return textSnapshot } }
   public prop SelectionStart int32? { get { return selectionStart } }
   public prop SelectionLength int32? { get { return selectionLength } }
   public prop Caret int32? { get { return caret } }
-  public prop Actions IReadOnlyList[AccessibilityAction] {
+  public prop Actions IReadOnlyList[AccessibilityAction]{
     get { return if let values = actions { values } else { AccessibilityEmpty.Actions } }
   }
-  public prop Children IReadOnlyList[AccessibilityNode] {
+  public prop Children IReadOnlyList[AccessibilityNode]{
     get { return if let values = children { values } else { AccessibilityEmpty.Nodes } }
   }
-  public prop Relationships AccessibilityRelationshipIds {
+  public prop Relationships AccessibilityRelationshipIds{
     get { return if let value = relationships { value } else { AccessibilityEmpty.RelationshipIds } }
   }
 
@@ -564,55 +562,55 @@ internal class RetainedAccessibilityNode : AccessibilityNode {
     checked AccessibilityChecked, selected bool?, expanded bool?, disabled bool, readOnly bool?,
     required bool?, invalid bool?, busy bool?, level int32?, orientation AccessibilityOrientation,
     modal bool?, multiline bool?, multiSelectable bool?, hasPopup bool?, live AccessibilityLive,
-    atomic bool?, focused bool, bounds ElementRect, actionMask int32) bool {
-    let changed = this.role != role || this.customRole != customRole || this.name != name
-      || this.description != description || this.value != value || this.valueText != valueText
-      || this.valueNow != valueNow || this.valueMinimum != valueMinimum
-      || this.valueMaximum != valueMaximum || this.selectionStart != selectionStart
-      || this.selectionLength != selectionLength || this.caret != caret
-      || !snapshotMatches(textDocument)
-      || this.checked != checked || this.selected != selected
-      || this.expanded != expanded || this.disabled != disabled || this.readOnly != readOnly
-      || this.required != required || this.invalid != invalid || this.busy != busy
-      || this.level != level || this.orientation != orientation || this.modal != modal
-      || this.multiline != multiline || this.multiSelectable != multiSelectable
-      || this.hasPopup != hasPopup || this.live != live || this.atomic != atomic
-      || this.focused != focused || !sameAccessibilityRect(this.bounds, bounds) || !sameActionMask(actionMask)
-    if !changed { return false }
-    this.role = role
-    this.customRole = customRole
-    this.name = name
-    this.description = description
-    this.value = value
-    this.valueText = valueText
-    this.valueNow = valueNow
-    this.valueMinimum = valueMinimum
-    this.valueMaximum = valueMaximum
-    updateTextSnapshot(textDocument)
-    this.selectionStart = selectionStart
-    this.selectionLength = selectionLength
-    this.caret = caret
-    this.checked = checked
-    this.selected = selected
-    this.expanded = expanded
-    this.disabled = disabled
-    this.readOnly = readOnly
-    this.required = required
-    this.invalid = invalid
-    this.busy = busy
-    this.level = level
-    this.orientation = orientation
-    this.modal = modal
-    this.multiline = multiline
-    this.multiSelectable = multiSelectable
-    this.hasPopup = hasPopup
-    this.live = live
-    this.atomic = atomic
-    this.focused = focused
-    this.bounds = bounds
-    setActions(actionMask)
-    return true
-  }
+    atomic bool?, focused bool, bounds ElementRect, actionMask int32) bool{
+      let changed = this.role != role || this.customRole != customRole || this.name != name
+        || this.description != description || this.value != value || this.valueText != valueText
+        || this.valueNow != valueNow || this.valueMinimum != valueMinimum
+        || this.valueMaximum != valueMaximum || this.selectionStart != selectionStart
+        || this.selectionLength != selectionLength || this.caret != caret
+        || !snapshotMatches(textDocument)
+        || this.checked != checked || this.selected != selected
+        || this.expanded != expanded || this.disabled != disabled || this.readOnly != readOnly
+        || this.required != required || this.invalid != invalid || this.busy != busy
+        || this.level != level || this.orientation != orientation || this.modal != modal
+        || this.multiline != multiline || this.multiSelectable != multiSelectable
+        || this.hasPopup != hasPopup || this.live != live || this.atomic != atomic
+        || this.focused != focused || !sameAccessibilityRect(this.bounds, bounds) || !sameActionMask(actionMask)
+      if !changed { return false }
+      this.role = role
+      this.customRole = customRole
+      this.name = name
+      this.description = description
+      this.value = value
+      this.valueText = valueText
+      this.valueNow = valueNow
+      this.valueMinimum = valueMinimum
+      this.valueMaximum = valueMaximum
+      updateTextSnapshot(textDocument)
+      this.selectionStart = selectionStart
+      this.selectionLength = selectionLength
+      this.caret = caret
+      this.checked = checked
+      this.selected = selected
+      this.expanded = expanded
+      this.disabled = disabled
+      this.readOnly = readOnly
+      this.required = required
+      this.invalid = invalid
+      this.busy = busy
+      this.level = level
+      this.orientation = orientation
+      this.modal = modal
+      this.multiline = multiline
+      this.multiSelectable = multiSelectable
+      this.hasPopup = hasPopup
+      this.live = live
+      this.atomic = atomic
+      this.focused = focused
+      this.bounds = bounds
+      setActions(actionMask)
+      return true
+    }
 
   private func updateTextSnapshot(document TextDocument?) {
     if document == nil {
@@ -643,31 +641,31 @@ internal class RetainedAccessibilityNode : AccessibilityNode {
 
   internal func ApplyRelationships(labelledBy []AccessibilityId, describedBy []AccessibilityId,
     controls []AccessibilityId, owns []AccessibilityId, flowTo []AccessibilityId,
-    errorMessage []AccessibilityId, activeDescendant AccessibilityId?) bool {
-    if labelledBy.Length == 0 && describedBy.Length == 0 && controls.Length == 0 && owns.Length == 0
-      && flowTo.Length == 0 && errorMessage.Length == 0 && activeDescendant == nil {
-      if relationships == nil { return false }
-      relationships = nil
-      return true
+    errorMessage []AccessibilityId, activeDescendant AccessibilityId?) bool{
+      if labelledBy.Length == 0 && describedBy.Length == 0 && controls.Length == 0 && owns.Length == 0
+        && flowTo.Length == 0 && errorMessage.Length == 0 && activeDescendant == nil {
+          if relationships == nil { return false }
+          relationships = nil
+          return true
+        }
+      if relationships == nil { relationships = RetainedAccessibilityRelationshipIds() }
+      return relationships!!.Apply(labelledBy, describedBy, controls, owns, flowTo, errorMessage,
+        activeDescendant)
     }
-    if relationships == nil { relationships = RetainedAccessibilityRelationshipIds() }
-    return relationships!!.Apply(labelledBy, describedBy, controls, owns, flowTo, errorMessage,
-      activeDescendant)
-  }
 
   internal func RelationshipsMatch(manager AccessibilityManager,
-    declaration AccessibilityRelationships) bool {
-    if let current = relationships {
-      return current.Matches(manager, declaration.RawLabelledBy, declaration.RawDescribedBy,
-        declaration.RawControls, declaration.RawOwns, declaration.RawFlowTo,
-        declaration.RawErrorMessage, declaration.ActiveDescendant)
+    declaration AccessibilityRelationships) bool{
+      if let current = relationships {
+        return current.Matches(manager, declaration.RawLabelledBy, declaration.RawDescribedBy,
+          declaration.RawControls, declaration.RawOwns, declaration.RawFlowTo,
+          declaration.RawErrorMessage, declaration.ActiveDescendant)
+      }
+      return !manager.HasResolved(declaration.RawLabelledBy)
+        && !manager.HasResolved(declaration.RawDescribedBy)
+        && !manager.HasResolved(declaration.RawControls) && !manager.HasResolved(declaration.RawOwns)
+        && !manager.HasResolved(declaration.RawFlowTo) && !manager.HasResolved(declaration.RawErrorMessage)
+        && manager.IdFor(declaration.ActiveDescendant) == nil
     }
-    return !manager.HasResolved(declaration.RawLabelledBy)
-      && !manager.HasResolved(declaration.RawDescribedBy)
-      && !manager.HasResolved(declaration.RawControls) && !manager.HasResolved(declaration.RawOwns)
-      && !manager.HasResolved(declaration.RawFlowTo) && !manager.HasResolved(declaration.RawErrorMessage)
-      && manager.IdFor(declaration.ActiveDescendant) == nil
-  }
 
   internal func Supports(action AccessibilityAction) bool {
     guard let values = actions else { return false }
@@ -715,7 +713,7 @@ internal class RetainedAccessibilityTree : AccessibilityTree {
   private var version int64
 
   public prop Root AccessibilityNode? { get { return root } }
-  public prop Version int64 { get { return version } }
+  public prop Version int64{ get { return version } }
 
   internal init() {
   }
@@ -741,7 +739,7 @@ internal class AccessibilityEmpty {
   }
 }
 
-private func cloneHandles(values []?ElementHandle, name string) []ElementHandle {
+private func cloneHandles(values [] ? ElementHandle, name string) []ElementHandle {
   guard let source = values else { throw ArgumentNullException(name) }
   let result = copyValues(source)
   for handle in result {
@@ -757,7 +755,7 @@ private func validateHandles(values []ElementHandle, name string) {
   requireUnique(values, name)
 }
 
-private func cloneActions(values []?AccessibilityAction) []AccessibilityAction {
+private func cloneActions(values [] ? AccessibilityAction) []AccessibilityAction {
   guard let source = values else { throw ArgumentNullException("Actions") }
   let result = copyValues(source)
   for action in result {
@@ -794,9 +792,9 @@ private func validateAction(value AccessibilityAction) AccessibilityAction {
 private func validateNeutralAction(value AccessibilityAction) AccessibilityAction {
   validateAction(value)
   if value == AccessibilityAction.SetValue || value == AccessibilityAction.SetSelection
-    || value == AccessibilityAction.Scroll {
-    throw ArgumentException("Use the matching AccessibilityActionRequest factory")
-  }
+    || value == AccessibilityAction.Scroll{
+      throw ArgumentException("Use the matching AccessibilityActionRequest factory")
+    }
   return value
 }
 
@@ -830,15 +828,15 @@ private func validateRole(value AccessibilityRole) {
 private func validateChecked(value AccessibilityChecked) {
   if int32(value) < int32(AccessibilityChecked.Unspecified)
     || int32(value) > int32(AccessibilityChecked.Mixed) {
-    throw ArgumentOutOfRangeException("Checked")
-  }
+      throw ArgumentOutOfRangeException("Checked")
+    }
 }
 
 private func validateOrientation(value AccessibilityOrientation) {
   if int32(value) < int32(AccessibilityOrientation.Unspecified)
     || int32(value) > int32(AccessibilityOrientation.Vertical) {
-    throw ArgumentOutOfRangeException("Orientation")
-  }
+      throw ArgumentOutOfRangeException("Orientation")
+    }
 }
 
 private func validateLive(value AccessibilityLive) {
@@ -847,9 +845,7 @@ private func validateLive(value AccessibilityLive) {
   }
 }
 
-internal func actionBit(action AccessibilityAction) int32 {
-  return int32(1) << int32(action)
-}
+internal func actionBit(action AccessibilityAction) int32 -> int32(1) << int32(action)
 
 internal func sameArray[T](left []T, right []T) bool {
   if left.Length != right.Length { return false }
@@ -865,16 +861,14 @@ private func sameOptionalId(left AccessibilityId?, right AccessibilityId?) bool 
   return left!!.Value == right!!.Value
 }
 
-private func sameAccessibilityRect(left ElementRect, right ElementRect) bool {
-  return left.X == right.X && left.Y == right.Y && left.Width == right.Width
-    && left.Height == right.Height
-}
+private func sameAccessibilityRect(left ElementRect, right ElementRect) bool -> left.X == right.X && left.Y == right.Y && left.Width == right.Width
+  && left.Height == right.Height
 
 private func sameAccessibilityNodes(left List[AccessibilityNode]?, right List[AccessibilityNode]) bool {
   if left == nil { return right.Count == 0 }
   if left!!.Count != right.Count { return false }
   for i in 0 ... right.Count {
-    if left!![i] != right[i] { return false }
+    if left!! [i] != right[i] { return false }
   }
   return true
 }

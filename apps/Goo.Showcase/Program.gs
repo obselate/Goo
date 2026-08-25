@@ -41,9 +41,7 @@ private func PumpUntilFit(window Window) {
   throw InvalidOperationException("Lava surface did not resize to its window")
 }
 
-private func Center(rect ElementRect) Point {
-  return Point{ X: rect.X + rect.Width * 0.5, Y: rect.Y + rect.Height * 0.5 }
-}
+private func Center(rect ElementRect) Point -> Point { X: rect.X + rect.Width * 0.5, Y: rect.Y + rect.Height * 0.5 }
 
 private func Click(window Window, handle ElementHandle) {
   let point = Center(handle.BorderBox)
@@ -107,8 +105,8 @@ func Main() {
     let toggleProbe = window.LavaHitProbe(toggle.X, toggle.Y)
     if !toggleProbe.StartsWith("Button:glass-collapse:")
       && !toggleProbe.StartsWith("Text:glass-collapse-label:") {
-      throw InvalidOperationException("Glass collapse button did not own hit testing: " + toggleProbe)
-    }
+        throw InvalidOperationException("Glass collapse button did not own hit testing: " + toggleProbe)
+      }
     let orbBeforeControl = root.OrbForSmoke()
     window.LavaPointerMove(toggle.X, toggle.Y)
     window.Pump(0.016)
@@ -124,8 +122,8 @@ func Main() {
     if !flowProbe.StartsWith("Container:glass-refract-track:")
       && !flowProbe.StartsWith("Container:glass-refract-fill:")
       && !flowProbe.StartsWith("Container:glass-refract-thumb:") {
-      throw InvalidOperationException("Glass refraction slider did not own hit testing: " + flowProbe)
-    }
+        throw InvalidOperationException("Glass refraction slider did not own hit testing: " + flowProbe)
+      }
     let previousRefraction = root.RefractionForSmoke()
     let startX = track.X + track.Width * 0.18
     let endX = track.X + track.Width * 0.82

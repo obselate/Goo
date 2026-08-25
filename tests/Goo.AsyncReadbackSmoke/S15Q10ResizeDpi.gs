@@ -87,7 +87,7 @@ class S15Q10ResizeDpiRoot : Cell {
       uint64(nextRevision)
     }
     let mixed = (frameValue * 2654435761uL
-      + revisionValue * 2246822519uL + seed) & 2147483647uL
+      +revisionValue * 2246822519uL + seed) & 2147483647uL
     return int32(mixed)
   }
 
@@ -100,7 +100,7 @@ class S15Q10ResizeDpiRoot : Cell {
       let x = pixel % width
       let y = pixel / width
       let phase = seed + uint64(x) * 3266489917uL
-        + uint64(y) * 668265263uL
+      +uint64(y) * 668265263uL
       let offset = pixel * 4
       pixels[offset] = uint8((phase + 31uL) % 192uL + 32uL)
       pixels[offset + 1] = uint8((phase + uint64(x * 7 + y * 13) + 67uL) % 192uL + 32uL)
@@ -132,7 +132,7 @@ class S15Q10ResizeDpiRoot : Cell {
 
   func Transition(frame int32) {
     let nextState = (frame / S15Q10ResizeDpiTransitionFrames)
-      % S15Q10ResizeDpiStates
+    % S15Q10ResizeDpiStates
     if nextState != stateIndex {
       ApplyState(nextState)
     }
@@ -147,9 +147,7 @@ class S15Q10ResizeDpiRoot : Cell {
     Rebuild()
   }
 
-  private func IsFinite(value float64) bool {
-    return !Double.IsNaN(value) && !Double.IsInfinity(value)
-  }
+  private func IsFinite(value float64) bool -> !Double.IsNaN(value) && !Double.IsInfinity(value)
 
   private func FiniteGeometry(handle ElementHandle) bool {
     let bounds = handle.BorderBox
@@ -158,10 +156,8 @@ class S15Q10ResizeDpiRoot : Cell {
       && bounds.Width >= 0.0 && bounds.Height >= 0.0
   }
 
-  private func ExpectedState(frame int32) int32 {
-    return (frame / S15Q10ResizeDpiTransitionFrames)
-      % S15Q10ResizeDpiStates
-  }
+  private func ExpectedState(frame int32) int32 -> (frame / S15Q10ResizeDpiTransitionFrames)
+  % S15Q10ResizeDpiStates
 
   func Invariant() bool {
     if stateIndex < 0 || stateIndex >= S15Q10ResizeDpiStates
@@ -181,8 +177,8 @@ class S15Q10ResizeDpiRoot : Cell {
       || !FiniteGeometry(TextHandle)
       || !FiniteGeometry(ImageHandle)
       || !FiniteGeometry(TransformedHandle) {
-      return false
-    }
+        return false
+      }
     let expectedWidth = if stateIndex == 0 {
       S15Q10ResizeDpiState0Width
     } else if stateIndex == 1 {

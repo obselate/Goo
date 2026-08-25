@@ -5,9 +5,9 @@ import System.Runtime.CompilerServices
 internal class AccessibilityMetadata {
   shared {
     private let blobValues ConditionalWeakTable[Blob, Accessibility] =
-      ConditionalWeakTable[Blob, Accessibility]()
+    ConditionalWeakTable[Blob, Accessibility]()
     private let nodeValues ConditionalWeakTable[Node, Accessibility] =
-      ConditionalWeakTable[Node, Accessibility]()
+    ConditionalWeakTable[Node, Accessibility]()
 
     internal func BlobValue(b Blob) Accessibility? {
       if blobValues.TryGetValue(b, out var value) { return value }
@@ -87,7 +87,7 @@ private func sameRelationships(left AccessibilityRelationships?, right Accessibi
 internal class AccessibilityNodeStates {
   shared {
     private let values ConditionalWeakTable[Node, RetainedAccessibilityNode] =
-      ConditionalWeakTable[Node, RetainedAccessibilityNode]()
+    ConditionalWeakTable[Node, RetainedAccessibilityNode]()
 
     internal func GetOrAdd(n Node, id AccessibilityId) RetainedAccessibilityNode {
       if n.HasAccessibilityNodeState && values.TryGetValue(n, out var value) { return value }
@@ -115,7 +115,7 @@ internal class AccessibilityNodeStates {
 internal class AccessibilityButtonNames {
   shared {
     private let values ConditionalWeakTable[Node, AccessibilityButtonName] =
-      ConditionalWeakTable[Node, AccessibilityButtonName]()
+    ConditionalWeakTable[Node, AccessibilityButtonName]()
 
     internal func Get(n Node, fingerprint uint64) string? {
       if values.TryGetValue(n, out var value) && value.Fingerprint == fingerprint {

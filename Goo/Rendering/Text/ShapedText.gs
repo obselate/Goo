@@ -9,15 +9,15 @@ internal sealed class ShapedText : IDisposable {
   private var geometry TextGeometry?
   private var disposed bool
 
-  internal prop Width float32 { get; set; }
-  internal prop Ascent float32 { get; set; }
-  internal prop Descent float32 { get; set; }
-  internal prop RightToLeft bool { get; set; }
-  internal prop HasRightToLeftRun bool { get; set; }
-  internal prop InkTop float32 { get; set; }
-  internal prop InkBottom float32 { get; set; }
-  internal prop Runs IReadOnlyList[ShapedRun] { get { return runs } }
-  internal prop Families []string {
+  internal prop Width float32{ get; set; }
+  internal prop Ascent float32{ get; set; }
+  internal prop Descent float32{ get; set; }
+  internal prop RightToLeft bool{ get; set; }
+  internal prop HasRightToLeftRun bool{ get; set; }
+  internal prop InkTop float32{ get; set; }
+  internal prop InkBottom float32{ get; set; }
+  internal prop Runs IReadOnlyList[ShapedRun]{ get { return runs } }
+  internal prop Families []string{
     get {
       let result = [runs.Count]string
       var i int32 = 0
@@ -28,7 +28,7 @@ internal sealed class ShapedText : IDisposable {
       return result
     }
   }
-  internal prop Texts []string {
+  internal prop Texts []string{
     get {
       let result = [runs.Count]string
       var i int32 = 0
@@ -39,7 +39,7 @@ internal sealed class ShapedText : IDisposable {
       return result
     }
   }
-  internal prop HasMissingGlyph bool {
+  internal prop HasMissingGlyph bool{
     get {
       for run in runs {
         for glyph in run.Glyphs {
@@ -49,8 +49,8 @@ internal sealed class ShapedText : IDisposable {
       return false
     }
   }
-  internal prop IsDisposedForTests bool { get { return disposed } }
-  internal prop GlyphCount int32 {
+  internal prop IsDisposedForTests bool{ get { return disposed } }
+  internal prop GlyphCount int32{
     get {
       var result int32 = 0
       for run in runs { result = result + run.Glyphs.Length }
@@ -60,27 +60,27 @@ internal sealed class ShapedText : IDisposable {
 
   internal init(text string, runs List[ShapedRun], width float32, ascent float32,
     descent float32, rightToLeft bool) {
-    this.text = text
-    this.runs = runs
-    Width = width
-    Ascent = ascent
-    Descent = descent
-    RightToLeft = rightToLeft
-    var hasRtl = false
-    var inkTop = Ascent
-    var inkBottom = Descent
-    for run in runs {
-      if run.RightToLeft { hasRtl = true }
-      if run.Glyphs.Length == 0 { continue }
+      this.text = text
+      this.runs = runs
+      Width = width
+      Ascent = ascent
+      Descent = descent
+      RightToLeft = rightToLeft
+      var hasRtl = false
+      let inkTop = Ascent
+      let inkBottom = Descent
+      for run in runs {
+        if run.RightToLeft { hasRtl = true }
+        if run.Glyphs.Length == 0 { continue }
+      }
+      HasRightToLeftRun = hasRtl
+      InkTop = inkTop
+      InkBottom = inkBottom
     }
-    HasRightToLeftRun = hasRtl
-    InkTop = inkTop
-    InkBottom = inkBottom
-  }
 
   internal func Slice(start int32, end int32) ShapedText {
-    var from = Math.Clamp(start, 0, text.Length)
-    var to = Math.Clamp(end, from, text.Length)
+    let from = Math.Clamp(start, 0, text.Length)
+    let to = Math.Clamp(end, from, text.Length)
     let selected = List[ShapedRun]()
     for run in runs {
       if let slice = run.Slice(from, to) { selected.Add(slice) }
@@ -88,43 +88,27 @@ internal sealed class ShapedText : IDisposable {
     return ShapedText(text, selected, Width, Ascent, Descent, RightToLeft)
   }
 
-  internal func CaretX(index int32, affinity int32) float32 {
-    return Geometry().CaretX(index, affinity)
-  }
+  internal func CaretX(index int32, affinity int32) float32 -> Geometry().CaretX(index, affinity)
 
-  internal func HitTest(x float32) TextHit {
-    return Geometry().HitTest(x)
-  }
+  internal func HitTest(x float32) TextHit -> Geometry().HitTest(x)
 
   internal func PrepareGeometry() {
     let prepared = Geometry()
   }
 
-  internal func MoveCaret(index int32, affinity int32, delta int32) TextHit {
-    return Geometry().Move(index, affinity, delta)
-  }
+  internal func MoveCaret(index int32, affinity int32, delta int32) TextHit -> Geometry().Move(index, affinity, delta)
 
-  internal func LineEdge(end bool) TextHit {
-    return Geometry().LineEdge(end)
-  }
+  internal func LineEdge(end bool) TextHit -> Geometry().LineEdge(end)
 
   internal func Collapse(index int32, affinity int32, anchorIndex int32, anchorAffinity int32,
-    delta int32) TextHit {
-    return Geometry().Collapse(index, affinity, anchorIndex, anchorAffinity, delta)
-  }
+    delta int32) TextHit -> Geometry().Collapse(index, affinity, anchorIndex, anchorAffinity, delta)
 
-  internal func SelectionRects(start int32, end int32) []float32 {
-    return Geometry().SelectionRects(start, end)
-  }
+  internal func SelectionRects(start int32, end int32) []float32 -> Geometry().SelectionRects(start, end)
 
-  internal func SelectionRectCount(start int32, end int32) int32 {
-    return Geometry().SelectionRectCount(start, end)
-  }
+  internal func SelectionRectCount(start int32, end int32) int32 -> Geometry().SelectionRectCount(start, end)
 
   internal func CopySelectionRects(start int32, end int32, rectOffset int32,
-    destination Span[float32]) int32 {
-    return Geometry().CopySelectionRects(start, end, rectOffset, destination)
-  }
+    destination Span[float32]) int32 -> Geometry().CopySelectionRects(start, end, rectOffset, destination)
 
   public func Dispose() {
     if disposed { return }

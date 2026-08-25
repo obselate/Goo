@@ -57,9 +57,10 @@ previous project's fixture assembly.
 | S15 retained-damage and primitive SSBO gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S15_RETENTION_GATE=1` | Strict leaf solid/rounded and transparent square solid per-edge border hits and rebuilds, eligible child-bearing Container/Button own-box retention, recursive generic child compilation, fallback and recapture, direct presented-image state, separate offscreen-replay pixels, scale/extent fallback, old/new bounds union damage, topology add/remove full redraw, clean chunk reuse, per-image version promotion, 128-byte primitive SSBO dirty ranges across two window slots, no-clip typed payload retention, and cleanup |
 | S15 legacy StocksGrid control | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S15_STOCKS_GRID=1` | Recovered 4,900-cell text workload with retained versus forced-full timing, damage, chunk, allocation, and primitive-upload evidence |
 | S15 StocksGrid virtualization gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S15_STOCKS_VIRTUALIZATION_GATE=1` | Complete versus fixed-pool virtualized 4,900-item readback equality across fractional, adjacent, diagonal, boundary, far-jump, mutation, zero-overscan, churn, and viewport-capacity traces with enabled and disabled exact clipped-text culling |
-| S15 Q10 gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S15_Q10_GATE=1` and `GOO_S15_Q10_WORKLOAD=table\|topology\|boxes-sparse\|boxes-full\|small-animation\|text-editing\|image-effects\|resize-dpi\|three-window\|true-idle` | Five-process NativeAOT Q10 workloads with 300 warmups and 2,000 measured frames, CPU/GPU percentiles, exact submit/present, resource, and external power evidence; three-window and true-idle use their special routes; resize-DPI records the active-WSI block |
+| S15 Q10 gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S15_Q10_GATE=1` and `GOO_S15_Q10_WORKLOAD=table\|topology\|boxes-sparse\|boxes-full\|small-animation\|text-editing\|image-effects\|resize-dpi\|three-window\|true-idle` | Five-process NativeAOT Q10 workloads with 300 warmups and 2,000 measured frames, CPU/GPU percentiles, exact submit/present, resource, and external power evidence; all eight official Linux rows pass |
 | S15 Q10 stage timestamp gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S15_Q10_STAGE_TIMESTAMP_GATE=1` | Five-process NativeAOT validation-layer `image-effects` route with fixed Effects and Offscreen GPU scopes, exact frame correlation, zero drops, and T03/T04 stage evidence |
-| S15 Q10 startup/input latency gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S15_Q10_LATENCY_GATE=1` | Five fresh NativeAOT processes with 300 warmups and 2,000 synthetic pointer, key, and committed-text injections; successful `vkQueuePresentKHR` handoff latency gate plus present-fence completion-observed upper bounds; SDL acceptance and display feedback are not measured |
+| S15 Q10 startup/input latency gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S15_Q10_LATENCY_GATE=1` | Five fresh NativeAOT processes proving a usable startup frame and first-usable-frame P95, plus 2,000 synthetic pointer, key, and committed-text injections per process; actual SDL polling acceptance is separate |
+| S15 SDL polling acceptance gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S15_SDL_ACCEPTANCE_GATE=1` | Test-only SDL_PushEvent pointer, key, and UTF-8 text events consumed through product `SdlRuntime.PumpEvents` and `SdlHost.Dispatch`, exact causal submit/present, validation, and cleanup |
 | S16 deterministic pacing gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S16_FRAME_PACING_GATE=1` | Fractional 60, 144, and 60000/1001 Hz deadlines, display-change reset, deferred frame retry, invalid-sample retention, uncapped benchmark seam, and present-mode selection |
 | S16 VSync transition gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S16_VSYNC_GATE=1` | Real per-window FIFO to VSync-off mode selection and back to FIFO across swapchain generations |
 | S16 live frame-pacing gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S16_LIVE_FRAME_PACING_GATE=1` | Focused VSync-off active-versus-idle pacing, display-rate cap, initial idle suppression, and clean close |
@@ -68,7 +69,7 @@ previous project's fixture assembly.
 | S17 protected-text gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S17_PROTECTED_TEXT_GATE=1` | Grapheme mask geometry, source/display mapping, element handles, protected clipboard policy, IME commit, semantic redaction, and masked selection coordinates |
 | TextEditor slot gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_TEXT_EDITOR_SLOTS_GATE=1` | Inline and block slot Vulkan presentation, shared content clipping after scroll, retained editor text, unsupported-scene diagnostics, and cleanup |
 | S19 true-idle gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S19_IDLE_GATE=1` | Five isolated nested-KWin scale-1 processes, three-second warm-up, 60-second observation, zero UI or GPU work, zero managed or Vulkan allocation, and less than 0.5% of one CPU core |
-| S20 retained shader-effect gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S20_SHADER_EFFECT_GATE=1` | Ordinary Button source isolation, backdrop sampling, backdrop-outset coverage, rounded clipping, pointer activation, parameter invalidation, resize, display scale, device recovery, zero-allocation warm updates, no warm Vulkan resource creation, and cleanup |
+| S20 retained shader-effect gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S20_SHADER_EFFECT_GATE=1` | Ordinary Button source isolation, original-parent backdrop sampling, combined Multiply blend, backdrop-outset coverage, rounded clipping, pointer activation, parameter invalidation, resize, display scale, device recovery, zero-allocation warm updates, no warm Vulkan resource creation, and cleanup |
 | S16 three-window package smoke | `Goo.PackageSmoke` with `GOO_NATIVE_MULTIWINDOW_SMOKE=1` | Three live windows, shared scheduler dispatch, minimized sibling, posted work, owner-close continuity, and clean close |
 
 The Vulkan lanes run under headless Wayland with
@@ -181,9 +182,12 @@ GOO_NATIVE_S20_SHADER_EFFECT_BENCHMARK=1 GOO_VK_DIAGNOSTICS=1 \
 ```
 
 The gate compiles its test fragment from the packaged `goo_effect.glsl` ABI, applies it to a normal
-Button, captures source and backdrop results with backdrop-outset coverage, exercises pointer
-activation, resize, display scale, and device recovery, then checks that warm parameter mutation
-allocates 0 B and creates no Vulkan object or device-memory allocation.
+Button and to a non-normal Multiply layer, verifies source and original-parent backdrop results with
+backdrop-outset coverage, exercises pointer activation, resize, display scale, and device recovery,
+then checks that warm parameter mutation allocates 0 B and creates no Vulkan object or device-memory
+allocation. The 300/2,000 NativeAOT benchmark reports `0.241085/0.365820/0.601514 ms` CPU
+P50/P95/P99, 0 B allocation, zero warm Vulkan object or device-memory creation, 6,000 layer passes
+and composites, and clean close.
 
 The live gate uses the same TestRelease assembly under headless Wayland:
 
@@ -472,9 +476,9 @@ passed 2,000 samples. `artifacts/reports/s15-q10/summary.json` contains
 
 Disabled diagnostics still create no query pool or timestamp commands, so the
 measured GPU query-write tax does not apply when diagnostics are disabled.
-Windows repeat remains open. These GPU
-timestamps do not qualify actual presentation. Actual SDL acceptance and
-Wayland presentation-time feedback remain open.
+Windows repeat remains open. These GPU timestamps do not measure display scanout.
+Wayland presentation feedback is deferred under S16-D03; nominal display refresh
+is the accepted fallback.
 
 The synthetic startup and input latency selector uses the same published
 NativeAOT executable:
@@ -491,12 +495,34 @@ SDL_VIDEODRIVER=wayland WAYLAND_DISPLAY=wayland-0 \
 does not use `GOO_S15_Q10_WORKLOAD`, `GOO_S15_Q10_WARMUP`, or
 `GOO_S15_Q10_SAMPLES`. The route has fixed 300 warmup frames and 2,000 input
 samples, cycles through pointer, key, and committed-text fixture injections,
-and forces one render per sample. It bypasses SDL polling. Run it in five fresh
-processes for the recorded five-process medians. The handoff gate ends at
-successful `vkQueuePresentKHR` completion. Present-fence completion observations
-are upper bounds from later UI-thread polling, not exact presentation times.
-Actual SDL acceptance, Wayland presentation-time feedback, display scanout, and
-input-to-photon timing remain open.
+and forces one render per sample. It bypasses SDL polling. Five fresh processes
+provide the startup distribution and recorded input medians. The startup frame
+has positive metrics, a mounted invariant root, one submit/present, a
+present-fence observation, and a non-background readback. Nearest-rank
+first-usable-frame P95 is `255.212748 ms` from managed entry and `252.771895 ms`
+from `Window.Open` to handoff. Completion-observed upper-bound P95 is
+`255.238026/252.797173 ms`. Present-fence observations are later polling upper
+bounds, not display scanout timestamps. Actual SDL polling acceptance remains
+open. Wayland presentation feedback is deferred under S16-D03 with nominal
+refresh as fallback.
+
+Run the native SDL polling acceptance gate with:
+
+```sh
+SDL_VIDEODRIVER=wayland WAYLAND_DISPLAY=wayland-0 \
+  VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation \
+  GOO_NATIVE_S15_SDL_ACCEPTANCE_GATE=1 GOO_VK_DIAGNOSTICS=1 \
+  dotnet tests/Goo.AsyncReadbackSmoke/bin/Release/net10.0/Goo.Tests.dll
+```
+
+The gate obtains the live SDL window ID, pushes mouse-button down/up, key A
+down/up, and committed UTF-8 text through `SDL_PushEvent`, then consumes them
+only through the product native event pump. It makes no direct
+`InputCoordinator` or fixture input-queue call. The accepted route reports:
+
+```text
+s15-sdl-acceptance-gate: sdl_poll=1 pointer=1 key=1 text=1 submit=3 present=3 close=1
+```
 
 The harness accepts these workload values:
 
@@ -552,7 +578,7 @@ GOO_KWIN_OUTPUT=DP-3 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
 - **Environment and Output**: Set `GOO_KWIN_OUTPUT` to an enabled, connected KWin output (on this workstation: `GOO_KWIN_OUTPUT=DP-3`, `XDG_RUNTIME_DIR=/run/user/1000`, `WAYLAND_DISPLAY=wayland-0`).
 - **Reversible Scale Control**: The wrapper inspects the current output scale via `kscreen-doctor --json`, sets scale 1, re-verifies scale 1, exports `SDL_VIDEODRIVER=wayland`, executes the command, and restores and re-verifies the original display scale on every exit or signal (`EXIT`, `HUP`, `INT`, `QUIT`, `TERM`). The display will briefly change scale during the run and return to its original scale upon completion.
 - **Rejected Alternatives**: `SDL_VIDEO_WAYLAND_MODE_SCALING=0` is ineffective under the installed SDL3. Running under a nested KWin virtual compositor exposes scale 1 but Vulkan clients exit 139 (SIGSEGV). A windowed nested KWin inherits the parent fractional scale. Direct output scale control via `kscreen-doctor` is the verified environment.
-- **Current Observed Blockers**: Under direct scale 1, the canonical 300/2,000 three-window run passes with exact scale-1 metrics, 2,033 submit/present, both slots, liveness, resource zero, and `close=1`. The resize-DPI route reaches earlier transitions successfully but still fails the exact native resize returning to state0 at frame 120. This is a product/fixture failure after the environment prerequisite, not an environment setup failure.
+- **Current Qualification**: Under direct scale 1, the canonical 300/2,000 three-window run passes with exact scale-1 metrics, 2,033 submit/present, both slots, liveness, resource zero, and `close=1`. After the lost-retry correction, five isolated resize-DPI processes complete the repeated 1.0, 1.5, and 2.0 active-swapchain cycle with exact 2,000 submit/present deltas, both slots, clean validation/result/fatal streams, clean close, and restored output scale. Raw logs are `artifacts/reports/s15-q10/resize-dpi-final-run-{1..5}.log`.
 
 The `true-idle` selector dispatches to the S19 idle implementation rather than
 the 300/2,000 frame loop. Use the isolated nested-KWin scale-1 command in the S19 section above
@@ -560,12 +586,11 @@ for the accepted five-process true-idle result. The final route recorded a
 0.1078% median of one CPU core and zero work or allocation.
 
 The current Vulkan frame workloads pass their absolute CPU/GPU, exact
-submit/present, and warm resource gates. The text-editing general frame gate
-now passes under the dated fast-hit follow-up below. The synthetic
-input-injection handoff route also passes its gate. Actual SDL acceptance and
-Wayland presentation-time/display feedback remain open. Full Q10 exit remains
-blocked by the resize-DPI route and the remaining provenance, memory, package,
-clean-source, SDL acceptance/display-feedback, and Windows evidence.
+submit/present, and applicable warm resource gates. Text editing, resize-DPI,
+first-usable-frame, and synthetic input handoff gates pass. Actual SDL polling
+acceptance remains open. Wayland presentation feedback is deferred under
+S16-D03. Full Q10 exit remains blocked by clean-source provenance, accepted
+memory and binary/package comparisons, SDL acceptance, and Windows evidence.
 The final 2026-08-24 manifest expansion used the 5,708,704-byte NativeAOT
 binary with SHA-256
 `50595ae3be03c22fb42c1adea40801d5a511718f6acdda1ec0622a603eb4171f`.

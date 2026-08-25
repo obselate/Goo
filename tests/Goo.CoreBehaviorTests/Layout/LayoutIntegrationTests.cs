@@ -16,6 +16,12 @@ public sealed class LayoutIntegrationTests
     }
 
     [Fact]
+    public void KeyedReorderRetainsYogaLayouts()
+    {
+        Assert.True(new LayoutFixtures().KeyedReorderRetainsYogaLayouts());
+    }
+
+    [Fact]
     public void StaticPositionIgnoresInsets()
     {
         Assert.True(new LayoutFixtures().StaticPositionIgnoresInsets());

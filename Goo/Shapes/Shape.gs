@@ -24,19 +24,19 @@ public class Shape : Blob {
   }
 
   /// Gets or sets the vector path to display.
-  public prop Path VectorPath { get; init; }
+  public prop Path VectorPath{ get; init; }
   /// Gets or sets the geometry fit. Cover clips, Fill stretches, and None preserves view-box units.
-  public prop Fit ShapeFit { get; init; }
+  public prop Fit ShapeFit{ get; init; }
   /// Gets or sets the fill rule. The default is NonZero.
-  public prop FillRule FillRule { get; init; }
+  public prop FillRule FillRule{ get; init; }
   /// Gets or sets the stroke cap style. The default is Butt.
-  public prop StrokeCap StrokeCap { get; init; }
+  public prop StrokeCap StrokeCap{ get; init; }
   /// Gets or sets the stroke join style. The default is Miter.
-  public prop StrokeJoin StrokeJoin { get; init; }
+  public prop StrokeJoin StrokeJoin{ get; init; }
   /// Gets or sets the non-negative finite miter limit. The default is 4.
-  public prop MiterLimit float64 {
+  public prop MiterLimit float64{
     get { return miterLimit }
-    init {
+    init{
       if !motionFiniteFloat32(value) || value < 0.0 {
         throw ArgumentOutOfRangeException("MiterLimit")
       }
@@ -44,9 +44,9 @@ public class Shape : Blob {
     }
   }
   /// Gets or sets the non-negative finite corner radius in logical pixels.
-  public prop CornerRadius float64 {
+  public prop CornerRadius float64{
     get { return cornerRadius }
-    init {
+    init{
       if !motionFiniteFloat32(value) || value < 0.0 {
         throw ArgumentOutOfRangeException("CornerRadius")
       }

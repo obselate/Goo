@@ -148,8 +148,8 @@
     "hostPacking": {
       "path": "HbGpuTextInstanceRecord.Generated.gs",
       "typeName": "HbGpuTextInstanceRecord",
-      "sha256": "0e0b21acc88a26ea049f63f44d9babe5e2b13ceccae6371d37c39d94cc36556b",
-      "bytes": 1657
+      "sha256": "4ea285e1b0e4b8b92fe3412520c586f4ba06ab11739ce92aab708c06b05b40c0",
+      "bytes": 1593
     }
   },
   "assemblies": [
@@ -536,8 +536,8 @@
       "hostPacking": {
         "path": "SolidQuadPushConstants.Generated.gs",
         "typeName": "SolidQuadPushConstants",
-        "sha256": "801ed20e71cc24186daea9e0628253412ed04bb84d1613c8aa2e9b9d64d8b31d",
-        "bytes": 476
+        "sha256": "51942abdd30fed34744bacea82eab2c4ea100de769b1f14fbd48f086af3c70b7",
+        "bytes": 460
       }
     },
     {
@@ -686,8 +686,8 @@
       "hostPacking": {
         "path": "AnalyticSolidPushConstants.Generated.gs",
         "typeName": "AnalyticSolidPushConstants",
-        "sha256": "4294eeac6b658f42dfff8aa1bd6fb793c5ce8bcda30985d45e9d0585a531ff0d",
-        "bytes": 1616
+        "sha256": "53e3e208472ef0fe35cc90fe479c02827d89715a34390e847b6180d068440d9f",
+        "bytes": 1552
       }
     },
     {
@@ -836,8 +836,8 @@
       "hostPacking": {
         "path": "AnalyticSolidPushConstants.Generated.gs",
         "typeName": "AnalyticSolidPushConstants",
-        "sha256": "4294eeac6b658f42dfff8aa1bd6fb793c5ce8bcda30985d45e9d0585a531ff0d",
-        "bytes": 1616
+        "sha256": "53e3e208472ef0fe35cc90fe479c02827d89715a34390e847b6180d068440d9f",
+        "bytes": 1552
       }
     },
     {
@@ -986,8 +986,8 @@
       "hostPacking": {
         "path": "AnalyticBorderPushConstants.Generated.gs",
         "typeName": "AnalyticBorderPushConstants",
-        "sha256": "dcc702e7a84b0c8a069b2b6c569f278910e0b73055cbe985a35ab79b930a548d",
-        "bytes": 1589
+        "sha256": "1abfe575b26019baec4ef949da51fbd23e98f9877e35b6b3ef74708591d49196",
+        "bytes": 1525
       }
     },
     {
@@ -1136,8 +1136,8 @@
       "hostPacking": {
         "path": "AnalyticLinear4PushConstants.Generated.gs",
         "typeName": "AnalyticLinear4PushConstants",
-        "sha256": "21d877424a3068b87ba919e44ddeca60f7f5fb08456ffbaf07e528ac8d33984b",
-        "bytes": 1618
+        "sha256": "e03e4391f5441b1efc4fee4596c9da31df14e96fe5a6f1b38d80f82d6f4261ff",
+        "bytes": 1554
       }
     },
     {
@@ -1286,8 +1286,8 @@
       "hostPacking": {
         "path": "AnalyticRadial4PushConstants.Generated.gs",
         "typeName": "AnalyticRadial4PushConstants",
-        "sha256": "44bd8636ec836cbc6eecb30ef03121bffb6b334a1e98540fdb3b67db1298908c",
-        "bytes": 1618
+        "sha256": "268a385806ea90acc78d880da31679819b25e161817dbffc2aa5da0b30ed00f5",
+        "bytes": 1554
       }
     },
     {
@@ -1445,8 +1445,8 @@
       "hostPacking": {
         "path": "SampledImagePushConstants.Generated.gs",
         "typeName": "SampledImagePushConstants",
-        "sha256": "c54720462cc88aeca5e19e445a8238e19a77cf9b90ef51d1f69c9eab03cfeb51",
-        "bytes": 1615
+        "sha256": "970ba410430b4b68b3a94c0f2c4d2bc0e3dfac94429a77e43b88d62f4ea5b7c3",
+        "bytes": 1551
       }
     },
     {
@@ -1613,8 +1613,8 @@
       "hostPacking": {
         "path": "SampledImagePushConstants.Generated.gs",
         "typeName": "SampledImagePushConstants",
-        "sha256": "c54720462cc88aeca5e19e445a8238e19a77cf9b90ef51d1f69c9eab03cfeb51",
-        "bytes": 1615
+        "sha256": "970ba410430b4b68b3a94c0f2c4d2bc0e3dfac94429a77e43b88d62f4ea5b7c3",
+        "bytes": 1551
       }
     },
     {
@@ -1741,8 +1741,8 @@
       "hostPacking": {
         "path": "PathBandPushConstants.Generated.gs",
         "typeName": "PathBandPushConstants",
-        "sha256": "d9eac7c8e79ea4512eae12ed4ebf7015078a22c92f4b36c191a6b9d120252a1c",
-        "bytes": 1031
+        "sha256": "a7ca637b53ab1af1ea0404f5604322db5ff60743db94e1eec441dd14fb7f5150",
+        "bytes": 991
       }
     },
     {
@@ -1891,8 +1891,8 @@
       "hostPacking": {
         "path": "HbGpuTextFrameConstants.Generated.gs",
         "typeName": "HbGpuTextFrameConstants",
-        "sha256": "e1c4c8c5082598de636996c5917d46206a60ecad9c884be3c9463505fd8b8f8f",
-        "bytes": 497
+        "sha256": "f518b351c6cf2128c2bdf7d284e78aed23b8ac5ed7e2521bc74b35eb8de59ad6",
+        "bytes": 481
       }
     },
     {
@@ -2041,8 +2041,8 @@
       "hostPacking": {
         "path": "HbGpuTextFrameConstants.Generated.gs",
         "typeName": "HbGpuTextFrameConstants",
-        "sha256": "e1c4c8c5082598de636996c5917d46206a60ecad9c884be3c9463505fd8b8f8f",
-        "bytes": 497
+        "sha256": "f518b351c6cf2128c2bdf7d284e78aed23b8ac5ed7e2521bc74b35eb8de59ad6",
+        "bytes": 481
       }
     },
     {
@@ -2151,8 +2151,8 @@
       "hostPacking": {
         "path": "ClipMaskPushConstants.Generated.gs",
         "typeName": "ClipMaskPushConstants",
-        "sha256": "c483d2be3959548a9e95a15daae1efefa839df0496f92bf0bd967805e3b40dd2",
-        "bytes": 1471
+        "sha256": "05903dcc620b8779f58a0799fa74e51fb29e89378f8a6d51df8f85da6ecf8c86",
+        "bytes": 1415
       }
     },
     {
@@ -2301,8 +2301,8 @@
       "hostPacking": {
         "path": "LavaPrimitiveRecord.Generated.gs",
         "typeName": "LavaPrimitiveRecord",
-        "sha256": "c43369ec0e49de56318d37d95c7ffa28b26669d239149e3ae6a19e11ac8f48dd",
-        "bytes": 1609
+        "sha256": "54854b2c0871e9cccced22705f3771b5d7ab010fe1ad733e9826070db257cae4",
+        "bytes": 1545
       }
     }
   ]

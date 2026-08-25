@@ -129,8 +129,7 @@ internal class TextInput {
     if end < start { return false }
     if target.Kind == NodeKind.Entry {
       let semanticLength = target.Password
-        ? UnicodeGraphemes.Starts(target.Buffer).Length
-        : target.Buffer.Length
+      ? UnicodeGraphemes.Starts(target.Buffer).Length : target.Buffer.Length
       if end > semanticLength { return false }
       target.Anchor = target.Password ? protectedTextSourceOffset(target.Buffer, start) : start
       target.Caret = target.Password ? protectedTextSourceOffset(target.Buffer, end) : end
@@ -151,13 +150,9 @@ internal class TextInput {
     return false
   }
 
-  internal func FocusedNode() Node? {
-    return focused
-  }
+  internal func FocusedNode() Node ? -> focused
 
-  internal func FocusGeneration() int64 {
-    return focusChangeGeneration
-  }
+  internal func FocusGeneration() int64 -> focusChangeGeneration
 
   internal func RefreshInputArea(n Node) {
     if focused == n { updateTextInputArea(n) }
@@ -332,7 +327,7 @@ internal class TextInput {
       if !n.EditorReadOnly {
         if let controller = n.EditorController {
           committed = controller.Composition != nil
-            ? controller.CommitComposition(value) : controller.Insert(value)
+          ? controller.CommitComposition(value) : controller.Insert(value)
           if committed {
             n.BlinkT = 0.0
             updateTextInputArea(n)
@@ -356,41 +351,41 @@ internal class TextInput {
   }
 
   internal func HandleComposition(root Node?, value string, selectionStart int32,
-    selectionLength int32) bool {
-    guard let n = focused else { return false }
-    if !canReceiveInput(n) { return false }
-    let composition = normalizeComposition(value, selectionStart, selectionLength)
-    var updated = false
-    if n.Kind == NodeKind.Editor && !n.EditorReadOnly {
-      if let controller = n.EditorController {
-        updated = controller.UpdateComposition(composition.Text, composition.SelectionStart,
-          composition.SelectionLength)
-        if updated {
-          n.BlinkT = 0.0
-          updateTextInputArea(n)
+    selectionLength int32) bool{
+      guard let n = focused else { return false }
+      if !canReceiveInput(n) { return false }
+      let composition = normalizeComposition(value, selectionStart, selectionLength)
+      var updated = false
+      if n.Kind == NodeKind.Editor && !n.EditorReadOnly {
+        if let controller = n.EditorController {
+          updated = controller.UpdateComposition(composition.Text, composition.SelectionStart,
+            composition.SelectionLength)
+          if updated {
+            n.BlinkT = 0.0
+            updateTextInputArea(n)
+          }
         }
       }
+      dispatchTextComposition(n, composition)
+      return updated
     }
-    dispatchTextComposition(n, composition)
-    return updated
-  }
 
   internal func HandleCompositionCandidates(candidates IReadOnlyList[string]?, selected int32,
     horizontal bool) {
-    guard let n = focused else {
-      return
+      guard let n = focused else {
+        return
+      }
+      if !canReceiveInput(n) {
+        return
+      }
+      let values = candidates ?? TextInputCallbacks.EmptyCandidates()
+      let selectedCandidate = selected >= 0 && selected < values.Count ? selected : -1
+      if let callback = TextInputCallbacks.TextCandidates(n) {
+        callback(TextCandidateEvent{ Candidates: values, SelectedCandidate: selectedCandidate,
+          Horizontal: horizontal })
+        rebuildFiberOwner(n)
+      }
     }
-    if !canReceiveInput(n) {
-      return
-    }
-    let values = candidates ?? TextInputCallbacks.EmptyCandidates()
-    let selectedCandidate = selected >= 0 && selected < values.Count ? selected : -1
-    if let callback = TextInputCallbacks.TextCandidates(n) {
-      callback(TextCandidateEvent{ Candidates: values, SelectedCandidate: selectedCandidate,
-        Horizontal: horizontal })
-      rebuildFiberOwner(n)
-    }
-  }
 
   internal func HandleCompositionCancel(root Node?) bool {
     guard let n = focused else { return false }
@@ -428,21 +423,21 @@ internal class TextInput {
   }
 
   private func normalizeComposition(value string, selectionStart int32,
-    selectionLength int32) TextCompositionEvent {
-    if selectionStart < 0 || selectionLength < 0
-      || selectionStart > value.Length - selectionLength
-      || splitsSurrogatePair(value, selectionStart)
-      || splitsSurrogatePair(value, selectionStart + selectionLength) {
-      return TextCompositionEvent{ Text: value, SelectionStart: 0, SelectionLength: 0 }
-    }
-    let starts = UnicodeGraphemes.Starts(value)
-    let start = if selectionStart == value.Length { value.Length }
+    selectionLength int32) TextCompositionEvent{
+      if selectionStart < 0 || selectionLength < 0
+        || selectionStart > value.Length - selectionLength
+        || splitsSurrogatePair(value, selectionStart)
+        || splitsSurrogatePair(value, selectionStart + selectionLength) {
+          return TextCompositionEvent{ Text: value, SelectionStart: 0, SelectionLength: 0 }
+        }
+      let starts = UnicodeGraphemes.Starts(value)
+      let start = if selectionStart == value.Length { value.Length }
       else { compositionBoundaryBefore(starts, selectionStart) }
-    let end = if selectionLength == 0 { start }
+      let end = if selectionLength == 0 { start }
       else { compositionBoundaryAfter(starts, value.Length, selectionStart + selectionLength) }
-    return TextCompositionEvent{ Text: value, SelectionStart: start,
-      SelectionLength: end - start }
-  }
+      return TextCompositionEvent{ Text: value, SelectionStart: start,
+        SelectionLength: end - start }
+    }
 
   private func compositionBoundaryBefore(starts []int32, offset int32) int32 {
     var result int32 = 0
@@ -460,15 +455,13 @@ internal class TextInput {
     return length
   }
 
-  private func splitsSurrogatePair(value string, offset int32) bool {
-    return offset > 0 && offset < value.Length
-      && Char.IsHighSurrogate(value[offset - 1]) && Char.IsLowSurrogate(value[offset])
-  }
+  private func splitsSurrogatePair(value string, offset int32) bool -> offset > 0 && offset < value.Length
+    && Char.IsHighSurrogate(value[offset - 1]) && Char.IsLowSurrogate(value[offset])
 
   private func syncNativeTextInput() {
     let desired = if let current = focused {
       canReceiveInput(current) && (current.Kind == NodeKind.Entry || current.Kind == NodeKind.Editor
-        || TextInputCallbacks.HasNodeCallbacks(current))
+          || TextInputCallbacks.HasNodeCallbacks(current))
     } else { false }
     if desired == nativeTextInputActive {
       return
@@ -527,7 +520,7 @@ internal class TextInput {
       n.AnchorAffinity = priorAnchorAffinity
     } else {
       n.AnchorAffinity = after.Anchor <= after.Caret
-        ? TextAffinity.Downstream : TextAffinity.Upstream
+      ? TextAffinity.Downstream : TextAffinity.Upstream
     }
     n.BlinkT = 0.0
     if after.Text != before.Text {
@@ -543,8 +536,7 @@ internal class TextInput {
   private func commitVisualMove(n Node, delta int32, extend bool) {
     let metrics = TextMetrics()
     let hit = n.Caret != n.Anchor && !extend
-      ? metrics.Collapse(n, delta)
-      : metrics.MoveCaret(n, delta)
+    ? metrics.Collapse(n, delta) : metrics.MoveCaret(n, delta)
     n.Caret = hit.Index
     n.CaretAffinity = TextAffinity(hit.Affinity)
     if !extend {
@@ -589,13 +581,9 @@ internal class TextInput {
     }
   }
 
-  private func editState(n Node) EditState {
-    return EditState{ Text: n.Buffer, Caret: n.Caret, Anchor: n.Anchor }
-  }
+  private func editState(n Node) EditState -> EditState { Text: n.Buffer, Caret: n.Caret, Anchor: n.Anchor }
 
-  private func clipboardGet() string {
-    return if let native = host { native.GetClipboardText() } else { clipFallback }
-  }
+  private func clipboardGet() string -> if let native = host { native.GetClipboardText() } else { clipFallback }
 
   private func clipboardSet(value string) {
     if let native = host {
@@ -617,7 +605,7 @@ internal class TextInput {
       let metrics = TextMetrics()
       let shaped = metrics.BufferShape(n)
       let caretX = metrics.EntryOriginX(n, shaped)
-        + metrics.CaretX(n, n.Caret)
+      +metrics.CaretX(n, n.Caret)
       let topY = TextLayouts.ContentTop(n)
       let bottomY = topY + TextLayouts.ContentHeight(n)
       let p0 = TransformGeometry.NodeToWindow(n, caretX, topY)

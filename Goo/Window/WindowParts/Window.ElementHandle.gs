@@ -27,9 +27,9 @@ public partial class Window {
       nativeHeight = native.FramebufferHeight
     }
     let scaleX = logicalWidth > 0 && nativeWidth > 0
-      ? float64(nativeWidth) / float64(logicalWidth) : 0.0
+    ? float64(nativeWidth) / float64(logicalWidth) : 0.0
     let scaleY = logicalHeight > 0 && nativeHeight > 0
-      ? float64(nativeHeight) / float64(logicalHeight) : 0.0
+    ? float64(nativeHeight) / float64(logicalHeight) : 0.0
     return WindowMetrics{
       LogicalWidth: logicalWidth,
       LogicalHeight: logicalHeight,
@@ -63,8 +63,8 @@ public partial class Window {
     if !IsOpen || n.Retired || input.FocusedNode() != n
       || n.Kind == NodeKind.Entry || n.Kind == NodeKind.Editor
       || !TextInputCallbacks.HasNodeCallbacks(n) {
-      return false
-    }
+        return false
+      }
     guard let native = host else { return false }
     let left = Math.Floor(area.X)
     let top = Math.Floor(area.Y)
@@ -85,9 +85,9 @@ public partial class Window {
       TextEditorLayouts.SyncScroll(n)
     }
     let targetX = n.OverflowX == Overflow.Scroll || n.Kind == NodeKind.Editor
-      ? clampOffset(float32(x), maxScrollX(n)) : 0.0F
+    ? clampOffset(float32(x), maxScrollX(n)) : 0.0F
     let targetY = n.OverflowY == Overflow.Scroll || n.Kind == NodeKind.Editor
-      ? clampOffset(float32(y), maxScrollY(n)) : 0.0F
+    ? clampOffset(float32(y), maxScrollY(n)) : 0.0F
     setElementScrollTarget(n, targetX, targetY)
     accessibility?.MarkDirty()
     return true
@@ -101,10 +101,10 @@ public partial class Window {
     while parent != nil {
       let ancestor = parent!!
       if ancestor.Kind == NodeKind.Editor || ancestor.OverflowX == Overflow.Scroll
-        || ancestor.OverflowY == Overflow.Scroll {
-        scrollSubjectIntoAncestor(subject, ancestor)
-        subject = ancestor
-      }
+        || ancestor.OverflowY == Overflow.Scroll{
+          scrollSubjectIntoAncestor(subject, ancestor)
+          subject = ancestor
+        }
       parent = ancestor.Parent
     }
     accessibility?.MarkDirty()

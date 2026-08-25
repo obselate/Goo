@@ -105,36 +105,36 @@ internal class LavaCell : Cell {
     y float64,
     width float64,
     height float64,
-    root ElementRect) Vector4 {
-    let rootWidth = root.Width > 1.0 ? root.Width : 1.0
-    let rootHeight = root.Height > 1.0 ? root.Height : 1.0
-    return Vector4(
-      float32(x / rootWidth),
-      float32(y / rootHeight),
-      float32(width / rootWidth),
-      float32(height / rootHeight))
-  }
+    root ElementRect) Vector4{
+      let rootWidth = root.Width > 1.0 ? root.Width : 1.0
+      let rootHeight = root.Height > 1.0 ? root.Height : 1.0
+      return Vector4(
+        float32(x / rootWidth),
+        float32(y / rootHeight),
+        float32(width / rootWidth),
+        float32(height / rootHeight))
+    }
 
   private func RoundedRectDistance(
     point Point,
     rect Vector4,
     width float64,
-    height float64) float64 {
-    if rect.Z <= 0.0F || rect.W <= 0.0F { return 1000000.0 }
-    let rectWidth = float64(rect.Z) * width
-    let rectHeight = float64(rect.W) * height
-    let halfWidth = rectWidth * 0.5
-    let halfHeight = rectHeight * 0.5
-    let radius = Math.Min(rectWidth, rectHeight) * 0.5
-    let centerX = float64(rect.X) * width + halfWidth
-    let centerY = float64(rect.Y) * height + halfHeight
-    let qx = Math.Abs(point.X - centerX) - Math.Max(halfWidth - radius, 0.0)
-    let qy = Math.Abs(point.Y - centerY) - Math.Max(halfHeight - radius, 0.0)
-    let outsideX = Math.Max(qx, 0.0)
-    let outsideY = Math.Max(qy, 0.0)
-    return Math.Sqrt(outsideX * outsideX + outsideY * outsideY)
-      + Math.Min(Math.Max(qx, qy), 0.0) - radius
-  }
+    height float64) float64{
+      if rect.Z <= 0.0F || rect.W <= 0.0F { return 1000000.0 }
+      let rectWidth = float64(rect.Z) * width
+      let rectHeight = float64(rect.W) * height
+      let halfWidth = rectWidth * 0.5
+      let halfHeight = rectHeight * 0.5
+      let radius = Math.Min(rectWidth, rectHeight) * 0.5
+      let centerX = float64(rect.X) * width + halfWidth
+      let centerY = float64(rect.Y) * height + halfHeight
+      let qx = Math.Abs(point.X - centerX) - Math.Max(halfWidth - radius, 0.0)
+      let qy = Math.Abs(point.Y - centerY) - Math.Max(halfHeight - radius, 0.0)
+      let outsideX = Math.Max(qx, 0.0)
+      let outsideY = Math.Max(qy, 0.0)
+      return Math.Sqrt(outsideX * outsideX + outsideY * outsideY)
+      +Math.Min(Math.Max(qx, qy), 0.0) - radius
+    }
 
   private func GlassEdgeGap(
     width float64,
@@ -142,16 +142,16 @@ internal class LavaCell : Cell {
     modeRect Vector4,
     actionRect Vector4,
     sliderRect Vector4,
-    collapsedRect Vector4) float64 {
-    var distance = RoundedRectDistance(OrbPosition, modeRect, width, height)
-    distance = Math.Min(distance,
-      RoundedRectDistance(OrbPosition, actionRect, width, height))
-    distance = Math.Min(distance,
-      RoundedRectDistance(OrbPosition, sliderRect, width, height))
-    distance = Math.Min(distance,
-      RoundedRectDistance(OrbPosition, collapsedRect, width, height))
-    return Math.Max(distance - 36.0, 0.0)
-  }
+    collapsedRect Vector4) float64{
+      var distance = RoundedRectDistance(OrbPosition, modeRect, width, height)
+      distance = Math.Min(distance,
+        RoundedRectDistance(OrbPosition, actionRect, width, height))
+      distance = Math.Min(distance,
+        RoundedRectDistance(OrbPosition, sliderRect, width, height))
+      distance = Math.Min(distance,
+        RoundedRectDistance(OrbPosition, collapsedRect, width, height))
+      return Math.Max(distance - 36.0, 0.0)
+    }
 
   internal func SyncGlassGeometry() {
     if !LavaCell.Root.IsMounted { return }
@@ -360,9 +360,7 @@ internal class LavaCell : Cell {
     }
   }
 
-  internal func RefractionForSmoke() float64 {
-    return Refraction.Value
-  }
+  internal func RefractionForSmoke() float64 -> Refraction.Value
 
   internal func RequireRefractionChanged(previous float64) {
     if Refraction.Value == previous {
@@ -370,70 +368,58 @@ internal class LavaCell : Cell {
     }
   }
 
-  internal func ModeForSmoke() int32 {
-    return Mode.Value
-  }
+  internal func ModeForSmoke() int32 -> Mode.Value
 
-  internal func SeedForSmoke() uint32 {
-    return Seed.Value
-  }
+  internal func SeedForSmoke() uint32 -> Seed.Value
 
-  internal func RotationForSmoke() Point {
-    return Rotation.Value
-  }
+  internal func RotationForSmoke() Point -> Rotation.Value
 
-  internal func OrbForSmoke() Point {
-    return OrbPosition
-  }
+  internal func OrbForSmoke() Point -> OrbPosition
 
   internal func RequireOrbChanged(previous Point) {
     if Math.Abs(OrbPosition.X - previous.X) <= 0.001
-        && Math.Abs(OrbPosition.Y - previous.Y) <= 0.001 {
-      throw InvalidOperationException("Liquid glass orb did not follow the pointer")
-    }
+      && Math.Abs(OrbPosition.Y - previous.Y) <= 0.001 {
+        throw InvalidOperationException("Liquid glass orb did not follow the pointer")
+      }
   }
 
   internal func RequireRotationChanged(previous Point) {
     if Math.Abs(Rotation.Value.X - previous.X) <= 0.001
-        && Math.Abs(Rotation.Value.Y - previous.Y) <= 0.001 {
-      throw InvalidOperationException("Lava field rotation did not update")
-    }
+      && Math.Abs(Rotation.Value.Y - previous.Y) <= 0.001 {
+        throw InvalidOperationException("Lava field rotation did not update")
+      }
   }
 
   internal func RequireRotationAt(expected Point) {
     if Math.Abs(Rotation.Value.X - expected.X) > 0.001
-        || Math.Abs(Rotation.Value.Y - expected.Y) > 0.001 {
-      throw InvalidOperationException("Lava field rotation did not persist")
-    }
+      || Math.Abs(Rotation.Value.Y - expected.Y) > 0.001 {
+        throw InvalidOperationException("Lava field rotation did not persist")
+      }
   }
 
-  private func GlassLabel(key string, content string, size float64 = 10.0) Blob {
-    return Text{
-      Key: key,
-      Content: content,
-      FontFamily: "IBM Plex Mono",
-      FontSize: size,
-      FontWeight: 650,
-      Color: Color.Rgb(242, 245, 255),
-      LetterSpacing: 0.45,
-      TextAlign: TextAlign.Center,
-    }
+  private func GlassLabel(key string, content string, size float64 = 10.0) Blob -> Text {
+    Key: key,
+    Content: content,
+    FontFamily: "IBM Plex Mono",
+    FontSize: size,
+    FontWeight: 650,
+    Color: Color.Rgb(242, 245, 255),
+    LetterSpacing: 0.45,
+    TextAlign: TextAlign.Center,
   }
 
   private func ModeButton(key string, label string, value int32, handle ElementHandle) Blob {
     let selected = Mode.Value == value
     let fill = selected
-      ? LinearGradient(145.0,
-          Color.Rgba(255, 188, 154, 76),
-          Color.Rgba(182, 66, 38, 48))
-      : LinearGradient(145.0, Color.Transparent, Color.Transparent)
+    ? LinearGradient(145.0,
+      Color.Rgba(255, 188, 154, 76),
+      Color.Rgba(182, 66, 38, 48)) : LinearGradient(145.0, Color.Transparent, Color.Transparent)
     let hoverFill = selected
-      ? LinearGradient(145.0,
-          Color.Rgba(255, 208, 180, 104),
-          Color.Rgba(194, 72, 42, 66))
-      : LinearGradient(145.0,
-          Color.Rgba(255, 255, 255, 24),
-          Color.Rgba(255, 255, 255, 5))
+    ? LinearGradient(145.0,
+      Color.Rgba(255, 208, 180, 104),
+      Color.Rgba(194, 72, 42, 66)) : LinearGradient(145.0,
+        Color.Rgba(255, 255, 255, 24),
+        Color.Rgba(255, 255, 255, 5))
     return Button{
       Key: key,
       Width: 92,
@@ -460,80 +446,75 @@ internal class LavaCell : Cell {
     }
   }
 
-  private func ModeGroup() Blob {
-    return Container{
-      Key: "glass-mode-wrap",
-      Width: 292,
-      MaxWidth: Length.Percent(100),
-      Height: 64,
-      FlexShrink: 1,
-      Position: PositionType.Relative,
-      Children: {
-        Container{
-          Key: "glass-mode-group",
-          Position: PositionType.Absolute,
-          Left: 0,
-          Top: 0,
-          Width: Length.Percent(100),
-          Height: 64,
-          Padding: 5,
-          Gap: 5,
-          FlexDirection: FlexDirection.Row,
-          AlignItems: AlignItems.Center,
-          BorderRadius: 32,
-          BackgroundColor: Color.Transparent,
-          Handle: LavaCell.ModeSurface,
-          Children: {
-            ModeButton("glass-mode-calm", "CALM", 0, LavaCell.CalmMode),
-            ModeButton("glass-mode-melt", "MELT", 1, LavaCell.MeltMode),
-            ModeButton("glass-mode-prism", "PRISM", 2, LavaCell.PrismMode),
-          },
+  private func ModeGroup() Blob -> Container {
+    Key: "glass-mode-wrap",
+    Width: 292,
+    MaxWidth: Length.Percent(100),
+    Height: 64,
+    FlexShrink: 1,
+    Position: PositionType.Relative,
+    Children: {
+      Container{
+        Key: "glass-mode-group",
+        Position: PositionType.Absolute,
+        Left: 0,
+        Top: 0,
+        Width: Length.Percent(100),
+        Height: 64,
+        Padding: 5,
+        Gap: 5,
+        FlexDirection: FlexDirection.Row,
+        AlignItems: AlignItems.Center,
+        BorderRadius: 32,
+        BackgroundColor: Color.Transparent,
+        Handle: LavaCell.ModeSurface,
+        Children: {
+          ModeButton("glass-mode-calm", "CALM", 0, LavaCell.CalmMode),
+          ModeButton("glass-mode-melt", "MELT", 1, LavaCell.MeltMode),
+          ModeButton("glass-mode-prism", "PRISM", 2, LavaCell.PrismMode),
         },
       },
-    }
+    },
   }
 
-  private func RerollButton() Blob {
-    return Button{
-      Key: "glass-reroll",
-      Width: 120,
-      Height: 64,
-      FlexShrink: 1,
-      Handle: LavaCell.Reroll,
-      Cursor: Cursor.Pointer,
-      BorderRadius: 32,
-      BackgroundColor: Color.Transparent,
+  private func RerollButton() Blob -> Button {
+    Key: "glass-reroll",
+    Width: 120,
+    Height: 64,
+    FlexShrink: 1,
+    Handle: LavaCell.Reroll,
+    Cursor: Cursor.Pointer,
+    BorderRadius: 32,
+    BackgroundColor: Color.Transparent,
+    BackgroundGradient: LinearGradient(145.0,
+      Color.Rgba(255, 164, 120, 54),
+      Color.Rgba(154, 50, 30, 34)),
+    Hover: Style{
       BackgroundGradient: LinearGradient(145.0,
-        Color.Rgba(255, 164, 120, 54),
-        Color.Rgba(154, 50, 30, 34)),
-      Hover: Style{
-        BackgroundGradient: LinearGradient(145.0,
-          Color.Rgba(255, 190, 148, 94),
-          Color.Rgba(180, 60, 34, 58)),
-      },
-      Active: Style{
-        BackgroundGradient: LinearGradient(145.0,
-          Color.Rgba(172, 66, 44, 104),
-          Color.Rgba(96, 34, 28, 76)),
-      },
-      Focus: Style{
-        BackgroundGradient: LinearGradient(145.0,
-          Color.Rgba(255, 198, 160, 92),
-          Color.Rgba(174, 58, 34, 54)),
-      },
-      TransitionMs: 100,
-      OnClick: func() { RerollField() },
-      Children: { GlassLabel("glass-reroll-label", "REROLL", 11.0) },
-    }
+        Color.Rgba(255, 190, 148, 94),
+        Color.Rgba(180, 60, 34, 58)),
+    },
+    Active: Style{
+      BackgroundGradient: LinearGradient(145.0,
+        Color.Rgba(172, 66, 44, 104),
+        Color.Rgba(96, 34, 28, 76)),
+    },
+    Focus: Style{
+      BackgroundGradient: LinearGradient(145.0,
+        Color.Rgba(255, 198, 160, 92),
+        Color.Rgba(174, 58, 34, 54)),
+    },
+    TransitionMs: 100,
+    OnClick: func() { RerollField() },
+    Children: { GlassLabel("glass-reroll-label", "REROLL", 11.0) },
   }
 
   private func SpectrumToggle() Blob {
     let active = Rainbow.Value
     let fill = active
-      ? LinearGradient(145.0,
-          Color.Rgba(164, 190, 255, 62),
-          Color.Rgba(62, 88, 174, 32))
-      : LinearGradient(145.0, Color.Transparent, Color.Transparent)
+    ? LinearGradient(145.0,
+      Color.Rgba(164, 190, 255, 62),
+      Color.Rgba(62, 88, 174, 32)) : LinearGradient(145.0, Color.Transparent, Color.Transparent)
     return Button{
       Key: "glass-spectrum",
       Width: 150,
@@ -577,8 +558,7 @@ internal class LavaCell : Cell {
           AlignItems: active ? AlignItems.FlexEnd : AlignItems.FlexStart,
           BorderRadius: 12,
           BackgroundColor: active
-            ? Color.Rgba(148, 181, 255, 180)
-            : Color.Rgba(12, 16, 28, 120),
+          ? Color.Rgba(148, 181, 255, 180) : Color.Rgba(12, 16, 28, 120),
           Children: {
             Container{
               Key: "glass-spectrum-thumb",
@@ -593,81 +573,75 @@ internal class LavaCell : Cell {
     }
   }
 
-  private func CollapseButton(key string, handle ElementHandle) Blob {
-    return Button{
-      Key: key,
-      Width: 56,
-      Height: 64,
-      FlexShrink: 1,
-      Handle: handle,
-      Cursor: Cursor.Pointer,
-      BorderRadius: 28,
-      BackgroundColor: Color.Transparent,
-      Hover: Style{ BackgroundColor: Color.Rgba(230, 237, 255, 70) },
-      Active: Style{ BackgroundColor: Color.Rgba(104, 122, 162, 94) },
-      Focus: Style{
-        BackgroundGradient: LinearGradient(145.0,
-          Color.Rgba(218, 230, 255, 58),
-          Color.Rgba(76, 98, 172, 26)),
-      },
-      TransitionMs: 100,
-      OnClick: func() { ToggleRail() },
-      Children: { GlassLabel(key + "-label", Expanded.Value ? "×" : "+", 18) },
-    }
+  private func CollapseButton(key string, handle ElementHandle) Blob -> Button {
+    Key: key,
+    Width: 56,
+    Height: 64,
+    FlexShrink: 1,
+    Handle: handle,
+    Cursor: Cursor.Pointer,
+    BorderRadius: 28,
+    BackgroundColor: Color.Transparent,
+    Hover: Style{ BackgroundColor: Color.Rgba(230, 237, 255, 70) },
+    Active: Style{ BackgroundColor: Color.Rgba(104, 122, 162, 94) },
+    Focus: Style{
+      BackgroundGradient: LinearGradient(145.0,
+        Color.Rgba(218, 230, 255, 58),
+        Color.Rgba(76, 98, 172, 26)),
+    },
+    TransitionMs: 100,
+    OnClick: func() { ToggleRail() },
+    Children: { GlassLabel(key + "-label", Expanded.Value ? "×" : "+", 18) },
   }
 
-  private func ActionGroup() Blob {
-    return Container{
-      Key: "glass-action-wrap",
-      Width: 350,
-      MaxWidth: Length.Percent(100),
-      Height: 64,
-      FlexShrink: 1,
-      Position: PositionType.Relative,
-      Children: {
-        Container{
-          Key: "glass-action-group",
-          Position: PositionType.Absolute,
-          Left: 0,
-          Top: 0,
-          Width: Length.Percent(100),
-          Height: 64,
-          Gap: 10,
-          FlexDirection: FlexDirection.Row,
-          BorderRadius: 32,
-          BackgroundColor: Color.Transparent,
-          Handle: LavaCell.ActionSurface,
-          Children: {
-            RerollButton(),
-            SpectrumToggle(),
-            CollapseButton("glass-collapse", LavaCell.Toggle),
-          },
+  private func ActionGroup() Blob -> Container {
+    Key: "glass-action-wrap",
+    Width: 350,
+    MaxWidth: Length.Percent(100),
+    Height: 64,
+    FlexShrink: 1,
+    Position: PositionType.Relative,
+    Children: {
+      Container{
+        Key: "glass-action-group",
+        Position: PositionType.Absolute,
+        Left: 0,
+        Top: 0,
+        Width: Length.Percent(100),
+        Height: 64,
+        Gap: 10,
+        FlexDirection: FlexDirection.Row,
+        BorderRadius: 32,
+        BackgroundColor: Color.Transparent,
+        Handle: LavaCell.ActionSurface,
+        Children: {
+          RerollButton(),
+          SpectrumToggle(),
+          CollapseButton("glass-collapse", LavaCell.Toggle),
         },
       },
-    }
+    },
   }
 
-  private func CollapsedControl() Blob {
-    return Container{
-      Key: "glass-collapsed-wrap",
-      Width: 56,
-      Height: 64,
-      Position: PositionType.Relative,
-      Children: {
-        Container{
-          Key: "glass-collapsed-surface",
-          Position: PositionType.Absolute,
-          Left: 0,
-          Top: 0,
-          Width: 56,
-          Height: 64,
-          BorderRadius: 28,
-          BackgroundColor: Color.Transparent,
-          Handle: LavaCell.CollapsedSurface,
-          Children: { CollapseButton("glass-expand", LavaCell.CollapsedToggle) },
-        },
+  private func CollapsedControl() Blob -> Container {
+    Key: "glass-collapsed-wrap",
+    Width: 56,
+    Height: 64,
+    Position: PositionType.Relative,
+    Children: {
+      Container{
+        Key: "glass-collapsed-surface",
+        Position: PositionType.Absolute,
+        Left: 0,
+        Top: 0,
+        Width: 56,
+        Height: 64,
+        BorderRadius: 28,
+        BackgroundColor: Color.Transparent,
+        Handle: LavaCell.CollapsedSurface,
+        Children: { CollapseButton("glass-expand", LavaCell.CollapsedToggle) },
       },
-    }
+    },
   }
 
   private func RefractionSlider() Blob {
@@ -779,50 +753,46 @@ internal class LavaCell : Cell {
     }
   }
 
-  private func GlassField() Blob {
-    return Container{
-      Key: "glass-field",
-      Position: PositionType.Absolute,
-      Left: 0,
-      Top: 0,
-      Width: Length.Percent(100),
-      Height: Length.Percent(100),
-      HitTestSelf: false,
-      BackgroundColor: Color.Transparent,
-      ShaderEffect: Glass,
-    }
+  private func GlassField() Blob -> Container {
+    Key: "glass-field",
+    Position: PositionType.Absolute,
+    Left: 0,
+    Top: 0,
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
+    HitTestSelf: false,
+    BackgroundColor: Color.Transparent,
+    ShaderEffect: Glass,
   }
 
-  override func Build() Blob {
-    return Container{
-      Key: "lava-root",
-      Width: Length.Percent(100),
-      Height: Length.Percent(100),
-      MinWidth: 0,
-      MinHeight: 0,
-      Position: PositionType.Relative,
-      Overflow: Overflow.Hidden,
-      Handle: LavaCell.Root,
-      BackgroundColor: Color.Rgb(25, 24, 23),
-      OnPointerMove: (event PointerEvent) -> { MoveOrb(event) },
-      Children: {
-        LavaShowcaseFactory.Surface(
-          Flow.Value,
-          Form.Value,
-          Blend.Value,
-          Light.Value,
-          Hue.Value,
-          Rainbow.Value,
-          Rotation.Value,
-          Seed.Value,
-          LavaCell.Surface,
-          (event PointerEvent) -> { BeginField(event) },
-          (event PointerEvent) -> { MoveField(event) },
-          (event PointerEvent) -> { EndField(event) },
-          (event PointerEvent) -> { CancelField(event) }),
-        GlassField(),
-        Rail(),
-      },
-    }
+  override func Build() Blob -> Container {
+    Key: "lava-root",
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
+    MinWidth: 0,
+    MinHeight: 0,
+    Position: PositionType.Relative,
+    Overflow: Overflow.Hidden,
+    Handle: LavaCell.Root,
+    BackgroundColor: Color.Rgb(25, 24, 23),
+    OnPointerMove: (event PointerEvent) -> { MoveOrb(event) },
+    Children: {
+      LavaShowcaseFactory.Surface(
+        Flow.Value,
+        Form.Value,
+        Blend.Value,
+        Light.Value,
+        Hue.Value,
+        Rainbow.Value,
+        Rotation.Value,
+        Seed.Value,
+        LavaCell.Surface,
+        (event PointerEvent) -> { BeginField(event) },
+        (event PointerEvent) -> { MoveField(event) },
+        (event PointerEvent) -> { EndField(event) },
+        (event PointerEvent) -> { CancelField(event) }),
+      GlassField(),
+      Rail(),
+    },
   }
 }

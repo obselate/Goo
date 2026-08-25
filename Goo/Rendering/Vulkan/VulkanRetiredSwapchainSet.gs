@@ -13,7 +13,7 @@ internal class VulkanRetiredSwapchainSet {
     generations = [capacity]VulkanSwapchainGeneration?
   }
 
-  internal prop Count int32 {
+  internal prop Count int32{
     get -> count
   }
 
@@ -27,16 +27,16 @@ internal class VulkanRetiredSwapchainSet {
 
   internal func Enqueue(generation VulkanSwapchainGeneration,
     retirement VulkanPresentationRetirement) {
-    if generation == nil {
-      throw ArgumentNullException("generation")
+      if generation == nil {
+        throw ArgumentNullException("generation")
+      }
+      if count >= generations.Length {
+        throw OverflowException("Vulkan retired swapchain capacity exceeded")
+      }
+      retirement.QueueRetiredGeneration(generation.Generation)
+      generations[count] = generation
+      count = count + 1
     }
-    if count >= generations.Length {
-      throw OverflowException("Vulkan retired swapchain capacity exceeded")
-    }
-    retirement.QueueRetiredGeneration(generation.Generation)
-    generations[count] = generation
-    count = count + 1
-  }
 
   internal func CollectReady(retirement VulkanPresentationRetirement) {
     var generationId uint64 = 0uL
@@ -51,21 +51,21 @@ internal class VulkanRetiredSwapchainSet {
   }
 
   internal func TryWaitAndDisposeNext(retirement VulkanPresentationRetirement,
-    out result VkResult?) bool {
-    result = nil
-    if count == 0 {
-      return false
+    out result VkResult?) bool{
+      result = nil
+      if count == 0 {
+        return false
+      }
+      let generation = Generation(0)
+      let generationId = generation.Generation
+      try {
+        result = generation.WaitForPresentCompletion(retirement)
+      } catch (cleanup Exception) { }
+      try { generation.Dispose() } catch (cleanup Exception) { }
+      retirement.RetireGenerationNow(generationId)
+      RemoveAt(0)
+      return true
     }
-    let generation = Generation(0)
-    let generationId = generation.Generation
-    try {
-      result = generation.WaitForPresentCompletion(retirement)
-    } catch (cleanup Exception) { }
-    try { generation.Dispose() } catch (cleanup Exception) { }
-    retirement.RetireGenerationNow(generationId)
-    RemoveAt(0)
-    return true
-  }
 
   internal func DisposeAfterDeviceLoss() {
     let staleCount = count

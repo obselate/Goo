@@ -11,27 +11,27 @@ public data struct TextShadow {
   private var color Color
 
   /// Gets the horizontal offset in pixels.
-  public prop OffsetX Length {
+  public prop OffsetX Length{
     get { return normalizedDefault(offsetX) }
-    init { offsetX = validateShadowGeometry("TextShadow", value, "OffsetX") }
+    init{ offsetX = validateShadowGeometry("TextShadow", value, "OffsetX") }
   }
 
   /// Gets the vertical offset in pixels.
-  public prop OffsetY Length {
+  public prop OffsetY Length{
     get { return normalizedDefault(offsetY) }
-    init { offsetY = validateShadowGeometry("TextShadow", value, "OffsetY") }
+    init{ offsetY = validateShadowGeometry("TextShadow", value, "OffsetY") }
   }
 
   /// Gets the non-negative blur radius in pixels.
-  public prop Blur Length {
+  public prop Blur Length{
     get { return normalizedDefault(blur) }
-    init { blur = normalizeShadowBlur("TextShadow", value) }
+    init{ blur = normalizeShadowBlur("TextShadow", value) }
   }
 
   /// Gets the shadow color.
-  public prop Color Color {
+  public prop Color Color{
     get { return color }
-    init { color = value }
+    init{ color = value }
   }
 }
 
@@ -95,18 +95,14 @@ internal func singleTextShadow(value TextShadow) BoxShadowStack {
   return BoxShadowStack(items)
 }
 
-internal func normalizeTextShadow(value TextShadow) TextShadow {
-  return TextShadow{
-    OffsetX: value.OffsetX,
-    OffsetY: value.OffsetY,
-    Blur: value.Blur,
-    Color: value.Color,
-  }
+internal func normalizeTextShadow(value TextShadow) TextShadow -> TextShadow {
+  OffsetX: value.OffsetX,
+  OffsetY: value.OffsetY,
+  Blur: value.Blur,
+  Color: value.Color,
 }
 
-internal func textShadowCount(value BoxShadowStack?) int32 {
-  return boxShadowCount(value)
-}
+internal func textShadowCount(value BoxShadowStack?) int32 -> boxShadowCount(value)
 
 internal func textShadowAt(value BoxShadowStack?, index int32) TextShadow {
   let shadow = boxShadowAt(value, index)
@@ -118,19 +114,13 @@ internal func textShadowAt(value BoxShadowStack?, index int32) TextShadow {
   }
 }
 
-internal func sameTextShadows(left BoxShadowStack?, right BoxShadowStack?) bool {
-  return sameBoxShadows(left, right)
+internal func sameTextShadows(left BoxShadowStack?, right BoxShadowStack?) bool -> sameBoxShadows(left, right)
+
+private func textShadowPayload(value TextShadow) BoxShadow -> BoxShadow {
+  OffsetX: value.OffsetX,
+  OffsetY: value.OffsetY,
+  Blur: value.Blur,
+  Color: value.Color,
 }
 
-private func textShadowPayload(value TextShadow) BoxShadow {
-  return BoxShadow{
-    OffsetX: value.OffsetX,
-    OffsetY: value.OffsetY,
-    Blur: value.Blur,
-    Color: value.Color,
-  }
-}
-
-private func transparentTextShadow(value TextShadow) bool {
-  return normalizeTextShadow(value).Color.A == 0.0F
-}
+private func transparentTextShadow(value TextShadow) bool -> normalizeTextShadow(value).Color.A == 0.0F

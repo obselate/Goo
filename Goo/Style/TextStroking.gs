@@ -29,8 +29,8 @@ internal class TextStroking {
       if let value = Get(n) {
         if value.Width.Unit == LengthUnit.Px && value.Width.Value > 0.0F
           && value.Color.A > 0.0F {
-          return value
-        }
+            return value
+          }
       }
       return nil
     }

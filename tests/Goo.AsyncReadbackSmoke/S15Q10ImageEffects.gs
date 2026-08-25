@@ -3,7 +3,6 @@ package GooAsyncReadbackSmoke
 import System
 import Goo
 
-
 data struct S15Q10ImageEffectsCardInput {
   internal var Seed uint64
   internal var Index int32
@@ -20,7 +19,6 @@ data struct S15Q10ImageEffectsCardInput {
   internal var Blend BlendMode
 }
 
-
 class S15Q10ImageEffectsProvider : ImageSourceProvider {
   private var source ImageSource
   private var version uint64
@@ -32,15 +30,13 @@ class S15Q10ImageEffectsProvider : ImageSourceProvider {
     disposed = false
   }
 
-  public prop ContentVersion uint64 { get { return version } }
+  public prop ContentVersion uint64{ get { return version } }
   public event ContentChanged Action
 
-  public func Acquire() ImageSourceLease {
-    return source.Acquire()
-  }
+  public func Acquire() ImageSourceLease -> source.Acquire()
 
-  internal prop Width int32 { get { return source.Width } }
-  internal prop Height int32 { get { return source.Height } }
+  internal prop Width int32{ get { return source.Width } }
+  internal prop Height int32{ get { return source.Height } }
 
   internal func Replace(next ImageSource) {
     if disposed {
@@ -70,14 +66,12 @@ class S15Q10ImageEffectsProvider : ImageSourceProvider {
   }
 }
 
-
 func S15Q10ImageEffectsPhase(seed uint64, index int32, revision int32, modulus int32) int32 {
   let value = (seed
-    + uint64(index) * 2654435761uL
-    + uint64(revision) * 2246822519uL) % uint64(modulus)
+    +uint64(index) * 2654435761uL
+    +uint64(revision) * 2246822519uL) % uint64(modulus)
   return int32(value)
 }
-
 
 func S15Q10ImageEffectsPixels(seed uint64, slot int32, revision int32) []uint8 {
   let pixels = [256 * 256 * 4]uint8
@@ -86,10 +80,10 @@ func S15Q10ImageEffectsPixels(seed uint64, slot int32, revision int32) []uint8 {
     let x = pixel % 256
     let y = pixel / 256
     let phase = seed
-      + uint64(slot) * 2654435761uL
-      + uint64(revision) * 2246822519uL
-      + uint64(x) * 3266489917uL
-      + uint64(y) * 668265263uL
+    +uint64(slot) * 2654435761uL
+    +uint64(revision) * 2246822519uL
+    +uint64(x) * 3266489917uL
+    +uint64(y) * 668265263uL
     let offset = pixel * 4
     pixels[offset] = uint8((phase + 31uL) % 224uL + 16uL)
     pixels[offset + 1] = uint8((phase + uint64(x * 13 + y * 7) + 67uL) % 224uL + 16uL)
@@ -100,34 +94,16 @@ func S15Q10ImageEffectsPixels(seed uint64, slot int32, revision int32) []uint8 {
   return pixels
 }
 
+func S15Q10ImageEffectsOpacity(seed uint64, index int32, revision int32) float64 -> 0.68 + float64(S15Q10ImageEffectsPhase(seed, index, revision, 13)) * 0.02
 
-func S15Q10ImageEffectsOpacity(seed uint64, index int32, revision int32) float64 {
-  return 0.68 + float64(S15Q10ImageEffectsPhase(seed, index, revision, 13)) * 0.02
-}
+func S15Q10ImageEffectsRadius(seed uint64, index int32, revision int32) float64 -> 5.0 + float64(S15Q10ImageEffectsPhase(seed, index, revision, 8))
 
+func S15Q10ImageEffectsBorderWidth(seed uint64, index int32, revision int32) float64 -> 1.0 + float64(S15Q10ImageEffectsPhase(seed, index, revision, 3))
 
-func S15Q10ImageEffectsRadius(seed uint64, index int32, revision int32) float64 {
-  return 5.0 + float64(S15Q10ImageEffectsPhase(seed, index, revision, 8))
-}
+func S15Q10ImageEffectsShadowBlur(seed uint64, index int32, revision int32) float64 -> 3.0 + float64(S15Q10ImageEffectsPhase(seed, index, revision, 7))
 
-
-func S15Q10ImageEffectsBorderWidth(seed uint64, index int32, revision int32) float64 {
-  return 1.0 + float64(S15Q10ImageEffectsPhase(seed, index, revision, 3))
-}
-
-
-func S15Q10ImageEffectsShadowBlur(seed uint64, index int32, revision int32) float64 {
-  return 3.0 + float64(S15Q10ImageEffectsPhase(seed, index, revision, 7))
-}
-
-
-func S15Q10ImageEffectsShadowSpread(seed uint64, index int32, revision int32) float64 {
-  return float64(S15Q10ImageEffectsPhase(seed, index, revision, 3))
-}
-func S15Q10ImageEffectsRoundedClip(seed uint64, index int32) bool {
-  return S15Q10ImageEffectsPhase(seed, index, 0, 256) < 8
-}
-
+func S15Q10ImageEffectsShadowSpread(seed uint64, index int32, revision int32) float64 -> float64(S15Q10ImageEffectsPhase(seed, index, revision, 3))
+func S15Q10ImageEffectsRoundedClip(seed uint64, index int32) bool -> S15Q10ImageEffectsPhase(seed, index, 0, 256) < 8
 
 func S15Q10ImageEffectsBlend(seed uint64, index int32, revision int32) BlendMode {
   let value = S15Q10ImageEffectsPhase(seed, index, 0, 256)
@@ -142,7 +118,6 @@ func S15Q10ImageEffectsBlend(seed uint64, index int32, revision int32) BlendMode
   }
 }
 
-
 func S15Q10ImageEffectsColor(seed uint64, index int32, revision int32, channel int32) Color {
   let value = S15Q10ImageEffectsPhase(
     seed + uint64(channel) * 131uL, index, revision, 176)
@@ -152,24 +127,20 @@ func S15Q10ImageEffectsColor(seed uint64, index int32, revision int32, channel i
   return Color.Rgb(red, green, blue)
 }
 
-
-func S15Q10ImageEffectsGradient(seed uint64, index int32, revision int32) LinearGradient {
-  return LinearGradient(90.0, []GradientStop{
-    GradientStop{
-      Offset: 0.0,
-      Color: S15Q10ImageEffectsColor(seed, index, revision, 0),
-    },
-    GradientStop{
-      Offset: 0.5,
-      Color: S15Q10ImageEffectsColor(seed, index, revision, 1),
-    },
-    GradientStop{
-      Offset: 1.0,
-      Color: S15Q10ImageEffectsColor(seed, index, revision, 2),
-    },
-  })
-}
-
+func S15Q10ImageEffectsGradient(seed uint64, index int32, revision int32) LinearGradient -> LinearGradient(90.0, []GradientStop {
+  GradientStop{
+    Offset: 0.0,
+    Color: S15Q10ImageEffectsColor(seed, index, revision, 0),
+  },
+  GradientStop{
+    Offset: 0.5,
+    Color: S15Q10ImageEffectsColor(seed, index, revision, 1),
+  },
+  GradientStop{
+    Offset: 1.0,
+    Color: S15Q10ImageEffectsColor(seed, index, revision, 2),
+  },
+})
 
 open class S15Q10ImageEffectsCard : Cell[S15Q10ImageEffectsCardInput] {
   protected override func Build(input S15Q10ImageEffectsCardInput) Blob {
@@ -228,7 +199,6 @@ open class S15Q10ImageEffectsCard : Cell[S15Q10ImageEffectsCardInput] {
   }
 }
 
-
 class S15Q10ImageEffectsRoot : Cell {
   shared {
     const S15Q10ImageEffectsSeed uint64 = 668265263uL
@@ -247,14 +217,14 @@ class S15Q10ImageEffectsRoot : Cell {
   private var replacementSlot int32
   private var advanceOrdinal int32
 
-  internal prop LogicalCount int64 { get { return int64(S15Q10ImageEffectsCards) } }
-  internal prop LogicalEdges int32 { get { return 0 } }
-  internal prop VisibleCount int32 { get { return S15Q10ImageEffectsCards } }
-  internal prop MountedCount int32 { get { return S15Q10ImageEffectsCards } }
-  internal prop MountedBound int32 { get { return S15Q10ImageEffectsCards } }
-  internal prop Width int32 { get { return S15Q10ImageEffectsWidth } }
-  internal prop Height int32 { get { return S15Q10ImageEffectsHeight } }
-  internal prop MutationCount int32 { get { return S15Q10ImageEffectsMutations } }
+  internal prop LogicalCount int64{ get { return int64(S15Q10ImageEffectsCards) } }
+  internal prop LogicalEdges int32{ get { return 0 } }
+  internal prop VisibleCount int32{ get { return S15Q10ImageEffectsCards } }
+  internal prop MountedCount int32{ get { return S15Q10ImageEffectsCards } }
+  internal prop MountedBound int32{ get { return S15Q10ImageEffectsCards } }
+  internal prop Width int32{ get { return S15Q10ImageEffectsWidth } }
+  internal prop Height int32{ get { return S15Q10ImageEffectsHeight } }
+  internal prop MutationCount int32{ get { return S15Q10ImageEffectsMutations } }
 
   init() {
     seed = S15Q10ImageEffectsSeed
@@ -278,7 +248,7 @@ class S15Q10ImageEffectsRoot : Cell {
     var mutation int32 = 0
     while mutation < S15Q10ImageEffectsMutations {
       mutationIndices[mutation] =
-        (initialBase + mutation) % S15Q10ImageEffectsCards
+      (initialBase + mutation) % S15Q10ImageEffectsCards
       mutation = mutation + 1
     }
     replacementSlot = int32(seed % uint64(S15Q10ImageEffectsProviders))
@@ -306,7 +276,7 @@ class S15Q10ImageEffectsRoot : Cell {
     providers[replacementSlot].Replace(ImageSource(
       256, 256, S15Q10ImageEffectsPixels(seed, replacementSlot, advanceOrdinal)))
     let mutationBase = int32((seed
-      + uint64(advanceOrdinal) * uint64(S15Q10ImageEffectsMutations))
+      +uint64(advanceOrdinal) * uint64(S15Q10ImageEffectsMutations))
       % uint64(S15Q10ImageEffectsCards))
     var mutation int32 = 0
     while mutation < S15Q10ImageEffectsMutations {
@@ -323,9 +293,9 @@ class S15Q10ImageEffectsRoot : Cell {
       || providers.Length != S15Q10ImageEffectsProviders
       || cardKeys.Length != S15Q10ImageEffectsCards
       || cardRevisions.Length != S15Q10ImageEffectsCards
-      || mutationIndices.Length != S15Q10ImageEffectsMutations {
-      return false
-    }
+      || mutationIndices.Length != S15Q10ImageEffectsMutations{
+        return false
+      }
     if LogicalCount != int64(S15Q10ImageEffectsCards)
       || LogicalEdges != 0
       || VisibleCount != S15Q10ImageEffectsCards
@@ -333,9 +303,9 @@ class S15Q10ImageEffectsRoot : Cell {
       || MountedBound != S15Q10ImageEffectsCards
       || Width != S15Q10ImageEffectsWidth
       || Height != S15Q10ImageEffectsHeight
-      || MutationCount != S15Q10ImageEffectsMutations {
-      return false
-    }
+      || MutationCount != S15Q10ImageEffectsMutations{
+        return false
+      }
     if replacementSlot < 0 || replacementSlot >= S15Q10ImageEffectsProviders {
       return false
     }
@@ -345,8 +315,8 @@ class S15Q10ImageEffectsRoot : Cell {
         || providers[slot].Width != 256
         || providers[slot].Height != 256
         || providers[slot].ContentVersion == 0uL {
-        return false
-      }
+          return false
+        }
       slot = slot + 1
     }
     var nonNormalCount int32 = 0
@@ -356,8 +326,8 @@ class S15Q10ImageEffectsRoot : Cell {
     while index < S15Q10ImageEffectsCards {
       if cardKeys[index] != "q10-image-effects-card-" + index.ToString()
         || cardRevisions[index] < 0 {
-        return false
-      }
+          return false
+        }
       let opacity = S15Q10ImageEffectsOpacity(seed, index, cardRevisions[index])
       let radius = S15Q10ImageEffectsRadius(seed, index, cardRevisions[index])
       let borderWidth = S15Q10ImageEffectsBorderWidth(
@@ -376,8 +346,8 @@ class S15Q10ImageEffectsRoot : Cell {
         || shadowBlur < 0.0 || shadowBlur > 16.0
         || Double.IsNaN(shadowSpread) || Double.IsInfinity(shadowSpread)
         || shadowSpread < 0.0 || shadowSpread > 4.0 {
-        return false
-      }
+          return false
+        }
       let blend = S15Q10ImageEffectsBlend(seed, index, cardRevisions[index])
       switch blend {
         case BlendMode.Normal { }
@@ -402,16 +372,16 @@ class S15Q10ImageEffectsRoot : Cell {
       index = index + 1
     }
     if roundedClipCount != S15Q10ImageEffectsMutations
-      || nonNormalCount != S15Q10ImageEffectsMutations {
-      return false
-    }
+      || nonNormalCount != S15Q10ImageEffectsMutations{
+        return false
+      }
     var mutation int32 = 0
     while mutation < S15Q10ImageEffectsMutations {
       let index = mutationIndices[mutation]
       if index < 0 || index >= S15Q10ImageEffectsCards
-        || cardRevisions[index] != advanceOrdinal {
-        return false
-      }
+        || cardRevisions[index] != advanceOrdinal{
+          return false
+        }
       var prior int32 = 0
       while prior < mutation {
         if mutationIndices[prior] == index {

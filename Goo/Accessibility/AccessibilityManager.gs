@@ -35,7 +35,7 @@ internal class AccessibilityManager {
 
   internal prop Adapter AccessibilityAdapter? { get { return adapter } }
   internal prop LastError Exception? { get; private set; }
-  internal prop HasDemand bool { get { return semanticDirty || deliveryPending } }
+  internal prop HasDemand bool{ get { return semanticDirty || deliveryPending } }
 
   internal func SetAdapter(value AccessibilityAdapter?) {
     if adapter == value {
@@ -135,8 +135,8 @@ internal class AccessibilityManager {
           nil, nil, nil, nil, nil, nil, AccessibilityChecked.Unspecified, nil, nil, false,
           nil, nil, nil, nil, nil, AccessibilityOrientation.Unspecified, nil, nil, nil,
           nil, AccessibilityLive.Off, nil, false, ElementRect{}, 0) {
-          rebuildingChanged = true
-        }
+            rebuildingChanged = true
+          }
         if syntheticRoot.SetChildren(top) { rebuildingChanged = true }
         rootChanged = tree.SetRoot(syntheticRoot)
       }
@@ -188,60 +188,60 @@ internal class AccessibilityManager {
 
   private func appendNode(n Node, target List[AccessibilityNode], inheritedHidden bool,
     inheritedDisabled bool, suppressAutoText bool) {
-    let declaration = AccessibilityMetadata.Value(n)
-    let nowHidden = computeHidden(n, declaration, inheritedHidden)
-    if nowHidden {
-      return
-    }
-    if declaredRoleIsNone(declaration) {
+      let declaration = AccessibilityMetadata.Value(n)
+      let nowHidden = computeHidden(n, declaration, inheritedHidden)
+      if nowHidden {
+        return
+      }
+      if declaredRoleIsNone(declaration) {
+        let disabled = inheritedDisabled || n.Disabled
+        for i in 0 ... n.Children.Count {
+          appendNode(n.Children[i], target, false, disabled, suppressAutoText)
+        }
+        return
+      }
+      if suppressAutoText && n.Kind == NodeKind.Text && declaration == nil {
+        return
+      }
+      let role = resolvedRole(n, declaration)
+      if role == AccessibilityRole.Auto {
+        let disabled = inheritedDisabled || n.Disabled
+        for i in 0 ... n.Children.Count {
+          appendNode(n.Children[i], target, false, disabled, suppressAutoText)
+        }
+        return
+      }
       let disabled = inheritedDisabled || n.Disabled
-      for i in 0 ... n.Children.Count {
-        appendNode(n.Children[i], target, false, disabled, suppressAutoText)
+      let hasExplicitName = declaration != nil && declaration!!.Name != ""
+      let childValues = rentChildren()
+      try {
+        let suppressChildText = role == AccessibilityRole.Button && !hasExplicitName
+        for i in 0 ... n.Children.Count {
+          appendNode(n.Children[i], childValues, false, disabled, suppressChildText)
+        }
+        let view = stateFor(n)
+        let valueRange = declaration?.Range
+        let textState = textStateFor(n)
+        if view.Apply(role, declaration?.CustomRole ?? "", resolvedName(n, declaration, role),
+          declaration?.Description ?? "", resolvedValue(n, declaration), valueRange?.Text ?? "",
+          valueRange?.Now, valueRange?.Minimum, valueRange?.Maximum, textState.Document, textState.Start,
+          textState.Length, textState.Caret, declaration?.Checked ?? AccessibilityChecked.Unspecified,
+          declaration?.Selected, declaration?.Expanded, disabled, resolvedReadOnly(n, declaration),
+          declaration?.Required, declaration?.Invalid, declaration?.Busy, declaration?.Level,
+          declaration?.Orientation ?? AccessibilityOrientation.Unspecified, declaration?.Modal,
+          resolvedMultiline(n, declaration), declaration?.MultiSelectable, declaration?.HasPopup,
+          declaration?.Live ?? AccessibilityLive.Off, declaration?.Atomic, n.Focused,
+          ElementHandles.BorderBox(n), resolvedActionMask(n, role, disabled, declaration)) {
+            rebuildingChanged = true
+          }
+        if view.SetChildren(childValues) { rebuildingChanged = true }
+        nodes[view.Id.Value] = n
+        semanticNodes.Add(n)
+        target.Add(view)
+      } finally {
+        returnChildren()
       }
-      return
     }
-    if suppressAutoText && n.Kind == NodeKind.Text && declaration == nil {
-      return
-    }
-    let role = resolvedRole(n, declaration)
-    if role == AccessibilityRole.Auto {
-      let disabled = inheritedDisabled || n.Disabled
-      for i in 0 ... n.Children.Count {
-        appendNode(n.Children[i], target, false, disabled, suppressAutoText)
-      }
-      return
-    }
-    let disabled = inheritedDisabled || n.Disabled
-    let hasExplicitName = declaration != nil && declaration!!.Name != ""
-    let childValues = rentChildren()
-    try {
-      let suppressChildText = role == AccessibilityRole.Button && !hasExplicitName
-      for i in 0 ... n.Children.Count {
-        appendNode(n.Children[i], childValues, false, disabled, suppressChildText)
-      }
-      let view = stateFor(n)
-      let valueRange = declaration?.Range
-      let textState = textStateFor(n)
-      if view.Apply(role, declaration?.CustomRole ?? "", resolvedName(n, declaration, role),
-        declaration?.Description ?? "", resolvedValue(n, declaration), valueRange?.Text ?? "",
-        valueRange?.Now, valueRange?.Minimum, valueRange?.Maximum, textState.Document, textState.Start,
-        textState.Length, textState.Caret, declaration?.Checked ?? AccessibilityChecked.Unspecified,
-        declaration?.Selected, declaration?.Expanded, disabled, resolvedReadOnly(n, declaration),
-        declaration?.Required, declaration?.Invalid, declaration?.Busy, declaration?.Level,
-        declaration?.Orientation ?? AccessibilityOrientation.Unspecified, declaration?.Modal,
-        resolvedMultiline(n, declaration), declaration?.MultiSelectable, declaration?.HasPopup,
-        declaration?.Live ?? AccessibilityLive.Off, declaration?.Atomic, n.Focused,
-        ElementHandles.BorderBox(n), resolvedActionMask(n, role, disabled, declaration)) {
-        rebuildingChanged = true
-      }
-      if view.SetChildren(childValues) { rebuildingChanged = true }
-      nodes[view.Id.Value] = n
-      semanticNodes.Add(n)
-      target.Add(view)
-    } finally {
-      returnChildren()
-    }
-  }
 
   private func stateFor(n Node) RetainedAccessibilityNode {
     if let current = AccessibilityNodeStates.Get(n) { return current }
@@ -261,14 +261,12 @@ internal class AccessibilityManager {
       case NodeKind.Editor: AccessibilityRole.TextEditor
       case NodeKind.Image: AccessibilityRole.Image
       case NodeKind.Container: n.Focusable || n.OnClick != nil || declaration != nil || forced.Contains(n)
-        ? AccessibilityRole.Generic : AccessibilityRole.Auto
+      ? AccessibilityRole.Generic : AccessibilityRole.Auto
       default: declaration != nil || forced.Contains(n) ? AccessibilityRole.Generic : AccessibilityRole.Auto
     }
   }
 
-  private func computeHidden(n Node, declaration Accessibility?, inherited bool) bool {
-    return inherited || n.PaintInputHidden || declaration?.Hidden == true
-  }
+  private func computeHidden(n Node, declaration Accessibility?, inherited bool) bool -> inherited || n.PaintInputHidden || declaration?.Hidden == true
 
   private func declaredRoleIsNone(declaration Accessibility?) bool {
     if let metadata = declaration { return metadata.Role == AccessibilityRole.None }
@@ -364,25 +362,25 @@ internal class AccessibilityManager {
   }
 
   private func resolvedActionMask(n Node, role AccessibilityRole, disabled bool,
-    declaration Accessibility?) int32 {
-    if disabled { return 0 }
-    var result int32
-    if n.Focusable && canReceiveInput(n) { result = result | actionBit(AccessibilityAction.Focus) }
-    if role == AccessibilityRole.Button || n.OnClick != nil {
-      result = result | actionBit(AccessibilityAction.Activate)
+    declaration Accessibility?) int32{
+      if disabled { return 0 }
+      var result int32
+      if n.Focusable && canReceiveInput(n) { result = result | actionBit(AccessibilityAction.Focus) }
+      if role == AccessibilityRole.Button || n.OnClick != nil {
+        result = result | actionBit(AccessibilityAction.Activate)
+      }
+      if n.Kind == NodeKind.Entry || n.Kind == NodeKind.Editor {
+        result = result | actionBit(AccessibilityAction.SetSelection)
+        if resolvedReadOnly(n, declaration) != true { result = result | actionBit(AccessibilityAction.SetValue) }
+      }
+      if n.Kind == NodeKind.Editor || n.OverflowX == Overflow.Scroll || n.OverflowY == Overflow.Scroll {
+        result = result | actionBit(AccessibilityAction.Scroll)
+      }
+      if let metadata = declaration {
+        for action in metadata.RawActions { result = result | actionBit(action) }
+      }
+      return result
     }
-    if n.Kind == NodeKind.Entry || n.Kind == NodeKind.Editor {
-      result = result | actionBit(AccessibilityAction.SetSelection)
-      if resolvedReadOnly(n, declaration) != true { result = result | actionBit(AccessibilityAction.SetValue) }
-    }
-    if n.Kind == NodeKind.Editor || n.OverflowX == Overflow.Scroll || n.OverflowY == Overflow.Scroll {
-      result = result | actionBit(AccessibilityAction.Scroll)
-    }
-    if let metadata = declaration {
-      for action in metadata.RawActions { result = result | actionBit(action) }
-    }
-    return result
-  }
 
   private func textStateFor(n Node) AccessibilityTextState {
     if n.Kind == NodeKind.Entry {
@@ -416,8 +414,8 @@ internal class AccessibilityManager {
         if view.ApplyRelationships(AccessibilityEmpty.Ids, AccessibilityEmpty.Ids,
           AccessibilityEmpty.Ids, AccessibilityEmpty.Ids, AccessibilityEmpty.Ids,
           AccessibilityEmpty.Ids, nil) {
-          rebuildingChanged = true
-        }
+            rebuildingChanged = true
+          }
         continue
       }
       if view.RelationshipsMatch(this, relationships) {
@@ -427,8 +425,8 @@ internal class AccessibilityManager {
         idsFor(relationships.RawDescribedBy), idsFor(relationships.RawControls),
         idsFor(relationships.RawOwns), idsFor(relationships.RawFlowTo),
         idsFor(relationships.RawErrorMessage), IdFor(relationships.ActiveDescendant)) {
-        rebuildingChanged = true
-      }
+          rebuildingChanged = true
+        }
     }
   }
 
@@ -490,6 +488,4 @@ private func containsAction(values []AccessibilityAction, action AccessibilityAc
   return false
 }
 
-private func accessibilityHash(hash uint64, value uint64) uint64 {
-  return (hash ^ value) * uint64(1099511628211)
-}
+private func accessibilityHash(hash uint64, value uint64) uint64 -> (hash ^ value) * uint64(1099511628211)

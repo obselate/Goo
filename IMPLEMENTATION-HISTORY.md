@@ -21,12 +21,25 @@ to the frozen snapshot below.
 No post-reduction stage has completed across both required RIDs. S10R's scoped Linux substrate and the
 S09R primitive, S11 text, and S12 image Linux implementations are complete. S14 is Linux-complete for
 its current scope, including the accepted O16 policy. S17's remaining core mechanism implementation
-and Linux requalification are complete. S20 generic retained shader effects are implemented and
-qualified on Linux. Current-host T01, T02, T04, and Linux T05 pass. T03 stage/resource and
-deterministic scale-1 three-window checks pass, while full T03 remains blocked on the resize-DPI
-frame-120 product defect and clean-source evidence. The external Windows, integrated-GPU, and
-second-real-DPI hardware matrix remains. The frozen snapshot below
-intentionally retains its historical pre-acceptance O16 wording.
+and Linux requalification are complete. S20 generic retained shader effects and combined non-normal
+blend composition are implemented and qualified on Linux. Current-host T01, T02, T04, and Linux T05
+pass. T03 stage/resource, deterministic scale-1 three-window, and five-process resize-DPI checks pass,
+while full T03 remains partial on clean-source evidence. The external Windows, integrated-GPU, and
+second-real-DPI hardware matrix remains. The frozen snapshot below intentionally retains its
+historical pre-acceptance O16 wording.
+
+### 2026-08-25 resize-DPI and combined shader/blend closure
+
+- Republished the resize-DPI NativeAOT fixture with the lost-retry correction. Five isolated direct-KWin scale-1 processes complete 300 warmups, 2,000 measured frames, and repeated 1.0 -> 1.5 -> 2.0 -> 1.5 -> 1.0 active-swapchain cycles.
+- Every resize-DPI process records exact 2,000 submit/present deltas, both slots, zero validation/result/fatal failures, clean close, and output-scale restore. Process-median CPU P50/P95/P99 is `0.137319/1.618522/2.430012 ms`; GPU Main P95 is `0.113664 ms`.
+- Raw evidence is `artifacts/reports/s15-q10/resize-dpi-final-run-{1..5}.log`, `artifacts/reports/s15-q10/summary.json`, and `artifacts/reports/deterministic-kwin-scale-one.json`. The comprehensive Vulkan WSI resize state machine was not needed.
+- Combined `ShaderEffect` and non-normal `BlendMode` now compile as nested layers without public API changes. The inner effect processes the isolated subtree, backdrop-sampling effects borrow the original parent capture, and the outer layer blends the effect output.
+- The Linux NativeAOT gate passes Multiply pixels, original-parent backdrop sampling, rounded clipping, pointer input, resize, display scale, injected recovery, zero-allocation parameter mutation, zero warm Vulkan resource creation, and cleanup. The 300/2,000 benchmark reports CPU P50/P95/P99 `0.241085/0.365820/0.601514 ms`, 0 B allocation, 6,000 layer passes and composites, and clean close.
+- `TextEditor` inline and block child slots now render under one compiler-owned content clip shared with editor text. Slot descendants inherit clip index, depth, and bounds through scroll and nested layers; unsupported contexts skip content rather than paint unclipped. No public API, shader, descriptor, or Vulkan resource changed. The focused Khronos-validation gate reports `inline=1 block=1 clip=1 text=1 warmVkAlloc=0 close=1` with zero unsupported diagnostics and complete cleanup.
+- General masks and a higher-level filter API remain unimplemented by decision. Simulation plus `ClipPath` covers hard animated reveals; Simulation plus `ShaderEffect` covers soft or procedural reveals and filters. Reopen masks only for external alpha/luminance mask data, and filters only for an accepted no-shader-authoring convenience layer.
+- Reconciled the five recorded startup samples using the repository's nearest-rank percentile rule. The startup frame already proved positive metrics, mounted content, one submit/present, present-fence observation, and non-background readback. First-usable-frame P95 is `255.212748 ms` from managed entry and `252.771895 ms` from `Window.Open` to handoff; completion-observed upper-bound P95 is `255.238026/252.797173 ms`. This closes the current-route startup gate and establishes the Vulkan regression reference.
+- S16-D03 keeps direct Wayland presentation feedback deferred and accepts nominal display refresh until a supported path is available or cadence fails. It is not an active local blocker. The clean-source eight-workload matrix remains the only local qualification work.
+- Added a test-only native SDL acceptance route with no public or production seam. It obtains the live window ID, pushes mouse-button, key A, and committed UTF-8 `é` events through `SDL_PushEvent`, and consumes them only through `SdlRuntime.PumpEvents` and `SdlHost.Dispatch`. The Khronos-validation gate reports `sdl_poll=1 pointer=1 key=1 text=1 submit=3 present=3 close=1` with exact callback isolation and cleanup.
 
 ### 2026-08-24 current-host T01-T05 checkpoint
 
@@ -76,8 +89,9 @@ intentionally retains its historical pre-acceptance O16 wording.
   mounted invariant root, one startup present-fence observation, and a successful startup readback
   pixel check. On this route, managed-entry to successful `vkQueuePresentKHR` handoff was median
   `226.193175 ms`; window-open to handoff was median `225.551726 ms`. The corresponding
-  completion-observed upper bounds were `226.218353 ms` and `225.576904 ms`. These are qualified
-  managed-entry/window-open to present-handoff values, not a first-usable-frame P95.
+  completion-observed upper bounds were `226.218353 ms` and `225.576904 ms`. At this checkpoint only
+  medians were written into the summary; the 2026-08-25 reconciliation above aggregates the raw
+  process samples into the accepted first-usable-frame P95.
 - Synthetic injection-to-present-handoff P50/P95/P99/worst was
   `0.381620/1.348723/1.625866/1.974053 ms` against a `37.333334 ms` P95 limit, so the synthetic
   handoff gate passed. Completion-observed upper bounds were
@@ -86,7 +100,8 @@ intentionally retains its historical pre-acceptance O16 wording.
   `0.339610/0.461310/0.518588 ms`, and committed text `0.747760/1.567176/1.711557 ms`.
 - The fixture applied causal pointer, key, and committed-text mutations. Each input changed only
   its matching counter and one rendered generation. Synthetic `WindowReadbackFixture` injection
-  bypassed SDL polling. Actual SDL acceptance and Wayland presentation-time feedback remain open.
+  bypassed SDL polling, so actual SDL acceptance remains open. Direct Wayland presentation feedback
+  was not measured and remains deferred under S16-D03 with nominal refresh as fallback.
 - Raw evidence is `artifacts/reports/s15-q10/summary.json` and
   `artifacts/reports/s15-q10/latency-final-run-*.log`.
 

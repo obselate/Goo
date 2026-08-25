@@ -6,10 +6,10 @@ import System.Runtime.CompilerServices
 import Facebook.Yoga
 
 internal class TextLine {
-  internal prop Content string { get; init; }
+  internal prop Content string{ get; init; }
   internal prop Shape ShapedText? { get; init; }
-  internal prop Width float32 { get; init; }
-  internal prop DisplayWidth float32 {
+  internal prop Width float32{ get; init; }
+  internal prop DisplayWidth float32{
     get {
       return if let shaped = Shape { shaped.Width } else { 0.0F }
     }
@@ -23,7 +23,7 @@ internal class TextLine {
 internal class TextRichLayouts {
   shared {
     private let values ConditionalWeakTable[TextLayout, TextRichLayout] =
-      ConditionalWeakTable[TextLayout, TextRichLayout]()
+    ConditionalWeakTable[TextLayout, TextRichLayout]()
 
     internal func Get(layout TextLayout) TextRichLayout? {
       if values.TryGetValue(layout, out var value) { return value }
@@ -40,26 +40,26 @@ internal class TextRichLayouts {
 }
 
 internal class TextLayout {
-  internal prop Content string { get; init; }
-  internal prop FontFamily string { get; init; }
-  internal prop FontSize float32 { get; init; }
-  internal prop FontWeight float64 { get; init; }
-  internal prop FontRegistryGeneration uint64 { get; init; }
-  internal prop Policy int32 { get; init; }
-  internal prop TextMaxLines int32 { get; init; }
-  internal prop LetterSpacing float32 { get; init; }
-  internal prop LineHeight float64 { get; init; }
-  internal prop MaxWidth float32 { get; init; }
+  internal prop Content string{ get; init; }
+  internal prop FontFamily string{ get; init; }
+  internal prop FontSize float32{ get; init; }
+  internal prop FontWeight float64{ get; init; }
+  internal prop FontRegistryGeneration uint64{ get; init; }
+  internal prop Policy int32{ get; init; }
+  internal prop TextMaxLines int32{ get; init; }
+  internal prop LetterSpacing float32{ get; init; }
+  internal prop LineHeight float64{ get; init; }
+  internal prop MaxWidth float32{ get; init; }
   internal prop Rich TextRichLayout? {
     get { return TextRichLayouts.Get(this) }
     set { TextRichLayouts.Set(this, value) }
   }
-  internal prop Lines List[TextLine] { get; init; }
-  internal prop Ascent float32 { get; set; }
-  internal prop Descent float32 { get; set; }
-  internal prop Width float32 { get; set; }
-  internal prop Height float32 { get; set; }
-  internal prop Clamped bool { get; set; }
+  internal prop Lines List[TextLine]{ get; init; }
+  internal prop Ascent float32{ get; set; }
+  internal prop Descent float32{ get; set; }
+  internal prop Width float32{ get; set; }
+  internal prop Height float32{ get; set; }
+  internal prop Clamped bool{ get; set; }
 
   internal init() {
     Content = ""
@@ -69,13 +69,13 @@ internal class TextLayout {
 }
 
 internal data struct TextGeometryLine {
-  internal prop DisplayStart int32 { get; init; }
-  internal prop DisplayEnd int32 { get; init; }
-  internal prop VisibleEnd int32 { get; init; }
+  internal prop DisplayStart int32{ get; init; }
+  internal prop DisplayEnd int32{ get; init; }
+  internal prop VisibleEnd int32{ get; init; }
 }
 
 internal class TextLayoutGeometry {
-  internal prop Lines List[TextGeometryLine] { get; init; }
+  internal prop Lines List[TextGeometryLine]{ get; init; }
 
   internal init() {
     Lines = List[TextGeometryLine]()
@@ -85,7 +85,7 @@ internal class TextLayoutGeometry {
 internal class TextLayoutGeometries {
   shared {
     private let values ConditionalWeakTable[TextLayout, TextLayoutGeometry] =
-      ConditionalWeakTable[TextLayout, TextLayoutGeometry]()
+    ConditionalWeakTable[TextLayout, TextLayoutGeometry]()
 
     internal func Get(layout TextLayout) TextLayoutGeometry? {
       if values.TryGetValue(layout, out var value) { return value }
@@ -135,9 +135,7 @@ internal class TextLayouts {
       return layout
     }
 
-    internal func HasCachedLayout(n Node) bool {
-      return n.TextLayout != nil || n.TextLayoutCache != nil
-    }
+    internal func HasCachedLayout(n Node) bool -> n.TextLayout != nil || n.TextLayoutCache != nil
 
     internal func CurrentForGeometry(n Node) TextLayout? {
       let width = ContentWidth(n)
@@ -246,14 +244,12 @@ internal class TextLayouts {
       n.TextLayoutCache = nil
     }
 
-    internal func IsShapingField(f StyleField) bool {
-      return f == StyleField.FontFamily || f == StyleField.FontSize
-        || f == StyleField.FontWeight || f == StyleField.FontStyle
-        || f == StyleField.LetterSpacing || f == StyleField.LineHeight
-        || f == StyleField.TextWrap || f == StyleField.TextTrimming
-        || f == StyleField.TextTransform || f == StyleField.TextMaxLines
-        || f == StyleField.Direction
-    }
+    internal func IsShapingField(f StyleField) bool -> f == StyleField.FontFamily || f == StyleField.FontSize
+      || f == StyleField.FontWeight || f == StyleField.FontStyle
+      || f == StyleField.LetterSpacing || f == StyleField.LineHeight
+      || f == StyleField.TextWrap || f == StyleField.TextTrimming
+      || f == StyleField.TextTransform || f == StyleField.TextMaxLines
+      || f == StyleField.Direction
 
     internal func dispose(layout TextLayout) {
       TextLayoutGeometries.Remove(layout)
@@ -277,29 +273,29 @@ internal class TextLayouts {
     }
 
     internal func Measure(yoga Facebook.Yoga.Node, width float32, widthMode MeasureMode,
-      height float32, heightMode MeasureMode) YGSize {
-      let n = nodeFromYoga(yoga)
-      let constraint = widthMode == MeasureMode.Undefined ? -1.0F : width
-      let layout = For(n, constraint)
-      return clampMeasuredSize(layout.Width, layout.Height, width, widthMode, height, heightMode)
-    }
+      height float32, heightMode MeasureMode) YGSize{
+        let n = nodeFromYoga(yoga)
+        let constraint = widthMode == MeasureMode.Undefined ? -1.0F : width
+        let layout = For(n, constraint)
+        return clampMeasuredSize(layout.Width, layout.Height, width, widthMode, height, heightMode)
+      }
 
     internal func clampMeasuredSize(measuredWidth float32, measuredHeight float32, width float32,
-      widthMode MeasureMode, height float32, heightMode MeasureMode) YGSize {
-      var w = measuredWidth
-      var h = measuredHeight
-      if widthMode == MeasureMode.Exactly {
-        w = width
-      } else if widthMode == MeasureMode.AtMost && w > width {
-        w = width
+      widthMode MeasureMode, height float32, heightMode MeasureMode) YGSize{
+        var w = measuredWidth
+        var h = measuredHeight
+        if widthMode == MeasureMode.Exactly {
+          w = width
+        } else if widthMode == MeasureMode.AtMost && w > width {
+          w = width
+        }
+        if heightMode == MeasureMode.Exactly {
+          h = height
+        } else if heightMode == MeasureMode.AtMost && h > height {
+          h = height
+        }
+        return YGSize{ Width: w, Height: h }
       }
-      if heightMode == MeasureMode.Exactly {
-        h = height
-      } else if heightMode == MeasureMode.AtMost && h > height {
-        h = height
-      }
-      return YGSize{ Width: w, Height: h }
-    }
 
     internal func lineOffset(n Node, line TextLine, contentWidth float32) float32 {
       let rtl = if let shaped = line.Shape { shaped.RightToLeft } else { false }
@@ -307,35 +303,31 @@ internal class TextLayouts {
     }
 
     internal func lineOffset(n Node, displayWidth float32, rtl bool,
-      contentWidth float32) float32 {
-      let free = contentWidth - displayWidth
-      if free <= 0.0F { return 0.0F }
-      return switch n.TextAlign {
-        case TextAlign.Center: free * 0.5F
-        case TextAlign.Right: free
-        case TextAlign.Start: rtl ? free : 0.0F
-        case TextAlign.End: rtl ? 0.0F : free
-        default: 0.0F
+      contentWidth float32) float32{
+        let free = contentWidth - displayWidth
+        if free <= 0.0F { return 0.0F }
+        return switch n.TextAlign {
+          case TextAlign.Center: free * 0.5F
+          case TextAlign.Right: free
+          case TextAlign.Start: rtl ? free : 0.0F
+          case TextAlign.End: rtl ? 0.0F : free
+          default: 0.0F
+        }
       }
-    }
 
-    internal func ContentLeft(n Node) float32 {
-      return n.Rect.X + borderPx(n, YGEdge.Left) + padding(n, YGEdge.Left)
-    }
+    internal func ContentLeft(n Node) float32 -> n.Rect.X + borderPx(n, YGEdge.Left) + padding(n, YGEdge.Left)
 
-    internal func ContentTop(n Node) float32 {
-      return n.Rect.Y + borderPx(n, YGEdge.Top) + padding(n, YGEdge.Top)
-    }
+    internal func ContentTop(n Node) float32 -> n.Rect.Y + borderPx(n, YGEdge.Top) + padding(n, YGEdge.Top)
 
     internal func ContentWidth(n Node) float32 {
       let width = n.Rect.W - borderPx(n, YGEdge.Left) - borderPx(n, YGEdge.Right)
-        - padding(n, YGEdge.Left) - padding(n, YGEdge.Right)
+      -padding(n, YGEdge.Left) - padding(n, YGEdge.Right)
       return width > 0.0F ? width : 0.0F
     }
 
     internal func ContentHeight(n Node) float32 {
       let height = n.Rect.H - borderPx(n, YGEdge.Top) - borderPx(n, YGEdge.Bottom)
-        - padding(n, YGEdge.Top) - padding(n, YGEdge.Bottom)
+      -padding(n, YGEdge.Top) - padding(n, YGEdge.Bottom)
       return height > 0.0F ? height : 0.0F
     }
 
@@ -420,104 +412,102 @@ internal class TextLayouts {
     }
 
     internal func appendParagraph(result TextLayout, geometry TextLayoutGeometry?, n Node,
-      paragraph TextParagraphAnalysis, maxWidth float32) bool {
-      if lineLimitReached(result, n) {
-        return true
-      }
-      let text = paragraph.Text
-      let start = paragraph.Start
-      if text == "" {
-        appendLine(result, geometry, n, shape(n, paragraph, 0, 0), start, start, start)
-        return false
-      }
-      if n.TextWrap == TextWrap.NoWrap {
-        let line = shapeNoWrap(n, paragraph, maxWidth)
-        let displayEnd = start + text.Length
-        let visibleEnd = line.Content == text ? displayEnd : start + line.Content.Length - 1
-        appendLine(result, geometry, n, line, start, displayEnd, visibleEnd)
-        return false
-      }
-      if maxWidth < 0.0F {
-        appendLine(result, geometry, n, shape(n, paragraph, 0, text.Length), start,
-          start + text.Length, start + text.Length)
-        return false
-      }
-      let whole = shape(n, paragraph, 0, text.Length)
-      let wholeWidth = if result.Rich != nil {
-        measureRichRange(n, paragraph, 0, text.Length)
-      } else { whole.Width }
-      if wholeWidth <= maxWidth {
-        appendLine(result, geometry, n, whole, start, start + text.Length, start + text.Length)
-        return false
-      }
-      whole.Shape?.Dispose()
-      let elements = UnicodeGraphemes.Starts(text)
-      var cursor int32 = 0
-      while cursor < elements.Length {
-        var next = cursor + 1
-        var fit = cursor
-        var opportunity = -1
-        var overflowed = false
-        while next <= elements.Length {
-          let nextIndex = next < elements.Length ? elements[next] : text.Length
-          let startIndex = elements[cursor]
-          let width = if result.Rich != nil {
-            measureRichRange(n, paragraph, startIndex, nextIndex)
-          } else {
-            TextFlow.MeasureBase(paragraph, startIndex, nextIndex)
-          }
-          let decision = TextFlow.Consider(cursor, fit, opportunity, overflowed, next,
-            width, maxWidth, breakAfter(text, nextIndex))
-          fit = decision.Fit
-          opportunity = decision.Preferred
-          overflowed = decision.Overflowed
-          if decision.Stop { break }
-          if next == elements.Length {
-            break
-          }
-          next = next + 1
-        }
-        var lineEnd = TextFlow.Resolve(cursor, fit, opportunity, overflowed)
-        if lineEnd == cursor {
-          lineEnd = cursor + 1
-        }
-        let startIndex = elements[cursor]
-        let endIndex = lineEnd < elements.Length ? elements[lineEnd] : text.Length
-        appendLine(result, geometry, n, shape(n, paragraph, startIndex, endIndex),
-          start + startIndex, start + endIndex, start + endIndex)
-        cursor = lineEnd
-        if lineLimitReached(result, n) && cursor < elements.Length {
+      paragraph TextParagraphAnalysis, maxWidth float32) bool{
+        if lineLimitReached(result, n) {
           return true
         }
+        let text = paragraph.Text
+        let start = paragraph.Start
+        if text == "" {
+          appendLine(result, geometry, n, shape(n, paragraph, 0, 0), start, start, start)
+          return false
+        }
+        if n.TextWrap == TextWrap.NoWrap {
+          let line = shapeNoWrap(n, paragraph, maxWidth)
+          let displayEnd = start + text.Length
+          let visibleEnd = line.Content == text ? displayEnd : start + line.Content.Length - 1
+          appendLine(result, geometry, n, line, start, displayEnd, visibleEnd)
+          return false
+        }
+        if maxWidth < 0.0F {
+          appendLine(result, geometry, n, shape(n, paragraph, 0, text.Length), start,
+            start + text.Length, start + text.Length)
+          return false
+        }
+        let whole = shape(n, paragraph, 0, text.Length)
+        let wholeWidth = if result.Rich != nil {
+          measureRichRange(n, paragraph, 0, text.Length)
+        } else { whole.Width }
+        if wholeWidth <= maxWidth {
+          appendLine(result, geometry, n, whole, start, start + text.Length, start + text.Length)
+          return false
+        }
+        whole.Shape?.Dispose()
+        let elements = UnicodeGraphemes.Starts(text)
+        var cursor int32 = 0
+        while cursor < elements.Length {
+          var next = cursor + 1
+          var fit = cursor
+          var opportunity = -1
+          var overflowed = false
+          while next <= elements.Length {
+            let nextIndex = next < elements.Length ? elements[next] : text.Length
+            let startIndex = elements[cursor]
+            let width = if result.Rich != nil {
+              measureRichRange(n, paragraph, startIndex, nextIndex)
+            } else {
+              TextFlow.MeasureBase(paragraph, startIndex, nextIndex)
+            }
+            let decision = TextFlow.Consider(cursor, fit, opportunity, overflowed, next,
+              width, maxWidth, breakAfter(text, nextIndex))
+            fit = decision.Fit
+            opportunity = decision.Preferred
+            overflowed = decision.Overflowed
+            if decision.Stop { break }
+            if next == elements.Length {
+              break
+            }
+            next = next + 1
+          }
+          var lineEnd = TextFlow.Resolve(cursor, fit, opportunity, overflowed)
+          if lineEnd == cursor {
+            lineEnd = cursor + 1
+          }
+          let startIndex = elements[cursor]
+          let endIndex = lineEnd < elements.Length ? elements[lineEnd] : text.Length
+          appendLine(result, geometry, n, shape(n, paragraph, startIndex, endIndex),
+            start + startIndex, start + endIndex, start + endIndex)
+          cursor = lineEnd
+          if lineLimitReached(result, n) && cursor < elements.Length {
+            return true
+          }
+        }
+        return false
       }
-      return false
-    }
 
-    internal func lineLimitReached(result TextLayout, n Node) bool {
-      return n.TextMaxLines > 0 && result.Lines.Count >= n.TextMaxLines
-    }
+    internal func lineLimitReached(result TextLayout, n Node) bool -> n.TextMaxLines > 0 && result.Lines.Count >= n.TextMaxLines
 
     internal func appendLine(result TextLayout, geometry TextLayoutGeometry?, n Node, line TextLine,
       displayStart int32, displayEnd int32, visibleEnd int32) {
-      result.Lines.Add(line)
-      if let rich = result.Rich {
-        rich.Lines.Add(makeRichLine(n, line, displayStart))
+        result.Lines.Add(line)
+        if let rich = result.Rich {
+          rich.Lines.Add(makeRichLine(n, line, displayStart))
+        }
+        if let retained = geometry {
+          retained.Lines.Add(TextGeometryLine{ DisplayStart: displayStart, DisplayEnd: displayEnd,
+            VisibleEnd: visibleEnd })
+        }
       }
-      if let retained = geometry {
-        retained.Lines.Add(TextGeometryLine{ DisplayStart: displayStart, DisplayEnd: displayEnd,
-          VisibleEnd: visibleEnd })
-      }
-    }
 
     internal func shape(n Node, paragraph TextParagraphAnalysis, start int32,
-      end int32) TextLine {
-      let shaped = TextAnalyses.ShapeLine(paragraph, start, end)
-      return TextLine{
-        Content: paragraph.Text.Substring(start, end - start),
-        Shape: shaped,
-        Width: shaped.Width,
+      end int32) TextLine{
+        let shaped = TextAnalyses.ShapeLine(paragraph, start, end)
+        return TextLine{
+          Content: paragraph.Text.Substring(start, end - start),
+          Shape: shaped,
+          Width: shaped.Width,
+        }
       }
-    }
 
     internal func lineWidth(layout TextLayout, index int32) float32 {
       if let rich = layout.Rich { return rich.Lines[index].Width }
@@ -546,17 +536,17 @@ internal class TextLayouts {
         let style = TextResolvedStyles.At(n, ranges, absolute)
         let changedShape = TextResolvedStyles.AffectsWidth(base, style)
         let run = if changedShape { shapeInlineLine(n, displayStart, line.Content, style) }
-          else { shape }
+        else { shape }
         let startX = shape.CaretX(cursor, int32(TextAffinity.Downstream))
         let endX = shape.CaretX(end, int32(TextAffinity.Downstream))
         let natural = startX > endX ? startX - endX : endX - startX
         let runStartX = run.CaretX(cursor, int32(TextAffinity.Downstream))
         let runEndX = run.CaretX(end, int32(TextAffinity.Downstream))
-        var actual = runStartX > runEndX ? runStartX - runEndX : runEndX - runStartX
+        let actual = runStartX > runEndX ? runStartX - runEndX : runEndX - runStartX
         let x = startX + correction - runStartX
         let slice = TextShaping.Slice(run, cursor, end)
         let ownsGlyphs = TextShaping.GlyphCount(slice) > 0
-        var decorationSegments []?float32 = nil
+        var decorationSegments [] ? float32 = nil
         if ownsGlyphs && style.Decoration != TextDecoration.None {
           let segments = slice.SelectionRects(cursor, end)
           if segments.Length > 0 { decorationSegments = segments }
@@ -599,54 +589,52 @@ internal class TextLayouts {
     }
 
     private func measureRichRange(n Node, paragraph TextParagraphAnalysis, start int32,
-      end int32) float32 {
-      using let base = TextLineShaper.Base(paragraph, start, end)
-      let ranges = PassiveTextPresentations.Read(n) ?? []TextStyleRange{}
-      let baseStyle = TextResolvedStyles.Base(n)
-      var width = base.Width
-      var cursor = start
-      while cursor < end {
-        let absolute = paragraph.Start + cursor
-        var next = TextResolvedStyles.NextBoundary(ranges, absolute,
-          paragraph.Start + end) - paragraph.Start
-        if next <= cursor { next = cursor + 1 }
-        let style = TextResolvedStyles.At(n, ranges, absolute)
-        if TextResolvedStyles.AffectsWidth(baseStyle, style) {
-          using let shaped = TextLineShaper.Styled(paragraph, start, end, style)
-          let startX = base.CaretX(cursor - start, int32(TextAffinity.Downstream))
-          let endX = base.CaretX(next - start, int32(TextAffinity.Downstream))
-          let natural = startX > endX ? startX - endX : endX - startX
-          let styledStart = shaped.CaretX(cursor - start, int32(TextAffinity.Downstream))
-          let styledEnd = shaped.CaretX(next - start, int32(TextAffinity.Downstream))
-          let actual = styledStart > styledEnd ? styledStart - styledEnd : styledEnd - styledStart
-          width = width + actual - natural
+      end int32) float32{
+        using let base = TextLineShaper.Base(paragraph, start, end)
+        let ranges = PassiveTextPresentations.Read(n) ?? []TextStyleRange{}
+        let baseStyle = TextResolvedStyles.Base(n)
+        var width = base.Width
+        var cursor = start
+        while cursor < end {
+          let absolute = paragraph.Start + cursor
+          var next = TextResolvedStyles.NextBoundary(ranges, absolute,
+            paragraph.Start + end) - paragraph.Start
+          if next <= cursor { next = cursor + 1 }
+          let style = TextResolvedStyles.At(n, ranges, absolute)
+          if TextResolvedStyles.AffectsWidth(baseStyle, style) {
+            using let shaped = TextLineShaper.Styled(paragraph, start, end, style)
+            let startX = base.CaretX(cursor - start, int32(TextAffinity.Downstream))
+            let endX = base.CaretX(next - start, int32(TextAffinity.Downstream))
+            let natural = startX > endX ? startX - endX : endX - startX
+            let styledStart = shaped.CaretX(cursor - start, int32(TextAffinity.Downstream))
+            let styledEnd = shaped.CaretX(next - start, int32(TextAffinity.Downstream))
+            let actual = styledStart > styledEnd ? styledStart - styledEnd : styledEnd - styledStart
+            width = width + actual - natural
+          }
+          cursor = next
         }
-        cursor = next
+        return width
       }
-      return width
-    }
 
-    private func inlineText(n Node, text string, style TextResolvedStyle) string {
-      return style.Transform == n.TextTransform ? text : transformText(text, style.Transform)
-    }
+    private func inlineText(n Node, text string, style TextResolvedStyle) string -> style.Transform == n.TextTransform ? text : transformText(text, style.Transform)
 
     private func shapeInlineLine(n Node, displayStart int32, text string,
-      style TextResolvedStyle) ShapedText {
-      if style.Transform == n.TextTransform {
-        let analysis = TextAnalyses.For(n)
-        for i in 0 ... analysis.ParagraphCount {
-          let paragraph = analysis.Paragraph(i)
-          if displayStart < paragraph.Start || displayStart + text.Length > paragraph.End {
-            continue
+      style TextResolvedStyle) ShapedText{
+        if style.Transform == n.TextTransform {
+          let analysis = TextAnalyses.For(n)
+          for i in 0 ... analysis.ParagraphCount {
+            let paragraph = analysis.Paragraph(i)
+            if displayStart < paragraph.Start || displayStart + text.Length > paragraph.End {
+              continue
+            }
+            let local = displayStart - paragraph.Start
+            return TextLineShaper.Styled(paragraph, local, local + text.Length, style)
           }
-          let local = displayStart - paragraph.Start
-          return TextLineShaper.Styled(paragraph, local, local + text.Length, style)
         }
+        return TextShaping.Shape(inlineText(n, text, style), style.FontFamily, style.FontSize,
+          int32(style.FontWeight), style.FontStyle == FontStyle.Italic,
+          style.LetterSpacing, int32(style.Direction))
       }
-      return TextShaping.Shape(inlineText(n, text, style), style.FontFamily, style.FontSize,
-        int32(style.FontWeight), style.FontStyle == FontStyle.Italic,
-        style.LetterSpacing, int32(style.Direction))
-    }
 
     private func disposeRichLine(line TextRichLine) {
       for run in line.Runs { run.Shape?.Dispose() }
@@ -668,25 +656,25 @@ internal class TextLayouts {
     }
 
     internal func shapeNoWrap(n Node, paragraph TextParagraphAnalysis,
-      maxWidth float32) TextLine {
-      let text = paragraph.Text
-      let whole = shape(n, paragraph, 0, text.Length)
-      if n.TextTrimming != TextTrimming.Ellipsis || maxWidth < 0.0F || whole.Width <= maxWidth {
-        return whole
+      maxWidth float32) TextLine{
+        let text = paragraph.Text
+        let whole = shape(n, paragraph, 0, text.Length)
+        if n.TextTrimming != TextTrimming.Ellipsis || maxWidth < 0.0F || whole.Width <= maxWidth {
+          return whole
+        }
+        let direction = TextShaping.BaseDirection(text, int32(n.Direction))
+        let display = TextShaping.Ellipsize(text, n.FontFamily, fontSize(n), int32(n.FontWeight),
+          n.FontStyle == FontStyle.Italic, letterSpacing(n), direction, maxWidth)
+        let logicalWidth = whole.Width
+        whole.Shape?.Dispose()
+        let shaped = TextShaping.Shape(display, n.FontFamily, fontSize(n), int32(n.FontWeight),
+          n.FontStyle == FontStyle.Italic, letterSpacing(n), direction)
+        return TextLine{
+          Content: display,
+          Shape: shaped,
+          Width: logicalWidth,
+        }
       }
-      let direction = TextShaping.BaseDirection(text, int32(n.Direction))
-      let display = TextShaping.Ellipsize(text, n.FontFamily, fontSize(n), int32(n.FontWeight),
-        n.FontStyle == FontStyle.Italic, letterSpacing(n), direction, maxWidth)
-      let logicalWidth = whole.Width
-      whole.Shape?.Dispose()
-      let shaped = TextShaping.Shape(display, n.FontFamily, fontSize(n), int32(n.FontWeight),
-        n.FontStyle == FontStyle.Italic, letterSpacing(n), direction)
-      return TextLine{
-        Content: display,
-        Shape: shaped,
-        Width: logicalWidth,
-      }
-    }
 
     internal func ellipsizeClampedLine(n Node, line TextLine, maxWidth float32) TextLine {
       if line.Content.Length > 0 && line.Content[line.Content.Length - 1] == 8230 {
@@ -698,9 +686,8 @@ internal class TextLayouts {
         TextShaping.BaseDirection(line.Content, int32(n.Direction))
       }
       let display = maxWidth < 0.0F
-        ? line.Content + "\u2026"
-        : TextShaping.Ellipsize(line.Content, n.FontFamily, fontSize(n), int32(n.FontWeight),
-          n.FontStyle == FontStyle.Italic, letterSpacing(n), direction, maxWidth)
+      ? line.Content + "\u2026" : TextShaping.Ellipsize(line.Content, n.FontFamily, fontSize(n), int32(n.FontWeight),
+        n.FontStyle == FontStyle.Italic, letterSpacing(n), direction, maxWidth)
       line.Shape?.Dispose()
       let shaped = TextShaping.Shape(display, n.FontFamily, fontSize(n), int32(n.FontWeight),
         n.FontStyle == FontStyle.Italic, letterSpacing(n), direction)
@@ -711,43 +698,29 @@ internal class TextLayouts {
       }
     }
 
-    internal func matches(layout TextLayout, n Node, maxWidth float32) bool {
-      return layout.Content == n.Content && layout.FontFamily == n.FontFamily
-        && layout.FontRegistryGeneration == FontRegistry.Generation
-        && layout.FontSize == fontSize(n) && layout.FontWeight == n.FontWeight
-        && layout.Policy == textPolicy(n) && layout.LetterSpacing == letterSpacing(n)
-        && layout.TextMaxLines == n.TextMaxLines
-        && layout.LineHeight == n.LineHeight && layout.MaxWidth == maxWidth
+    internal func matches(layout TextLayout, n Node, maxWidth float32) bool -> layout.Content == n.Content && layout.FontFamily == n.FontFamily
+      && layout.FontRegistryGeneration == FontRegistry.Generation
+      && layout.FontSize == fontSize(n) && layout.FontWeight == n.FontWeight
+      && layout.Policy == textPolicy(n) && layout.LetterSpacing == letterSpacing(n)
+      && layout.TextMaxLines == n.TextMaxLines
+      && layout.LineHeight == n.LineHeight && layout.MaxWidth == maxWidth
+
+    internal func textPolicy(n Node) int32 -> int32(n.FontStyle) | (int32(n.TextWrap) << 2) | (int32(n.TextTrimming) << 3)
+    | (int32(n.TextTransform) << 4) | (int32(n.Direction) << 7)
+
+    internal func transformText(content string, transform TextTransform) string -> switch transform {
+      case TextTransform.Uppercase: content.ToUpperInvariant()
+      case TextTransform.Lowercase: content.ToLowerInvariant()
+      default: content
     }
 
-    internal func textPolicy(n Node) int32 {
-      return int32(n.FontStyle) | (int32(n.TextWrap) << 2) | (int32(n.TextTrimming) << 3)
-        | (int32(n.TextTransform) << 4) | (int32(n.Direction) << 7)
-    }
+    internal func fontSize(n Node) float32 -> n.FontSize.Px
 
-    internal func transformText(content string, transform TextTransform) string {
-      return switch transform {
-        case TextTransform.Uppercase: content.ToUpperInvariant()
-        case TextTransform.Lowercase: content.ToLowerInvariant()
-        default: content
-      }
-    }
+    internal func letterSpacing(n Node) float32 -> n.LetterSpacing.Px
 
-    internal func fontSize(n Node) float32 {
-      return n.FontSize.Px
-    }
+    internal func resolvedLineHeight(n Node) float32 -> fontSize(n) * float32(n.LineHeight)
 
-    internal func letterSpacing(n Node) float32 {
-      return n.LetterSpacing.Px
-    }
-
-    internal func resolvedLineHeight(n Node) float32 {
-      return fontSize(n) * float32(n.LineHeight)
-    }
-
-    internal func padding(n Node, edge YGEdge) float32 {
-      return resolveEdgePadding(n, edge, 0.0F)
-    }
+    internal func padding(n Node, edge YGEdge) float32 -> resolveEdgePadding(n, edge, 0.0F)
 
     internal func borderPx(n Node, edge YGEdge) float32 {
       let width = switch edge {
@@ -755,7 +728,7 @@ internal class TextLayouts {
         case YGEdge.Top: n.BorderTopWidth
         case YGEdge.Right: n.BorderRightWidth
         case YGEdge.Bottom: n.BorderBottomWidth
-        default: Length{}
+        default: Length {}
       }
       return width.Px
     }
@@ -768,18 +741,12 @@ internal class TextLayouts {
       return isWhitespace(prior) || prior == 45 || isCjk(prior)
     }
 
-    internal func isWhitespace(c char) bool {
-      return c == 9 || c == 32
-    }
+    internal func isWhitespace(c char) bool -> c == 9 || c == 32
 
-    internal func isNewline(c char) bool {
-      return c == 10 || c == 13
-    }
+    internal func isNewline(c char) bool -> c == 10 || c == 13
 
-    internal func isCjk(c char) bool {
-      return (c >= 0x2E80 && c <= 0x9FFF) || (c >= 0xF900 && c <= 0xFAFF)
-        || (c >= 0x3040 && c <= 0x30FF) || (c >= 0xAC00 && c <= 0xD7AF)
-    }
+    internal func isCjk(c char) bool -> (c >= 0x2E80 && c <= 0x9FFF) || (c >= 0xF900 && c <= 0xFAFF)
+      || (c >= 0x3040 && c <= 0x30FF) || (c >= 0xAC00 && c <= 0xD7AF)
 
     internal func isRtl(text string) bool {
       for i in 0 ... text.Length {

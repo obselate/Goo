@@ -40,7 +40,7 @@ class TextEditorSlotsGateCell : Cell {
     Position: PositionType.Relative,
     BackgroundColor: Color.Rgb(12, 20, 32),
     Children: {
-      TextEditor(Document, Controller, []TextPresentationLayer{ presentation }){
+      TextEditor(Document, Controller, []TextPresentationLayer{ presentation }) {
         Handle = TextEditorSlotsGateCell.Editor,
         Position = PositionType.Absolute,
         Left = 24,
@@ -134,9 +134,9 @@ func RunTextEditorSlotsGate() {
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     let countersAfterScroll = WindowReadbackTestFixture.DiagnosticCounters(opened)
     S14Require(countersAfterScroll.vulkanObjectAllocationCount
-        == countersBeforeScroll.vulkanObjectAllocationCount
+      == countersBeforeScroll.vulkanObjectAllocationCount
         && countersAfterScroll.vulkanDeviceMemoryAllocationCount
-          == countersBeforeScroll.vulkanDeviceMemoryAllocationCount,
+      == countersBeforeScroll.vulkanDeviceMemoryAllocationCount,
       "Text editor slot scroll created Vulkan resources")
     let inlineAfter = TextEditorSlotsGateCell.InlineSlot.BorderBox
     S14Require(inlineAfter.Y < editorContent.Y
@@ -173,5 +173,5 @@ func RunTextEditorSlotsGate() {
       && !diagnostics.Contains("\"event\":326"),
     "Text editor slot gate emitted unsupported-scene diagnostics")
   Console.WriteLine("text-editor-slots-gate: inline=1 block=1 clip=1 text=1"
-    + " warmVkAlloc=0 close=1")
+    +" warmVkAlloc=0 close=1")
 }

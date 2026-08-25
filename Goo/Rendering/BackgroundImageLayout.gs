@@ -7,17 +7,11 @@ internal class BackgroundImageLayouts {
   shared {
     private var values ConditionalWeakTable[Node, BackgroundImageValue]?
 
-    internal func Path(n Node) string {
-      return if let value = state(n) { value.Path } else { "" }
-    }
+    internal func Path(n Node) string -> if let value = state(n) { value.Path } else { "" }
 
-    internal func Source(n Node) ImageSourceProvider? {
-      return if let value = state(n) { value.Source } else { nil }
-    }
+    internal func Source(n Node) ImageSourceProvider ? -> if let value = state(n) { value.Source } else { nil }
 
-    internal func CurrentToken(n Node) ImageSourceBindingToken? {
-      return state(n)?.CurrentToken()
-    }
+    internal func CurrentToken(n Node) ImageSourceBindingToken ? -> state(n)?.CurrentToken()
 
     internal func Image(n Node) DecodedImage? {
       guard let value = state(n) else { return nil }
@@ -176,17 +170,17 @@ internal class BackgroundImageLayouts {
 
     private func invalidateSource(n Node, value BackgroundImageValue,
       token ImageSourceBindingToken) {
-      if n.Retired {
-        return
+        if n.Retired {
+          return
+        }
+        guard let current = state(n) else {
+          return
+        }
+        if current != value || !value.IsCurrentToken(token) {
+          return
+        }
+        current.Invalidated?.Invoke()
       }
-      guard let current = state(n) else {
-        return
-      }
-      if current != value || !value.IsCurrentToken(token) {
-        return
-      }
-      current.Invalidated?.Invoke()
-    }
 
     private func refreshSource(n Node, value BackgroundImageValue) {
       if n.Retired {

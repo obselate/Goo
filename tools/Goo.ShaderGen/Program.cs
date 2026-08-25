@@ -757,7 +757,7 @@ internal static class Program
         };
         for (int index = 0; index < suffixes.Length; index++)
         {
-            text.Append("    @FieldOffset(").Append(offset + index * 4).Append(") var ")
+            text.Append("  @FieldOffset(").Append(offset + index * 4).Append(") var ")
                 .Append(name).Append(suffixes[index]).Append(' ').Append(scalarType).Append('\n');
         }
     }

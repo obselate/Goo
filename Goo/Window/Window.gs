@@ -17,24 +17,24 @@ public data struct WindowMetrics {
   private var displayScaleY float64
 
   /// Gets the reported logical width.
-  public prop LogicalWidth int32 { get { return logicalWidth } init { logicalWidth = value } }
+  public prop LogicalWidth int32{ get { return logicalWidth } init{ logicalWidth = value } }
   /// Gets the reported logical height.
-  public prop LogicalHeight int32 { get { return logicalHeight } init { logicalHeight = value } }
+  public prop LogicalHeight int32{ get { return logicalHeight } init{ logicalHeight = value } }
   /// Gets the reported framebuffer width.
-  public prop FramebufferWidth int32 { get { return framebufferWidth } init { framebufferWidth = value } }
+  public prop FramebufferWidth int32{ get { return framebufferWidth } init{ framebufferWidth = value } }
   /// Gets the reported framebuffer height.
-  public prop FramebufferHeight int32 { get { return framebufferHeight } init { framebufferHeight = value } }
+  public prop FramebufferHeight int32{ get { return framebufferHeight } init{ framebufferHeight = value } }
   /// Gets the horizontal framebuffer-to-logical scale.
-  public prop DisplayScaleX float64 { get { return displayScaleX } init { displayScaleX = value } }
+  public prop DisplayScaleX float64{ get { return displayScaleX } init{ displayScaleX = value } }
   /// Gets the vertical framebuffer-to-logical scale.
-  public prop DisplayScaleY float64 { get { return displayScaleY } init { displayScaleY = value } }
+  public prop DisplayScaleY float64{ get { return displayScaleY } init{ displayScaleY = value } }
 }
 
 /// Hosts a Goo tree on one process-wide UI thread.
 /// After Open, only Post and RequestClose are safe from another thread.
 public partial class Window {
   /// Gets or sets the window clear color.
-  public prop Background Color {
+  public prop Background Color{
     get { return background }
     set(v) {
       requireUiThread("Window.Background")
@@ -48,15 +48,15 @@ public partial class Window {
   /// Gets the root cell.
   public prop Root Cell? {
     get { return root }
-    init { root = value }
+    init{ root = value }
   }
   /// Reports whether the window is open.
-  public prop IsOpen bool { get; private set; }
+  public prop IsOpen bool{ get; private set; }
   internal prop Tree Node? { get { return node } }
   /// Gets or sets per-window GPU presentation synchronization.
   /// True selects FIFO. False prefers Immediate, then Mailbox, then FIFO.
   /// Window.Run applies internal display-rate pacing for either value.
-  public prop VSync bool {
+  public prop VSync bool{
     get { return vsync }
     set(v) {
       requireUiThread("Window.VSync")
@@ -72,7 +72,7 @@ public partial class Window {
   }
 
   /// Gets or sets the window title.
-  public prop Title string {
+  public prop Title string{
     get { return title }
     set(v) {
       requireUiThread("Window.Title")
@@ -87,7 +87,7 @@ public partial class Window {
   }
 
   /// Gets or sets the window width.
-  public prop Width int32 {
+  public prop Width int32{
     get { return width }
     set(v) {
       requireUiThread("Window.Width")
@@ -102,7 +102,7 @@ public partial class Window {
   }
 
   /// Gets or sets the window height.
-  public prop Height int32 {
+  public prop Height int32{
     get { return height }
     set(v) {
       requireUiThread("Window.Height")
@@ -118,7 +118,7 @@ public partial class Window {
 
   // positionSet distinguishes an explicit (0,0) request.
   /// Gets or sets the requested horizontal position.
-  public prop X int32 {
+  public prop X int32{
     get { return x }
     set(v) {
       requireUiThread("Window.X")
@@ -132,7 +132,7 @@ public partial class Window {
   }
 
   /// Gets or sets the requested vertical position.
-  public prop Y int32 {
+  public prop Y int32{
     get { return y }
     set(v) {
       requireUiThread("Window.Y")
@@ -146,7 +146,7 @@ public partial class Window {
   }
 
   /// Gets or sets the window state.
-  public prop State WindowState {
+  public prop State WindowState{
     get { return state }
     set(v) {
       requireUiThread("Window.State")
@@ -162,7 +162,7 @@ public partial class Window {
 
   /// Gets or sets next-open per-pixel alpha. An open window is unchanged.
   /// Transparency requires the GPU renderer.
-  public prop Transparent bool {
+  public prop Transparent bool{
     get { return transparent }
     set(v) {
       requireUiThread("Window.Transparent")
@@ -171,7 +171,7 @@ public partial class Window {
   }
 
   /// Gets or sets whether the system draws window decorations.
-  public prop Decorated bool {
+  public prop Decorated bool{
     get { return decorated }
     set(v) {
       requireUiThread("Window.Decorated")
@@ -186,7 +186,7 @@ public partial class Window {
   }
 
   /// Gets or sets whether the user can resize the window.
-  public prop Resizable bool {
+  public prop Resizable bool{
     get { return resizable }
     set(v) {
       requireUiThread("Window.Resizable")
@@ -201,7 +201,7 @@ public partial class Window {
   }
 
   /// Gets or sets the undecorated edge resize band in logical pixels.
-  public prop ResizeBand float32 {
+  public prop ResizeBand float32{
     get { return resizeBand }
     set(v) {
       requireUiThread("Window.ResizeBand")
@@ -213,7 +213,7 @@ public partial class Window {
   }
 
   /// Reports whether the window currently holds native input focus.
-  public prop IsFocused bool { get; private set; }
+  public prop IsFocused bool{ get; private set; }
 
   /// Gets or sets the callback that receives each window state change.
   public prop OnStateChange Action[WindowState]? {
@@ -224,7 +224,7 @@ public partial class Window {
     }
   }
   /// Gets or sets the callback that receives each physical key press.
-  public prop OnKeyPress ((Key, KeyModifiers) -> void)? {
+  public prop OnKeyPress((Key, KeyModifiers) -> void)? {
     get { return onKeyPress }
     set(v) {
       requireUiThread("Window.OnKeyPress")
@@ -232,7 +232,7 @@ public partial class Window {
     }
   }
   /// Gets or sets the close-request handler; return false to veto closure.
-  public prop OnClosing (() -> bool)? {
+  public prop OnClosing(() -> bool)? {
     get { return onClosing }
     set(v) {
       requireUiThread("Window.OnClosing")
@@ -250,9 +250,9 @@ public partial class Window {
 
   /// Occurs after the native window reports a new stable size or display scale.
   /// Callbacks run on the window UI thread after native metrics and layout settle.
-  public event MetricsChanged Action[WindowMetrics] {
-    add { MetricSubscriptions.AddWindow(this, value) }
-    remove { MetricSubscriptions.RemoveWindow(this, value) }
+  public event MetricsChanged Action[WindowMetrics]{
+    add{ MetricSubscriptions.AddWindow(this, value) }
+    remove{ MetricSubscriptions.RemoveWindow(this, value) }
   }
 
   /// Gets the current native clipboard text on the window UI thread.
@@ -281,7 +281,7 @@ public partial class Window {
   }
 
   /// Reports whether programmatic window movement is available.
-  public prop CanMove bool {
+  public prop CanMove bool{
     get {
       requireUiThread("Window.CanMove")
       return if let native = host { native.CanMove } else { false }
@@ -313,7 +313,7 @@ public partial class Window {
   private var hookInstalled bool
   private var paintResourceHook Action?
   private var shaderEffectInvalidatedHook Action?
-  private var imageCompletionHook ((Node, object) -> void)?
+  private var imageCompletionHook((Node, object) -> void)?
   private var retainedInvalidationHook Action[ReconcileEffects]?
   private var cellHook Action[Cell]?
   private var layout Layout
@@ -356,8 +356,8 @@ public partial class Window {
   private var acceptingPosts bool
   private var uiThreadBound bool
   private var onStateChange Action[WindowState]?
-  private var onKeyPress ((Key, KeyModifiers) -> void)?
-  private var onClosing (() -> bool)?
+  private var onKeyPress((Key, KeyModifiers) -> void)?
+  private var onClosing(() -> bool)?
   private var onFocusChange Action[bool]?
 
   /// Creates a window with default configuration.

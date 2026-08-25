@@ -8,7 +8,7 @@ import Hexa.NET.SDL3
 
 internal class SdlEventRouter {
   private let handlers Dictionary[uint32, Action[SDLEvent]] =
-    Dictionary[uint32, Action[SDLEvent]]()
+  Dictionary[uint32, Action[SDLEvent]]()
 
   internal func Register(windowId uint32, handler Action[SDLEvent]) {
     handlers[windowId] = handler
@@ -154,7 +154,7 @@ internal partial class SdlRuntime {
     internal func SetCursor(value SdlHostCursor) {
       RequireMainThread("SDL cursor mutation")
       if int32(value) < int32(SdlHostCursor.Default) ||
-          int32(value) > int32(SdlHostCursor.ResizeWest) {
+      int32(value) > int32(SdlHostCursor.ResizeWest) {
         throw ArgumentOutOfRangeException("value")
       }
       if value == currentCursor {
@@ -180,30 +180,28 @@ internal partial class SdlRuntime {
       currentCursor = value
     }
 
-    internal func MapSystemCursor(value SdlHostCursor) SDLSystemCursor {
-      return switch value {
-        case SdlHostCursor.Default: SDLSystemCursor.Default
-        case SdlHostCursor.Pointer: SDLSystemCursor.Pointer
-        case SdlHostCursor.Text: SDLSystemCursor.Text
-        case SdlHostCursor.Crosshair: SDLSystemCursor.Crosshair
-        case SdlHostCursor.Move: SDLSystemCursor.Move
-        case SdlHostCursor.NotAllowed: SDLSystemCursor.NotAllowed
-        case SdlHostCursor.Wait: SDLSystemCursor.Wait
-        case SdlHostCursor.Progress: SDLSystemCursor.Progress
-        case SdlHostCursor.ResizeHorizontal: SDLSystemCursor.EwResize
-        case SdlHostCursor.ResizeVertical: SDLSystemCursor.NsResize
-        case SdlHostCursor.ResizeNorthwestSoutheast: SDLSystemCursor.NwseResize
-        case SdlHostCursor.ResizeNortheastSouthwest: SDLSystemCursor.NeswResize
-        case SdlHostCursor.ResizeNorthwest: SDLSystemCursor.NwResize
-        case SdlHostCursor.ResizeNorth: SDLSystemCursor.NResize
-        case SdlHostCursor.ResizeNortheast: SDLSystemCursor.NeResize
-        case SdlHostCursor.ResizeEast: SDLSystemCursor.EResize
-        case SdlHostCursor.ResizeSoutheast: SDLSystemCursor.SeResize
-        case SdlHostCursor.ResizeSouth: SDLSystemCursor.SResize
-        case SdlHostCursor.ResizeSouthwest: SDLSystemCursor.SwResize
-        case SdlHostCursor.ResizeWest: SDLSystemCursor.WResize
-        case _: throw ArgumentOutOfRangeException("value")
-      }
+    internal func MapSystemCursor(value SdlHostCursor) SDLSystemCursor -> switch value {
+      case SdlHostCursor.Default: SDLSystemCursor.Default
+      case SdlHostCursor.Pointer: SDLSystemCursor.Pointer
+      case SdlHostCursor.Text: SDLSystemCursor.Text
+      case SdlHostCursor.Crosshair: SDLSystemCursor.Crosshair
+      case SdlHostCursor.Move: SDLSystemCursor.Move
+      case SdlHostCursor.NotAllowed: SDLSystemCursor.NotAllowed
+      case SdlHostCursor.Wait: SDLSystemCursor.Wait
+      case SdlHostCursor.Progress: SDLSystemCursor.Progress
+      case SdlHostCursor.ResizeHorizontal: SDLSystemCursor.EwResize
+      case SdlHostCursor.ResizeVertical: SDLSystemCursor.NsResize
+      case SdlHostCursor.ResizeNorthwestSoutheast: SDLSystemCursor.NwseResize
+      case SdlHostCursor.ResizeNortheastSouthwest: SDLSystemCursor.NeswResize
+      case SdlHostCursor.ResizeNorthwest: SDLSystemCursor.NwResize
+      case SdlHostCursor.ResizeNorth: SDLSystemCursor.NResize
+      case SdlHostCursor.ResizeNortheast: SDLSystemCursor.NeResize
+      case SdlHostCursor.ResizeEast: SDLSystemCursor.EResize
+      case SdlHostCursor.ResizeSoutheast: SDLSystemCursor.SeResize
+      case SdlHostCursor.ResizeSouth: SDLSystemCursor.SResize
+      case SdlHostCursor.ResizeSouthwest: SDLSystemCursor.SwResize
+      case SdlHostCursor.ResizeWest: SDLSystemCursor.WResize
+      case _: throw ArgumentOutOfRangeException("value")
     }
 
     internal func Acquire() {
@@ -212,10 +210,10 @@ internal partial class SdlRuntime {
         if references == 0 {
           let requiresWayland = OperatingSystem.IsLinux()
           if requiresWayland && !SDL.SetHintWithPriority(
-              SDL.SDL_HINT_VIDEO_DRIVER, "wayland", SDLHintPriority.Override) {
-            throw PlatformNotSupportedException(
-              "Goo requires native Wayland on Linux, but SDL rejected the Wayland video driver selection.")
-          }
+            SDL.SDL_HINT_VIDEO_DRIVER, "wayland", SDLHintPriority.Override) {
+              throw PlatformNotSupportedException(
+                "Goo requires native Wayland on Linux, but SDL rejected the Wayland video driver selection.")
+            }
           SDL.SetHint(SDL.SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1")
           if !SDL.InitSubSystem(requiredSubsystems) {
             if requiresWayland {
@@ -291,7 +289,7 @@ internal partial class SdlRuntime {
       if eventType == SDLEventType.Quit || eventType == SDLEventType.Terminating {
         events.RouteAll(nativeEvent)
       } else if eventType >= SDLEventType.DisplayFirst &&
-          eventType <= SDLEventType.DisplayLast {
+      eventType <= SDLEventType.DisplayLast{
         events.RouteAll(nativeEvent)
       } else if eventType == SDLEventType.PenProximityOut && nativeEvent.Pproximity.WindowID == 0u {
         events.RouteAll(nativeEvent)
@@ -313,7 +311,7 @@ internal partial class SdlRuntime {
       } else if eventType == SDLEventType.MouseWheel {
         windowId = nativeEvent.Wheel.WindowID
       } else if eventType == SDLEventType.FingerDown || eventType == SDLEventType.FingerMotion ||
-          eventType == SDLEventType.FingerUp || eventType == SDLEventType.FingerCanceled {
+      eventType == SDLEventType.FingerUp || eventType == SDLEventType.FingerCanceled{
         windowId = nativeEvent.Tfinger.WindowID
       } else if eventType == SDLEventType.PenDown || eventType == SDLEventType.PenUp {
         windowId = nativeEvent.Ptouch.WindowID

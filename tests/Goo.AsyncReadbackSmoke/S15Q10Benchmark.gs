@@ -6,16 +6,14 @@ import System.Diagnostics
 import System.IO
 import Goo
 
-
 func S15Q10TableText(row int32, column int32, mutated bool) string {
   if mutated {
     return "M"
   }
   let value = (int64(row) * 131L + int64(column) * 17L
-    + int64(2654435761uL % 997uL)) % 26L
+    +int64(2654435761uL % 997uL)) % 26L
   return Convert.ToChar(65 + int32(value)).ToString()
 }
-
 
 data struct S15Q10TableCellInput {
   internal var Row int32
@@ -90,7 +88,7 @@ class S15Q10TableRoot : Cell {
       let visible = (frame * 13 + index * 7 + int32(seed % 31uL)) % viewportRows
       mutationRows[index] = scrollRow + visible
       mutationColumns[index] =
-        (frame * 5 + index * 3 + int32(seed % 11uL)) % S15Q10TableColumns
+      (frame * 5 + index * 3 + int32(seed % 11uL)) % S15Q10TableColumns
       index = index + 1
     }
   }
@@ -158,8 +156,7 @@ open class S15Q10TableCell : Cell[S15Q10TableCellInput] {
       Width: 1440,
       Height: 32,
       BackgroundColor: (input.Row & 1) == 0
-        ? Color.Rgb(16, 24, 36)
-        : Color.Rgb(20, 30, 44),
+      ? Color.Rgb(16, 24, 36) : Color.Rgb(20, 30, 44),
     }
     var column int32 = 0
     while column < 12 {
@@ -281,7 +278,7 @@ class S15Q10TopologyRoot : Cell {
     while index < 16 {
       if visibleCount > 0 {
         mutatedNodes[index] =
-          visibleNodes[(frame * 11 + index * 17 + int32(seed % 29uL)) % visibleCount]
+        visibleNodes[(frame * 11 + index * 17 + int32(seed % 29uL)) % visibleCount]
       } else {
         mutatedNodes[index] = -1
       }
@@ -300,21 +297,13 @@ class S15Q10TopologyRoot : Cell {
     return false
   }
 
-  private func NodeX(node int32) float64 {
-    return float64((node * 97 + int32(seed % 5760uL)) % 5760)
-  }
+  private func NodeX(node int32) float64 -> float64((node * 97 + int32(seed % 5760uL)) % 5760)
 
-  private func NodeY(node int32) float64 {
-    return float64((node * 193 + int32(seed % 3240uL)) % 3240)
-  }
+  private func NodeY(node int32) float64 -> float64((node * 193 + int32(seed % 3240uL)) % 3240)
 
-  private func ScreenX(node int32) float64 {
-    return (NodeX(node) - panX) * zoom
-  }
+  private func ScreenX(node int32) float64 -> (NodeX(node) - panX) * zoom
 
-  private func ScreenY(node int32) float64 {
-    return (NodeY(node) - panY) * zoom
-  }
+  private func ScreenY(node int32) float64 -> (NodeY(node) - panY) * zoom
 
   private func RefreshVisible() {
     var node int32 = 0
@@ -328,11 +317,11 @@ class S15Q10TopologyRoot : Cell {
       let x = ScreenX(node)
       let y = ScreenY(node)
       if x >= -20.0 && x < float64(S15Q10TopologyWidth) + 20.0
-          && y >= -20.0 && y < float64(S15Q10TopologyHeight) + 20.0 {
-        visibleNodes[visibleCount] = node
-        visibleMap[node] = true
-        visibleCount = visibleCount + 1
-      }
+        && y >= -20.0 && y < float64(S15Q10TopologyHeight) + 20.0 {
+          visibleNodes[visibleCount] = node
+          visibleMap[node] = true
+          visibleCount = visibleCount + 1
+        }
       node = node + 1
     }
     while visibleCount < S15Q10TopologyVisibleTarget {
@@ -543,7 +532,6 @@ class S15Q10Scenario : Cell {
 
   private var revision State[int32]
 
-
   prop Workload string { get { return workload } }
   prop InitialSettlementFrames int32 {
     get {
@@ -654,7 +642,6 @@ class S15Q10Scenario : Cell {
     }
   }
 
-
   init(selected string) {
     revision = Track(0)
     workload = selected
@@ -703,7 +690,6 @@ class S15Q10Scenario : Cell {
     }
   }
 
-
   func Advance(frame int32) {
     if let current = table {
       current.Advance(frame)
@@ -728,21 +714,21 @@ class S15Q10Scenario : Cell {
       current.Transition(frame)
       var metrics = WindowReadbackTestFixture.Metrics(window)
       if metrics.LogicalWidth != current.Width
-          || metrics.LogicalHeight != current.Height
-          || metrics.FramebufferWidth != current.FramebufferWidth
-          || metrics.FramebufferHeight != current.FramebufferHeight {
-        let resized = WindowReadbackTestFixture.Resize(window, current.Width,
-          current.Height, current.FramebufferWidth, current.FramebufferHeight)
-        S14Require(resized,
-          "S15 Q10 resize-dpi native resize failed at frame " + frame.ToString())
-        metrics = WindowReadbackTestFixture.Metrics(window)
-      }
+        || metrics.LogicalHeight != current.Height
+        || metrics.FramebufferWidth != current.FramebufferWidth
+        || metrics.FramebufferHeight != current.FramebufferHeight{
+          let resized = WindowReadbackTestFixture.Resize(window, current.Width,
+            current.Height, current.FramebufferWidth, current.FramebufferHeight)
+          S14Require(resized,
+            "S15 Q10 resize-dpi native resize failed at frame " + frame.ToString())
+          metrics = WindowReadbackTestFixture.Metrics(window)
+        }
       S14Require(metrics.LogicalWidth == current.Width
           && metrics.LogicalHeight == current.Height
           && metrics.FramebufferWidth == current.FramebufferWidth
           && metrics.FramebufferHeight == current.FramebufferHeight,
         "S15 Q10 resize-dpi metrics did not match root at frame "
-          + frame.ToString())
+        +frame.ToString())
     }
   }
 
@@ -772,7 +758,6 @@ class S15Q10Scenario : Cell {
     return Container{}
   }
 
-
   func Invariant() bool {
     let common = MountedCount >= 0 && MountedCount <= MountedBound
       && VisibleCount >= 0 && VisibleCount <= MountedBound
@@ -794,13 +779,9 @@ data struct S15Q10GpuStats {
   internal var Worst int64
 }
 
-func S15Q10Value(value int64) uint64 {
-  return if value < 0L { 0uL } else { uint64(value) }
-}
+func S15Q10Value(value int64) uint64 -> if value < 0L { 0uL } else { uint64(value) }
 
-func S15Q10Delta(after uint64, before uint64) uint64 {
-  return if after >= before { after - before } else { 0uL }
-}
+func S15Q10Delta(after uint64, before uint64) uint64 -> if after >= before { after - before } else { 0uL }
 
 func S15Q10MaxCount(values []int64, count int32) int64 {
   var maximum int64 = 0L
@@ -826,32 +807,29 @@ func S15Q10PercentileCount(values []int64, count int32, percentile float64) int6
   return S14Percentile(subset, percentile)
 }
 
-func S15Q10GpuStats(values []int64, count int32) S15Q10GpuStats {
-  return S15Q10GpuStats{
-    Count: count,
-    P50: S15Q10PercentileCount(values, count, 0.50),
-    P95: S15Q10PercentileCount(values, count, 0.95),
-    P99: S15Q10PercentileCount(values, count, 0.99),
-    P999: S15Q10PercentileCount(values, count, 0.999),
-    Worst: S15Q10MaxCount(values, count),
-  }
+func S15Q10GpuStats(values []int64, count int32) S15Q10GpuStats -> S15Q10GpuStats {
+  Count: count,
+  P50: S15Q10PercentileCount(values, count, 0.50),
+  P95: S15Q10PercentileCount(values, count, 0.95),
+  P99: S15Q10PercentileCount(values, count, 0.99),
+  P999: S15Q10PercentileCount(values, count, 0.999),
+  Worst: S15Q10MaxCount(values, count),
 }
 
 func S15Q10Workload() string {
   let value = Environment.GetEnvironmentVariable("GOO_S15_Q10_WORKLOAD")
   if value == "table" || value == "topology" || value == "boxes-sparse"
-      || value == "boxes-full" || value == "small-animation"
-      || value == "text-editing" || value == "image-effects"
-      || value == "resize-dpi" || value == "three-window"
-      || value == "true-idle" {
-    return value!!
-  }
+    || value == "boxes-full" || value == "small-animation"
+    || value == "text-editing" || value == "image-effects"
+    || value == "resize-dpi" || value == "three-window"
+    || value == "true-idle" {
+      return value!!
+    }
   throw InvalidOperationException(
     "GOO_S15_Q10_WORKLOAD must be table, topology, boxes-sparse, boxes-full, "
-      + "small-animation, text-editing, image-effects, resize-dpi, "
-      + "three-window, or true-idle")
+    +"small-animation, text-editing, image-effects, resize-dpi, "
+    +"three-window, or true-idle")
 }
-
 
 func S15Q10ProcessWorkingSet(process Process) uint64 {
   process.Refresh()
@@ -863,14 +841,8 @@ func S15Q10ProcessPrivateMemory(process Process) uint64 {
   return S15Q10Value(process.PrivateMemorySize64)
 }
 
-func S15Q10ManagedLive() uint64 {
-  return S15Q10Value(GC.GetTotalMemory(false))
-}
-func S15Q10ManagedRetained() uint64 {
-  return S15Q10Value(GC.GetTotalMemory(true))
-}
-
-
+func S15Q10ManagedLive() uint64 -> S15Q10Value(GC.GetTotalMemory(false))
+func S15Q10ManagedRetained() uint64 -> S15Q10Value(GC.GetTotalMemory(true))
 
 func S15Q10PrivateDirty() uint64 {
   let path = "/proc/self/smaps_rollup"
@@ -889,9 +861,6 @@ func S15Q10PrivateDirty() uint64 {
   }
   return 0uL
 }
-
-
-
 
 func RunS15Q10Benchmark() {
   S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
@@ -965,11 +934,11 @@ func RunS15Q10Benchmark() {
     WindowReadbackTestFixture.SetMainPassTimestampSink(opened,
       func(snapshot VulkanDiagnosticTimestampSnapshot) {
         if collectGpu && snapshot.frame > measurementStartFrame
-            && (measurementEndFrame == 0uL || snapshot.frame <= measurementEndFrame)
-            && gpuCount < gpuNs.Length {
-          gpuNs[gpuCount] = int64(snapshot.elapsedNanoseconds)
-          gpuCount = gpuCount + 1
-        }
+          && (measurementEndFrame == 0uL || snapshot.frame <= measurementEndFrame)
+          && gpuCount < gpuNs.Length{
+            gpuNs[gpuCount] = int64(snapshot.elapsedNanoseconds)
+            gpuCount = gpuCount + 1
+          }
       })
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
 
@@ -1040,10 +1009,10 @@ func RunS15Q10Benchmark() {
       }
       S14Require(counters.submitCount == submissionsBefore + 1uL,
         "S15 Q10 measured frame did not submit exactly once at sample "
-          + sampleIndex.ToString())
+        +sampleIndex.ToString())
       S14Require(counters.presentCount == presentsBefore + 1uL,
         "S15 Q10 measured frame did not present exactly once at sample "
-          + sampleIndex.ToString())
+        +sampleIndex.ToString())
 
       frameNs[sampleIndex] = S14TicksToNs(end - start)
       frameAllocations[sampleIndex] = allocatedAfter - allocatedBefore
@@ -1145,95 +1114,95 @@ func RunS15Q10Benchmark() {
   let damageDelta = S15Q10Delta(finalCounters.damageCount, beforeCounters.damageCount)
   let damageAreaDelta = S15Q10Delta(finalCounters.damageArea, beforeCounters.damageArea)
   Console.WriteLine("s15-q10: workload=" + workload
-    + " seed=" + scenario.Seed.ToString()
-    + " logical=" + scenario.LogicalCount.ToString()
-    + " logical_edges=" + scenario.LogicalEdges.ToString()
-    + " visible_edges=" + scenario.VisibleEdges.ToString()
-    + " visible=" + scenario.VisibleCount.ToString()
-    + " mounted=" + scenario.MountedCount.ToString()
-    + " mounted_bound=" + scenario.MountedBound.ToString()
-    + " mutations=" + scenario.MutationCount.ToString()
-    + " warmup=" + warmup.ToString()
-    + " samples=" + samples.ToString()
-    + " cpu_p50_ns=" + S14Percentile(frameNs, 0.50).ToString()
-    + " cpu_p95_ns=" + S14Percentile(frameNs, 0.95).ToString()
-    + " cpu_p99_ns=" + S14Percentile(frameNs, 0.99).ToString()
-    + " cpu_p999_ns=" + S14Percentile(frameNs, 0.999).ToString()
-    + " cpu_worst_ns=" + S14Max(frameNs).ToString()
-    + " managed_alloc_p50_B=" + allocationP50.ToString()
-    + " managed_alloc_p95_B=" + allocationP95.ToString()
-    + " managed_alloc_p99_B=" + allocationP99.ToString()
-    + " managed_alloc_p999_B=" + allocationP999.ToString()
-    + " managed_alloc_worst_B=" + allocationWorst.ToString()
-    + " managed_alloc_total_B=" + allocationSum.ToString()
-    + " managed_live_start_B=" + managedLiveStart.ToString()
-    + " managed_live_end_B=" + managedLiveEnd.ToString()
-    + " managed_live_peak_B=" + managedLivePeak.ToString()
-    + " managed_retained_start_B=" + managedRetainedStart.ToString()
-    + " managed_retained_end_B=" + managedRetainedEnd.ToString()
-    + " working_set_start_B=" + workingSetStart.ToString()
-    + " working_set_end_B=" + workingSetEnd.ToString()
-    + " working_set_peak_B=" + workingSetPeak.ToString()
-    + " private_memory_start_B=" + privateMemoryStart.ToString()
-    + " private_memory_end_B=" + privateMemoryEnd.ToString()
-    + " private_memory_peak_B=" + privateMemoryPeak.ToString()
-    + " private_dirty_start_B=" + privateDirtyStart.ToString()
-    + " private_dirty_end_B=" + privateDirtyEnd.ToString()
-    + " allocator_current_B=" + finalCounters.allocatorBytes.ToString()
-    + " allocator_peak_B=" + allocatorPeak.ToString()
-    + " vk_memory_current_B=" + finalCounters.vulkanDeviceMemoryBytes.ToString()
-    + " vk_memory_peak_B=" + vulkanMemoryPeak.ToString()
-    + " image_current_B=" + finalCounters.imageResidentBytes.ToString()
-    + " text_atlas_current_B=" + finalCounters.textAtlasResidentBytes.ToString()
-    + " cache_current_B=" + finalCounters.cacheBytes.ToString()
-    + " cache_peak_B=" + cachePeak.ToString()
-    + " image_peak_B=" + imagePeak.ToString()
-    + " text_atlas_peak_B=" + textAtlasPeak.ToString()
-    + " gc_gen0_delta=" + (gen0After - gen0Before).ToString()
-    + " gc_gen1_delta=" + (gen1After - gen1Before).ToString()
-    + " gc_gen2_delta=" + (gen2After - gen2Before).ToString()
-    + " gc_pause_ns=" + ((pauseTicksAfter - pauseTicksBefore) * 100L).ToString()
-    + " managed_diagnostic_B=" + finalCounters.managedAllocatedBytes.ToString()
-    + " vk_object_alloc_delta=" + S15Q10Delta(finalCounters.vulkanObjectAllocationCount,
+    +" seed=" + scenario.Seed.ToString()
+    +" logical=" + scenario.LogicalCount.ToString()
+    +" logical_edges=" + scenario.LogicalEdges.ToString()
+    +" visible_edges=" + scenario.VisibleEdges.ToString()
+    +" visible=" + scenario.VisibleCount.ToString()
+    +" mounted=" + scenario.MountedCount.ToString()
+    +" mounted_bound=" + scenario.MountedBound.ToString()
+    +" mutations=" + scenario.MutationCount.ToString()
+    +" warmup=" + warmup.ToString()
+    +" samples=" + samples.ToString()
+    +" cpu_p50_ns=" + S14Percentile(frameNs, 0.50).ToString()
+    +" cpu_p95_ns=" + S14Percentile(frameNs, 0.95).ToString()
+    +" cpu_p99_ns=" + S14Percentile(frameNs, 0.99).ToString()
+    +" cpu_p999_ns=" + S14Percentile(frameNs, 0.999).ToString()
+    +" cpu_worst_ns=" + S14Max(frameNs).ToString()
+    +" managed_alloc_p50_B=" + allocationP50.ToString()
+    +" managed_alloc_p95_B=" + allocationP95.ToString()
+    +" managed_alloc_p99_B=" + allocationP99.ToString()
+    +" managed_alloc_p999_B=" + allocationP999.ToString()
+    +" managed_alloc_worst_B=" + allocationWorst.ToString()
+    +" managed_alloc_total_B=" + allocationSum.ToString()
+    +" managed_live_start_B=" + managedLiveStart.ToString()
+    +" managed_live_end_B=" + managedLiveEnd.ToString()
+    +" managed_live_peak_B=" + managedLivePeak.ToString()
+    +" managed_retained_start_B=" + managedRetainedStart.ToString()
+    +" managed_retained_end_B=" + managedRetainedEnd.ToString()
+    +" working_set_start_B=" + workingSetStart.ToString()
+    +" working_set_end_B=" + workingSetEnd.ToString()
+    +" working_set_peak_B=" + workingSetPeak.ToString()
+    +" private_memory_start_B=" + privateMemoryStart.ToString()
+    +" private_memory_end_B=" + privateMemoryEnd.ToString()
+    +" private_memory_peak_B=" + privateMemoryPeak.ToString()
+    +" private_dirty_start_B=" + privateDirtyStart.ToString()
+    +" private_dirty_end_B=" + privateDirtyEnd.ToString()
+    +" allocator_current_B=" + finalCounters.allocatorBytes.ToString()
+    +" allocator_peak_B=" + allocatorPeak.ToString()
+    +" vk_memory_current_B=" + finalCounters.vulkanDeviceMemoryBytes.ToString()
+    +" vk_memory_peak_B=" + vulkanMemoryPeak.ToString()
+    +" image_current_B=" + finalCounters.imageResidentBytes.ToString()
+    +" text_atlas_current_B=" + finalCounters.textAtlasResidentBytes.ToString()
+    +" cache_current_B=" + finalCounters.cacheBytes.ToString()
+    +" cache_peak_B=" + cachePeak.ToString()
+    +" image_peak_B=" + imagePeak.ToString()
+    +" text_atlas_peak_B=" + textAtlasPeak.ToString()
+    +" gc_gen0_delta=" + (gen0After - gen0Before).ToString()
+    +" gc_gen1_delta=" + (gen1After - gen1Before).ToString()
+    +" gc_gen2_delta=" + (gen2After - gen2Before).ToString()
+    +" gc_pause_ns=" + ((pauseTicksAfter - pauseTicksBefore) * 100L).ToString()
+    +" managed_diagnostic_B=" + finalCounters.managedAllocatedBytes.ToString()
+    +" vk_object_alloc_delta=" + S15Q10Delta(finalCounters.vulkanObjectAllocationCount,
       beforeCounters.vulkanObjectAllocationCount).ToString()
-    + " vk_device_alloc_delta=" + S15Q10Delta(finalCounters.vulkanDeviceMemoryAllocationCount,
+    +" vk_device_alloc_delta=" + S15Q10Delta(finalCounters.vulkanDeviceMemoryAllocationCount,
       beforeCounters.vulkanDeviceMemoryAllocationCount).ToString()
-    + " plan_delta=" + planDelta.ToString()
-    + " record_delta=" + recordDelta.ToString()
-    + " submit_delta=" + submitDelta.ToString()
-    + " present_delta=" + presentDelta.ToString()
-    + " damage_delta=" + damageDelta.ToString()
-    + " damage_area_delta=" + damageAreaDelta.ToString()
-    + " damage_x=" + finalScene.DamageX.ToString()
-    + " damage_y=" + finalScene.DamageY.ToString()
-    + " damage_width=" + finalScene.DamageWidth.ToString()
-    + " damage_height=" + finalScene.DamageHeight.ToString()
-    + " primitive_written_B=" + finalPrimitive.TotalWrittenBytes.ToString()
-    + " primitive_skipped_B=" + finalPrimitive.TotalSkippedBytes.ToString()
-    + " primitive_dirty=" + finalPrimitive.TotalDirtyRecordCount.ToString()
-    + " primitive_ranges=" + finalPrimitive.TotalUploadRangeCount.ToString()
-    + " primitive_full_uploads=" + finalPrimitive.TotalFullUploads.ToString()
-    + " primitive_mapped_writes=" + finalPrimitive.TotalMappedWrites.ToString()
-    + " primitive_flushes=" + finalPrimitive.TotalFlushes.ToString()
-    + " primitive_retained_reuse=" + finalPrimitive.TotalRetainedReuse.ToString()
-    + " text_written_B=" + finalText.TotalWrittenBytes.ToString()
-    + " text_skipped_B=" + finalText.TotalSkippedBytes.ToString()
-    + " text_dirty=" + finalText.TotalDirtySegmentCount.ToString()
-    + " text_ranges=" + finalText.TotalUploadRangeCount.ToString()
-    + " text_full_uploads=" + finalText.TotalFullUploads.ToString()
-    + " text_mapped_writes=" + finalText.TotalMappedWrites.ToString()
-    + " text_flushes=" + finalText.TotalFlushes.ToString()
-    + " text_retained_reuse=" + finalText.TotalRetainedReuse.ToString()
-    + " gpu_supported=" + (timestampSupported ? "1" : "0")
-    + " gpu_samples=" + gpu.Count.ToString()
-    + " gpu_main_p50_ns=" + gpu.P50.ToString()
-    + " gpu_main_p95_ns=" + gpu.P95.ToString()
-    + " gpu_main_p99_ns=" + gpu.P99.ToString()
-    + " gpu_main_p999_ns=" + gpu.P999.ToString()
-    + " gpu_main_worst_ns=" + gpu.Worst.ToString()
-    + " power_proxy=external"
-    + " both_slots=" + (sawSlot0 && sawSlot1 ? "1" : "0")
-    + " close=1")
+    +" plan_delta=" + planDelta.ToString()
+    +" record_delta=" + recordDelta.ToString()
+    +" submit_delta=" + submitDelta.ToString()
+    +" present_delta=" + presentDelta.ToString()
+    +" damage_delta=" + damageDelta.ToString()
+    +" damage_area_delta=" + damageAreaDelta.ToString()
+    +" damage_x=" + finalScene.DamageX.ToString()
+    +" damage_y=" + finalScene.DamageY.ToString()
+    +" damage_width=" + finalScene.DamageWidth.ToString()
+    +" damage_height=" + finalScene.DamageHeight.ToString()
+    +" primitive_written_B=" + finalPrimitive.TotalWrittenBytes.ToString()
+    +" primitive_skipped_B=" + finalPrimitive.TotalSkippedBytes.ToString()
+    +" primitive_dirty=" + finalPrimitive.TotalDirtyRecordCount.ToString()
+    +" primitive_ranges=" + finalPrimitive.TotalUploadRangeCount.ToString()
+    +" primitive_full_uploads=" + finalPrimitive.TotalFullUploads.ToString()
+    +" primitive_mapped_writes=" + finalPrimitive.TotalMappedWrites.ToString()
+    +" primitive_flushes=" + finalPrimitive.TotalFlushes.ToString()
+    +" primitive_retained_reuse=" + finalPrimitive.TotalRetainedReuse.ToString()
+    +" text_written_B=" + finalText.TotalWrittenBytes.ToString()
+    +" text_skipped_B=" + finalText.TotalSkippedBytes.ToString()
+    +" text_dirty=" + finalText.TotalDirtySegmentCount.ToString()
+    +" text_ranges=" + finalText.TotalUploadRangeCount.ToString()
+    +" text_full_uploads=" + finalText.TotalFullUploads.ToString()
+    +" text_mapped_writes=" + finalText.TotalMappedWrites.ToString()
+    +" text_flushes=" + finalText.TotalFlushes.ToString()
+    +" text_retained_reuse=" + finalText.TotalRetainedReuse.ToString()
+    +" gpu_supported=" + (timestampSupported ? "1" : "0")
+    +" gpu_samples=" + gpu.Count.ToString()
+    +" gpu_main_p50_ns=" + gpu.P50.ToString()
+    +" gpu_main_p95_ns=" + gpu.P95.ToString()
+    +" gpu_main_p99_ns=" + gpu.P99.ToString()
+    +" gpu_main_p999_ns=" + gpu.P999.ToString()
+    +" gpu_main_worst_ns=" + gpu.Worst.ToString()
+    +" power_proxy=external"
+    +" both_slots=" + (sawSlot0 && sawSlot1 ? "1" : "0")
+    +" close=1")
 }
 
 func RunS15Q10StageTimestampGate() {
@@ -1286,10 +1255,10 @@ func RunS15Q10StageTimestampGate() {
     WindowReadbackTestFixture.SetAllTimestampSink(opened,
       func(snapshot VulkanDiagnosticTimestampSnapshot) {
         if !collectTimestamp || snapshot.frame <= measurementStartFrame
-            || (measurementEndFrame != 0uL
+          || (measurementEndFrame != 0uL
               && snapshot.frame > measurementEndFrame) {
-          return
-        }
+                return
+              }
         if snapshot.stage == VulkanDiagnosticTimestampStage.Effects {
           if capturedEffectsCount >= capturedEffectsFrames.Length {
             captureOverflow = true
@@ -1298,10 +1267,10 @@ func RunS15Q10StageTimestampGate() {
           capturedEffectsFrames[capturedEffectsCount] = snapshot.frame
           capturedEffectsTicks[capturedEffectsCount] = snapshot.elapsedTicks
           capturedEffectsNanoseconds[capturedEffectsCount] =
-            int64(snapshot.elapsedNanoseconds)
+          int64(snapshot.elapsedNanoseconds)
           capturedEffectsScopes[capturedEffectsCount] = snapshot.scopeCount
           capturedEffectsDrops[capturedEffectsCount] =
-            snapshot.droppedScopeCount
+          snapshot.droppedScopeCount
           capturedEffectsCount = capturedEffectsCount + 1
         } else if snapshot.stage == VulkanDiagnosticTimestampStage.Offscreen {
           if capturedOffscreenCount >= capturedOffscreenFrames.Length {
@@ -1311,10 +1280,10 @@ func RunS15Q10StageTimestampGate() {
           capturedOffscreenFrames[capturedOffscreenCount] = snapshot.frame
           capturedOffscreenTicks[capturedOffscreenCount] = snapshot.elapsedTicks
           capturedOffscreenNanoseconds[capturedOffscreenCount] =
-            int64(snapshot.elapsedNanoseconds)
+          int64(snapshot.elapsedNanoseconds)
           capturedOffscreenScopes[capturedOffscreenCount] = snapshot.scopeCount
           capturedOffscreenDrops[capturedOffscreenCount] =
-            snapshot.droppedScopeCount
+          snapshot.droppedScopeCount
           capturedOffscreenCount = capturedOffscreenCount + 1
         }
       })
@@ -1362,13 +1331,13 @@ func RunS15Q10StageTimestampGate() {
       S14Require(counters.presentCount == presentsBefore + 1uL,
         "S15 Q10 stage timestamp frame did not present exactly once")
       S14Require(S15Q10Delta(counters.vulkanObjectAllocationCount,
-          countersBefore.vulkanObjectAllocationCount) == 0uL,
+        countersBefore.vulkanObjectAllocationCount) == 0uL,
         "S15 Q10 stage timestamp frame created a Vulkan object")
       S14Require(S15Q10Delta(counters.vulkanDeviceMemoryAllocationCount,
-          countersBefore.vulkanDeviceMemoryAllocationCount) == 0uL,
+        countersBefore.vulkanDeviceMemoryAllocationCount) == 0uL,
         "S15 Q10 stage timestamp frame allocated Vulkan device memory")
       expectedFrames[sampleIndex] =
-        WindowReadbackTestFixture.DiagnosticFrameId(opened)
+      WindowReadbackTestFixture.DiagnosticFrameId(opened)
       if sampleIndex > 0 {
         S14Require(expectedFrames[sampleIndex] > expectedFrames[sampleIndex - 1],
           "S15 Q10 stage timestamp completed-frame ids are not strictly ordered")
@@ -1378,12 +1347,12 @@ func RunS15Q10StageTimestampGate() {
     measurementEndFrame = WindowReadbackTestFixture.DiagnosticFrameId(opened)
     var resolveIndex int32 = 0
     while resolveIndex < 8
-        && (capturedEffectsCount < samples
+      && (capturedEffectsCount < samples
           || capturedOffscreenCount < samples) {
-      WindowReadbackTestFixture.PumpNativeEvents()
-      WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
-      resolveIndex = resolveIndex + 1
-    }
+            WindowReadbackTestFixture.PumpNativeEvents()
+            WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+            resolveIndex = resolveIndex + 1
+          }
     collectTimestamp = false
     WindowReadbackTestFixture.SetAllTimestampSink(opened, nil)
     S14Require(!captureOverflow,
@@ -1398,33 +1367,33 @@ func RunS15Q10StageTimestampGate() {
       var capturedIndex int32 = 0
       while capturedIndex < capturedEffectsCount {
         if !capturedEffectsMatched[capturedIndex]
-            && capturedEffectsFrames[capturedIndex] == expectedFrames[matchedIndex] {
-          S14Require(capturedEffectsTicks[capturedIndex] > 0uL
-              && capturedEffectsNanoseconds[capturedIndex] > 0L
-              && capturedEffectsScopes[capturedIndex] == EffectsScopeCount
-              && capturedEffectsDrops[capturedIndex] == 0,
-            "S15 Q10 stage timestamp Effects aggregate is invalid at frame "
-              + expectedFrames[matchedIndex].ToString())
-          effectsSamples[matchedIndex] =
+          && capturedEffectsFrames[capturedIndex] == expectedFrames[matchedIndex]{
+            S14Require(capturedEffectsTicks[capturedIndex] > 0uL
+                && capturedEffectsNanoseconds[capturedIndex] > 0L
+                && capturedEffectsScopes[capturedIndex] == EffectsScopeCount
+                && capturedEffectsDrops[capturedIndex] == 0,
+              "S15 Q10 stage timestamp Effects aggregate is invalid at frame "
+              +expectedFrames[matchedIndex].ToString())
+            effectsSamples[matchedIndex] =
             capturedEffectsNanoseconds[capturedIndex]
-          capturedEffectsMatched[capturedIndex] = true
-          effectsMatches = effectsMatches + 1
-        }
+            capturedEffectsMatched[capturedIndex] = true
+            effectsMatches = effectsMatches + 1
+          }
         capturedIndex = capturedIndex + 1
       }
       capturedIndex = 0
       while capturedIndex < capturedOffscreenCount {
         if !capturedOffscreenMatched[capturedIndex]
-            && capturedOffscreenFrames[capturedIndex]
-              == expectedFrames[matchedIndex] {
+          && capturedOffscreenFrames[capturedIndex]
+        == expectedFrames[matchedIndex]{
           S14Require(capturedOffscreenTicks[capturedIndex] > 0uL
               && capturedOffscreenNanoseconds[capturedIndex] > 0L
               && capturedOffscreenScopes[capturedIndex] == OffscreenScopeCount
               && capturedOffscreenDrops[capturedIndex] == 0,
             "S15 Q10 stage timestamp Offscreen aggregate is invalid at frame "
-              + expectedFrames[matchedIndex].ToString())
+            +expectedFrames[matchedIndex].ToString())
           offscreenSamples[matchedIndex] =
-            capturedOffscreenNanoseconds[capturedIndex]
+          capturedOffscreenNanoseconds[capturedIndex]
           capturedOffscreenMatched[capturedIndex] = true
           offscreenMatches = offscreenMatches + 1
         }
@@ -1432,15 +1401,15 @@ func RunS15Q10StageTimestampGate() {
       }
       S14Require(effectsMatches == 1 && offscreenMatches == 1,
         "S15 Q10 stage timestamp frame did not match exactly once at frame "
-          + expectedFrames[matchedIndex].ToString())
+        +expectedFrames[matchedIndex].ToString())
       matchedIndex = matchedIndex + 1
     }
     finalCounters = WindowReadbackTestFixture.DiagnosticCounters(opened)
     S14Require(S15Q10Delta(finalCounters.vulkanObjectAllocationCount,
-        beforeCounters.vulkanObjectAllocationCount) == 0uL,
+      beforeCounters.vulkanObjectAllocationCount) == 0uL,
       "S15 Q10 stage timestamp warm frames created a Vulkan object")
     S14Require(S15Q10Delta(finalCounters.vulkanDeviceMemoryAllocationCount,
-        beforeCounters.vulkanDeviceMemoryAllocationCount) == 0uL,
+      beforeCounters.vulkanDeviceMemoryAllocationCount) == 0uL,
       "S15 Q10 stage timestamp warm frames allocated Vulkan device memory")
     S14Require(scenario.Invariant(),
       "S15 Q10 stage timestamp scenario invariant failed")
@@ -1477,26 +1446,26 @@ func RunS15Q10StageTimestampGate() {
     finalCounters.vulkanDeviceMemoryAllocationCount,
     beforeCounters.vulkanDeviceMemoryAllocationCount)
   Console.WriteLine("s15-q10-stage-timestamp: workload=image-effects"
-    + " seed=" + scenario.Seed.ToString()
-    + " warmup=" + warmup.ToString()
-    + " samples=" + samples.ToString()
-    + " effects_p50_ns=" + effects.P50.ToString()
-    + " effects_p95_ns=" + effects.P95.ToString()
-    + " effects_p99_ns=" + effects.P99.ToString()
-    + " effects_worst_ns=" + effects.Worst.ToString()
-    + " effects_scope_count=" + EffectsScopeCount.ToString()
-    + " effects_dropped_scope_count=0"
-    + " offscreen_p50_ns=" + offscreen.P50.ToString()
-    + " offscreen_p95_ns=" + offscreen.P95.ToString()
-    + " offscreen_p99_ns=" + offscreen.P99.ToString()
-    + " offscreen_worst_ns=" + offscreen.Worst.ToString()
-    + " offscreen_scope_count=" + OffscreenScopeCount.ToString()
-    + " offscreen_dropped_scope_count=0"
-    + " exact_completed_frames=1"
-    + " timestamp_supported=1"
-    + " validation_clean=1"
-    + " warm_vk_object_alloc_delta=" + warmObjectAllocations.ToString()
-    + " warm_vk_device_memory_alloc_delta="
-      + warmDeviceMemoryAllocations.ToString()
-    + " close=1")
+    +" seed=" + scenario.Seed.ToString()
+    +" warmup=" + warmup.ToString()
+    +" samples=" + samples.ToString()
+    +" effects_p50_ns=" + effects.P50.ToString()
+    +" effects_p95_ns=" + effects.P95.ToString()
+    +" effects_p99_ns=" + effects.P99.ToString()
+    +" effects_worst_ns=" + effects.Worst.ToString()
+    +" effects_scope_count=" + EffectsScopeCount.ToString()
+    +" effects_dropped_scope_count=0"
+    +" offscreen_p50_ns=" + offscreen.P50.ToString()
+    +" offscreen_p95_ns=" + offscreen.P95.ToString()
+    +" offscreen_p99_ns=" + offscreen.P99.ToString()
+    +" offscreen_worst_ns=" + offscreen.Worst.ToString()
+    +" offscreen_scope_count=" + OffscreenScopeCount.ToString()
+    +" offscreen_dropped_scope_count=0"
+    +" exact_completed_frames=1"
+    +" timestamp_supported=1"
+    +" validation_clean=1"
+    +" warm_vk_object_alloc_delta=" + warmObjectAllocations.ToString()
+    +" warm_vk_device_memory_alloc_delta="
+    +warmDeviceMemoryAllocations.ToString()
+    +" close=1")
 }

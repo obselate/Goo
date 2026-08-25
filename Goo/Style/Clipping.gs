@@ -85,9 +85,9 @@ internal class ClipPaths {
 
     private func prune(n Node, value ClipPathValue) {
       if value.Path.CommandCount != 0 || value.Fit != ShapeFit.Fill
-        || value.FillRule != FillRule.NonZero {
-        return
-      }
+        || value.FillRule != FillRule.NonZero{
+          return
+        }
       values?.Remove(n)
       n.HasClipPath = false
       ClipPathGeometry.Dispose(n)

@@ -22,17 +22,11 @@ public enum TransitionProperty {
   Transform
 }
 
-internal func allTransitionSelection() StyleMask {
-  return StyleMask{ Low: UInt64.MaxValue, High: UInt64.MaxValue }
-}
+internal func allTransitionSelection() StyleMask -> StyleMask { Low: UInt64.MaxValue, High: UInt64.MaxValue }
 
-internal func transitionSelectionIsAll(selection StyleMask) bool {
-  return selection.Low == UInt64.MaxValue && selection.High == UInt64.MaxValue
-}
+internal func transitionSelectionIsAll(selection StyleMask) bool -> selection.Low == UInt64.MaxValue && selection.High == UInt64.MaxValue
 
-internal func sameTransitionSelection(left StyleMask, right StyleMask) bool {
-  return left.Low == right.Low && left.High == right.High
-}
+internal func sameTransitionSelection(left StyleMask, right StyleMask) bool -> left.Low == right.Low && left.High == right.High
 
 internal func makeTransitionSelection(values []TransitionProperty) StyleMask {
   var result = StyleMask{}
@@ -46,9 +40,7 @@ internal func makeTransitionSelection(values []TransitionProperty) StyleMask {
   return result
 }
 
-internal func transitionSelected(selection StyleMask, field StyleField) bool {
-  return styleMaskHas(selection, field)
-}
+internal func transitionSelected(selection StyleMask, field StyleField) bool -> styleMaskHas(selection, field)
 
 internal func transitionSelectionProperties(selection StyleMask) []TransitionProperty {
   if transitionSelectionIsAll(selection) {
@@ -115,24 +107,22 @@ internal func transitionSelectionProperties(selection StyleMask) []TransitionPro
 
 private func addTransitionProperty(result List[TransitionProperty], selection StyleMask,
   property TransitionProperty) {
-  if transitionSelectionContains(selection, transitionPropertyMask(property)) {
-    result.Add(property)
+    if transitionSelectionContains(selection, transitionPropertyMask(property)) {
+      result.Add(property)
+    }
   }
-}
 
 private func addTransitionShorthand(result List[TransitionProperty], selection StyleMask,
-  property TransitionProperty) bool {
-  if !transitionSelectionContains(selection, transitionPropertyMask(property)) {
-    return false
+  property TransitionProperty) bool{
+    if !transitionSelectionContains(selection, transitionPropertyMask(property)) {
+      return false
+    }
+    result.Add(property)
+    return true
   }
-  result.Add(property)
-  return true
-}
 
-private func transitionSelectionContains(selection StyleMask, required StyleMask) bool {
-  return (selection.Low & required.Low) == required.Low
-    && (selection.High & required.High) == required.High
-}
+private func transitionSelectionContains(selection StyleMask, required StyleMask) bool -> (selection.Low & required.Low) == required.Low
+  && (selection.High & required.High) == required.High
 
 private func transitionPropertyMask(property TransitionProperty) StyleMask {
   var result = StyleMask{}

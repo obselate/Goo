@@ -112,26 +112,26 @@ internal partial class PointerInput {
   }
 
   private func mapRoutePositions(route List[Node], x float32, y float32,
-    positions List[Point]) bool {
-    positions.Clear()
-    var mappedX = x
-    var mappedY = y
-    for i in 0 ... route.Count {
-      let n = route[i]
-      let point = TransformGeometry.Unmap(n, mappedX, mappedY)
-      if !point.Valid {
-        positions.Clear()
-        return false
+    positions List[Point]) bool{
+      positions.Clear()
+      var mappedX = x
+      var mappedY = y
+      for i in 0 ... route.Count {
+        let n = route[i]
+        let point = TransformGeometry.Unmap(n, mappedX, mappedY)
+        if !point.Valid {
+          positions.Clear()
+          return false
+        }
+        mappedX = point.X
+        mappedY = point.Y
+        positions.Add(Point{
+          X: float64(mappedX - n.Rect.X),
+          Y: float64(mappedY - n.Rect.Y),
+        })
       }
-      mappedX = point.X
-      mappedY = point.Y
-      positions.Add(Point{
-        X: float64(mappedX - n.Rect.X),
-        Y: float64(mappedY - n.Rect.Y),
-      })
+      return true
     }
-    return true
-  }
 
   private func routeHasTransform(route List[Node]) bool {
     for i in 0 ... route.Count {
@@ -141,117 +141,117 @@ internal partial class PointerInput {
   }
 
   private func mapRouteEvent(route List[Node], x float32, y float32,
-    previousX float32, previousY float32) bool {
-    routePositions.Clear()
-    routeDeltas.Clear()
-    var mappedX = x
-    var mappedY = y
-    var mappedPreviousX = previousX
-    var mappedPreviousY = previousY
-    for i in 0 ... route.Count {
-      let n = route[i]
-      let point = TransformGeometry.Unmap(n, mappedX, mappedY)
-      let previous = TransformGeometry.Unmap(n, mappedPreviousX, mappedPreviousY)
-      if !point.Valid || !previous.Valid {
-        routePositions.Clear()
-        routeDeltas.Clear()
-        return false
+    previousX float32, previousY float32) bool{
+      routePositions.Clear()
+      routeDeltas.Clear()
+      var mappedX = x
+      var mappedY = y
+      var mappedPreviousX = previousX
+      var mappedPreviousY = previousY
+      for i in 0 ... route.Count {
+        let n = route[i]
+        let point = TransformGeometry.Unmap(n, mappedX, mappedY)
+        let previous = TransformGeometry.Unmap(n, mappedPreviousX, mappedPreviousY)
+        if !point.Valid || !previous.Valid {
+          routePositions.Clear()
+          routeDeltas.Clear()
+          return false
+        }
+        mappedX = point.X
+        mappedY = point.Y
+        mappedPreviousX = previous.X
+        mappedPreviousY = previous.Y
+        routePositions.Add(Point{
+          X: float64(mappedX - n.Rect.X),
+          Y: float64(mappedY - n.Rect.Y),
+        })
+        routeDeltas.Add(Point{
+          X: float64(mappedX - mappedPreviousX),
+          Y: float64(mappedY - mappedPreviousY),
+        })
       }
-      mappedX = point.X
-      mappedY = point.Y
-      mappedPreviousX = previous.X
-      mappedPreviousY = previous.Y
-      routePositions.Add(Point{
-        X: float64(mappedX - n.Rect.X),
-        Y: float64(mappedY - n.Rect.Y),
-      })
-      routeDeltas.Add(Point{
-        X: float64(mappedX - mappedPreviousX),
-        Y: float64(mappedY - mappedPreviousY),
-      })
+      return true
     }
-    return true
-  }
 
   private func dispatchPointer(root Node?, kind PointerEventKind, x float32, y float32,
-    dx float64, dy float64, button PointerButton, modifiers KeyModifiers) bool {
-    guard let tree = root else { return false }
-    var captured = false
-    if (kind == PointerEventKind.Move || kind == PointerEventKind.Release) && captureTarget != nil {
-      if !rebuildCapturePath(tree) {
-        clearCapture()
-        return false
-      }
-      captured = true
-    } else {
-      scratchChain.Clear()
-      hit.ChainInto(tree, x, y, scratchChain)
-      if chainDisabled(scratchChain) {
+    dx float64, dy float64, button PointerButton, modifiers KeyModifiers) bool{
+      guard let tree = root else { return false }
+      var captured = false
+      if (kind == PointerEventKind.Move || kind == PointerEventKind.Release) && captureTarget != nil {
+        if !rebuildCapturePath(tree) {
+          clearCapture()
+          return false
+        }
+        captured = true
+      } else {
         scratchChain.Clear()
-        return false
-      }
-    }
-    let route = captured ? capturePath : scratchChain
-    if kind == PointerEventKind.Press {
-      rememberActiveRoute(route)
-    }
-    let transformed = routeHasTransform(route)
-    if transformed {
-      let previousX = kind == PointerEventKind.Move ? x - float32(dx) : x
-      let previousY = kind == PointerEventKind.Move ? y - float32(dy) : y
-      if !mapRouteEvent(route, x, y, previousX, previousY) { return false }
-    }
-    dispatchGeneration++
-    let generation = dispatchGeneration
-    control.Begin(generation, captureTarget)
-    var prevented = false
-    try {
-      for var i = route.Count; i > 0; i-- {
-        let n = route[i - 1]
-        let event = PointerEvent{
-          Identity: currentDevice == PointerDevice.Mouse ? nil : current,
-          IsPrimary: isSemanticPrimary(),
-          Pressure: float64(pressure),
-          Position: transformed ? routePositions[i - 1] : Point{
-            X: float64(x - n.Rect.X), Y: float64(y - n.Rect.Y),
-          },
-          WindowPosition: Point{ X: float64(x), Y: float64(y) },
-          Delta: transformed ? routeDeltas[i - 1] : Point{ X: dx, Y: dy },
-          Button: button,
-          Buttons: heldButtons,
-          Modifiers: modifiers,
-          Control: control,
-          Generation: generation,
+        hit.ChainInto(tree, x, y, scratchChain)
+        if chainDisabled(scratchChain) {
+          scratchChain.Clear()
+          return false
         }
-        control.SetCurrentTarget(generation, n)
-        try {
-          if kind == PointerEventKind.Press {
-            if let callback = n.OnPointerDown {
-              callback(event)
-              rebuildOwner(route, i - 1)
-            }
-          } else if kind == PointerEventKind.Move {
-            if let callback = n.OnPointerMove {
-              callback(event)
-              rebuildOwner(route, i - 1)
-            }
-          } else if let callback = n.OnPointerUp {
-            callback(event)
-            rebuildOwner(route, i - 1)
+      }
+      let route = captured ? capturePath : scratchChain
+      if kind == PointerEventKind.Press {
+        rememberActiveRoute(route)
+      }
+      let transformed = routeHasTransform(route)
+      if transformed {
+        let previousX = kind == PointerEventKind.Move ? x - float32(dx) : x
+        let previousY = kind == PointerEventKind.Move ? y - float32(dy) : y
+        if !mapRouteEvent(route, x, y, previousX, previousY) { return false }
+      }
+      dispatchGeneration++
+      let generation = dispatchGeneration
+      control.Begin(generation, captureTarget)
+      var prevented = false
+      try {
+        for var i = route.Count; i > 0; i-- {
+          let n = route[i - 1]
+          let event = PointerEvent{
+            Identity: currentDevice == PointerDevice.Mouse ? nil : current,
+            IsPrimary: isSemanticPrimary(),
+            Pressure: float64(pressure),
+            Position: transformed ? routePositions[i - 1] : Point{
+              X: float64(x - n.Rect.X), Y: float64(y - n.Rect.Y),
+            },
+            WindowPosition: Point{ X: float64(x), Y: float64(y) },
+            Delta: transformed ? routeDeltas[i - 1] : Point{ X: dx, Y: dy },
+            Button: button,
+            Buttons: heldButtons,
+            Modifiers: modifiers,
+            Control: control,
+            Generation: generation,
           }
-        } finally {
-          control.ClearCurrentTarget(generation)
+          control.SetCurrentTarget(generation, n)
+          try {
+            if kind == PointerEventKind.Press {
+              if let callback = n.OnPointerDown {
+                callback(event)
+                rebuildOwner(route, i - 1)
+              }
+            } else if kind == PointerEventKind.Move {
+              if let callback = n.OnPointerMove {
+                callback(event)
+                rebuildOwner(route, i - 1)
+              }
+            } else if let callback = n.OnPointerUp {
+              callback(event)
+              rebuildOwner(route, i - 1)
+            }
+          } finally {
+            control.ClearCurrentTarget(generation)
+          }
+          if control.PropagationStopped { break }
         }
-        if control.PropagationStopped { break }
+        applyCaptureRequests(button, route)
+        prevented = control.DefaultPrevented
+      } finally {
+        control.Finish(generation)
+        if !captured { scratchChain.Clear() }
       }
-      applyCaptureRequests(button, route)
-      prevented = control.DefaultPrevented
-    } finally {
-      control.Finish(generation)
-      if !captured { scratchChain.Clear() }
+      return prevented
     }
-    return prevented
-  }
 
   private func cancelInteraction(resolver Resolver, text TextInput) bool {
     let hadInteraction = heldButtons != PointerButtons.None || pressChain.Count > 0
