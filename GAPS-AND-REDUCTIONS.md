@@ -9,6 +9,9 @@ use, package size, and source reduction. Hivemind and Uproar95 appear only as ex
 workload, and behavior evidence. Consumer application implementation is out of scope. This is
 supporting research. `PLAN-FOR-REVIEW.md` remains authoritative.
 
+Cross-renderer measurements in this roadmap are historical migration context only. They do not gate
+the direct Vulkan renderer. Current governance uses clean-source Vulkan regression references.
+
 The final Goo core and Goo-owned runtime helpers are G# only. During the non-shipping Vulkan proof,
 `Goo.InternalTextInterop` remains intact as part of the verified Skia baseline. C# remains allowed
 in tests, benchmarks, development tools, external packages, and large vendored dependencies such as

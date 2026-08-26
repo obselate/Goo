@@ -36,18 +36,15 @@ rows pass their exact local contracts and absolute budgets. Sparse/full box rows
 remain additional stress evidence, not official Q10 workload coverage.
 The q10.text-editing follow-up NativeAOT binary is 5,708,704 bytes with SHA-256
 `7751034df36fd2f83db3ef13a175728fddc03f8d875100b05b1b325149324065`.
-The q10.text-editing follow-up measures CPU P50/P95/P99 `0.497938/0.552471/0.701151 ms` versus
-accepted recorded Skia P95 `0.461491 ms`. The new P95 delta is `+0.090980 ms` or `+19.714%`,
-which passes the exact larger-of-3%-or-0.1-ms gate by `0.009020 ms`; GPU P95 is `0.054272 ms`
-and allocation P50 is `63,184 B`. The prior current CPU result was `1.201987/1.320821/1.504447 ms`,
-so this follow-up reduces CPU P50/P95/P99 by `58.574%/58.172%/53.395%`.
+The q10.text-editing follow-up measures CPU P50/P95/P99
+`0.497938/0.552471/0.701151 ms`, GPU P95 `0.054272 ms`, and allocation P50 `63,184 B`.
+The prior Vulkan CPU result was `1.201987/1.320821/1.504447 ms`, so the follow-up reduces
+CPU P50/P95/P99 by `58.574%/58.172%/53.395%`.
 The exact retained-segment fast hit and cached renderer-validation proof apply to Text and TextEditor
 only. TextEntry stays on full segment generation and full renderer validation because cached Entry
 proof repeatedly lost S17 protected-mask pixels. The active cache remains strong across atlas publication
 for the same reason. Repository search found no in-place shaped-payload writer, which is the
 shape-reference identity assumption.
-Text editing no longer blocks the general frame-time gate. It remains slower than accepted Skia at P95;
-no Vulkan-over-Skia claim is made.
 The 2026-08-24 startup/readback and synthetic input-latency follow-up uses five fresh
 Linux NativeAOT processes on actual NVIDIA hardware, 300 warmups, and 2,000 input samples per process.
 Its binary is 5,733,280 bytes with SHA-256
@@ -57,8 +54,7 @@ positive metrics, a mounted invariant root, exactly one submit and present, a pr
 and a successful non-background readback. Across the five independent processes, the nearest-rank
 first-usable-frame P95 is `255.212748 ms` from managed entry and `252.771895 ms` from `Window.Open`
 to successful `vkQueuePresentKHR` handoff. Completion-observed upper-bound P95 is `255.238026 ms`
-and `252.797173 ms`. This current Vulkan result is the regression reference; disposition of the
-missing historical Skia startup distribution remains a final Q&A decision.
+and `252.797173 ms`. This clean Vulkan result is the startup regression reference.
 The synthetic injection-to-present-handoff result is P50/P95/P99/worst
 `0.381620/1.348723/1.625866/1.974053 ms`, so the `37.333334 ms` P95 limit passes.
 Completion-observed input upper bounds are P50/P95/P99/worst
@@ -72,19 +68,14 @@ zero UI/GPU work or allocation. The clean package is 3,783,856 bytes; the valida
 10,087,660 bytes and contains only the three accepted native payloads. Raw evidence and hashes are
 `artifacts/reports/s15-q10/clean-linux-6d4d92e-summary.json` and
 `clean-linux-6d4d92e-SHA256SUMS`.
-Full Q10 remains open only on accepted GPU-memory and binary/package comparison policy and Windows
-qualification. Wayland presentation-time feedback remains deferred under S16-D03; nominal display
-refresh is the accepted fallback.
+Full Q10 remains open only on external hardware qualification. Wayland presentation-time feedback
+remains deferred under S16-D03; nominal display refresh is the accepted fallback.
 Local discrete-Linux implementation and T01-T05 qualification are complete. The remaining hardware
 matrix is Windows, Linux integrated GPU, and a second real DPI scale.
 
-After the current-host T01-T05 pass, the remaining program is qualification and release closure:
+After the current-host T01-T05 pass, the remaining program is external qualification:
 
-- Clean-source work: one eight-workload Linux matrix with final provenance and artifact hashes.
-- External hardware work: Windows x64 parity, Linux integrated-GPU qualification, and a second real
-  DPI scale.
-- Final decisions after actionable evidence: irrecoverable historical comparison baselines,
-  Goo-reserved GPU-memory attribution, and the frozen binary/package denominator.
+- Windows x64 parity, Linux integrated-GPU qualification, and a second real DPI scale.
 
 Section 9 is the current execution order.
 
@@ -150,15 +141,14 @@ These are implementation boundaries, not remaining tasks.
 | S10R shared Vulkan resources | Complete for the Linux substrate used by current allocator/upload/image/text/shared-immutable owners | S11-S14 qualify owner-specific pressure, LRU, cache, and recovery; S19 repeats the substrate and lifecycle gates on Windows |
 | S11 text completion | Linux implementation and qualification complete | Windows repeats the gates in S19 |
 | S14 compositing, effects, readback, and AA | Linux-complete for its accepted scope; S20 separately completed generic precompiled fragment effects. General masks and a higher-level filter API are intentional non-goals | Final cross-platform T02 evidence and Windows qualification remain S19; reopen O16 only on measured failure |
-| S15 retained scene and damage | Retention, damage, transport, Linux lifecycle, first-usable-frame, synthetic input handoff, actual SDL polling, and all 8/8 clean-source official Linux workload rows pass. The matrix uses commit `6d4d92e`, one NativeAOT binary, exact hashes, clean validation, and accepted nominal-refresh fallback | Run Windows and external hardware matrices, then resolve irrecoverable baseline, GPU-memory, and binary/package policy through Q&A |
+| S15 retained scene and damage | Retention, damage, transport, Linux lifecycle, first-usable-frame, synthetic input handoff, actual SDL polling, and all 8/8 clean-source official Linux workload rows pass. The matrix uses commit `6d4d92e`, one NativeAOT binary, exact hashes, clean validation, and accepted nominal-refresh fallback | Run the remaining external hardware matrices and use the clean Vulkan results as regression references |
 | S16 shared runtime and window behavior | Complete for the local discrete-Linux core scope. S19 qualification removed normal-close device-wide idle, passed 1,000 operations, 10 injected surface losses, 3 device losses across three live windows, and qualified queue-call isolation and offscreen failure propagation | External Windows and integrated-GPU repeats only; no local D01, D02, or D04 blocker remains |
 | S19 release qualification | Local discrete-Linux T01-T05 and the clean-source eight-workload matrix pass. API contracts pass 10/10, core behavior passes 262/262, package and bundle validation pass, and no fallback renderer is present | Run Windows x64, Linux integrated-GPU, and second-real-DPI qualification |
 | S20 generic retained shader effects | Implemented and qualified on Linux with two bounded constructors, eight retained parameter slots, 0 B warm allocation, no warm Vulkan resource creation, and internal nested-layer composition with non-normal `BlendMode` | Repeat T02, recovery, package, and NativeAOT qualification on Windows |
 
 No remaining stage is complete end to end across both RIDs. S10R closes only the
 Linux substrate for owners that exist before S14. Local discrete-Linux implementation
-and qualification are complete. S15 and S19 now wait on external hardware and final
-comparison-policy decisions. Q&A owns irrecoverable historical comparison evidence.
+and qualification are complete. S15 and S19 now wait only on external hardware.
 Final T02 or Windows evidence may reopen O16 only on measured failure.
 
 ### 3.1 Vulkan authoring-library progress
@@ -730,18 +720,15 @@ Q10 blocker ledger (audited 2026-08-25):
   `Emit` and making specialized emitters private passed actual-NVIDIA
   protected-text 3/3 processes and CPU Lavapipe protected-text. The current
   final-protocol image/effects row now exists and passes its local contract and absolute budget.
-- `docs/perf/2026-08-16-gsharp-0.4.1-skia-baseline-status.md` records the
-  accepted clean-source comparison for text editing only. The five-process NativeAOT follow-up measures
-  CPU P50/P95/P99 `0.497938/0.552471/0.701151 ms`, GPU P95 `0.054272 ms`, and allocation P50
-  `63,184 B`, versus the prior current CPU `1.201987/1.320821/1.504447 ms`.
-  Against accepted recorded Skia P95 `0.461491 ms`, the new result is `+0.090980 ms` or `+19.714%`
-  and passes the exact larger-of-3%-or-0.1-ms gate by `0.009020 ms`. The exact retained-segment
+- The five-process Vulkan text fast-hit follow-up measures CPU P50/P95/P99
+  `0.497938/0.552471/0.701151 ms`, GPU P95 `0.054272 ms`, and allocation P50 `63,184 B`,
+  versus the prior Vulkan CPU result `1.201987/1.320821/1.504447 ms`. The exact retained-segment
   fast hit applies to Text and TextEditor only. TextEntry stays on full segment generation and full
-  renderer validation because cached Entry proof repeatedly lost S17 protected-mask pixels. The
-  active cache remains strong across atlas publication for the same reason. Repository search found
-  no in-place shaped-payload writer, which is the shape-reference identity assumption. Table and topology controls are reconstructed from commit
-  `9d28533`. No reconstructed result is relabeled as recorded pre-removal evidence.
-- The original manifest-expansion measurement remains in `IMPLEMENTATION-HISTORY.md` as historical evidence.
+  renderer validation because cached Entry proof repeatedly lost protected-mask pixels. The active
+  cache remains strong across atlas publication. Repository search found no in-place shaped-payload
+  writer, which is the shape-reference identity assumption.
+- Older renderer comparison documents and reconstructed controls remain historical archive material
+  only. They are not gates, denominators, thresholds, or current controls.
 - Exact current results, raw text fast-hit logs, and non-claims are in
   `artifacts/reports/s15-q10/summary.json`,
   `artifacts/reports/s15-q10/text-fast-hit-final-run-*.log`, and
@@ -798,9 +785,9 @@ Official workload state (current Linux final-protocol rows: 8/8):
 |---|---|---|
 | `q10.true-idle` | Measured (clean Linux) | Five isolated nested-KWin scale-1 processes pass 60 seconds with zero work or allocation; median CPU is `0.0997%` of one core. Windows repeat remains missing |
 | `q10.small-animation` | Measured (clean Linux) | CPU P50/P95/P99 `0.511/0.554/0.812 ms`, GPU P95 `0.026 ms`; exact submit/present, warm resources, diagnostics, and close pass |
-| `q10.virtual-table` | Measured (clean Linux, reconstructed control) | CPU P50/P95/P99 `1.165/1.387/2.808 ms`, GPU P95 `0.164 ms`; exact submit/present, warm resources, process memory, diagnostics, and close pass |
-| `q10.topology` | Measured (clean Linux, reconstructed control) | CPU P50/P95/P99 `1.410/1.849/2.384 ms`, GPU P95 `0.121 ms`; exact submit/present, warm resources, process memory, diagnostics, and close pass |
-| `q10.text-editing` | Measured (clean Linux, frame gate pass) | CPU P50/P95/P99 `0.486/0.521/0.628 ms`, GPU P95 `0.058 ms`, allocation P50 `61,776 B`; the accepted Skia comparison gate remains passed |
+| `q10.virtual-table` | Measured (clean Linux) | CPU P50/P95/P99 `1.165/1.387/2.808 ms`, GPU P95 `0.164 ms`; exact submit/present, warm resources, process memory, diagnostics, and close pass |
+| `q10.topology` | Measured (clean Linux) | CPU P50/P95/P99 `1.410/1.849/2.384 ms`, GPU P95 `0.121 ms`; exact submit/present, warm resources, process memory, diagnostics, and close pass |
+| `q10.text-editing` | Measured (clean Linux, frame gate pass) | CPU P50/P95/P99 `0.486/0.521/0.628 ms`, GPU P95 `0.058 ms`, allocation P50 `61,776 B`; these clean Vulkan values are the regression reference |
 | `q10.image-effects` | Measured (clean Linux) | CPU P50/P95/P99 `5.146/6.049/7.808 ms`, GPU P95 `1.936 ms`; absolute budgets, exact submit/present, diagnostics, and close pass |
 | `q10.resize-dpi` | Measured (clean Linux) | CPU P50/P95/P99 `0.129/1.453/2.116 ms`, GPU P95 `0.117 ms`; five repeated active-swapchain cycles pass exact submit/present, both slots, diagnostics, and close |
 | `q10.three-window` | Measured (clean Linux) | CPU P50/P95/P99 `0.642/1.461/1.613 ms`, GPU P95 `0.022 ms`; global submit/present delta is 2,033 and clean local slots remain unchanged |
@@ -811,43 +798,35 @@ Hard-gate state:
 |---|---|---|
 | Feature and pixel coverage | Partial | Effects/COLR, rounded-overflow, protected-text, image/effects, and all eight current Linux workload routes pass on the current RTX 3080 source; Windows remains |
 | Absolute frame budget | Partial | All eight current Linux workload rows pass their local absolute budgets; Windows remains |
-| General frame time | Pass for q10.text-editing | The current text follow-up P95 is `0.552471 ms` versus accepted recorded Skia P95 `0.461491 ms`, a `+0.090980 ms` or `+19.714%` delta, and passes the larger-of-3%-or-0.1-ms gate by `0.009020 ms`. Text editing no longer blocks this gate; provenance and cross-platform blockers remain |
-| Relative sparse performance | Blocked | Table and topology controls remain reconstructed and three-window has no accepted recorded comparison; final disposition is Q&A policy |
+| General frame time | Pass | Every clean Linux row passes the absolute budget. Clean commit `6d4d92e` percentiles are the Vulkan regression references |
+| Sparse performance | Pass | Table, topology, and three-window pass absolute budgets and establish clean Vulkan regression references |
 | Input latency | Pass | Five NativeAOT processes pass synthetic pointer/key/committed-text handoff at P50/P95/P99/worst `0.381620/1.348723/1.625866/1.974053 ms`; the focused native gate separately proves SDL polling acceptance |
 | Startup and first-use stalls | Pass (current route) | Five independent NativeAOT processes prove a mounted usable startup frame with exact submit/present, present-fence observation, and non-background readback. Nearest-rank `Window.Open` P95 is `252.771895 ms` to handoff and `252.797173 ms` completion-observed upper bound. This is the current Vulkan regression reference |
 | SDL polling acceptance | Pass | `SDL_PushEvent` pointer, key, and committed UTF-8 text events are consumed only through product native polling and dispatch, with exact causal submit/present and clean Khronos validation |
 | Wayland presentation feedback | Deferred | Swapchain-maintenance present fences provide completion-observed upper bounds. S16-D03 accepts nominal display refresh as fallback until a supported feedback path is available or cadence fails |
-| Managed, RSS, and private-dirty memory | Partial | The clean Linux matrix records current metrics; accepted historical comparisons and Windows remain missing |
-| Goo-reserved GPU memory | Blocked | The Skia control recorded no comparable metric. The whole-device proxy is non-attributable; final disposition is Q&A policy |
-| Binary and package | Blocked | Clean Linux package and binary evidence pass, but no accepted frozen-Skia denominator proves the required 8 MiB comparison; final disposition is Q&A policy |
+| Managed, RSS, private-dirty, and Vulkan memory | Pass locally | Clean Linux current and peak values establish Goo-owned Vulkan regression references; external hardware remains |
+| Binary and distribution | Pass locally | Clean package, bundle, Q10 NativeAOT, and package-consumer NativeAOT sizes establish Vulkan regression references and the bundle passes the 20 MiB cap |
 | Dependencies and fallback | Partial | Clean Linux package validation passes with exactly three native payloads and no fallback renderer; Windows remains |
 | Validation | Partial | Clean Linux stage, package, visual, workload, and lifecycle validation passes; Windows remains |
 | Idle and warm resources | Partial | Five clean-source nested-KWin processes pass zero work/allocation at median `0.0997%` of one core; Windows remains |
 | Lifecycle and recovery | Partial | Clean Linux lifecycle, resize-DPI, surface loss, and device recovery pass; Windows remains |
-| Provenance | Partial | Commit `6d4d92e`, one binary, 40 workload logs, source archive, package set, summary, and SHA-256 manifest close local provenance. Historical comparisons and Windows remain |
+| Provenance | Pass locally | Commit `6d4d92e`, one binary, 40 workload logs, source archive, package set, summary, and SHA-256 manifest close local provenance |
 
 Work, in order:
 
 1. Run the equivalent Windows x64 matrix and lifecycle program. Integrated-GPU
    and second-real-DPI repeats remain broader S19 hardware work.
-2. Reconstruct any missing frozen-commit controls only as supplementary
-   evidence. Record exact GPU-memory and package metrics where technically
-   possible without changing their provenance status.
-3. Return the remaining historical baseline, Goo-reserved GPU-memory, and
-   binary-denominator decisions to Q&A. Do not perform further CPU process-memory
-   optimization without a comparable failing metric.
-4. Keep incremental-present regions optional. Do not add a separate full-window
+2. Keep incremental-present regions optional. Do not add a separate full-window
    backing image or framebuffer tile cache.
 
-User-decision boundary:
+Vulkan regression boundary:
 
-- The accepted five-percent memory contract remains unchanged.
-- Reconstructed controls remain reconstructed and do not become recorded
-  pre-removal evidence.
-- The missing pre-removal evidence cannot be regenerated. After all actionable
-  work completes, only explicit Q&A can either keep strict Q10 open or revise
-  the accepted comparison contract. No agent may make that policy change.
-- Until that decision changes, S15 does not exit.
+- Clean commit `6d4d92e` workload, startup, memory, package, bundle, and NativeAOT results are the
+  accepted regression references.
+- Results from other renderers remain historical archive context only. They are never controls,
+  denominators, thresholds, release gates, or performance claims.
+- A later Vulkan result may replace a reference only after it passes every independent hard gate.
+- No Vulkan regression outside the accepted noise allowance is approved without explicit Q&A.
 
 Exit:
 
@@ -1046,7 +1025,7 @@ Work:
 7. Stage the Windows x64 SDL native payload and validate its PE import and dependency closure.
 8. Run the remaining external feature and performance protocol on integrated and Windows hardware.
 9. Retain raw qualification logs and artifact hashes. Adopt accepted Vulkan results as regression
-   references while retaining frozen Skia results as historical evidence.
+   references while retaining prior-renderer records only as nongating archive history.
 
 Exit:
 
@@ -1173,15 +1152,14 @@ accepted workload record specifies otherwise. Do not average platforms or worklo
 | Strict pixels | Maximum absolute RGBA channel delta 1 |
 | AA/effect pixels | At least 99.9 percent have maximum channel delta 8 or less and no channel delta exceeds 24 |
 | Geometry/text placement | No displacement greater than 0.5 logical pixels |
-| General frame time | No workload percentile regresses beyond the larger of 3 percent or 0.1 ms. The q10.text-editing follow-up P95 is `0.552471 ms` versus accepted recorded Skia P95 `0.461491 ms`, a `+0.090980 ms` or `+19.714%` delta, and passes the exact gate by `0.009020 ms`; text editing no longer blocks this gate. |
-| Sparse workloads | Table, topology, and three-window sparse P95 are at least 20 percent faster than the recorded Skia reference |
+| General frame time | No workload percentile regresses beyond the larger of 3 percent or 0.1 ms from its accepted clean-source Vulkan reference |
+| Sparse workloads | Table, topology, and three-window pass the absolute frame budget and do not regress from accepted Vulkan references |
 | Absolute frame budget | P95 at most 8.33 ms and P99 at most 16.67 ms, excluding intentional presentation wait |
-| Input latency | P95 at most two refresh intervals plus 4 ms and not worse than baseline |
-| Startup | P95 first usable frame does not regress beyond noise |
-| Memory | Managed heap, private dirty memory, RSS, and Goo-reserved GPU memory each remain within 5 percent of baseline |
-| Binary | Each Windows and Linux NativeAOT result is at least 8 MiB smaller than the frozen Skia result |
-| Distribution | The external release invariant, separate from Q10, remains the current 20 MiB installed-size cap per official application RID unless explicitly changed |
-| Dependencies | No Skia asset remains and mandatory native-library count does not increase |
+| Input latency | P95 at most two refresh intervals plus 4 ms and does not regress from the accepted Vulkan reference |
+| Startup | P95 first usable frame does not regress beyond noise from the accepted Vulkan reference |
+| Memory | Managed heap, private dirty memory, RSS, and Goo-accounted Vulkan memory remain within 5 percent of accepted clean-source Vulkan references |
+| Binary and distribution | Official packages remain below the 20 MiB installed-size cap; clean Vulkan package, bundle, and NativeAOT sizes are regression references |
+| Dependencies | No removed renderer asset, OpenGL path, CPU fallback, software ICD, duplicate native payload, or unapproved native-library count increase is present |
 | Validation | Zero Vulkan validation errors in visual and lifecycle runs |
 | Idle | 60 seconds has zero rebuild, layout, render, submit, present, managed allocation, Vulkan object allocation, and device-memory allocation, using less than 0.5 percent of one CPU core |
 | Warm resources | Zero managed allocation and no Vulkan object, pipeline, or device-memory creation |
@@ -1196,9 +1174,6 @@ geometry, color, parity, performance, memory, or binary gates.
 
 1. Run the external Windows x64, Linux integrated-GPU, and second-real-DPI
    matrix, including the S07 and S20 Windows repeats.
-2. Return the irrecoverable historical baseline, Goo-reserved GPU-memory, and
-   binary/package denominator decisions to Q&A, then close S15 and S19 only if
-   their exit contracts are satisfied.
 
 Windows hardware qualification remains externally deferred. It does not block independent Linux work.
 

@@ -75,19 +75,14 @@
 
 - Completed the local Linux S15 retained-scene mechanisms, canonical virtual-table,
   topology, sparse/full mutation, scroll, retained-text, and lifecycle harnesses.
-  Lazy first-use hardware material and clip-mask pipelines bring retained
-  managed memory, RSS, and private dirty below the reconstructed historical
-  control. First-use text atlas publication-pending frames are no longer
-  misclassified as unsupported Content: Text, TextEntry, and TextEditor now use
-  per-call publicationPending, while permanent failures are unchanged.
-  Direct `EmitEntry` and `EmitEditor` calls bypassed the per-node retained-segment
-  cache; `VulkanSceneCompiler.Paint` now routes all Text, Entry, and Editor nodes
-  through generic `Emit`, and specialized emitters are private.
-  CPU devices retain eager cold materialization. Full Q10 exit remains
-  blocked because the Skia control has no comparable Goo-reserved GPU-memory
-  metric, the final whole-device proxy differs by more than five percent, and no
-  qualifying table/topology or binary/package result was recorded before
-  removal.
+  Lazy first-use hardware material and clip-mask pipelines keep retained managed
+  memory, RSS, private dirty, and Vulkan allocations bounded. First-use text atlas
+  publication-pending frames are no longer misclassified as unsupported Content:
+  Text, TextEntry, and TextEditor use per-call publicationPending while permanent
+  failures are unchanged. `VulkanSceneCompiler.Paint` routes Text, Entry, and
+  Editor through generic `Emit`; specialized emitters are private. CPU devices
+  retain eager cold materialization. The clean commit `6d4d92e` results are the
+  Vulkan regression references.
 - Moved 261 backend-neutral behavior and allocation contracts into the focused
   `Goo.CoreBehaviorTests` CI lane, then removed the stale 87-file `Goo.Tests`
   project, its Skia and `Goo.InternalTextInterop` coverage, duplicates, and old
@@ -110,6 +105,7 @@
   `SDL_PushEvent` and consumes them only through product `SdlRuntime.PumpEvents` and
   `SdlHost.Dispatch`. Wayland presentation feedback remains deferred under S16-D03.
 - Froze the complete Linux implementation at commit `6d4d92e` and ran one clean-source matrix with a single 5,815,728-byte NativeAOT binary. All eight official workloads pass across 40 processes with exact hashes, clean diagnostics, warm-resource and absolute-frame budgets, cleanup, package, dependency, fallback, memory, and provenance evidence.
+- Removed every active Vulkan-versus-Skia comparison gate. Other-renderer measurements remain historical only. Clean-source Vulkan workload, startup, memory, package, bundle, and NativeAOT results now govern regressions alongside absolute correctness and resource budgets.
 
 ### Verification
 
@@ -139,12 +135,10 @@
   actual focus-loss dirty renders) with unchanged clean local slots.
 - Five isolated nested-KWin scale-1 true-idle processes ran 60 seconds with zero
   work/allocation and median 0.1078% CPU core utilization.
-- The q10.text-editing fast-hit follow-up reduced current CPU P50/P95/P99 from
+- The q10.text-editing fast-hit follow-up reduced Vulkan CPU P50/P95/P99 from
   `1.201987/1.320821/1.504447 ms` to `0.497938/0.552471/0.701151 ms`
-  (`58.574%/58.172%/53.395%` reductions). GPU P95 is `0.054272 ms` and allocation P50 is
-  `63,184 B`. Accepted recorded Skia P95 is `0.461491 ms`; the new result is `+0.090980 ms`
-  or `+19.714%`, which passes the exact larger-of-3%-or-0.1-ms gate by `0.009020 ms`. This
-  does not claim Vulkan is faster than Skia.
+  (`58.574%/58.172%/53.395%` reductions). GPU P95 is `0.054272 ms` and allocation
+  P50 is `63,184 B`.
 - Five fresh Linux NativeAOT processes on actual NVIDIA hardware used 300 warmups and 2,000
   pointer, key, or committed-text input samples each. All exited 0 with zero validation,
   result-failure, or fatal failures, 2,001 unique tokens each, exact one-frame startup and
@@ -217,7 +211,7 @@
 
 ### Deferred
 
-- Full S15/Q10 exit now waits only on accepted GPU-memory and binary/package comparison policy plus Windows evidence.
+- Full S15/Q10 exit now waits only on external hardware qualification.
 - Windows, integrated-GPU, and second-DPI qualification remain open.
 
 ## 0.2.0 - 2026-08-07

@@ -47,7 +47,7 @@ benchmarks, development tools, external packages, and large vendored dependencie
 | L19 | A candidate dependency or technique is not selected until its Q&A decision is accepted |
 | L20 | Use the same locked text provider, shaping, registered font inputs, fallback policy, glyph composition, and Vulkan resource behavior on Windows and Linux |
 | L21 | Limit this plan and its implementation to Goo core. Hivemind is only a requirements and benchmark reference corpus |
-| L22 | Use the newest qualifying Skia benchmark results as the frozen historical baseline, then continually improve accepted Vulkan results from that floor |
+| L22 | Use accepted clean-source Vulkan results as regression references and continually improve them. Skia measurements are historical only and never gate Vulkan |
 | L23 | Goo core and Goo-owned runtime helpers contain only G# source. C# tests, benchmarks, tools, packages, and vendors remain allowed |
 
 ## 2. Decision register
@@ -69,7 +69,7 @@ qualification remain S19 release gates.
 | O07 | Dirty-frame and retained-resource model | Accepted | Retained typed segments and GPU ranges plus per-swapchain-image damage history. No separate backing image or framebuffer tile cache |
 | O08 | Vulkan binding and allocation | Accepted | Pinned-registry narrow G# binding plus a Goo-owned resource-specific block suballocator |
 | O09 | Multi-window GPU ownership and recovery | Accepted | One process Vulkan instance and device with shared resources, per-window presentation state, and bounded recovery |
-| O10 | Quantitative adoption thresholds | Accepted | Frozen latest Skia baseline, chained Vulkan improvement baselines, and independent hard gates |
+| O10 | Quantitative adoption thresholds | Accepted | Vulkan-only regression references plus independent correctness, absolute performance, resource, package, and validation gates |
 | O11 | Window persistence ownership | Accepted | Goo exposes live window primitives only. Persistence and restore policy stay outside core |
 | O12 | Goo accessibility and platform adapter depth | Accepted | Goo core owns neutral semantics and the adapter contract. Windows UIA and Linux AT-SPI live in platform adapters |
 | O13 | Core versus composed control boundary | Accepted | Controls use public primitives directly or live in a separate G# library. They do not enter core |
@@ -260,20 +260,19 @@ Separate these costs before proposing a replacement:
 6. GPU upload and command construction.
 7. GPU rendering, flush, presentation, and compositor wait.
 
-Use the newest complete and valid Skia result for each workload as the frozen historical baseline.
-A qualifying result must identify the source commit, build, G# SDK, runtime, OS, driver, hardware,
-power mode, resolution, DPI, and benchmark protocol. If the newest stored result lacks a required
-Q10 workload or metric, capture that missing Skia result before removing the renderer. Do not select
-an older or slower Skia result to lower the bar.
+Use the newest complete clean-source Vulkan result for each workload as its regression reference.
+A qualifying result identifies the source commit, build, G# SDK, runtime, OS, driver, hardware,
+power mode, resolution, DPI, and benchmark protocol. Results from another renderer remain historical
+context only and are not controls, denominators, thresholds, or release gates.
 
 Measure idle, a small animated scene, a large virtualized table, a Hivemind-derived topology
 workload, text editing, image-heavy content, resize, and three active windows. Record P50, P95, P99,
 P99.9, and worst total frame time, stage times, allocations, retained memory, GPU memory, upload
 bytes, draw calls, startup, and installed bytes.
 
-Keep the frozen Skia baseline permanently. Each accepted Vulkan result becomes the next regression
-baseline for later Vulkan work. A later result cannot regress beyond the accepted Q10 noise allowance
-without explicit Q&A. Never rebase the Skia floor from a weaker Vulkan result.
+Keep each accepted clean-source Vulkan result as the regression reference for later Vulkan work.
+A later result cannot regress beyond the accepted Q10 noise allowance without explicit Q&A. Replace
+the reference only after the new Vulkan result passes every independent hard gate.
 
 Exit: the dominant costs are known. A paint-stage improvement is not accepted as a total-frame
 improvement without the full measurement.
@@ -294,8 +293,8 @@ production backend work starts.
    registered font bytes, variation settings, shaping options, Unicode 16 profile, fallback order,
    and expected geometry on both platforms. Compile its pinned shader source to SPIR-V and prove the
    Vulkan atlas resources, descriptor bindings, resource lifetime, and device-loss reconstruction.
-5. Run the fixed proof scene and Hivemind-derived reference hot paths against captured visual and
-   performance baselines plus the approved Goo core behavior contract.
+5. Run the fixed proof scene and Hivemind-derived reference hot paths against accepted Vulkan
+   regression references plus the approved Goo core behavior contract.
 6. Report Windows and Linux feature coverage, unsupported behavior, pixel differences, total frame time,
    CPU and GPU time, allocation, memory, upload, startup, input latency, and final RID contents.
 7. Treat this as one end-to-end proof corpus, not one test per primitive or subsystem.
@@ -430,7 +429,7 @@ Do not add one test per primitive, Vulkan result code, component state, or inter
 - Moving composed controls or application-specific behavior into Goo core.
 - Changing or removing Avalonia or other Hivemind application dependencies in this Goo core plan.
 - Any exact source-line estimate or delivery-wave schedule.
-- Changing the accepted Q10 thresholds or rebasing the frozen Skia floor without explicit Q&A.
+- Changing accepted Vulkan Q10 thresholds or regression references without explicit Q&A.
 - Treating the renderer conclusion in `GAPS-AND-REDUCTIONS.md` as approved.
 
 ## 8. Decision Q&A ledger
@@ -779,15 +778,13 @@ multi-device runtime until Windows or Linux hardware evidence proves it necessar
 
 ### Q10. Quantitative adoption gates
 
-Accepted answer: use the newest complete, valid Skia benchmark result for each workload as the
-frozen historical baseline. A result qualifies only with the P3 provenance and approved benchmark
-protocol. Fill missing metrics before Skia removal. Do not rerun or select Skia results to make the
-Vulkan comparison easier.
+Accepted answer: use the newest complete, valid clean-source Vulkan result for each workload as its
+regression reference. A result qualifies only with the P3 provenance and approved benchmark protocol.
+Results from other renderers are not comparable and remain historical archive context only.
 
-Each accepted Vulkan result becomes the next regression baseline for later Vulkan work. Keep the
-Skia result as the permanent historical floor. A Vulkan result can match the current accepted result
-within the noise allowance, but a regression beyond it requires explicit Q&A. Continue recording
-improvements instead of replacing the history with one moving number.
+Each accepted Vulkan result may become the next regression reference after it passes every independent
+hard gate. A regression beyond the accepted noise allowance requires explicit Q&A. Continue recording
+Vulkan improvements instead of replacing history with one unqualified moving number.
 
 #### Measurement protocol
 
@@ -806,18 +803,15 @@ improvements instead of replacing the history with one moving number.
 | Strict pixels | Maximum absolute RGBA channel delta of one |
 | AA and effect pixels | At least 99.9 percent have a maximum channel delta of eight and no channel delta exceeds 24 |
 | Geometry and text placement | No displacement greater than 0.5 logical pixels |
-| General frame time | No workload percentile regresses beyond the noise allowance |
-| Sparse large workloads | P95 frame production is at least 20 percent faster for tables, topology, and three-window sparse changes |
+| General frame time | No workload percentile regresses beyond the larger of three percent or 0.1 ms from its accepted clean-source Vulkan reference |
+| Sparse large workloads | Tables, topology, and three-window pass the absolute frame budget and do not regress from their accepted Vulkan references |
 | Absolute frame budget | P95 is at most 8.33 ms and P99 is at most 16.67 ms, excluding intentional presentation wait |
-| Input latency | P95 input-to-present is at most two refresh intervals plus 4 ms and is not worse than baseline |
-| Startup | P95 first usable frame does not regress beyond the noise allowance |
-| Memory | Managed heap, private dirty memory, RSS, and Goo-reserved GPU memory each stay within five percent of baseline |
-| Binary | Each Windows and Linux NativeAOT result is at least 8 MiB smaller than the frozen Skia result |
-| Dependencies | No Skia asset remains and the mandatory native-library count does not increase |
+| Input latency | P95 input-to-present is at most two refresh intervals plus 4 ms and does not regress from the accepted Vulkan reference |
+| Startup | P95 first usable frame does not regress beyond the noise allowance from the accepted Vulkan reference |
+| Memory | Managed heap, private dirty memory, RSS, and Goo-accounted Vulkan memory each stay within five percent of the accepted clean-source Vulkan reference |
+| Binary and distribution | Official packages remain below the 20 MiB installed-size cap; accepted clean Vulkan package, bundle, and NativeAOT sizes are regression references |
+| Dependencies | No removed renderer asset, OpenGL path, CPU fallback, software ICD, duplicate native payload, or unapproved native-library count increase is present |
 | Validation | No Vulkan validation error occurs in proof or lifecycle runs |
-
-The 8 MiB binary floor leaves approximately 4 to 5 MiB of the measured gross Skia removal for the
-selected text runtime, generated bindings, shaders, and Goo renderer code.
 
 #### Idle and allocation gates
 

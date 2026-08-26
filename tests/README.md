@@ -613,12 +613,10 @@ repeatedly lost S17 protected-mask pixels. The active cache remains strong
 across atlas publication for the same reason. A repository search found no
 in-place shaped payload writer, so shape-reference identity is the assumption.
 
-The prior manifest-expansion binary and text row remain historical before-state
-evidence.
-Against accepted Skia P95 `0.461491 ms`, the follow-up is `+0.090980 ms`
-(`+19.714%`) slower, but passes the exact larger-of-3%-or-0.1-ms threshold:
-`max(0.461491 * 1.03, 0.461491 + 0.1) = 0.561491 ms`, leaving
-`0.009020 ms` of margin. Do not call the result faster than Skia.
+The prior manifest-expansion binary and any other-renderer measurements remain
+historical archive evidence only. They are not controls, denominators,
+thresholds, or release gates. The clean commit `6d4d92e` text-editing result is
+the Vulkan regression reference.
 
 Raw evidence is in `artifacts/reports/s15-q10/summary.json` and
 `artifacts/reports/s15-q10/text-fast-hit-final-run-*.log`. The image-effects
@@ -665,9 +663,8 @@ allocations at P50 and P95. The raw process P50/P95 values are:
 
 The median cross-process improvement is `+25.668%` P50 and `+13.475%` P95
 for retained versus generic. Record, submit, GPU, and full-frame evidence is
-unavailable. This makes no Q10 or Skia claim. No Q10 virtual-table/topology
-harness or frozen reference exists, so S15 remains open. No long benchmark
-harness is retained.
+unavailable, so this is not a full-frame Q10 result. The clean eight-workload
+matrix above is canonical. No long benchmark harness is retained.
 
 The exact-border current-binary control is plan-only and uses 1,000 transparent
 square solid four-sided border leaves in ABBAAB order, with 30 warmups and 120
@@ -676,8 +673,8 @@ samples per process. Both arms produce hash `5436057910800725072`, 1,002 chunks,
 primitive records. Median retained P50/P95 is `1882942 / 1972601 ns`. Median
 generic P50/P95 is `2043204 / 2202644 ns`. Retained compilation is `+7.844%`
 faster at P50 and `+10.444%` faster at P95. Record, submit, GPU, and full-frame
-evidence is unavailable. This makes no Q10 or Skia claim. No long benchmark
-harness is retained.
+evidence is unavailable, so this is not a full-frame Q10 result. No long
+benchmark harness is retained.
 
 Set `GOO_NATIVE_S14_ROUNDED_OVERFLOW_GATE=1` on the same command to run the
 rounded-overflow gate. It captures rounded hidden and scrolling viewports before
