@@ -30,11 +30,7 @@ public sealed class ShaderEffect {
     }
   }
 
-  public convenience init(fragmentSpirv []uint8, samplesBackdrop bool = false) {
-    init(fragmentSpirv, samplesBackdrop, 0.0F)
-  }
-
-  public init(fragmentSpirv []uint8, samplesBackdrop bool, backdropOutset float32) {
+  public init(fragmentSpirv []uint8, samplesBackdrop bool = false, backdropOutset float32 = 0.0F) {
     if Object.ReferenceEquals(fragmentSpirv, nil) {
       throw ArgumentNullException("fragmentSpirv")
     }

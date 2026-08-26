@@ -377,6 +377,10 @@ internal class Node {
   internal prop ContentH float32{ get; set; }
   internal prop ScrollBarAlpha float32{ get; set; }
   internal prop ScrollIdle float32{ get; set; }
+  internal prop ScrollbarVisibility ScrollbarVisibility{
+    get { return ScrollbarVisibilities.Get(this) }
+    set(v) { ScrollbarVisibilities.Set(this, v) }
+  }
   internal prop UserScrolled bool{ get; set; }
   internal prop PinToBottom bool{ get; set; }
   internal prop DragsWindow bool{ get; set }

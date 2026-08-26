@@ -78,10 +78,6 @@ Source:
 
 Configures the animation core.
 
-### `new`
-
-Creates a motion configuration utility instance.
-
 ### `Default`
 
 Gets or sets the sim factory used by To(target) when no spec is given. Core wires a 180 ms linear timed sim at startup.
@@ -105,25 +101,6 @@ Creates a converter with a fixed coordinate count and conversion callbacks.
 - `dimensions`: positive coordinate count
 - `read`: writes a value into an Anim-owned coordinate buffer
 - `write`: creates a value from an Anim-owned coordinate buffer
-
-### `Dimensions`
-
-Gets the fixed number of scalar coordinates.
-
-### `Read(T,float64[])`
-
-Writes a value into the supplied coordinate buffer.
-
-- `value`: value to convert
-- `into`: destination buffer with Dimensions elements
-
-### `Write(float64[])`
-
-Builds a value from the supplied coordinate buffer.
-
-- `dims`: source buffer with Dimensions elements
-
-Returns: converted value
 
 ## `MotionVelocity`
 

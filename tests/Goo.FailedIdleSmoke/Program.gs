@@ -168,20 +168,21 @@ class RecoveryCell : Cell {
   }
 
   internal let TextHandle ElementHandle
-  internal var TextRevision State[int32]
+  internal var TextRevision int32
 
   init() {
     TextHandle = ElementHandle()
-    TextRevision = Track(0)
+    TextRevision = 0
   }
 
   internal func ShowPostRecoveryText() {
-    TextRevision.Value = 1
+    TextRevision = 1
+    Rebuild()
   }
 
   internal prop CurrentText string{
     get {
-      return TextRevision.Value == 0
+      return TextRevision == 0
       ? "Goo Vulkan recovery" : "Post-recovery glyph Z9"
     }
   }
@@ -800,7 +801,7 @@ func Main() {
                 && postRecoveryThirdText.MappedWrites > 0uL)),
       "S15 post-recovery unseen text did not upload changed records")
     PumpRecoveryWindows(opened, other, third, 12)
-    Require(otherRoot.TextRevision.Value == 1 && thirdRoot.TextRevision.Value == 1,
+    Require(otherRoot.TextRevision == 1 && thirdRoot.TextRevision == 1,
       "post-recovery text state did not update")
     RequireTextGeometry(otherRoot, "post-recovery second window")
     RequireTextGeometry(thirdRoot, "post-recovery third window")

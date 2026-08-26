@@ -530,7 +530,7 @@ class S15Q10Scenario : Cell {
   private var imageEffects S15Q10ImageEffectsRoot?
   private var resizeDpi S15Q10ResizeDpiRoot?
 
-  private var revision State[int32]
+  private var revision int32
 
   prop Workload string { get { return workload } }
   prop InitialSettlementFrames int32 {
@@ -643,7 +643,7 @@ class S15Q10Scenario : Cell {
   }
 
   init(selected string) {
-    revision = Track(0)
+    revision = 0
     workload = selected
     seed = if selected == "table" {
       2654435761uL
@@ -706,7 +706,8 @@ class S15Q10Scenario : Cell {
     } else if let current = resizeDpi {
       current.Advance(frame)
     }
-    revision.Value = revision.Value + 1
+    revision = revision + 1
+    Rebuild()
   }
 
   func PrepareWindow(window Window, frame int32) {
@@ -747,7 +748,7 @@ class S15Q10Scenario : Cell {
   }
 
   override func Build() Blob {
-    let currentRevision = revision.Value
+    let currentRevision = revision
     if let current = table { return current.Build() }
     if let current = topology { return current.Build() }
     if let current = boxes { return current.Build() }

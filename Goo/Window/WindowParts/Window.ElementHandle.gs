@@ -92,6 +92,20 @@ public partial class Window {
     accessibility?.MarkDirty()
     return true
   }
+  internal func JumpElementTo(n Node, x float64, y float64) bool {
+    requireUiThread("ElementHandle.JumpTo")
+    if n.Retired { return false }
+    let scrollable = n.Kind == NodeKind.Editor
+      || n.OverflowX == Overflow.Scroll || n.OverflowY == Overflow.Scroll
+    if !scrollable { return false }
+    setImmediateScroll(n, float32(x), float32(y))
+    pendingReconcileEffects = combineEffects(pendingReconcileEffects,
+      ReconcileEffects.Paint | ReconcileEffects.Input | ReconcileEffects.Rect
+      | ReconcileEffects.Accessibility)
+    accessibility?.MarkDirty()
+    markDirtyAndRender()
+    return true
+  }
 
   internal func ScrollElementIntoView(n Node) bool {
     requireUiThread("ElementHandle.ScrollIntoView")

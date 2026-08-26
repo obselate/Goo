@@ -1179,6 +1179,12 @@ internal partial class VulkanSceneCompiler {
         }
         frame.EndChunk()
       }
+      if HasScrollBars(node) {
+        frame.SetActiveClipChain(activePathClipChainId)
+        frame.BeginChunk(ownerId, frameVersion, bounds, true)
+        PaintScrollBars(node, contentOpacity, transform.Index)
+        frame.EndChunk()
+      }
       let outlineBounds = OutlineBounds(node, bounds)
       if !outlineBounds.IsEmpty {
         frame.SetActiveClipChain(activePathClipChainId)

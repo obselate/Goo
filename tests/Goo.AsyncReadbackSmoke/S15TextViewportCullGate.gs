@@ -21,12 +21,12 @@ data struct S15TextViewportArm {
 }
 
 class S15TextViewportCullCell : Cell {
-  private var Left State[float64]
-  private var Top State[float64]
-  private var ContentMode State[int32]
-  private var SceneMode State[int32]
-  private var ColorMode State[int32]
-  private var Revealed State[bool]
+  private var Left float64
+  private var Top float64
+  private var ContentMode int32
+  private var SceneMode int32
+  private var ColorMode int32
+  private var Revealed bool
   private let effect ShaderEffect
 
   shared {
@@ -35,67 +35,67 @@ class S15TextViewportCullCell : Cell {
   }
 
   init(shader ShaderEffect) {
-    Left = Track(8.0)
-    Top = Track(8.0)
-    ContentMode = Track(0)
-    SceneMode = Track(0)
-    ColorMode = Track(0)
-    Revealed = Track(true)
+    Left = 8.0
+    Top = 8.0
+    ContentMode = 0
+    SceneMode = 0
+    ColorMode = 0
+    Revealed = true
     effect = shader
   }
 
   func SetCase(value S15TextViewportCase) {
-    Left.Value = value.Left
-    Top.Value = value.Top
-    ContentMode.Value = value.ContentMode
-    SceneMode.Value = value.SceneMode
-    ColorMode.Value = 0
-    Revealed.Value = true
+    Left = value.Left
+    Top = value.Top
+    ContentMode = value.ContentMode
+    SceneMode = value.SceneMode
+    ColorMode = 0
+    Revealed = true
     Rebuild()
   }
 
   func MutateOffscreen() {
-    ContentMode.Value = 5
-    ColorMode.Value = 1
-    Revealed.Value = false
+    ContentMode = 5
+    ColorMode = 1
+    Revealed = false
     Rebuild()
   }
 
   func Reveal() {
-    Revealed.Value = true
+    Revealed = true
     Rebuild()
   }
 
   func Hide() {
-    Revealed.Value = false
+    Revealed = false
     Rebuild()
   }
 
   func ScrollTo(x float64, y float64) bool -> ScrollViewport.ScrollTo(x, y)
 
   override func Build() Blob {
-    let nested = SceneMode.Value == 1
-    let scrolling = SceneMode.Value == 2
-    let rounded = SceneMode.Value == 3
-    let mixedAxis = SceneMode.Value == 4
-    let transformed = SceneMode.Value == 5
-    let pathClipped = SceneMode.Value == 6
-    let effected = SceneMode.Value == 7
-    let content = if ContentMode.Value == 1 {
+    let nested = SceneMode == 1
+    let scrolling = SceneMode == 2
+    let rounded = SceneMode == 3
+    let mixedAxis = SceneMode == 4
+    let transformed = SceneMode == 5
+    let pathClipped = SceneMode == 6
+    let effected = SceneMode == 7
+    let content = if ContentMode == 1 {
       "لا"
-    } else if ContentMode.Value == 2 {
+    } else if ContentMode == 2 {
       "abc אבג 123"
-    } else if ContentMode.Value == 3 {
+    } else if ContentMode == 3 {
       "e\u0301 a\u0308"
-    } else if ContentMode.Value == 4 {
+    } else if ContentMode == 4 {
       "A 中 registered fallback"
-    } else if ContentMode.Value == 5 {
+    } else if ContentMode == 5 {
       "MUTATED"
     } else {
       "INITIAL"
     }
-    let textLeft = Revealed.Value ? Left.Value : 80.0
-    let textColor = ColorMode.Value == 1
+    let textLeft = Revealed ? Left : 80.0
+    let textColor = ColorMode == 1
     ? Color.Rgb(48, 220, 96) : Color.Rgb(220, 64, 48)
     var sceneEffect ShaderEffect? = nil
     if effected {
@@ -146,7 +146,7 @@ class S15TextViewportCullCell : Cell {
                       Content: content,
                       Position: PositionType.Absolute,
                       Left: textLeft,
-                      Top: Top.Value,
+                      Top: Top,
                       Width: 64,
                       Height: 24,
                       OverflowX: Overflow.Hidden,

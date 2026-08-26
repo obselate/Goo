@@ -63,10 +63,6 @@ Source:
 
 Loads, caches, and renders a validated compiled vector asset.
 
-### `new(System.Byte[])`
-
-Creates an asset from compiled vector bytes.
-
 ### `Load(System.Byte[])`
 
 Loads a compiled vector asset and throws when the bytes are invalid.
@@ -159,16 +155,9 @@ Source:
 
 Owns one precompiled fragment SPIR-V program and its retained parameter state.
 
-### `new(System.Byte[],bool)`
-
-Creates a retained fragment effect from precompiled SPIR-V.
-
-- `fragmentSpirv`: The complete fragment shader module bytes.
-- `samplesBackdrop`: Whether Goo copies the existing target behind the element for shader sampling.
-
 ### `new(System.Byte[],bool,float32)`
 
-Creates a retained fragment effect with bounded backdrop sampling beyond its visible bounds.
+Creates a retained fragment effect with optional bounded backdrop sampling.
 
 - `fragmentSpirv`: The complete fragment shader module bytes.
 - `samplesBackdrop`: Whether Goo copies the existing target behind the element for shader sampling.

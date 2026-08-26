@@ -642,7 +642,7 @@ internal class MotionFixtures {
     } catch (error Exception) {
       threw = true
     }
-    later.Value.Value = 1
+    later.Value = 1
     let result = threw && window.Tree == nil && firstSimulation.PositionCalls == 1
       && !first.Animation.Running && !later.Animation.Running
       && WindowSiblingRetainedCell.Disposals == 1
@@ -972,18 +972,18 @@ internal class WindowSiblingThrowingCell : Cell {
 internal class WindowSiblingRetainedCell : Cell, IDisposable {
   shared { internal var Disposals int32 }
   internal let Animation Anim[float64]
-  internal let Value State[int32]
+  internal var Value int32
 
   init() {
     Animation = Animate(0.0)
-    Value = Track(0)
+    Value = 0
   }
 
   func Dispose() {
     Disposals = Disposals + 1
   }
 
-  override func Build() Blob -> Text { Content: "${Value.Value}" }
+  override func Build() Blob -> Text { Content: "${Value}" }
 }
 
 internal class CountingMotionFixtureCell : Cell {

@@ -33,6 +33,11 @@
 - Rounded two-axis hidden and scrolling overflow now clips node content and
   descendants through retained per-node quadratic paths and the Vulkan mask
   atlas. Static geometry reuses its path identity and mask region.
+- Vulkan scrolling now renders shared-geometry horizontal and vertical thumbs,
+  supports primary-pointer dragging with immediate clamped offsets, and exposes
+  `ElementHandle.ScrollRange`, `ElementMetrics.ScrollRange`, and
+  `ElementHandle.JumpTo`. `Blob.ScrollbarVisibility` selects auto-fading,
+  always-visible, or hidden built-in chrome without disabling scrolling.
 - Shader generation now fails when any production SPIR-V module or the
   production manifest differs from the generated mirror.
 - `TextEntry.Password` now presents one bullet per extended grapheme cluster,

@@ -257,7 +257,8 @@ internal class TextInputPrimitivesFixtures {
         || cell.Second.SetTextInputArea(area) != nativeTextInput{
           return false
         }
-      cell.FirstAttached.Value = false
+      cell.FirstAttached = false
+      cell.Rebuild()
       window.UpdateTree()
       if cell.First.SetTextInputArea(area)
         || cell.Second.SetTextInputArea(area) != nativeTextInput{ return false }
@@ -290,28 +291,35 @@ internal class TextInputPrimitivesFixtures {
       if !cell.Plain.Focus() || window.NativeTextInputActiveForTest() { return false }
 
       if !cell.First.Focus() || !window.NativeTextInputActiveForTest() { return false }
-      cell.FirstTextEnabled.Value = false
+      cell.FirstTextEnabled = false
+      cell.Rebuild()
       window.UpdateTree()
       if window.NativeTextInputActiveForTest() { return false }
-      cell.FirstTextEnabled.Value = true
+      cell.FirstTextEnabled = true
+      cell.Rebuild()
       window.UpdateTree()
       if !window.NativeTextInputActiveForTest() { return false }
 
-      cell.FirstHidden.Value = true
+      cell.FirstHidden = true
+      cell.Rebuild()
       window.UpdateTree()
       if window.NativeTextInputActiveForTest() { return false }
-      cell.FirstHidden.Value = false
+      cell.FirstHidden = false
+      cell.Rebuild()
       window.UpdateTree()
       if !cell.First.Focus() || !window.NativeTextInputActiveForTest() { return false }
 
-      cell.FirstDisabled.Value = true
+      cell.FirstDisabled = true
+      cell.Rebuild()
       window.UpdateTree()
       if window.NativeTextInputActiveForTest() { return false }
-      cell.FirstDisabled.Value = false
+      cell.FirstDisabled = false
+      cell.Rebuild()
       window.UpdateTree()
       if !cell.First.Focus() || !window.NativeTextInputActiveForTest() { return false }
 
-      cell.FirstAttached.Value = false
+      cell.FirstAttached = false
+      cell.Rebuild()
       window.UpdateTree()
       if window.NativeTextInputActiveForTest() { return false }
       if !cell.Second.Focus() || !window.NativeTextInputActiveForTest() { return false }
@@ -363,7 +371,7 @@ public partial class Window {
 internal class MountedTextClientCell : Cell {
   internal let First ElementHandle
   internal let Second ElementHandle
-  internal var FirstAttached State[bool]
+  internal var FirstAttached bool
   internal var Committed string
   internal var Composition string
   internal var SelectionStart int32
@@ -375,7 +383,7 @@ internal class MountedTextClientCell : Cell {
   init() {
     First = ElementHandle{}
     Second = ElementHandle{}
-    FirstAttached = Track(true)
+    FirstAttached = true
     Committed = ""
     Composition = ""
     Candidate = ""
@@ -383,7 +391,7 @@ internal class MountedTextClientCell : Cell {
 
   override func Build() Blob {
     let root = Container{ Width: 160, Height: 90, Children: {} }
-    if FirstAttached.Value {
+    if FirstAttached {
       root.Children.Add(Container{
         Key: "custom-first", Handle: First, Width: 70, Height: 30, Focusable: true,
         OnTextInput: (value string) -> { Committed = value },
@@ -415,10 +423,10 @@ internal class NativeTextInputLifecycleCell : Cell {
   internal let Plain ElementHandle
   internal let Document TextDocument
   internal let Controller TextEditorController
-  internal var FirstAttached State[bool]
-  internal var FirstTextEnabled State[bool]
-  internal var FirstHidden State[bool]
-  internal var FirstDisabled State[bool]
+  internal var FirstAttached bool
+  internal var FirstTextEnabled bool
+  internal var FirstHidden bool
+  internal var FirstDisabled bool
 
   init() {
     First = ElementHandle{}
@@ -428,20 +436,20 @@ internal class NativeTextInputLifecycleCell : Cell {
     Plain = ElementHandle{}
     Document = TextDocument{}
     Controller = TextEditorController(Document)
-    FirstAttached = Track(true)
-    FirstTextEnabled = Track(true)
-    FirstHidden = Track(false)
-    FirstDisabled = Track(false)
+    FirstAttached = true
+    FirstTextEnabled = true
+    FirstHidden = false
+    FirstDisabled = false
   }
 
   override func Build() Blob {
     let root = Container{ Width: 180, Height: 120, Children: {} }
-    if FirstAttached.Value {
-      let callback Action[string]? = FirstTextEnabled.Value ? func(value string) {} : nil
+    if FirstAttached {
+      let callback Action[string]? = FirstTextEnabled ? func(value string) {} : nil
       root.Children.Add(Container{
         Key: "generic-first", Handle: First, Width: 80, Height: 20, Focusable: true,
-        Disabled: FirstDisabled.Value,
-        Visibility: FirstHidden.Value ? Visibility.Hidden : Visibility.Visible,
+        Disabled: FirstDisabled,
+        Visibility: FirstHidden ? Visibility.Hidden : Visibility.Visible,
         OnTextInput: callback,
       })
     }

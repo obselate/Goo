@@ -74,7 +74,7 @@ internal class Layout {
   }
 
   private func collectScroll(n Node) {
-    if n.OverflowX == Overflow.Scroll || n.OverflowY == Overflow.Scroll {
+    if n.Kind == NodeKind.Editor || n.OverflowX == Overflow.Scroll || n.OverflowY == Overflow.Scroll {
       scrollNodes.Add(n)
     }
     for i in 0 ... n.Children.Count {

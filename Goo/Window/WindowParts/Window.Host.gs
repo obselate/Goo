@@ -412,6 +412,11 @@ public partial class Window {
         accessibility?.MarkDirty()
         resolver.VisualDirty = true
       }
+      if input.ConsumeScrollRectsDirty() {
+        pendingReconcileEffects = combineEffects(pendingReconcileEffects,
+          ReconcileEffects.Paint | ReconcileEffects.Input | ReconcileEffects.Rect
+          | ReconcileEffects.Accessibility)
+      }
       // dt can carry a stale idle wait (up to 250 ms) plus whatever this call's
       // own poll/wait consumed. Nothing was ticking while asleep (hasDemand()
       // was false), so nothing loses banked motion; without this clamp, an
@@ -539,9 +544,10 @@ public partial class Window {
     let scrollers = layout.ScrollNodes(n)
     for i in 0 ... scrollers.Count {
       let s = scrollers[i]
-      if s.ScrollX != s.ScrollTargetX || s.ScrollY != s.ScrollTargetY || s.ScrollBarAlpha > 0.0F {
-        return true
-      }
+      if s.ScrollX != s.ScrollTargetX || s.ScrollY != s.ScrollTargetY
+        || (s.ScrollbarVisibility == ScrollbarVisibility.Auto && s.ScrollBarAlpha > 0.0F) {
+          return true
+        }
     }
     return false
   }

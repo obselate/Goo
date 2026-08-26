@@ -28,20 +28,13 @@ public class MotionConverter[T] {
     writeValue = write
   }
 
-  /// Gets the fixed number of scalar coordinates.
-  public func Dimensions() int32 -> dimensions
+  internal func Dimensions() int32 -> dimensions
 
-  /// Writes a value into the supplied coordinate buffer.
-  /// @param value value to convert
-  /// @param into destination buffer with Dimensions elements
-  public func Read(value T, into []float64) {
+  internal func Read(value T, into []float64) {
     readValue(value, into)
   }
 
-  /// Builds a value from the supplied coordinate buffer.
-  /// @param dims source buffer with Dimensions elements
-  /// @returns converted value
-  public func Write(dims []float64) T -> writeValue(dims)
+  internal func Write(dims []float64) T -> writeValue(dims)
 }
 
 internal func motionFinite(value float64) bool -> !Double.IsNaN(value) && !Double.IsInfinity(value)

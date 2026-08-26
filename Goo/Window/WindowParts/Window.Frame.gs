@@ -481,6 +481,7 @@ public partial class Window {
     var changed = false
     for i in 0 ... scrollers.Count {
       let n = scrollers[i]
+      if n.ScrollbarVisibility != ScrollbarVisibility.Auto { continue }
       if n.ScrollBarAlpha > 0.0F {
         n.ScrollIdle = n.ScrollIdle + dt
       }

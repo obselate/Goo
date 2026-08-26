@@ -9,17 +9,18 @@ import Goo
 class S16QueueIsolationCell : Cell {
   internal let Root ElementHandle = ElementHandle{}
 
-  private var service State[int32]
+  private var service int32
   internal var BuildCount int32
   internal var PostedCount int32
 
   init() {
-    service = Track(0)
+    service = 0
   }
 
   internal func RecordService() {
     PostedCount = PostedCount + 1
-    service.Value = service.Value + 1
+    service = service + 1
+    Rebuild()
   }
 
   override func Build() Blob {
@@ -43,7 +44,7 @@ class S16QueueIsolationCell : Cell {
           Position: PositionType.Absolute,
           Left: 8,
           Top: 48,
-          Content: service.Value.ToString(),
+          Content: service.ToString(),
           Color: Color.Rgb(240, 244, 248),
         },
       },

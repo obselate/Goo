@@ -21,7 +21,7 @@ public open class Cell {
   internal var mountGeneration int64
   private var queuedBy object?
 
-  /// Creates a component with no tracked state.
+  /// Creates a component.
   public init() {
     rebuildGate = Object()
   }
@@ -216,18 +216,6 @@ public open class Cell {
       throw error
     }
   }
-
-  /// Creates state owned by this component.
-  /// @typeparam T state value type
-  /// @param initial initial value
-  /// @returns tracked component state
-  public func Track[T](initial T) State[T] -> State[T] { raw: initial, invalidate: Rebuild }
-
-  /// Creates externally configured state owned by this component; prefer stable named or cached delegates for delegate values.
-  /// @typeparam T state value type
-  /// @param initial initial value
-  /// @returns tracked component state
-  public func Prop[T](initial T) State[T] -> Track(initial)
 
   /// Creates a number animated by this component.
   /// @param initial initial value

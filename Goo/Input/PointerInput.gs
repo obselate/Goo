@@ -651,6 +651,13 @@ internal partial class PointerInput {
         dragEditorStarted = false
       }
     }
+    if let state = scrollDragState() {
+      if let target = state.Target {
+        if !nodeVisibleInTree(tree, target, false) || !scrollThumbAvailable(target) {
+          clearScrollDrag()
+        }
+      }
+    }
     if !pressChainVisible(tree) {
       clearPressChain(resolver)
       clickTarget = nil
@@ -691,6 +698,9 @@ internal partial class PointerInput {
     modifiers KeyModifiers) bool{
       let delta = nextDelta(x, y)
       lastModifiers = modifiers
+      if hasScrollDrag() {
+        return updateScrollDrag(root, x, y)
+      }
       let prevented = dispatchPointer(root, PointerEventKind.Move, x, y, delta.X, delta.Y,
         PointerButton.None, modifiers)
       return handleMove(root, resolver, x, y, currentDevice == PointerDevice.Mouse && !prevented,
@@ -886,6 +896,11 @@ internal partial class PointerInput {
       heldButtons = hasButtons ? maskCanceledButtons(buttons) : addPointerButton(heldButtons, button)
       updatePressure(eventPressure, hasPressure)
       let semantic = acquireSemanticPrimary(button)
+      if button == PointerButton.Primary && semantic {
+        if let tree = root {
+          if tryBeginScrollDrag(tree, resolver, x, y) { return true }
+        }
+      }
       let prevented = dispatchPointer(root, PointerEventKind.Press, x, y, 0.0F, 0.0F, button, modifiers)
       if button != PointerButton.Primary || prevented {
         return false
@@ -938,6 +953,10 @@ internal partial class PointerInput {
       updatePressure(eventPressure, hasPressure)
       let semantic = isSemanticPrimary()
       try {
+        if button == PointerButton.Primary && hasScrollDrag() {
+          updateScrollDrag(root, x, y)
+          return true
+        }
         let prevented = dispatchPointer(root, PointerEventKind.Release, x, y, 0.0F, 0.0F, button, modifiers)
         releaseCaptureAfterUp(button)
         if button != PointerButton.Primary || !semantic {
@@ -951,6 +970,7 @@ internal partial class PointerInput {
           dragEntry = nil
           dragEditor = nil
           dragEditorStarted = false
+          clearScrollDrag()
           clickTarget = nil
           current.FocusTarget = nil
           releaseSemanticPrimary(button)

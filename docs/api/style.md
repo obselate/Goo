@@ -1120,10 +1120,6 @@ Source:
 
 Provides typed lexical context to synchronous component functions. A scope ends when its body returns and does not flow into later Cell builds.
 
-### `new`
-
-Creates a token utility instance.
-
 ### `Get``1`
 
 Gets the token set active in the current synchronous scope.

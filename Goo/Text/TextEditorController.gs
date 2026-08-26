@@ -46,9 +46,7 @@ public class TextCommandEvent {
   private let command TextCommand
   private var cancel bool
 
-  /// Creates command interception state.
-  /// @param command The semantic command being intercepted.
-  public init(command TextCommand) {
+  internal init(command TextCommand) {
     this.command = command
   }
 

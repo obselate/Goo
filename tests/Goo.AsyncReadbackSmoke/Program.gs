@@ -46,14 +46,14 @@ class S14ReadbackSmokeCell : Cell {
 }
 
 class S15RetentionCell : Cell {
-  private var ColorChanged State[bool]
-  private var BoundsChanged State[bool]
-  private var ExtraVisible State[bool]
-  private var UnsupportedFeature State[bool]
-  private var ParentColorChanged State[bool]
-  private var ParentUnsupportedFeature State[bool]
-  private var BorderColorChanged State[bool]
-  private var BorderUnsupportedFeature State[bool]
+  private var ColorChanged bool
+  private var BoundsChanged bool
+  private var ExtraVisible bool
+  private var UnsupportedFeature bool
+  private var ParentColorChanged bool
+  private var ParentUnsupportedFeature bool
+  private var BorderColorChanged bool
+  private var BorderUnsupportedFeature bool
 
   shared {
     let Root ElementHandle = ElementHandle{}
@@ -65,46 +65,54 @@ class S15RetentionCell : Cell {
   }
 
   init() {
-    ColorChanged = Track(false)
-    BoundsChanged = Track(false)
-    ExtraVisible = Track(false)
-    UnsupportedFeature = Track(false)
-    ParentColorChanged = Track(false)
-    ParentUnsupportedFeature = Track(false)
-    BorderColorChanged = Track(false)
-    BorderUnsupportedFeature = Track(false)
+    ColorChanged = false
+    BoundsChanged = false
+    ExtraVisible = false
+    UnsupportedFeature = false
+    ParentColorChanged = false
+    ParentUnsupportedFeature = false
+    BorderColorChanged = false
+    BorderUnsupportedFeature = false
   }
 
   func MutateBox() {
-    ColorChanged.Value = true
+    ColorChanged = true
+    Rebuild()
   }
 
   func MutateBounds() {
-    BoundsChanged.Value = true
+    BoundsChanged = true
+    Rebuild()
   }
 
   func MutateParentBox() {
-    ParentColorChanged.Value = true
+    ParentColorChanged = true
+    Rebuild()
   }
 
   func ToggleExtra() {
-    ExtraVisible.Value = !ExtraVisible.Value
+    ExtraVisible = !ExtraVisible
+    Rebuild()
   }
 
   func ToggleUnsupportedFeature() {
-    UnsupportedFeature.Value = !UnsupportedFeature.Value
+    UnsupportedFeature = !UnsupportedFeature
+    Rebuild()
   }
 
   func ToggleParentUnsupportedFeature() {
-    ParentUnsupportedFeature.Value = !ParentUnsupportedFeature.Value
+    ParentUnsupportedFeature = !ParentUnsupportedFeature
+    Rebuild()
   }
 
   func MutateBorder() {
-    BorderColorChanged.Value = true
+    BorderColorChanged = true
+    Rebuild()
   }
 
   func ToggleBorderUnsupportedFeature() {
-    BorderUnsupportedFeature.Value = !BorderUnsupportedFeature.Value
+    BorderUnsupportedFeature = !BorderUnsupportedFeature
+    Rebuild()
   }
 
   override func Build() Blob {
@@ -122,12 +130,12 @@ class S15RetentionCell : Cell {
     children.Add(Container{
       Key: "s15-mutated-box",
       Position: PositionType.Absolute,
-      Left: if BoundsChanged.Value { 104 } else { 88 },
+      Left: if BoundsChanged { 104 } else { 88 },
       Top: 8,
       Width: 64,
       Height: 32,
       Handle: S15RetentionCell.MutatedBox,
-      BackgroundColor: if ColorChanged.Value {
+      BackgroundColor: if ColorChanged {
         Color.Rgb(40, 220, 96)
       } else {
         Color.Rgb(220, 40, 64)
@@ -155,7 +163,7 @@ class S15RetentionCell : Cell {
       BorderTopRightRadius: 8,
       BorderBottomRightRadius: 12,
       BorderBottomLeftRadius: 16,
-      OverflowX: if UnsupportedFeature.Value { Overflow.Hidden } else { Overflow.Visible },
+      OverflowX: if UnsupportedFeature { Overflow.Hidden } else { Overflow.Visible },
       BackgroundColor: Color.Rgb(72, 180, 212),
     })
     children.Add(Container{
@@ -171,8 +179,8 @@ class S15RetentionCell : Cell {
       BorderRightWidth: 3,
       BorderBottomWidth: 4,
       BorderLeftWidth: 5,
-      BorderRadius: if BorderUnsupportedFeature.Value { 6 } else { 0 },
-      BorderTopColor: if BorderColorChanged.Value {
+      BorderRadius: if BorderUnsupportedFeature { 6 } else { 0 },
+      BorderTopColor: if BorderColorChanged {
         Color.Rgb(248, 196, 48)
       } else {
         Color.Rgb(232, 96, 72)
@@ -181,7 +189,7 @@ class S15RetentionCell : Cell {
       BorderBottomColor: Color.Rgb(72, 144, 232),
       BorderLeftColor: Color.Rgb(224, 184, 72),
     })
-    if ExtraVisible.Value {
+    if ExtraVisible {
       children.Add(Container{
         Key: "s15-extra-box",
         Position: PositionType.Absolute,
@@ -197,12 +205,12 @@ class S15RetentionCell : Cell {
       Height: Length.Percent(100),
       Handle: S15RetentionCell.Root,
       Position: PositionType.Relative,
-      BackgroundColor: if ParentColorChanged.Value {
+      BackgroundColor: if ParentColorChanged {
         Color.Rgb(18, 30, 48)
       } else {
         Color.Rgb(12, 20, 32)
       },
-      OverflowX: if ParentUnsupportedFeature.Value {
+      OverflowX: if ParentUnsupportedFeature {
         Overflow.Hidden
       } else {
         Overflow.Visible
@@ -282,7 +290,7 @@ class S17ProtectedTextCell : Cell {
 }
 
 class S17CoreBehaviorCell : Cell {
-  private var disabled State[bool]
+  private var disabled bool
   private var motion Anim[float64]
 
   shared {
@@ -305,12 +313,13 @@ class S17CoreBehaviorCell : Cell {
   internal var ScrollWheelCount int32
 
   init() {
-    disabled = Track(false)
+    disabled = false
     motion = Animate(0.0)
   }
 
   internal func DisableTarget() {
-    disabled.Value = true
+    disabled = true
+    Rebuild()
   }
 
   internal func StartMotion() {
@@ -333,7 +342,7 @@ class S17CoreBehaviorCell : Cell {
         Width: 96,
         Height: 64,
         Focusable: true,
-        Disabled: disabled.Value,
+        Disabled: disabled,
         BackgroundColor: Color.Rgb(208, 48, 64),
         BorderWidth: 4,
         BorderColor: Color.Rgb(24, 32, 48),
@@ -3216,6 +3225,10 @@ if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_Q10_GATE") == "1" {
 }
 if Environment.GetEnvironmentVariable("GOO_NATIVE_D02_OFFSCREEN_FAILURE_GATE") == "1" {
   RunD02OffscreenFailureGate()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_NATIVE_S21_SCROLLBAR_GATE") == "1" {
+  RunS21ScrollbarGate()
   return
 }
 if Environment.GetEnvironmentVariable("GOO_NATIVE_S20_SHADER_EFFECT_GATE") == "1" {

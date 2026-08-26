@@ -181,7 +181,8 @@ internal class AccessibilityFixtures {
       || entry.SelectionLength != 2 || entry.Caret != 3 {
         return false
       }
-    cell.HideAction.Value = true
+    cell.HideAction = true
+    cell.Rebuild()
     window.UpdateTree()
     if window.PerformAccessibilityAction(disabled.Id,
       AccessibilityActionRequest(AccessibilityAction.Increment)) {
@@ -221,7 +222,8 @@ internal class AccessibilityFixtures {
     window.markFrameRendered()
     window.MarkAccessibilityDirtyForTest()
     if !window.AccessibilityHasDemandForTest() { return false }
-    cell.HideAction.Value = true
+    cell.HideAction = true
+    cell.Rebuild()
     adapter.Failures = 1
     window.UpdateTree()
     if !window.AccessibilityHasDemandForTest() { return false }
@@ -476,14 +478,17 @@ internal class AccessibilityEditorCell(document TextDocument, controller TextEdi
 }
 
 internal class AccessibilityEquivalentCell : Cell {
-  internal var Revision State[int32]
+  internal var Revision int32
 
-  init() { Revision = Track(0) }
+  init() { Revision = 0 }
 
-  func Bump() { Revision.Value++ }
+  func Bump() {
+    Revision++
+    Rebuild()
+  }
 
   override func Build() Blob {
-    let revision = Revision.Value
+    let revision = Revision
     return Text{ Content: revision >= 0 ? "same" : "unreachable", Accessibility: Accessibility{
       Role: AccessibilityRole.Text, Name: "same",
     } }
@@ -512,26 +517,29 @@ internal class AccessibilityExternalRelationshipCell(label ElementHandle) : Cell
 }
 
 internal class AccessibilityTransactionalCell : Cell {
-  internal var Invalid State[bool]
+  internal var Invalid bool
 
-  init() { Invalid = Track(false) }
+  init() { Invalid = false }
 
-  func Fail() { Invalid.Value = true }
+  func Fail() {
+    Invalid = true
+    Rebuild()
+  }
 
-  override func Build() Blob -> Text { Content: "stable", Accessibility: Invalid.Value ? Accessibility{
+  override func Build() Blob -> Text { Content: "stable", Accessibility: Invalid ? Accessibility{
     Range: AccessibilityValue{ Minimum: 3.0, Maximum: 2.0 },
   } : Accessibility{ Name: "stable" } }
 }
 
 internal class AccessibilityActionCell : Cell {
-  internal var HideAction State[bool]
+  internal var HideAction bool
 
-  init() { HideAction = Track(false) }
+  init() { HideAction = false }
 
   override func Build() Blob -> Container { Children: {
     Container{ Disabled: true, Accessibility: Accessibility{ Role: AccessibilityRole.None }, Children: {
       Container{ Accessibility: Accessibility{ Role: AccessibilityRole.Generic,
-        Hidden: HideAction.Value,
+        Hidden: HideAction,
         Actions: []AccessibilityAction{ AccessibilityAction.Increment },
         OnAction: func(request AccessibilityActionRequest) bool { return true },
       } },
@@ -545,27 +553,33 @@ internal class AccessibilityActionCell : Cell {
 }
 
 internal class AccessibilityExclusionCell : Cell {
-  private var visible State[bool]
+  private var visible bool
 
-  init() { visible = Track(false) }
+  init() { visible = false }
 
-  func Show() { visible.Value = true }
+  func Show() {
+    visible = true
+    Rebuild()
+  }
 
   override func Build() Blob -> Container { Accessibility: Accessibility{ Role: AccessibilityRole.Generic }, Children: {
-    Text{ Content: "display", Display: visible.Value ? Display.Flex : Display.None },
-    Text{ Content: "visibility", Visibility: visible.Value ? Visibility.Visible : Visibility.Hidden },
+    Text{ Content: "display", Display: visible ? Display.Flex : Display.None },
+    Text{ Content: "visibility", Visibility: visible ? Visibility.Visible : Visibility.Hidden },
     Text{ Content: "visible" },
   } }
 }
 
 internal class AccessibilityGeometryCell : Cell {
-  private var wide State[bool]
+  private var wide bool
 
-  init() { wide = Track(false) }
+  init() { wide = false }
 
-  func Widen() { wide.Value = true }
+  func Widen() {
+    wide = true
+    Rebuild()
+  }
 
-  override func Build() Blob -> Container { Width: wide.Value ? 160.0 : 80.0, Accessibility: Accessibility{
+  override func Build() Blob -> Container { Width: wide ? 160.0 : 80.0, Accessibility: Accessibility{
     Role: AccessibilityRole.Generic,
   }, Children: {
     TextEntry{ Value: "entry" },
@@ -582,17 +596,20 @@ internal class AccessibilityRelationshipTargetsCell : Cell {
   private let hidden ElementHandle
   private let flattened ElementHandle
   private let detached ElementHandle
-  private var attached State[bool]
+  private var attached bool
 
   init(visible ElementHandle, hidden ElementHandle, flattened ElementHandle, detached ElementHandle) {
     this.visible = visible
     this.hidden = hidden
     this.flattened = flattened
     this.detached = detached
-    attached = Track(true)
+    attached = true
   }
 
-  func Detach() { attached.Value = false }
+  func Detach() {
+    attached = false
+    Rebuild()
+  }
 
   override func Build() Blob {
     let root = Container{ Accessibility: Accessibility{ Role: AccessibilityRole.Generic } }
@@ -600,7 +617,7 @@ internal class AccessibilityRelationshipTargetsCell : Cell {
     root.Children.Add(Text{ Handle: hidden, Content: "hidden", Accessibility: Accessibility{ Hidden: true } })
     root.Children.Add(Image{ Accessibility: Accessibility{ Role: AccessibilityRole.None },
       Handle: flattened })
-    if attached.Value {
+    if attached {
       root.Children.Add(Text{ Handle: detached, Content: "detached", Focusable: true })
     }
     root.Children.Add(Container{ Accessibility: Accessibility{
@@ -614,17 +631,23 @@ internal class AccessibilityRelationshipTargetsCell : Cell {
 }
 
 internal class AccessibilitySyntheticRootCell : Cell {
-  private var stage State[int32]
+  private var stage int32
 
-  init() { stage = Track(0) }
+  init() { stage = 0 }
 
-  func One() { stage.Value = 1 }
-  func None() { stage.Value = 2 }
+  func One() {
+    stage = 1
+    Rebuild()
+  }
+  func None() {
+    stage = 2
+    Rebuild()
+  }
 
   override func Build() Blob {
     let root = Container{ Accessibility: Accessibility{ Role: AccessibilityRole.None } }
-    if stage.Value != 2 { root.Children.Add(Text{ Content: "first" }) }
-    if stage.Value == 0 { root.Children.Add(Text{ Content: "second" }) }
+    if stage != 2 { root.Children.Add(Text{ Content: "first" }) }
+    if stage == 0 { root.Children.Add(Text{ Content: "second" }) }
     return root
   }
 }

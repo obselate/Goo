@@ -6,6 +6,8 @@ Source: [`Goo/Cell`](../../Goo/Cell)
 
 ## Build input cells
 
+Store local Cell state in ordinary fields. Goo rebuilds the owning Cell after its input callbacks. Call `Rebuild()` after mutations outside Goo input dispatch.
+
 A packaged G# component derived from `Cell<TInput>` should override `protected Build(input TInput) Blob`. Goo passes the stored immutable snapshot through this typed dispatch path. Existing same-assembly components that override parameterless `Build()` remain valid. If a component overrides both overloads, the typed overload takes precedence. Override `ShouldRebuild(previous, next)` only when default structural equality does not match the component's rebuild policy.
 
 ## `Cell`
@@ -18,7 +20,7 @@ Defines a stateful Goo component.
 
 ### `new`
 
-Creates a component with no tracked state.
+Creates a component.
 
 ### `Animate(Color)`
 
@@ -109,27 +111,9 @@ Describes a child component mount with an immutable input snapshot.
 
 Returns: a blob that mounts the child component
 
-### `Prop``1(T)`
-
-Creates externally configured state owned by this component; prefer stable named or cached delegates for delegate values.
-
-- `T`: state value type
-- `initial`: initial value
-
-Returns: tracked component state
-
 ### `Rebuild`
 
 Requests a rebuild of this component.
-
-### `Track``1(T)`
-
-Creates state owned by this component.
-
-- `T`: state value type
-- `initial`: initial value
-
-Returns: tracked component state
 
 ## `Cell<TInput any>`
 
@@ -146,19 +130,3 @@ Decides whether a later post-mount snapshot needs a rebuild after Input stores n
 ### `Input`
 
 Gets the current immutable input snapshot.
-
-## `State<T>`
-
-Source:
-
-- [`State.gs`](../../Goo/Cell/State.gs)
-
-Holds mutable cell state and rebuilds its owner when the value changes.
-
-### `new`
-
-Creates standalone state with no rebuild owner.
-
-### `Value`
-
-Gets or sets the current value.

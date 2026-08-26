@@ -102,6 +102,7 @@ internal class InputCoordinator {
   }
 
   internal func CurrentCursor() Cursor -> pointer.CurrentCursor()
+  internal func ConsumeScrollRectsDirty() bool -> pointer.ConsumeScrollRectsDirty()
 
   internal func FocusLost(resolver Resolver) {
     try {

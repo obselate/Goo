@@ -12,18 +12,22 @@ internal class TreeFixtures {
     guard let a = first.Children[0].Fiber else { return false }
     guard let b = first.Children[1].Fiber else { return false }
     if !(a is TreeKeyedCell) || !(b is TreeKeyedCell) { return false }
-    a.Value.Value = "A"
-    b.Value.Value = "B"
+    a.Value = "A"
+    b.Value = "B"
+    a.Rebuild()
+    b.Rebuild()
     window.UpdateTree()
 
-    parent.Mode.Value = 1
+    parent.Mode = 1
+    parent.Rebuild()
     window.UpdateTree()
     guard let reordered = window.Tree else { return false }
     if reordered.Children.Count != 2 || reordered.Children[0].Content != "b:B" || reordered.Children[1].Content != "a:A" {
       return false
     }
 
-    parent.Mode.Value = 2
+    parent.Mode = 2
+    parent.Rebuild()
     window.UpdateTree()
     guard let inserted = window.Tree else { return false }
     if inserted.Children.Count != 3 || inserted.Children[0].Content != "b:B"
@@ -31,21 +35,24 @@ internal class TreeFixtures {
         return false
       }
 
-    parent.Mode.Value = 3
+    parent.Mode = 3
+    parent.Rebuild()
     window.UpdateTree()
     guard let removed = window.Tree else { return false }
     if removed.Children.Count != 2 || removed.Children[0].Content != "b:B" || removed.Children[1].Content != "a:A" {
       return false
     }
 
-    parent.Mode.Value = 4
+    parent.Mode = 4
+    parent.Rebuild()
     window.UpdateTree()
     guard let replaced = window.Tree else { return false }
     if replaced.Children.Count != 2 || replaced.Children[0].Content != "b:B"
       || replaced.Children[1].Content != "replacement" || TreeKeyedCell.DisposedA != 1 {
         return false
       }
-    a.Value.Value = "stale"
+    a.Value = "stale"
+    a.Rebuild()
     window.UpdateTree()
     guard let afterStaleUpdate = window.Tree else { return false }
     if afterStaleUpdate.Children.Count != 2 || afterStaleUpdate.Children[0].Content != "b:B"
@@ -79,9 +86,11 @@ internal class TreeFixtures {
     guard let first = window.Tree else { return false }
     guard let child = first.Children[1].Fiber else { return false }
     if !(child is TreePositionalCell) { return false }
-    child.Value.Value = "kept"
+    child.Value = "kept"
+    child.Rebuild()
     window.UpdateTree()
-    parent.Label.Value = "after"
+    parent.Label = "after"
+    parent.Rebuild()
     window.UpdateTree()
     guard let after = window.Tree else { return false }
     return after.Children.Count == 3 && after.Children[0].Content == "after"
@@ -139,7 +148,8 @@ internal class TreeFixtures {
     guard let first = window.Tree else { return false }
     guard let child = first.Children[1].Fiber else { return false }
     if !(child is TreeIncrementalChild) { return false }
-    child.Count.Value = 42
+    child.Count = 42
+    child.Rebuild()
     window.UpdateTree()
     guard let after = window.Tree else { return false }
     return parent.Builds == parentBuilds && after.Children[0].Content == "stable"
@@ -154,8 +164,10 @@ internal class TreeFixtures {
     guard let child = first.Children[1].Fiber else { return false }
     if !(child is TreeIncrementalChild) { return false }
     let childBuilds = child.Builds
-    parent.Title.Value = "new"
-    child.Count.Value = 7
+    parent.Title = "new"
+    parent.Rebuild()
+    child.Count = 7
+    child.Rebuild()
     window.UpdateTree()
     guard let after = window.Tree else { return false }
     return child.Builds == childBuilds + 1 && after.Children[0].Content == "new"
@@ -169,8 +181,10 @@ internal class TreeFixtures {
     guard let first = window.Tree else { return false }
     guard let child = first.Children[0].Fiber else { return false }
     if !(child is TreeIncrementalChild) { return false }
-    child.Count.Value = 5
-    parent.ShowChild.Value = false
+    child.Count = 5
+    child.Rebuild()
+    parent.ShowChild = false
+    parent.Rebuild()
     window.UpdateTree()
     guard let after = window.Tree else { return false }
     return after.Children.Count == 1 && after.Children[0].Content == "empty"
@@ -382,11 +396,11 @@ internal class TreeFixtures {
 }
 
 internal class TreeKeyedParent : Cell {
-  internal var Mode State[int32]
+  internal var Mode int32
 
-  init() { Mode = Track(0) }
+  init() { Mode = 0 }
 
-  override func Build() Blob -> switch Mode.Value {
+  override func Build() Blob -> switch Mode {
     case 0: Container { Children: { keyedCell("a"), keyedCell("b") } }
     case 1: Container { Children: { keyedCell("b"), keyedCell("a") } }
     case 2: Container { Children: { keyedCell("b"), keyedCell("c"), keyedCell("a") } }
@@ -394,23 +408,21 @@ internal class TreeKeyedParent : Cell {
     case _: Container { Children: { keyedCell("b"), Text{ Key: "a", Content: "replacement" } } }
   }
 
-  internal func keyedCell(label string) Blob -> Cell.Mount[TreeKeyedCell](label, (cell TreeKeyedCell) -> { cell.Label = label })
+  internal func keyedCell(label string) Blob -> Cell.Mount[string, TreeKeyedCell](label, label)
 }
 
-internal class TreeKeyedCell : Cell, IDisposable {
+internal class TreeKeyedCell : Cell[string], IDisposable {
   shared { var DisposedA int32 }
-  internal var Label string
-  internal var Value State[string]
+  internal var Value string
 
   init() {
-    Label = ""
-    Value = Track("initial")
+    Value = "initial"
   }
 
-  override func Build() Blob -> Text { Content: "$Label:${Value.Value}" }
+  override func Build() Blob -> Text { Content: "$Input:${Value}" }
 
   func Dispose() {
-    if Label == "a" { DisposedA = DisposedA + 1 }
+    if Input == "a" { DisposedA = DisposedA + 1 }
   }
 }
 
@@ -421,33 +433,33 @@ internal class TreeContainerCell : Cell {
 }
 
 internal class TreePositionalParent : Cell {
-  internal var Label State[string]
+  internal var Label string
 
-  init() { Label = Track("before") }
+  init() { Label = "before" }
 
   override func Build() Blob -> Container { Children: {
-    Text{ Content: Label.Value },
+    Text{ Content: Label },
     Cell.Mount[TreePositionalCell](nil),
     Text{ Content: "tail" },
   } }
 }
 
 internal class TreePositionalCell : Cell {
-  internal var Value State[string]
+  internal var Value string
 
-  init() { Value = Track("initial") }
+  init() { Value = "initial" }
 
-  override func Build() Blob -> Text { Content: "slot:${Value.Value}" }
+  override func Build() Blob -> Text { Content: "slot:${Value}" }
 }
 
 internal class TreeIncrementalParent : Cell {
-  internal var Title State[string]
+  internal var Title string
 
-  init() { Title = Track("old") }
+  init() { Title = "old" }
 
   override func Build() Blob -> Container { Children: {
-    Text{ Key: "title", Content: Title.Value },
-    Cell.Mount[TreeIncrementalChild]("child", (child TreeIncrementalChild) -> { child.Label.Value = Title.Value }),
+    Text{ Key: "title", Content: Title },
+    Cell.Mount[string, TreeIncrementalChild]("child", Title),
   } }
 }
 
@@ -458,53 +470,54 @@ internal class TreeBuildCountingParent : Cell {
     Builds = Builds + 1
     return Container{ Children: {
       Text{ Key: "stable", Content: "stable" },
-      Cell.Mount[TreeIncrementalChild]("child", nil),
+      Cell.Mount[string, TreeIncrementalChild]("child", ""),
     } }
   }
 }
 
 internal class TreeRemovedChildParent : Cell {
-  internal var ShowChild State[bool]
+  internal var ShowChild bool
 
-  init() { ShowChild = Track(true) }
+  init() { ShowChild = true }
 
   override func Build() Blob {
-    if ShowChild.Value {
-      return Container{ Children: { Cell.Mount[TreeIncrementalChild]("child", nil) } }
+    if ShowChild {
+      return Container{ Children: { Cell.Mount[string, TreeIncrementalChild]("child", "") } }
     }
     return Container{ Children: { Text{ Content: "empty" } } }
   }
 }
 
-internal class TreeIncrementalChild : Cell {
-  internal var Label State[string]
-  internal var Count State[int32]
+internal class TreeIncrementalChild : Cell[string] {
+  internal var Count int32
   internal var Builds int32
 
   init() {
-    Label = Track("")
-    Count = Track(0)
+    Count = 0
   }
 
   override func Build() Blob {
     Builds = Builds + 1
     return Container{ Children: {
-      Text{ Content: Label.Value },
-      Text{ Content: "${Count.Value}" },
+      Text{ Content: Input },
+      Text{ Content: "${Count}" },
     } }
   }
 }
 
 internal class TreeDisplayFocusCell : Cell {
-  internal var Hidden State[bool]
+  internal var Hidden bool
 
-  init() { Hidden = Track(false) }
+  init() { Hidden = false }
 
-  func Hide() { Hidden.Value = true }
+  func Hide() {
+    Hidden = true
+    Rebuild()
+  }
 
   override func Build() Blob -> Container { Width: 300.0, Height: 100.0, Children: {
     TextEntry{ Key: "a", Width: 100.0, Height: 30.0 },
-    Container{ Key: "hidden", Display: Hidden.Value ? Display.None : Display.Flex, Children: {
+    Container{ Key: "hidden", Display: Hidden ? Display.None : Display.Flex, Children: {
       TextEntry{ Key: "hidden-entry", Width: 100.0, Height: 30.0 },
     } },
     TextEntry{ Key: "c", Width: 100.0, Height: 30.0 },
@@ -512,32 +525,40 @@ internal class TreeDisplayFocusCell : Cell {
 }
 
 internal class TreeDisplayRetainedParent : Cell {
-  internal var Hidden State[bool]
+  internal var Hidden bool
 
-  init() { Hidden = Track(false) }
+  init() { Hidden = false }
 
-  func Hide() { Hidden.Value = true }
-
-  func Show() { Hidden.Value = false }
+  func Hide() {
+    Hidden = true
+    Rebuild()
+  }
+  func Show() {
+    Hidden = false
+    Rebuild()
+  }
 
   override func Build() Blob -> Container { Width: 200.0, Height: 100.0, Children: {
-    Container{ Key: "wrapper", Display: Hidden.Value ? Display.None : Display.Flex, Children: {
+    Container{ Key: "wrapper", Display: Hidden ? Display.None : Display.Flex, Children: {
       Cell.Mount[TreeDisplayRetainedCell]("retained", nil),
     } },
   } }
 }
 
 internal class TreeVisibilityFocusCell : Cell {
-  internal var Hidden State[bool]
+  internal var Hidden bool
 
-  init() { Hidden = Track(false) }
+  init() { Hidden = false }
 
-  func Hide() { Hidden.Value = true }
+  func Hide() {
+    Hidden = true
+    Rebuild()
+  }
 
   override func Build() Blob -> Container { Width: 300.0, Height: 100.0, Children: {
     TextEntry{ Key: "a", Width: 100.0, Height: 30.0 },
     Container{
-      Key: "hidden", Visibility: Hidden.Value ? Visibility.Hidden : Visibility.Visible,
+      Key: "hidden", Visibility: Hidden ? Visibility.Hidden : Visibility.Visible,
       Children: {
         TextEntry{
           Key: "hidden-entry", Width: 100.0, Height: 30.0,
@@ -550,17 +571,22 @@ internal class TreeVisibilityFocusCell : Cell {
 }
 
 internal class TreeVisibilityRetainedParent : Cell {
-  internal var Hidden State[bool]
+  internal var Hidden bool
 
-  init() { Hidden = Track(false) }
+  init() { Hidden = false }
 
-  func Hide() { Hidden.Value = true }
-
-  func Show() { Hidden.Value = false }
+  func Hide() {
+    Hidden = true
+    Rebuild()
+  }
+  func Show() {
+    Hidden = false
+    Rebuild()
+  }
 
   override func Build() Blob -> Container { Width: 200.0, Height: 100.0, Children: {
     Container{
-      Key: "wrapper", Visibility: Hidden.Value ? Visibility.Hidden : Visibility.Visible,
+      Key: "wrapper", Visibility: Hidden ? Visibility.Hidden : Visibility.Visible,
       Children: { Cell.Mount[TreeDisplayRetainedCell]("retained", nil) },
     },
   } }
@@ -568,13 +594,16 @@ internal class TreeVisibilityRetainedParent : Cell {
 
 internal class TreeDisplayRetainedCell : Cell, IDisposable {
   shared { var Disposed bool }
-  internal var Count State[int32]
+  internal var Count int32
 
-  init() { Count = Track(0) }
+  init() { Count = 0 }
 
-  func Increment() { Count.Value = Count.Value + 1 }
+  func Increment() {
+    Count = Count + 1
+    Rebuild()
+  }
 
   func Dispose() { Disposed = true }
 
-  override func Build() Blob -> Container { Children: { Text{ Content: "${Count.Value}" } } }
+  override func Build() Blob -> Container { Children: { Text{ Content: "${Count}" } } }
 }

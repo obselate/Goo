@@ -68,7 +68,7 @@ public sealed class CompiledVectorAsset {
   private let cachedDashReady []bool
   private let cachedPathLock object
 
-  public init(bytes []uint8) {
+  private init(bytes []uint8) {
     value = CompiledVector.Load(bytes)
     cachedPaths = [value.NodeCount]VectorPath
     cachedPathReady = [value.NodeCount]bool

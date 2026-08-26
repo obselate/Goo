@@ -55,26 +55,6 @@ public class TextEditor : Blob {
     init(document, controller, []TextPresentationLayer{})
   }
 
-  /// Creates an editor without presentation layers and attaches a mounted handle.
-  /// @param document The document to edit.
-  /// @param controller The per-view controller bound to the document.
-  /// @param handle The consumer-owned mounted element handle.
-  public convenience init(document TextDocument, controller TextEditorController,
-    handle ElementHandle?) {
-      init(document, controller, []TextPresentationLayer{}, handle)
-    }
-
-  /// Creates an editor with ordered presentation layers and a mounted handle.
-  /// @param document The document to edit.
-  /// @param controller The per-view controller bound to the document.
-  /// @param layers The ordered presentation layers.
-  /// @param handle The consumer-owned mounted element handle.
-  public convenience init(document TextDocument, controller TextEditorController,
-    layers []TextPresentationLayer, handle ElementHandle?) {
-      init(document, controller, layers)
-      Handle = handle
-    }
-
   /// Creates an editor with ordered presentation layers.
   /// @param document The document to edit.
   /// @param controller The per-view controller bound to the document.

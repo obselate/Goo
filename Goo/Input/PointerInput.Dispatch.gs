@@ -255,7 +255,8 @@ internal partial class PointerInput {
 
   private func cancelInteraction(resolver Resolver, text TextInput) bool {
     let hadInteraction = heldButtons != PointerButtons.None || pressChain.Count > 0
-      || dragEntry != nil || dragEditor != nil || clickTarget != nil || captureTarget != nil || activeTarget != nil
+      || dragEntry != nil || dragEditor != nil || hasScrollDrag()
+      || clickTarget != nil || captureTarget != nil || activeTarget != nil
     if !hadInteraction { return false }
     let canceled = heldButtons
     try {
@@ -266,6 +267,7 @@ internal partial class PointerInput {
       dragEntry = nil
       dragEditor = nil
       dragEditorStarted = false
+      clearScrollDrag()
       clickTarget = nil
       if isSemanticPrimary() {
         if let focusTarget = current.FocusTarget {

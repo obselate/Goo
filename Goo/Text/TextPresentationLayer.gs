@@ -21,10 +21,7 @@ public class TextPresentationProjection {
   private var text string
   private var content Blob?
 
-  /// Creates a hidden atomic projection descriptor.
-  /// @param key The stable projection key.
-  /// @param textRange The non-empty source range.
-  public init(key string, textRange TextRange) {
+  internal init(key string, textRange TextRange) {
     if String.IsNullOrEmpty(key) { throw ArgumentException("Key must be non-empty", "key") }
     if textRange.Start < 0 || textRange.Length <= 0 {
       throw ArgumentException("A projection requires a non-empty range", "textRange")

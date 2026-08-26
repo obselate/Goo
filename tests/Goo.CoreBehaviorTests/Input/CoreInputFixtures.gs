@@ -1296,7 +1296,8 @@ internal class InputFixtures {
     guard let pressedRoot = hidden.Window.Tree else { return false }
     guard let pressedSpace = findByKey(pressedRoot, "space") else { return false }
     if !pressedSpace.Focused || !pressedSpace.Pressed { return false }
-    hiddenCell.HideSpace.Value = true
+    hiddenCell.HideSpace = true
+    hiddenCell.Rebuild()
     hidden.Update()
     hidden.Input.QueueKeyRelease(Key.Space)
     hidden.Drain()
@@ -1609,7 +1610,8 @@ internal class InputFixtures {
     let before = hitKey(root, 20.0F, 20.0F)
     guard let fiber = root.Children[0].Fiber else { return []string{ before, "" } }
     if fiber is ZIndexRuntimeChildCell {
-      fiber.Raised.Value = true
+      fiber.Raised = true
+      fiber.Rebuild()
     }
     window.UpdateTree()
     guard let updated = window.Tree else { return []string{ before, "" } }
@@ -2192,14 +2194,14 @@ internal class ZIndexRuntimeRootCell : Cell {
 }
 
 internal class ZIndexRuntimeChildCell : Cell {
-  internal var Raised State[bool]
+  internal var Raised bool
 
   init() {
-    Raised = Track(false)
+    Raised = false
   }
 
   override func Build() Blob {
-    if Raised.Value {
+    if Raised {
       return Button{ Position: PositionType.Absolute, Width: 40, Height: 40, ZIndex: 2 }
     }
     return Container{ Position: PositionType.Absolute, Width: 40, Height: 40 }
@@ -2503,9 +2505,9 @@ internal class InputButtonCell : Cell {
   internal var enterClicks int32
   internal var spaceClicks int32
   internal var genericClicks int32
-  internal var HideSpace State[bool]
+  internal var HideSpace bool
 
-  init() { HideSpace = Track(false) }
+  init() { HideSpace = false }
 
   override func Build() Blob -> Container {
     Width: 300.0,
@@ -2524,7 +2526,7 @@ internal class InputButtonCell : Cell {
         Key: "space",
         Width: 100.0,
         Height: 30.0,
-        Visibility: HideSpace.Value ? Visibility.Hidden : Visibility.Visible,
+        Visibility: HideSpace ? Visibility.Hidden : Visibility.Visible,
         Active: Style{ Opacity: 0.5 },
         OnClick: func() { spaceClicks++ },
         Children: { Text{ Content: "Space" } },
@@ -2899,21 +2901,22 @@ internal class InputDisabledCell : Cell {
 }
 
 internal class InputDisableFocusedEntryCell : Cell {
-  internal var Off State[bool]
+  internal var Off bool
 
   init() {
-    Off = Track(false)
+    Off = false
   }
 
   internal func Disable() {
-    Off.Value = true
+    Off = true
+    Rebuild()
   }
 
   override func Build() Blob -> TextEntry {
     Value: "hello",
     Width: 200.0,
     Height: 30.0,
-    Disabled: Off.Value,
+    Disabled: Off,
   }
 }
 
@@ -3113,20 +3116,21 @@ internal class InputScrollStateCell : Cell {
 }
 
 internal class InputAxisScrollCell : Cell {
-  private var hiddenX State[bool]
+  private var hiddenX bool
 
   init() {
-    hiddenX = Track(false)
+    hiddenX = false
   }
 
   internal func HideX() {
-    hiddenX.Value = true
+    hiddenX = true
+    Rebuild()
   }
 
   override func Build() Blob -> Container {
     Width: 100.0,
     Height: 100.0,
-    OverflowX: hiddenX.Value ? Overflow.Hidden : Overflow.Scroll,
+    OverflowX: hiddenX ? Overflow.Hidden : Overflow.Scroll,
     OverflowY: Overflow.Hidden,
     Children: {
       Container{ Width: 300.0, Height: 300.0, FlexShrink: 0.0 },

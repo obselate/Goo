@@ -128,12 +128,6 @@ Source:
 
 Provides mutable cancellation state before a text-editor command runs.
 
-### `new(TextCommand)`
-
-Creates command interception state.
-
-- `command`: The semantic command being intercepted.
-
 ### `Cancel`
 
 Gets or sets whether Goo skips its default command behavior.
@@ -728,13 +722,6 @@ Source:
 
 Describes one atomic source projection owned by a presentation layer.
 
-### `new(string,TextRange)`
-
-Creates a hidden atomic projection descriptor.
-
-- `key`: The stable projection key.
-- `textRange`: The non-empty source range.
-
 ### `Content`
 
 Gets the retained Goo slot content, or nil for text projections.
@@ -793,12 +780,6 @@ Source:
 - [`TextDocument.gs`](../../Goo/Text/TextDocument.gs)
 
 Provides an immutable, thread-safe view of one text document version.
-
-### `new(TextDocument)`
-
-Creates an immutable snapshot of a document's current version.
-
-- `document`: The document version to capture.
 
 ### `GetLineIndex(int32)`
 

@@ -6,14 +6,15 @@ import System.Threading
 import Goo
 
 class ImageUploadStatePerfCell : Cell {
-  private var source State[ImageSourceProvider]
+  private var source ImageSourceProvider
 
   init(initialSource ImageSourceProvider) {
-    source = Track[ImageSourceProvider](initialSource)
+    source = initialSource
   }
 
   internal func SetSource(next ImageSourceProvider) {
-    source.Value = next
+    source = next
+    Rebuild()
   }
 
   override func Build() Blob -> Container {
@@ -27,7 +28,7 @@ class ImageUploadStatePerfCell : Cell {
         Top: 8,
         Width: 64,
         Height: 64,
-        Source: source.Value,
+        Source: source,
         Fit: ImageFit.Fill,
       },
     },

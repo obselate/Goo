@@ -7,7 +7,7 @@ import System.Threading
 import Goo
 
 class S13ClipMaskPressureCell : Cell {
-  private var Phase State[int32]
+  private var Phase int32
 
   shared {
     let Root ElementHandle = ElementHandle{}
@@ -22,11 +22,12 @@ class S13ClipMaskPressureCell : Cell {
   }
 
   init() {
-    Phase = Track(0)
+    Phase = 0
   }
 
   func SetPhase(value int32) {
-    Phase.Value = value
+    Phase = value
+    Rebuild()
   }
 
   override func Build() Blob {
@@ -34,7 +35,7 @@ class S13ClipMaskPressureCell : Cell {
     var index int32 = 0
     while index < 16 {
       let growing = index < 4
-      let phase = Phase.Value
+      let phase = Phase
       let left = if growing { 8 } else { int32((index - 4) % 4) * 120 + 8 }
       let top = if growing { 8 } else { int32((index - 4) / 4) * 54 + 8 }
       let width = if growing && phase > 0 { 400 } else { 100 }

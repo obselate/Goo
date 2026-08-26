@@ -5,8 +5,7 @@ import System.Collections.Generic
 
 /// Configures the animation core.
 public class Motion {
-  /// Creates a motion configuration utility instance.
-  public init() {
+  private init() {
   }
 
   shared {

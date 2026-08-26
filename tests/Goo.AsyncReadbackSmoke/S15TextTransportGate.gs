@@ -5,14 +5,14 @@ import System.IO
 import Goo
 
 class S15TextTransportCell : Cell {
-  private var Mutated State[bool]
+  private var Mutated bool
 
   init() {
-    Mutated = Track(false)
+    Mutated = false
   }
 
   func Mutate() {
-    Mutated.Value = true
+    Mutated = true
     Rebuild()
   }
 
@@ -21,7 +21,7 @@ class S15TextTransportCell : Cell {
     Height: 64,
     Children: {
       Text{
-        Content: Mutated.Value ? "BCDA" : "ABCD",
+        Content: Mutated ? "BCDA" : "ABCD",
         Position: PositionType.Absolute,
         Left: 8,
         Top: 12,

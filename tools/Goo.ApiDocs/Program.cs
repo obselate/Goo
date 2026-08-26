@@ -94,6 +94,8 @@ static string BuildPage(string directory, ApiType[] types, ApiMember[] members, 
     if (directory == "Tree")
         AppendElementMetricsGuide(text);
     if (directory == "Tree")
+        AppendScrollGuide(text);
+    if (directory == "Tree")
         AppendTextInputAreaGuide(text);
     if (directory == "Rendering")
         AppendShaderEffectGuide(text);
@@ -175,6 +177,8 @@ static void AppendCellInputGuide(StringBuilder text)
 {
     text.AppendLine();
     text.AppendLine("## Build input cells");
+    text.AppendLine();
+    text.AppendLine("Store local Cell state in ordinary fields. Goo rebuilds the owning Cell after its input callbacks. Call `Rebuild()` after mutations outside Goo input dispatch.");
     text.AppendLine();
     text.AppendLine("A packaged G# component derived from `Cell<TInput>` should override `protected Build(input TInput) Blob`. Goo passes the stored immutable snapshot through this typed dispatch path. Existing same-assembly components that override parameterless `Build()` remain valid. If a component overrides both overloads, the typed overload takes precedence. Override `ShouldRebuild(previous, next)` only when default structural equality does not match the component's rebuild policy.");
 }
@@ -345,11 +349,23 @@ static void AppendElementMetricsGuide(StringBuilder text)
     text.AppendLine();
     text.AppendLine("## Observe mounted element metrics");
     text.AppendLine();
-    text.AppendLine("Subscribe to `ElementHandle.MetricsChanged` on the UI thread. The immutable snapshot contains mounted state, transformed border and content boxes in window logical coordinates, and the actual scroll offset.");
+    text.AppendLine("Subscribe to `ElementHandle.MetricsChanged` on the UI thread. The immutable snapshot contains mounted state, transformed border and content boxes in window logical coordinates, the actual scroll offset, and the maximum legal scroll range.");
     text.AppendLine();
     text.AppendLine("Goo calls listeners after reconciliation, layout, rect refresh, and scroll stepping settle. Detach produces one final `IsMounted = false` snapshot after tree disposal. A detach followed by reattach in the same update reports only the final mounted state.");
     text.AppendLine();
     text.AppendLine("Subscription state is sparse. Handles without a listener and ordinary blobs and nodes do not retain metrics state. New handle subscriptions made during metric delivery wait for the next update. Listener changes on an already accepted handle follow ordinary live event behavior.");
+}
+
+static void AppendScrollGuide(StringBuilder text)
+{
+    text.AppendLine();
+    text.AppendLine("## Control scrolling");
+    text.AppendLine();
+    text.AppendLine("Set `OverflowX` or `OverflowY` to `Scroll` and attach an `ElementHandle`. `ScrollTo` updates the smoothed target, `JumpTo` applies an immediate clamped offset, and `ScrollIntoView` adjusts every scrollable ancestor. `ScrollOffset` is the displayed position and `ScrollRange` is the maximum legal X/Y offset.");
+    text.AppendLine();
+    text.AppendLine("`ScrollbarVisibility.Auto` shows the built-in Vulkan thumb during wheel, programmatic, or drag interaction and then fades it. `Always` keeps the thumb rendered and draggable without creating idle frame demand. `Hidden` suppresses only the built-in thumb; scrolling and custom scrollbar composition continue working.");
+    text.AppendLine();
+    text.AppendLine("A custom thumb can derive content size as viewport size plus scroll range. Its length is `track * viewport / content`, and its position is `(track - thumb) * offset / range`. Use `JumpTo` while dragging so content stays under the pointer.");
 }
 
 static string BuildIndex(string[] sourceDirectories)

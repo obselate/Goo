@@ -14,11 +14,19 @@ Custom providers create one `ImageSourceLease` per mounted binding. Each lease c
 
 ## Observe mounted element metrics
 
-Subscribe to `ElementHandle.MetricsChanged` on the UI thread. The immutable snapshot contains mounted state, transformed border and content boxes in window logical coordinates, and the actual scroll offset.
+Subscribe to `ElementHandle.MetricsChanged` on the UI thread. The immutable snapshot contains mounted state, transformed border and content boxes in window logical coordinates, the actual scroll offset, and the maximum legal scroll range.
 
 Goo calls listeners after reconciliation, layout, rect refresh, and scroll stepping settle. Detach produces one final `IsMounted = false` snapshot after tree disposal. A detach followed by reattach in the same update reports only the final mounted state.
 
 Subscription state is sparse. Handles without a listener and ordinary blobs and nodes do not retain metrics state. New handle subscriptions made during metric delivery wait for the next update. Listener changes on an already accepted handle follow ordinary live event behavior.
+
+## Control scrolling
+
+Set `OverflowX` or `OverflowY` to `Scroll` and attach an `ElementHandle`. `ScrollTo` updates the smoothed target, `JumpTo` applies an immediate clamped offset, and `ScrollIntoView` adjusts every scrollable ancestor. `ScrollOffset` is the displayed position and `ScrollRange` is the maximum legal X/Y offset.
+
+`ScrollbarVisibility.Auto` shows the built-in Vulkan thumb during wheel, programmatic, or drag interaction and then fades it. `Always` keeps the thumb rendered and draggable without creating idle frame demand. `Hidden` suppresses only the built-in thumb; scrolling and custom scrollbar composition continue working.
+
+A custom thumb can derive content size as viewport size plus scroll range. Its length is `track * viewport / content`, and its position is `(track - thumb) * offset / range`. Use `JumpTo` while dragging so content stays under the pointer.
 
 ## Position a custom IME
 
@@ -136,6 +144,10 @@ Gets the callback that receives committed UTF-16 text while this element has foc
 
 Gets the callback that receives pointer wheel movement.
 
+### `ScrollbarVisibility`
+
+Controls whether Goo auto-hides, always shows, or suppresses built-in scrollbars.
+
 ### `TransitionDelayMs`
 
 Gets the delay before a transition starts, in milliseconds.
@@ -220,6 +232,15 @@ Moves keyboard focus to this focusable mounted element.
 
 Returns: False when the handle is unmounted or the element cannot receive focus.
 
+### `JumpTo(float64,float64)`
+
+Immediately sets this element's logical scroll offset.
+
+- `x`: The non-negative horizontal offset.
+- `y`: The non-negative vertical offset.
+
+Returns: False when the handle is unmounted or the element is not scrollable.
+
 ### `ScrollIntoView`
 
 Scrolls each scrollable ancestor enough to reveal this element.
@@ -277,6 +298,10 @@ Reports whether this handle is currently attached to an element.
 
 Gets the current logical scroll offset. An unmounted handle returns the origin.
 
+### `ScrollRange`
+
+Gets the maximum legal logical scroll offset. An unmounted handle returns the origin.
+
 ## `ElementMetrics`
 
 Source:
@@ -300,6 +325,10 @@ Reports whether the element is mounted.
 ### `ScrollOffset`
 
 Gets the current logical scroll offset.
+
+### `ScrollRange`
+
+Gets the maximum legal logical scroll offset.
 
 ## `ElementRect`
 
@@ -492,6 +521,20 @@ Creates the lease Goo owns and disposes for one mounted element.
 
 Gets the content version used to invalidate mounted image bindings.
 
+## `ScrollbarVisibility`
+
+Source:
+
+- [`Blob.gs`](../../Goo/Tree/Blob.gs)
+
+Controls the built-in scrollbar presentation without changing scroll behavior.
+
+### Values
+
+- `Auto`
+- `Always`
+- `Hidden`
+
 ## `Text`
 
 Source:
@@ -541,14 +584,6 @@ Creates an editor without presentation layers.
 - `document`: The document to edit.
 - `controller`: The per-view controller bound to the document.
 
-### `new(TextDocument,TextEditorController,ElementHandle)`
-
-Creates an editor without presentation layers and attaches a mounted handle.
-
-- `document`: The document to edit.
-- `controller`: The per-view controller bound to the document.
-- `handle`: The consumer-owned mounted element handle.
-
 ### `new(TextDocument,TextEditorController,TextPresentationLayer[])`
 
 Creates an editor with ordered presentation layers.
@@ -556,15 +591,6 @@ Creates an editor with ordered presentation layers.
 - `document`: The document to edit.
 - `controller`: The per-view controller bound to the document.
 - `layers`: The ordered presentation layers.
-
-### `new(TextDocument,TextEditorController,TextPresentationLayer[],ElementHandle)`
-
-Creates an editor with ordered presentation layers and a mounted handle.
-
-- `document`: The document to edit.
-- `controller`: The per-view controller bound to the document.
-- `layers`: The ordered presentation layers.
-- `handle`: The consumer-owned mounted element handle.
 
 ### `CaretColor`
 

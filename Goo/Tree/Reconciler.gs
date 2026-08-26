@@ -258,8 +258,15 @@ internal class Reconciler {
       invalidateStyle(n, initial)
       MarkEffects(ReconcileEffects.Style)
     }
+    let scrollbarVisibilityChanged = n.ScrollbarVisibility != b.ScrollbarVisibility
+    if scrollbarVisibilityChanged {
+      n.ScrollbarVisibility = b.ScrollbarVisibility
+      n.ScrollBarAlpha = 0.0F
+      n.ScrollIdle = 0.0F
+      MarkEffects(ReconcileEffects.Paint)
+    }
 
-    var inputChanged = disabledChanged
+    var inputChanged = disabledChanged || scrollbarVisibilityChanged
     if n.Focusable != nextFocusable {
       n.Focusable = nextFocusable
       inputChanged = true

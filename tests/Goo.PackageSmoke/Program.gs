@@ -8,9 +8,9 @@ import Goo
 import GooS09RFixture
 
 class SmokeCell : Cell {
-  internal var TextValue State[string]
-  internal var PressureSource State[ImageSourceProvider]
-  internal var PressureEnabled State[bool]
+  internal var TextValue string
+  internal var PressureSource ImageSourceProvider
+  internal var PressureEnabled bool
   private var ImageProvider ImageSourceProvider?
   private var BackgroundProvider ImageSourceProvider?
 
@@ -27,35 +27,36 @@ class SmokeCell : Cell {
   }
 
   init() {
-    TextValue = Track("Goo Vulkan text")
-    PressureSource = Track[ImageSourceProvider](SmokeCell.SharedImageSource)
-    PressureEnabled = Track(false)
+    TextValue = "Goo Vulkan text"
+    PressureSource = SmokeCell.SharedImageSource
+    PressureEnabled = false
     ImageProvider = nil
     BackgroundProvider = nil
   }
 
   init(imageProvider ImageSourceProvider, backgroundProvider ImageSourceProvider) {
-    TextValue = Track("Goo Vulkan text")
-    PressureSource = Track[ImageSourceProvider](SmokeCell.SharedImageSource)
-    PressureEnabled = Track(false)
+    TextValue = "Goo Vulkan text"
+    PressureSource = SmokeCell.SharedImageSource
+    PressureEnabled = false
     ImageProvider = imageProvider
     BackgroundProvider = backgroundProvider
   }
 
   internal func SetPressureSource(source ImageSourceProvider) {
-    PressureSource.Value = source
-    PressureEnabled.Value = true
+    PressureSource = source
+    PressureEnabled = true
+    Rebuild()
   }
 
   override func Build() Blob {
-    let imageSource ImageSourceProvider = if PressureEnabled.Value {
-      PressureSource.Value
+    let imageSource ImageSourceProvider = if PressureEnabled {
+      PressureSource
     } else if let source = ImageProvider {
       source
     } else {
       SmokeCell.SharedImageSource
     }
-    let backgroundSource ImageSourceProvider = if PressureEnabled.Value {
+    let backgroundSource ImageSourceProvider = if PressureEnabled {
       SmokeCell.SharedImageSource
     } else if let source = BackgroundProvider {
       source
@@ -72,7 +73,7 @@ class SmokeCell : Cell {
       BackgroundColor: Color.Rgb(12, 20, 32),
       Children: {
         Text{
-          Content: TextValue.Value,
+          Content: TextValue,
           FontSize: 24,
           Color: Color.White,
         },
@@ -305,7 +306,7 @@ class S13CompiledVectorSmokeCell : Cell {
 }
 
 class S13PathSmokeCell : Cell {
-  private var Phase State[int32]
+  private var Phase int32
 
   shared {
     let Root ElementHandle = ElementHandle{}
@@ -340,11 +341,12 @@ class S13PathSmokeCell : Cell {
   }
 
   init() {
-    Phase = Track(0)
+    Phase = 0
   }
 
   internal func SetPhase(value int32) {
-    Phase.Value = value
+    Phase = value
+    Rebuild()
   }
 
   override func Build() Blob -> Container {
@@ -364,10 +366,10 @@ class S13PathSmokeCell : Cell {
         PaddingTop: 10,
         PaddingRight: 18,
         PaddingBottom: 6,
-        Path: if Phase.Value == 0 {
+        Path: if Phase == 0 {
           S13PathSmokeCell.NonZeroPath
         } else {
-          S13PathSmokeCell.ChurnPath(Phase.Value)
+          S13PathSmokeCell.ChurnPath(Phase)
         },
         Fit: ShapeFit.Contain,
         FillRule: FillRule.NonZero,
@@ -716,15 +718,16 @@ class TextAtlasSmokeCell : Cell {
   }
 
   private let content string
-  private var phase State[int32]
+  private var phase int32
 
   init(nativeContent string) {
     content = nativeContent
-    phase = Track(0)
+    phase = 0
   }
 
   internal func SetPhase(value int32) {
-    phase.Value = value
+    phase = value
+    Rebuild()
   }
 
   override func Build() Blob -> Container {
@@ -738,7 +741,7 @@ class TextAtlasSmokeCell : Cell {
         Content: content,
         FontSize: 18,
         Color: Color.White,
-        StyleRanges: AtlasStyleRanges(phase.Value),
+        StyleRanges: AtlasStyleRanges(phase),
       },
     },
   }
@@ -2237,7 +2240,8 @@ func Main() {
       || latestRootMetrics.BorderBox.Height != restoredRoot.Height{
         throw InvalidOperationException("Native smoke window did not restore metrics or layout")
       }
-    smokeRoot.TextValue.Value = "Goo Vulkan text 2"
+    smokeRoot.TextValue = "Goo Vulkan text 2"
+    smokeRoot.Rebuild()
     window.Pump(0.0)
     window.Background = Color.Rgb(16, 24, 36)
     window.Pump(0.0)

@@ -15,9 +15,7 @@ public class TextSnapshot {
   private let root TextPieceNode?
   private let version int64
 
-  /// Creates an immutable snapshot of a document's current version.
-  /// @param document The document version to capture.
-  public init(document TextDocument) {
+  internal init(document TextDocument) {
     if document == nil { throw ArgumentNullException("document") }
     root = document.SnapshotRoot()
     version = document.Version

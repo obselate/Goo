@@ -149,7 +149,9 @@ internal class ElementHandleFixtures {
     if !entry.IsMounted { return false }
     TextLayouts.DisposeTree(node)
     let document = TextDocument{}
-    node = mount(rec, owner, TextEditor(document, TextEditorController(document), editor))
+    node = mount(rec, owner, TextEditor(document, TextEditorController(document)) {
+      Handle = editor,
+    })
     if !editor.IsMounted { return false }
     TextLayouts.DisposeTree(node)
     node = mount(rec, owner, Shape{ Handle: shape })
@@ -208,7 +210,8 @@ internal class ElementHandleFixtures {
     if snapshots.Count != 1 {
       return false
     }
-    cell.Width.Value = 120
+    cell.Width = 120
+    cell.Rebuild()
     window.UpdateTree()
     if snapshots.Count != 2 || snapshots[1].BorderBox.Width != 120.0 {
       return false
@@ -220,7 +223,8 @@ internal class ElementHandleFixtures {
     if snapshots.Count != 3 || snapshots[2].ScrollOffset.Y != 40.0 {
       return false
     }
-    cell.Attached.Value = false
+    cell.Attached = false
+    cell.Rebuild()
     window.UpdateTree()
     return snapshots.Count == 4 && !snapshots[3].IsMounted
   }
@@ -233,7 +237,8 @@ internal class ElementHandleFixtures {
     var subscribed bool
     cell.First.MetricsChanged += func(value ElementMetrics) {
       firstCount = firstCount + 1
-      cell.Width.Value = 140
+      cell.Width = 140
+      cell.Rebuild()
       if !subscribed {
         subscribed = true
         cell.Second.MetricsChanged += func(next ElementMetrics) {
@@ -265,15 +270,15 @@ internal class ElementHandleFixtures {
     let cell = ElementMetricsVirtualListCell{}
     let window = Window{ Root: cell, Width: 100, Height: 60 }
     window.UpdateTree()
-    if cell.FirstVisible.Value != 0 || !cell.Viewport.ScrollTo(0.0, 40.0) {
+    if cell.FirstVisible != 0 || !cell.Viewport.ScrollTo(0.0, 40.0) {
       return false
     }
     window.UpdateTree(1.0)
-    if cell.FirstVisible.Value != 2 {
+    if cell.FirstVisible != 2 {
       return false
     }
     window.UpdateTree()
-    return cell.FirstVisible.Value == 2 && cell.BuiltFirst == 2 && cell.BuiltLast == 4
+    return cell.FirstVisible == 2 && cell.BuiltFirst == 2 && cell.BuiltLast == 4
   }
 
   func HandleNoSubscriptionDiffBytes() int64 {
@@ -430,20 +435,20 @@ internal class ElementHandleFailureCell : Cell {
 
 internal class ElementMetricsFixtureCell : Cell {
   internal let Handle ElementHandle
-  internal var Width State[int32]
-  internal var Attached State[bool]
+  internal var Width int32
+  internal var Attached bool
 
   init() {
     Handle = ElementHandle{}
-    Width = Track(100)
-    Attached = Track(true)
+    Width = 100
+    Attached = true
   }
 
   override func Build() Blob {
-    if !Attached.Value {
-      return Container{ Width: Width.Value, Height: 60 }
+    if !Attached {
+      return Container{ Width: Width, Height: 60 }
     }
-    return Container{ Handle: Handle, Width: Width.Value, Height: 60, OverflowY: Overflow.Scroll,
+    return Container{ Handle: Handle, Width: Width, Height: 60, OverflowY: Overflow.Scroll,
       Children: { Container{ Height: 200 } } }
   }
 }
@@ -451,41 +456,44 @@ internal class ElementMetricsFixtureCell : Cell {
 internal class ElementMetricsPairCell : Cell {
   internal let First ElementHandle
   internal let Second ElementHandle
-  internal var Width State[int32]
+  internal var Width int32
 
   init() {
     First = ElementHandle{}
     Second = ElementHandle{}
-    Width = Track(100)
+    Width = 100
   }
 
   override func Build() Blob -> Container { Children: {
-    Container{ Handle: First, Width: Width.Value, Height: 30 },
+    Container{ Handle: First, Width: Width, Height: 30 },
     Container{ Handle: Second, Width: 100, Height: 30 },
   } }
 }
 
 internal class ElementMetricsVirtualListCell : Cell {
   internal let Viewport ElementHandle
-  internal var FirstVisible State[int32]
+  internal var FirstVisible int32
   internal var BuiltFirst int32
   internal var BuiltLast int32
 
   init() {
     Viewport = ElementHandle{}
-    FirstVisible = Track(0)
+    FirstVisible = 0
     Viewport.MetricsChanged += func(metrics ElementMetrics) {
       let next = int32(metrics.ScrollOffset.Y / 20.0)
-      FirstVisible.Value = next
+      if FirstVisible != next {
+        FirstVisible = next
+        Rebuild()
+      }
     }
   }
 
   override func Build() Blob {
-    BuiltFirst = FirstVisible.Value
+    BuiltFirst = FirstVisible
     BuiltLast = BuiltFirst + 2
     let content = Container{ Height: 400, Position: PositionType.Relative }
     for i in 0 ... 3 {
-      let row = FirstVisible.Value + i
+      let row = FirstVisible + i
       content.Children.Add(Container{ Key: "row-$row", Position: PositionType.Absolute,
         Top: float64(row * 20), Width: 100, Height: 20, Children: {
           Text{ Content: "row $row" },

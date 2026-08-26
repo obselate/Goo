@@ -6,8 +6,7 @@ import System.Collections.Generic
 /// Provides typed lexical context to synchronous component functions.
 /// A scope ends when its body returns and does not flow into later Cell builds.
 public class Tokens {
-  /// Creates a token utility instance.
-  public init() {
+  private init() {
   }
 
   shared {

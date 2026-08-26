@@ -70,6 +70,7 @@ previous project's fixture assembly.
 | TextEditor slot gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_TEXT_EDITOR_SLOTS_GATE=1` | Inline and block slot Vulkan presentation, shared content clipping after scroll, retained editor text, unsupported-scene diagnostics, and cleanup |
 | S19 true-idle gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S19_IDLE_GATE=1` | Five isolated nested-KWin scale-1 processes, three-second warm-up, 60-second observation, zero UI or GPU work, zero managed or Vulkan allocation, and less than 0.5% of one CPU core |
 | S20 retained shader-effect gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S20_SHADER_EFFECT_GATE=1` | Ordinary Button source isolation, original-parent backdrop sampling, combined Multiply blend, backdrop-outset coverage, rounded clipping, pointer activation, parameter invalidation, resize, display scale, device recovery, zero-allocation warm updates, no warm Vulkan resource creation, and cleanup |
+| S21 scrollbar gate | `Goo.AsyncReadbackSmoke` with `GOO_NATIVE_S21_SCROLLBAR_GATE=1` | Public range metrics and immediate jump, Vulkan thumb pixels, primary-pointer drag mapping, hidden visual policy with scrolling preserved, validation, and cleanup |
 | S16 three-window package smoke | `Goo.PackageSmoke` with `GOO_NATIVE_MULTIWINDOW_SMOKE=1` | Three live windows, shared scheduler dispatch, minimized sibling, posted work, owner-close continuity, and clean close |
 
 The Vulkan lanes run under headless Wayland with

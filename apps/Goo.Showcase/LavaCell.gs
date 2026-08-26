@@ -26,17 +26,17 @@ internal class LavaCell : Cell {
   }
 
   private let Glass ShaderEffect
-  private var Flow State[float64]
-  private var Form State[float64]
-  private var Blend State[float64]
-  private var Light State[float64]
-  private var Hue State[float64]
-  private var Rainbow State[bool]
-  private var Expanded State[bool]
-  private var Rotation State[Point]
-  private var Seed State[uint32]
-  private var Refraction State[float64]
-  private var Mode State[int32]
+  private var Flow float64
+  private var Form float64
+  private var Blend float64
+  private var Light float64
+  private var Hue float64
+  private var Rainbow bool
+  private var Expanded bool
+  private var Rotation Point
+  private var Seed uint32
+  private var Refraction float64
+  private var Mode int32
   private var DraggingControl bool
   private var DraggingField bool
   private var FieldDragStart Point
@@ -45,17 +45,17 @@ internal class LavaCell : Cell {
   private var OrbInitialized bool
 
   init() {
-    Flow = Track(0.48)
-    Form = Track(0.56)
-    Blend = Track(0.64)
-    Light = Track(0.64)
-    Hue = Track(0.62)
-    Rainbow = Track(false)
-    Expanded = Track(true)
-    Rotation = Track(Point{ X: 0.0, Y: 0.0 })
-    Seed = Track(uint32(7))
-    Refraction = Track(0.58)
-    Mode = Track(int32(1))
+    Flow = 0.48
+    Form = 0.56
+    Blend = 0.64
+    Light = 0.64
+    Hue = 0.62
+    Rainbow = false
+    Expanded = true
+    Rotation = Point{ X: 0.0, Y: 0.0 }
+    Seed = uint32(7)
+    Refraction = 0.58
+    Mode = int32(1)
     DraggingControl = false
     DraggingField = false
     FieldDragStart = Point{ X: 0.0, Y: 0.0 }
@@ -80,7 +80,7 @@ internal class LavaCell : Cell {
   }
 
   private func UpdateGlass() {
-    let amount = Refraction.Value
+    let amount = Refraction
     Glass.SetParameter(0, Vector4(
       float32(0.65 + amount * 1.1),
       1.52F,
@@ -168,7 +168,7 @@ internal class LavaCell : Cell {
     var actionRect = NormalizedRect(LavaCell.ActionSurface, root)
     var sliderRect = NormalizedRect(LavaCell.SliderSurface, root)
     var collapsedRect = NormalizedRect(LavaCell.CollapsedSurface, root)
-    if Expanded.Value {
+    if Expanded {
       if modeRect.Z <= 0.0F {
         modeRect = FallbackRect(railX, rowY, modeWidth, 64.0, root)
       }
@@ -241,7 +241,7 @@ internal class LavaCell : Cell {
   }
 
   private func UpdateRefraction(position Point) {
-    Refraction.Value = TrackValue(position, FlowTrack)
+    Refraction = TrackValue(position, FlowTrack)
     UpdateGlass()
   }
 
@@ -274,41 +274,41 @@ internal class LavaCell : Cell {
   }
 
   private func ToggleRail() {
-    Expanded.Value = !Expanded.Value
+    Expanded = !Expanded
     SyncGlassGeometry()
   }
 
   private func ToggleRainbow() {
-    Rainbow.Value = !Rainbow.Value
+    Rainbow = !Rainbow
   }
 
   private func SelectMode(value int32) {
-    Mode.Value = value
+    Mode = value
     if value == 0 {
-      Flow.Value = 0.24
-      Form.Value = 0.42
-      Light.Value = 0.54
-      Hue.Value = 0.58
-      Rainbow.Value = false
+      Flow = 0.24
+      Form = 0.42
+      Light = 0.54
+      Hue = 0.58
+      Rainbow = false
     } else if value == 1 {
-      Flow.Value = 0.48
-      Form.Value = 0.56
-      Light.Value = 0.64
-      Hue.Value = 0.62
-      Rainbow.Value = false
+      Flow = 0.48
+      Form = 0.56
+      Light = 0.64
+      Hue = 0.62
+      Rainbow = false
     } else {
-      Flow.Value = 0.62
-      Form.Value = 0.68
-      Light.Value = 0.78
-      Hue.Value = 0.66
-      Rainbow.Value = true
+      Flow = 0.62
+      Form = 0.68
+      Light = 0.78
+      Hue = 0.66
+      Rainbow = true
     }
   }
 
   private func RerollField() {
-    Seed.Value = Seed.Value + 1u
-    Form.Value = 0.38 + float64(Seed.Value % 37u) / 100.0
-    Hue.Value = float64(Seed.Value % 91u) / 100.0
+    Seed = Seed + 1u
+    Form = 0.38 + float64(Seed % 37u) / 100.0
+    Hue = float64(Seed % 91u) / 100.0
   }
 
   private func UpdateRotation(position Point) {
@@ -316,7 +316,7 @@ internal class LavaCell : Cell {
     let height = Surface.BorderBox.Height > 1.0 ? Surface.BorderBox.Height : 1.0
     let yaw = FieldRotationStart.X + (position.X - FieldDragStart.X) / width * 6.28318530718
     let pitch = FieldRotationStart.Y + (position.Y - FieldDragStart.Y) / height * 3.0
-    Rotation.Value = Point{ X: yaw, Y: ClampPitch(pitch) }
+    Rotation = Point{ X: yaw, Y: ClampPitch(pitch) }
   }
 
   private func BeginField(event PointerEvent) {
@@ -324,7 +324,7 @@ internal class LavaCell : Cell {
     if event.Button != PointerButton.Primary { return }
     DraggingField = true
     FieldDragStart = event.Position
-    FieldRotationStart = Rotation.Value
+    FieldRotationStart = Rotation
     event.Capture()
   }
 
@@ -349,30 +349,30 @@ internal class LavaCell : Cell {
   }
 
   internal func RequireExpanded(value bool) {
-    if Expanded.Value != value {
+    if Expanded != value {
       throw InvalidOperationException("Glass controls expansion state did not update")
     }
   }
 
   internal func RequireRainbow(value bool) {
-    if Rainbow.Value != value {
+    if Rainbow != value {
       throw InvalidOperationException("Glass spectrum toggle did not update")
     }
   }
 
-  internal func RefractionForSmoke() float64 -> Refraction.Value
+  internal func RefractionForSmoke() float64 -> Refraction
 
   internal func RequireRefractionChanged(previous float64) {
-    if Refraction.Value == previous {
+    if Refraction == previous {
       throw InvalidOperationException("Glass refraction slider did not update")
     }
   }
 
-  internal func ModeForSmoke() int32 -> Mode.Value
+  internal func ModeForSmoke() int32 -> Mode
 
-  internal func SeedForSmoke() uint32 -> Seed.Value
+  internal func SeedForSmoke() uint32 -> Seed
 
-  internal func RotationForSmoke() Point -> Rotation.Value
+  internal func RotationForSmoke() Point -> Rotation
 
   internal func OrbForSmoke() Point -> OrbPosition
 
@@ -384,15 +384,15 @@ internal class LavaCell : Cell {
   }
 
   internal func RequireRotationChanged(previous Point) {
-    if Math.Abs(Rotation.Value.X - previous.X) <= 0.001
-      && Math.Abs(Rotation.Value.Y - previous.Y) <= 0.001 {
+    if Math.Abs(Rotation.X - previous.X) <= 0.001
+      && Math.Abs(Rotation.Y - previous.Y) <= 0.001 {
         throw InvalidOperationException("Lava field rotation did not update")
       }
   }
 
   internal func RequireRotationAt(expected Point) {
-    if Math.Abs(Rotation.Value.X - expected.X) > 0.001
-      || Math.Abs(Rotation.Value.Y - expected.Y) > 0.001 {
+    if Math.Abs(Rotation.X - expected.X) > 0.001
+      || Math.Abs(Rotation.Y - expected.Y) > 0.001 {
         throw InvalidOperationException("Lava field rotation did not persist")
       }
   }
@@ -409,7 +409,7 @@ internal class LavaCell : Cell {
   }
 
   private func ModeButton(key string, label string, value int32, handle ElementHandle) Blob {
-    let selected = Mode.Value == value
+    let selected = Mode == value
     let fill = selected
     ? LinearGradient(145.0,
       Color.Rgba(255, 188, 154, 76),
@@ -510,7 +510,7 @@ internal class LavaCell : Cell {
   }
 
   private func SpectrumToggle() Blob {
-    let active = Rainbow.Value
+    let active = Rainbow
     let fill = active
     ? LinearGradient(145.0,
       Color.Rgba(164, 190, 255, 62),
@@ -591,7 +591,7 @@ internal class LavaCell : Cell {
     },
     TransitionMs: 100,
     OnClick: func() { ToggleRail() },
-    Children: { GlassLabel(key + "-label", Expanded.Value ? "×" : "+", 18) },
+    Children: { GlassLabel(key + "-label", Expanded ? "×" : "+", 18) },
   }
 
   private func ActionGroup() Blob -> Container {
@@ -645,7 +645,7 @@ internal class LavaCell : Cell {
   }
 
   private func RefractionSlider() Blob {
-    let value = Refraction.Value
+    let value = Refraction
     return Container{
       Key: "glass-refraction-wrap",
       Width: Length.Percent(100),
@@ -722,7 +722,7 @@ internal class LavaCell : Cell {
 
   private func Rail() Blob {
     let children = List[Blob](2)
-    if Expanded.Value {
+    if Expanded {
       children.Add(Container{
         Key: "glass-controls-row",
         Width: Length.Percent(100),
@@ -740,7 +740,7 @@ internal class LavaCell : Cell {
     }
     return Container{
       Key: "glass-controls",
-      Width: Expanded.Value ? Length.Percent(92) : Length(56),
+      Width: Expanded ? Length.Percent(92) : Length(56),
       MaxWidth: 660,
       Position: PositionType.Absolute,
       Right: 16,
@@ -778,14 +778,14 @@ internal class LavaCell : Cell {
     OnPointerMove: (event PointerEvent) -> { MoveOrb(event) },
     Children: {
       LavaShowcaseFactory.Surface(
-        Flow.Value,
-        Form.Value,
-        Blend.Value,
-        Light.Value,
-        Hue.Value,
-        Rainbow.Value,
-        Rotation.Value,
-        Seed.Value,
+        Flow,
+        Form,
+        Blend,
+        Light,
+        Hue,
+        Rainbow,
+        Rotation,
+        Seed,
         LavaCell.Surface,
         (event PointerEvent) -> { BeginField(event) },
         (event PointerEvent) -> { MoveField(event) },
