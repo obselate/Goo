@@ -836,9 +836,8 @@ Exit:
 - Feature, strict-pixel, AA/effect-pixel, geometry, absolute frame, startup,
   input-latency, memory, binary, dependency, validation, idle, warm-resource,
   lifecycle, and fallback gates pass with complete provenance.
-- Sparse table, topology, and three-window P95 satisfy the accepted comparison
-  reference.
-- Q&A explicitly resolves every irrecoverable historical comparison gap.
+- Sparse table, topology, and three-window P95 pass absolute budgets and use accepted clean Vulkan
+  regression references.
 
 ### S16. Complete the shared runtime and window API/behavior contract
 
