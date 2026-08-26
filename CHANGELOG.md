@@ -109,6 +109,7 @@
   mutations. A separate focused gate now pushes mouse, key, and committed UTF-8 text through
   `SDL_PushEvent` and consumes them only through product `SdlRuntime.PumpEvents` and
   `SdlHost.Dispatch`. Wayland presentation feedback remains deferred under S16-D03.
+- Froze the complete Linux implementation at commit `6d4d92e` and ran one clean-source matrix with a single 5,815,728-byte NativeAOT binary. All eight official workloads pass across 40 processes with exact hashes, clean diagnostics, warm-resource and absolute-frame budgets, cleanup, package, dependency, fallback, memory, and provenance evidence.
 
 ### Verification
 
@@ -209,13 +210,15 @@
   viewport with an overflowing child, eight corner samples, two readbacks, and
   clean close with 118 draws, 12 plan compiles, and 12 command records.
 - The SDL polling acceptance gate passes pointer, key A, and committed `é` events through the native queue, product polling, window-ID routing, input dispatch, exact causal submit/present, validation, cleanup, and close.
+- Five clean-source true-idle processes pass 60 seconds with zero rebuild, layout, plan, upload, record, submit, present, managed allocation, Vulkan objects, or device memory at median `0.0997%` of one core. The clean stage route passes 2,000 samples with exact 16/8 Effects/Offscreen scopes, zero drops, zero warm Vulkan allocation, and clean validation.
+- The clean Goo package is `3,783,856` bytes, the validated Linux bundle is `10,087,660` bytes with exactly three native payloads, and the package-consumer NativeAOT executable is `5,499,784` bytes. API contracts pass 10/10 and core behavior passes 262/262.
 
 - The Khronos-validation TextEditor slot gate passes inline and block pixels, retained editor text, scrolled boundary clipping, zero unsupported diagnostics, zero warm Vulkan allocation, cleanup, and `close=1`.
 
 ### Deferred
 
-- Full S15/Q10 exit remains open despite 8 of 8 current Linux workload rows. Clean-source provenance, accepted GPU-memory and binary/package comparisons, and Windows evidence remain open.
-- Windows, integrated-GPU, second-DPI, and clean-clone release work remain open.
+- Full S15/Q10 exit now waits only on accepted GPU-memory and binary/package comparison policy plus Windows evidence.
+- Windows, integrated-GPU, and second-DPI qualification remain open.
 
 ## 0.2.0 - 2026-08-07
 

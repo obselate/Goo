@@ -502,9 +502,9 @@ present-fence observation, and a non-background readback. Nearest-rank
 first-usable-frame P95 is `255.212748 ms` from managed entry and `252.771895 ms`
 from `Window.Open` to handoff. Completion-observed upper-bound P95 is
 `255.238026/252.797173 ms`. Present-fence observations are later polling upper
-bounds, not display scanout timestamps. Actual SDL polling acceptance remains
-open. Wayland presentation feedback is deferred under S16-D03 with nominal
-refresh as fallback.
+bounds, not display scanout timestamps. The separate native gate below closes
+SDL polling acceptance. Wayland presentation feedback is deferred under
+S16-D03 with nominal refresh as fallback.
 
 Run the native SDL polling acceptance gate with:
 
@@ -581,21 +581,23 @@ GOO_KWIN_OUTPUT=DP-3 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
 - **Current Qualification**: Under direct scale 1, the canonical 300/2,000 three-window run passes with exact scale-1 metrics, 2,033 submit/present, both slots, liveness, resource zero, and `close=1`. After the lost-retry correction, five isolated resize-DPI processes complete the repeated 1.0, 1.5, and 2.0 active-swapchain cycle with exact 2,000 submit/present deltas, both slots, clean validation/result/fatal streams, clean close, and restored output scale. Raw logs are `artifacts/reports/s15-q10/resize-dpi-final-run-{1..5}.log`.
 
 The `true-idle` selector dispatches to the S19 idle implementation rather than
-the 300/2,000 frame loop. Use the isolated nested-KWin scale-1 command in the S19 section above
-for the accepted five-process true-idle result. The final route recorded a
-0.1078% median of one CPU core and zero work or allocation.
+the 300/2,000 frame loop. The clean-source route uses five isolated virtual-KWin
+scale-1 processes with a 10-second warmup and 60-second observation. All five
+record zero work and allocation at median `0.0997%` of one core.
 
-The current Vulkan frame workloads pass their absolute CPU/GPU, exact
-submit/present, and applicable warm resource gates. Text editing, resize-DPI,
-first-usable-frame, and synthetic input handoff gates pass. Actual SDL polling
-acceptance remains open. Wayland presentation feedback is deferred under
-S16-D03. Full Q10 exit remains blocked by clean-source provenance, accepted
-memory and binary/package comparisons, SDL acceptance, and Windows evidence.
-The final 2026-08-24 manifest expansion used the 5,708,704-byte NativeAOT
-binary with SHA-256
-`50595ae3be03c22fb42c1adea40801d5a511718f6acdda1ec0622a603eb4171f`.
-Raw evidence is in `artifacts/reports/s15-q10/summary.json` and the
-`manifest-final-*` logs. The source was dirty for that run.
+Commit `6d4d92e` supplies one NativeAOT binary for all 40 clean-source workload
+processes. All eight official rows pass absolute CPU/GPU, exact submit/present,
+warm-resource, diagnostics, process-memory, cleanup, and provenance contracts.
+Text editing, resize-DPI, first-usable-frame, synthetic input handoff, and actual
+SDL polling gates pass. Wayland presentation feedback is deferred under
+S16-D03. Full Q10 now waits only on accepted comparison policy and Windows
+evidence.
+
+Canonical clean-source evidence is
+`artifacts/reports/s15-q10/clean-linux-6d4d92e-summary.json`; raw log, package,
+bundle, binary, and source hashes are in
+`artifacts/reports/s15-q10/clean-linux-6d4d92e-SHA256SUMS`. The older
+`manifest-final-*` logs remain the superseded 2026-08-24 dirty-tree checkpoint.
 
 The 2026-08-24 text-editing fast-hit follow-up used five isolated NativeAOT
 processes, 300 warmups, and 2,000 measured frames. Its process-median CPU
