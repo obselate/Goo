@@ -10,6 +10,7 @@
   <ItemGroup>
     <Compile Remove="ImageUploadStatePerfFixture.gs" />
     <ProjectReference Include="../../Goo/Goo.gsproj"
+                      Targets="Rebuild"
                       AdditionalProperties="Configuration=Test$(Configuration);IncludeTestFixtures=true;GooTestFixturesProps=$(MSBuildProjectDirectory)/Goo.ImageUploadStatePerfFixtures.props" />
   </ItemGroup>
   <Target Name="UseGooLinuxSdlForImageUploadStatePerf"

@@ -11,6 +11,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../Goo/Goo.gsproj"
+                      Targets="Rebuild"
                       AdditionalProperties="Configuration=Test$(Configuration);IncludeTestFixtures=true;GooTestFixturesProps=$(MSBuildProjectDirectory)/Goo.VulkanAbiFixtures.props" />
     <Content Include="../../proofs/Goo.VulkanProof/Assets/Text/VendSans-VariableFont_wght.ttf"
              Link="VendSans-VariableFont_wght.ttf"
