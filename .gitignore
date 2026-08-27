@@ -2,14 +2,7 @@
 /*
 !/.gitignore
 !/.gitattributes
-!/AGENTS.md
 !/gslint.json
-!/VULKAN-AUTHORING-LIBRARY.md
-!/SHADER-EFFECT-AUTHORING-AUDIT.md
-!/.agents/
-!/.agents/skills/
-!/.agents/skills/resolve-goo-issue/
-!/.agents/skills/resolve-goo-issue/**
 !/.github/
 /.github/*
 !/.github/workflows/
@@ -30,6 +23,7 @@
 !/.github/scripts/validate-release.py
 !/.github/scripts/validate-readme-examples.py
 !/.github/scripts/with-headless-wayland.sh
+!/.github/scripts/with-kwin-scale-one.sh
 
 !/Goo/
 !/Goo/**
@@ -50,22 +44,19 @@
 !/docs/api/**
 !/docs/audits/
 /docs/audits/*
-!/docs/audits/2026-08-16-gsharp-0.4.1-findings.md
 !/docs/audits/2026-08-16-vulkan-capability-census.md
-!/docs/audits/2026-08-16-goo-core-requirements.md
 !/docs/audits/2026-08-17-vulkan-shader-toolchain.md
 !/docs/perf/
 /docs/perf/*
-!/docs/perf/2026-08-16-gsharp-0.4.1-skia-baseline-status.md
 !/docs/perf/2026-08-19-vulkan-async-readback-baseline.md
 !/docs/perf/2026-08-19-vulkan-aa-o16-linux.md
 !/docs/perf/2026-08-20-vulkan-s15-first-slice-linux.md
 !/docs/perf/2026-08-20-vulkan-s16-first-slice-linux.md
 !/docs/perf/2026-08-21-vulkan-s16-d02-linux-before.md
 !/docs/perf/q10-workloads-v1.json
-!/docs/plans/
-/docs/plans/*
-!/docs/plans/2026-08-16-gaps-and-reductions-working-state.md
+!/docs/perf/2026-08-20-s19-linux-qualification.md
+!/docs/perf/2026-08-21-vulkan-shader-effects-p04-accepted-linux.md
+!/docs/perf/2026-08-23-vulkan-s15-exact-cull-virtualization-linux.md
 
 !/tools/
 /tools/*
@@ -90,10 +81,6 @@
 !/proofs/Goo.VulkanProof/
 !/proofs/Goo.VulkanProof/**
 
-!/probes/
-/probes/*
-!/probes/Findings/
-!/probes/Findings/**
 
 !/vendor/
 /vendor/*
@@ -112,11 +99,6 @@
 !/THIRD-PARTY-NOTICES.md
 !/Directory.Build.props
 !/Directory.Packages.props
-!/GAPS-AND-REDUCTIONS.md
-!/IMPLEMENTATION-HISTORY.md
-!/IMPLEMENTATION-PLAN.md
-!/PLAN-FOR-REVIEW.md
-!/VULKAN-SKIA-REPLACEMENT.md
 
 **/bin/
 **/obj/

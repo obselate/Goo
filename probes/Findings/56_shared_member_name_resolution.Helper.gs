@@ -1,4 +1,0 @@
-package FindingSharedMemberNameResolution
-
-func check() {
-}

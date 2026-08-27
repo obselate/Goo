@@ -4,8 +4,5 @@
     "GL0006": "none",
     "GL0010": "none"
   },
-  "exclude": [
-    "/gsharp/",
-    "/probes/Findings/"
-  ]
+  "exclude": []
 }
