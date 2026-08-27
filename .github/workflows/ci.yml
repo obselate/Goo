@@ -116,9 +116,14 @@ jobs:
 
       - name: Run focused core behavior tests
         run: |
-          dotnet test tests/Goo.CoreBehaviorTests/Goo.CoreBehaviorTests.csproj \
-            -c Release -p:TreatWarningsAsErrors=true \
-            -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so"
+          .github/scripts/with-headless-wayland.sh env \
+            SDL_VIDEODRIVER=wayland \
+            LIBGL_ALWAYS_SOFTWARE=1 \
+            VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation \
+            LD_LIBRARY_PATH="$PWD/artifacts/native${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+            dotnet test tests/Goo.CoreBehaviorTests/Goo.CoreBehaviorTests.csproj \
+              -c Release -p:TreatWarningsAsErrors=true \
+              -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so"
 
       - name: Pack Goo
         run: |
