@@ -174,7 +174,6 @@ internal class TextShaping {
       lock (PrimaryFacesLock) { return PrimaryFaces.Count }
     }
 
-    internal func PrimaryFaceCacheCapacityForTests() int32 -> PrimaryFaceCacheCapacity
 
     internal func PrimaryFaceCacheByteBudgetForTests() int64 -> PrimaryFaceCacheByteBudget
 
@@ -182,7 +181,6 @@ internal class TextShaping {
       lock (PrimaryFacesLock) { return primaryFaceCacheBytes }
     }
 
-    internal func PrimaryFaceDisposalsForTests() int32 -> primaryFaceDisposals
 
     private func MeasureUncached(text string, families string, size float32, weight int32,
       italic bool, letterSpacing float32, direction int32) float32 ->

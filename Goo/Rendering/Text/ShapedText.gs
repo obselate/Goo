@@ -49,7 +49,6 @@ internal sealed class ShapedText : IDisposable {
       return false
     }
   }
-  internal prop IsDisposedForTests bool{ get { return disposed } }
   internal prop GlyphCount int32{
     get {
       var result int32 = 0

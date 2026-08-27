@@ -5,7 +5,7 @@ import System.IO
 import System.Text
 import System.Threading
 import Goo
-import GooS09RFixture
+import GooPrimitiveFixture
 
 class SmokeCell : Cell {
   internal var TextValue string
@@ -237,7 +237,7 @@ class SmokeCell : Cell {
   }
 }
 
-class S13CompiledVectorSmokeCell : Cell {
+class CompiledVectorSmokeCell : Cell {
   shared {
     let Root ElementHandle = ElementHandle{}
     let StaticHost ElementHandle = ElementHandle{}
@@ -258,7 +258,7 @@ class S13CompiledVectorSmokeCell : Cell {
   override func Build() Blob -> Container {
     Width: Length.Percent(100),
     Height: Length.Percent(100),
-    Handle: S13CompiledVectorSmokeCell.Root,
+    Handle: CompiledVectorSmokeCell.Root,
     Position: PositionType.Relative,
     BackgroundColor: Color.Rgb(12, 20, 32),
     Children: {
@@ -269,7 +269,7 @@ class S13CompiledVectorSmokeCell : Cell {
         Top: 12,
         Width: 280,
         Height: 220,
-        Handle: S13CompiledVectorSmokeCell.StaticHost,
+        Handle: CompiledVectorSmokeCell.StaticHost,
         BackgroundColor: Color.Rgb(24, 48, 76),
         Children: {
           staticAsset.Render("static")
@@ -282,7 +282,7 @@ class S13CompiledVectorSmokeCell : Cell {
         Top: 12,
         Width: 280,
         Height: 220,
-        Handle: S13CompiledVectorSmokeCell.AnimatedHost,
+        Handle: CompiledVectorSmokeCell.AnimatedHost,
         BackgroundColor: Color.Rgb(38, 48, 76),
         Children: {
           animatedAsset.Render("animated")
@@ -295,7 +295,7 @@ class S13CompiledVectorSmokeCell : Cell {
         Top: 12,
         Width: 280,
         Height: 220,
-        Handle: S13CompiledVectorSmokeCell.MorphHost,
+        Handle: CompiledVectorSmokeCell.MorphHost,
         BackgroundColor: Color.Rgb(48, 38, 76),
         Children: {
           morphAsset.Render("morph")
@@ -305,7 +305,7 @@ class S13CompiledVectorSmokeCell : Cell {
   }
 }
 
-class S13PathSmokeCell : Cell {
+class PathSmokeCell : Cell {
   private var Phase int32
 
   shared {
@@ -352,7 +352,7 @@ class S13PathSmokeCell : Cell {
   override func Build() Blob -> Container {
     Width: Length.Percent(100),
     Height: Length.Percent(100),
-    Handle: S13PathSmokeCell.Root,
+    Handle: PathSmokeCell.Root,
     Padding: 12,
     Gap: 12,
     FlexDirection: FlexDirection.Row,
@@ -361,15 +361,15 @@ class S13PathSmokeCell : Cell {
       Shape{
         Width: 220,
         Height: 170,
-        Handle: S13PathSmokeCell.NonZeroShape,
+        Handle: PathSmokeCell.NonZeroShape,
         PaddingLeft: 14,
         PaddingTop: 10,
         PaddingRight: 18,
         PaddingBottom: 6,
         Path: if Phase == 0 {
-          S13PathSmokeCell.NonZeroPath
+          PathSmokeCell.NonZeroPath
         } else {
-          S13PathSmokeCell.ChurnPath(Phase)
+          PathSmokeCell.ChurnPath(Phase)
         },
         Fit: ShapeFit.Contain,
         FillRule: FillRule.NonZero,
@@ -378,8 +378,8 @@ class S13PathSmokeCell : Cell {
       Shape{
         Width: 220,
         Height: 170,
-        Handle: S13PathSmokeCell.EvenOddShape,
-        Path: S13PathSmokeCell.EvenOddPath,
+        Handle: PathSmokeCell.EvenOddShape,
+        Path: PathSmokeCell.EvenOddPath,
         Fit: ShapeFit.Fill,
         FillRule: FillRule.EvenOdd,
         BackgroundImageSource: SmokeCell.SharedImageSource,
@@ -387,18 +387,18 @@ class S13PathSmokeCell : Cell {
       Shape{
         Width: 220,
         Height: 170,
-        Handle: S13PathSmokeCell.RoundedFillShape,
-        Path: S13PathSmokeCell.RoundedPath,
+        Handle: PathSmokeCell.RoundedFillShape,
+        Path: PathSmokeCell.RoundedPath,
         Fit: ShapeFit.Contain,
         FillRule: FillRule.NonZero,
         CornerRadius: 12,
-        BackgroundGradient: S13PathSmokeCell.RadialPaint,
+        BackgroundGradient: PathSmokeCell.RadialPaint,
       },
       Shape{
         Width: 220,
         Height: 170,
-        Handle: S13PathSmokeCell.RoundedStrokeShape,
-        Path: S13PathSmokeCell.RoundedPath,
+        Handle: PathSmokeCell.RoundedStrokeShape,
+        Path: PathSmokeCell.RoundedPath,
         Fit: ShapeFit.Contain,
         FillRule: FillRule.NonZero,
         CornerRadius: 10,
@@ -413,7 +413,7 @@ class S13PathSmokeCell : Cell {
   }
 }
 
-class S13StaticPathSmokeCell : Cell {
+class StaticPathSmokeCell : Cell {
   shared {
     let Root ElementHandle = ElementHandle{}
     let ShapeHandle ElementHandle = ElementHandle{}
@@ -423,8 +423,8 @@ class S13StaticPathSmokeCell : Cell {
   override func Build() Blob -> Container {
     Width: Length.Percent(100),
     Height: Length.Percent(100),
-    Handle: S13StaticPathSmokeCell.Root,
-    ClipPath: S13StaticPathSmokeCell.Path,
+    Handle: StaticPathSmokeCell.Root,
+    ClipPath: StaticPathSmokeCell.Path,
     ClipPathFit: ShapeFit.Fill,
     Padding: 12,
     BackgroundColor: Color.Rgb(12, 20, 32),
@@ -432,8 +432,8 @@ class S13StaticPathSmokeCell : Cell {
       Shape{
         Width: 260,
         Height: 190,
-        Handle: S13StaticPathSmokeCell.ShapeHandle,
-        Path: S13StaticPathSmokeCell.Path,
+        Handle: StaticPathSmokeCell.ShapeHandle,
+        Path: StaticPathSmokeCell.Path,
         Fit: ShapeFit.Contain,
         FillRule: FillRule.NonZero,
         BackgroundColor: Color.Rgb(76, 188, 224),
@@ -803,7 +803,7 @@ func CloseWindow(window Window) bool {
   return !window.IsOpen
 }
 
-func RunS13CompiledVectorSmoke() {
+func RunCompiledVectorSmoke() {
   if Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") != "1" {
     throw InvalidOperationException("GOO_VK_DIAGNOSTICS=1 is required")
   }
@@ -816,24 +816,24 @@ func RunS13CompiledVectorSmoke() {
     let morphAsset = CompiledVectorAsset.Load(Convert.FromBase64String("R0NWMQEArAAUBAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAPBCAADIQqwAAACgAAAAAgAAAEwBAAAQAAAAAQAAAFwBAABIAAAAAwAAAKQBAABQAAAAAgAAAAAAAAAAAAAAAAAAAPQBAAAoAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwCAAAYAAAAAQAAADQCAADAAAAABAAAAPQCAAAgAQAADAAAAP////8BAAAAAQAAAAAAAAAAAAAAAAAAAP///////////////////////////////wAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAP////8AAAAAAAAAAAAAAAABAAAAAAAAAAAAAAD///////////////8AAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAwAAAAEAAAAAAAAAAACQQQAAkEEAAHBCAACQQQAAzEIAAJBBAADMQgAAkEEAAKJCAABIQgAAcEIAAKRCAABwQgAApEIAABxCAABIQgAAkEEAAJBBAAAAAP+Hu1wAAIA/AAAAAAAAAAAAAAAAAAAAAP////8AAAAAAAAAAAAAAAD/////AACAPwAAAAAAAAAAAAAAAAAAAAD/////AAAAAAAAAAAAAEBAAACAQAAAAAAAAAAAAAAAAAEAAAD/////AAAAAAAAAAAAAAAABAAEAAAAAAAEAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAIA+zczMPQAAgD4AAIA/AACAPwMAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwYAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAIA+zczMPQAAgD4AAIA/AAAAQAkAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQQQAAkEEAAHBCAACQQQAAzEIAAJBBAADMQgAAkEEAAKJCAABIQgAAcEIAAKRCAABwQgAApEIAABxCAABIQgAAkEEAAJBBAADAQQAA4EEAAHBCAADAQQAAwEIAAKBBAADAQgAAoEEAAJxCAAA8QgAAcEIAAJRCAABwQgAAlEIAAChCAABMQgAAwEEAAOBBAACQQQAAkEEAAHBCAACQQQAAzEIAAJBBAADMQgAAkEEAAKJCAABIQgAAcEIAAKRCAABwQgAApEIAABxCAABIQgAAkEEAAJBBAADAQQAA4EEAAHBCAADAQQAAwEIAAKBBAADAQgAAoEEAAJxCAAA8QgAAcEIAAJRCAABwQgAAlEIAAChCAABMQgAAwEEAAOBB"))
     if staticAsset.NodeCount == 0 || staticAsset.CurveCount == 0 || staticAsset.TrackCount != 0
       || staticAsset.MorphCurveCount != 0 {
-        throw InvalidOperationException("S13 static compiled vector asset failed the public load contract")
+        throw InvalidOperationException("Path static compiled vector asset failed the public load contract")
       }
     if animatedAsset.NodeCount == 0 || animatedAsset.TrackCount == 0
       || animatedAsset.KeyframeCount == 0 || animatedAsset.MorphCurveCount != 0 {
-        throw InvalidOperationException("S13 retained animation asset failed the public load contract")
+        throw InvalidOperationException("Path retained animation asset failed the public load contract")
       }
     if morphAsset.NodeCount == 0 || morphAsset.TrackCount == 0
       || morphAsset.KeyframeCount == 0 || morphAsset.MorphCurveCount == 0 {
-        throw InvalidOperationException("S13 morph animation asset failed the public load contract")
+        throw InvalidOperationException("Path morph animation asset failed the public load contract")
       }
     let morphPath = morphAsset.PathForNode(0)
     if morphPath.ViewBoxWidth <= 0.0 || morphPath.ViewBoxHeight <= 0.0 {
-      throw InvalidOperationException("S13 morph animation path failed the public geometry contract")
+      throw InvalidOperationException("Path morph animation path failed the public geometry contract")
     }
 
-    let root = S13CompiledVectorSmokeCell(staticAsset, animatedAsset, morphAsset)
+    let root = CompiledVectorSmokeCell(staticAsset, animatedAsset, morphAsset)
     let window = Window{
-      Title: "Goo S13 compiled vector",
+      Title: "Goo Path compiled vector",
       Width: 900,
       Height: 260,
       VSync: false,
@@ -849,22 +849,22 @@ func RunS13CompiledVectorSmoke() {
         pumps = pumps + 1
       }
       if !window.IsOpen
-        || !S13CompiledVectorSmokeCell.Root.IsMounted
-        || !S13CompiledVectorSmokeCell.StaticHost.IsMounted
-        || !S13CompiledVectorSmokeCell.AnimatedHost.IsMounted
-        || !S13CompiledVectorSmokeCell.MorphHost.IsMounted
-        || S13CompiledVectorSmokeCell.Root.BorderBox.Width <= 0.0
-        || S13CompiledVectorSmokeCell.Root.BorderBox.Height <= 0.0
-        || S13CompiledVectorSmokeCell.StaticHost.BorderBox.Width <= 0.0
-        || S13CompiledVectorSmokeCell.StaticHost.BorderBox.Height <= 0.0
-        || S13CompiledVectorSmokeCell.AnimatedHost.BorderBox.Width <= 0.0
-        || S13CompiledVectorSmokeCell.AnimatedHost.BorderBox.Height <= 0.0
-        || S13CompiledVectorSmokeCell.MorphHost.BorderBox.Width <= 0.0
-        || S13CompiledVectorSmokeCell.MorphHost.BorderBox.Height <= 0.0 {
-          throw InvalidOperationException("S13 compiled vector assets did not mount with positive geometry")
+        || !CompiledVectorSmokeCell.Root.IsMounted
+        || !CompiledVectorSmokeCell.StaticHost.IsMounted
+        || !CompiledVectorSmokeCell.AnimatedHost.IsMounted
+        || !CompiledVectorSmokeCell.MorphHost.IsMounted
+        || CompiledVectorSmokeCell.Root.BorderBox.Width <= 0.0
+        || CompiledVectorSmokeCell.Root.BorderBox.Height <= 0.0
+        || CompiledVectorSmokeCell.StaticHost.BorderBox.Width <= 0.0
+        || CompiledVectorSmokeCell.StaticHost.BorderBox.Height <= 0.0
+        || CompiledVectorSmokeCell.AnimatedHost.BorderBox.Width <= 0.0
+        || CompiledVectorSmokeCell.AnimatedHost.BorderBox.Height <= 0.0
+        || CompiledVectorSmokeCell.MorphHost.BorderBox.Width <= 0.0
+        || CompiledVectorSmokeCell.MorphHost.BorderBox.Height <= 0.0 {
+          throw InvalidOperationException("Path compiled vector assets did not mount with positive geometry")
         }
       if !CloseWindow(window) {
-        throw InvalidOperationException("S13 compiled vector smoke window did not close")
+        throw InvalidOperationException("Path compiled vector smoke window did not close")
       }
       let diagnostics = capturedError.ToString()
       let planCompileCount = DiagnosticCounterValue(diagnostics, "planCompileCount")
@@ -889,7 +889,7 @@ func RunS13CompiledVectorSmoke() {
         || vulkanObjects != 0uL || validationErrors != 0uL || resultFailures != 0uL {
           Console.SetError(originalError)
           originalError.Write(diagnostics)
-          throw InvalidOperationException("S13 compiled vector smoke diagnostics failed: plan="
+          throw InvalidOperationException("Path compiled vector smoke diagnostics failed: plan="
             +planCompileCount.ToString() + " record=" + recordCount.ToString()
             +" draw=" + drawCount.ToString() + " pathRetired=" + pathRetiredWords.ToString()
             +" pathReuse=" + pathReuseCount.ToString()
@@ -899,7 +899,7 @@ func RunS13CompiledVectorSmoke() {
         }
       Console.SetError(originalError)
       Console.WriteLine(
-        "s13-compiled-vector: static="
+        "path-compiled-vector: static="
         +staticAsset.ByteCount.ToString()
         +" animatedTracks=" + animatedAsset.TrackCount.ToString()
         +" morphCurves=" + morphAsset.MorphCurveCount.ToString()
@@ -919,12 +919,12 @@ func RunS13CompiledVectorSmoke() {
   }
 }
 
-func RunS13PathSmoke() {
+func RunPathSmoke() {
   if Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") != "1" {
     throw InvalidOperationException("GOO_VK_DIAGNOSTICS=1 is required")
   }
-  let churnRoot = S13PathSmokeCell{}
-  let staticRoot = S13StaticPathSmokeCell{}
+  let churnRoot = PathSmokeCell{}
+  let staticRoot = StaticPathSmokeCell{}
   let capturedError = StringWriter()
   let originalError = Console.Error
   var churnWindow Window? = nil
@@ -932,14 +932,14 @@ func RunS13PathSmoke() {
   Console.SetError(capturedError)
   try {
     let churnOpened = Window{
-      Title: "Goo S13 path churn",
+      Title: "Goo Path path churn",
       Width: 520,
       Height: 220,
       VSync: false,
       Root: churnRoot,
     }
     let staticOpened = Window{
-      Title: "Goo S13 static path",
+      Title: "Goo Path static path",
       Width: 320,
       Height: 240,
       VSync: false,
@@ -958,28 +958,28 @@ func RunS13PathSmoke() {
       pumps = pumps + 1
     }
     if !churnOpened.IsOpen || !staticOpened.IsOpen
-      || !S13PathSmokeCell.Root.IsMounted
-      || !S13PathSmokeCell.NonZeroShape.IsMounted
-      || !S13PathSmokeCell.EvenOddShape.IsMounted
-      || !S13PathSmokeCell.RoundedFillShape.IsMounted
-      || !S13PathSmokeCell.RoundedStrokeShape.IsMounted
-      || !S13StaticPathSmokeCell.Root.IsMounted
-      || !S13StaticPathSmokeCell.ShapeHandle.IsMounted
-      || S13PathSmokeCell.Root.BorderBox.Width <= 0.0
-      || S13PathSmokeCell.Root.BorderBox.Height <= 0.0
-      || S13PathSmokeCell.NonZeroShape.BorderBox.Width <= 0.0
-      || S13PathSmokeCell.NonZeroShape.BorderBox.Height <= 0.0
-      || S13PathSmokeCell.EvenOddShape.BorderBox.Width <= 0.0
-      || S13PathSmokeCell.EvenOddShape.BorderBox.Height <= 0.0
-      || S13PathSmokeCell.RoundedFillShape.BorderBox.Width <= 0.0
-      || S13PathSmokeCell.RoundedFillShape.BorderBox.Height <= 0.0
-      || S13PathSmokeCell.RoundedStrokeShape.BorderBox.Width <= 0.0
-      || S13PathSmokeCell.RoundedStrokeShape.BorderBox.Height <= 0.0
-      || S13StaticPathSmokeCell.Root.BorderBox.Width <= 0.0
-      || S13StaticPathSmokeCell.Root.BorderBox.Height <= 0.0
-      || S13StaticPathSmokeCell.ShapeHandle.BorderBox.Width <= 0.0
-      || S13StaticPathSmokeCell.ShapeHandle.BorderBox.Height <= 0.0 {
-        throw InvalidOperationException("S13 path smoke did not retain visible positive geometry in both windows")
+      || !PathSmokeCell.Root.IsMounted
+      || !PathSmokeCell.NonZeroShape.IsMounted
+      || !PathSmokeCell.EvenOddShape.IsMounted
+      || !PathSmokeCell.RoundedFillShape.IsMounted
+      || !PathSmokeCell.RoundedStrokeShape.IsMounted
+      || !StaticPathSmokeCell.Root.IsMounted
+      || !StaticPathSmokeCell.ShapeHandle.IsMounted
+      || PathSmokeCell.Root.BorderBox.Width <= 0.0
+      || PathSmokeCell.Root.BorderBox.Height <= 0.0
+      || PathSmokeCell.NonZeroShape.BorderBox.Width <= 0.0
+      || PathSmokeCell.NonZeroShape.BorderBox.Height <= 0.0
+      || PathSmokeCell.EvenOddShape.BorderBox.Width <= 0.0
+      || PathSmokeCell.EvenOddShape.BorderBox.Height <= 0.0
+      || PathSmokeCell.RoundedFillShape.BorderBox.Width <= 0.0
+      || PathSmokeCell.RoundedFillShape.BorderBox.Height <= 0.0
+      || PathSmokeCell.RoundedStrokeShape.BorderBox.Width <= 0.0
+      || PathSmokeCell.RoundedStrokeShape.BorderBox.Height <= 0.0
+      || StaticPathSmokeCell.Root.BorderBox.Width <= 0.0
+      || StaticPathSmokeCell.Root.BorderBox.Height <= 0.0
+      || StaticPathSmokeCell.ShapeHandle.BorderBox.Width <= 0.0
+      || StaticPathSmokeCell.ShapeHandle.BorderBox.Height <= 0.0 {
+        throw InvalidOperationException("Path path smoke did not retain visible positive geometry in both windows")
       }
     var phase int32 = 1
     while phase <= 12 {
@@ -992,21 +992,21 @@ func RunS13PathSmoke() {
         phasePump = phasePump + 1
       }
       if !churnOpened.IsOpen || !staticOpened.IsOpen {
-        throw InvalidOperationException("S13 path churn smoke window closed")
+        throw InvalidOperationException("Path path churn smoke window closed")
       }
       phase = phase + 1
     }
     if !CloseWindow(churnOpened) {
-      throw InvalidOperationException("S13 path churn window did not close")
+      throw InvalidOperationException("Path path churn window did not close")
     }
     if !staticOpened.IsOpen
-      || !S13StaticPathSmokeCell.Root.IsMounted
-      || !S13StaticPathSmokeCell.ShapeHandle.IsMounted
-      || S13StaticPathSmokeCell.Root.BorderBox.Width <= 0.0
-      || S13StaticPathSmokeCell.Root.BorderBox.Height <= 0.0
-      || S13StaticPathSmokeCell.ShapeHandle.BorderBox.Width <= 0.0
-      || S13StaticPathSmokeCell.ShapeHandle.BorderBox.Height <= 0.0 {
-        throw InvalidOperationException("S13 static path window was disrupted by churn window disposal")
+      || !StaticPathSmokeCell.Root.IsMounted
+      || !StaticPathSmokeCell.ShapeHandle.IsMounted
+      || StaticPathSmokeCell.Root.BorderBox.Width <= 0.0
+      || StaticPathSmokeCell.Root.BorderBox.Height <= 0.0
+      || StaticPathSmokeCell.ShapeHandle.BorderBox.Width <= 0.0
+      || StaticPathSmokeCell.ShapeHandle.BorderBox.Height <= 0.0 {
+        throw InvalidOperationException("Path static path window was disrupted by churn window disposal")
       }
     var staticPumps int32
     while staticPumps < 4 {
@@ -1014,7 +1014,7 @@ func RunS13PathSmoke() {
       staticPumps = staticPumps + 1
     }
     if !CloseWindow(staticOpened) {
-      throw InvalidOperationException("S13 static path window did not close")
+      throw InvalidOperationException("Path static path window did not close")
     }
     let diagnostics = capturedError.ToString()
     let pathBudget = DiagnosticCounterValue(diagnostics, "pathAtlasByteBudget")
@@ -1041,7 +1041,7 @@ func RunS13PathSmoke() {
       || resultFailures != 0uL || drawCount == 0uL {
         Console.SetError(originalError)
         originalError.Write(diagnostics)
-        throw InvalidOperationException("S13 path smoke did not qualify bounded lifetime and cleanup: budget="
+        throw InvalidOperationException("Path path smoke did not qualify bounded lifetime and cleanup: budget="
           +pathBudget.ToString() + " residentWords=" + pathResident.ToString()
           +" freeWords=" + pathFree.ToString() + " pathCount=" + pathCount.ToString()
           +" activeReferences=" + activeReferences.ToString() + " liveObjects=" + liveObjects.ToString()
@@ -1052,7 +1052,7 @@ func RunS13PathSmoke() {
           +" drawCount=" + drawCount.ToString())
       }
     Console.SetError(originalError)
-    Console.WriteLine("s13-path: nonzero=1 evenodd=1 rounded=1 clip=1 mounted=1 static=1 pressureEvents="
+    Console.WriteLine("path-path: nonzero=1 evenodd=1 rounded=1 clip=1 mounted=1 static=1 pressureEvents="
       +pressureEvents.ToString() + " evictionCount=" + evictionCount.ToString()
       +" retiredWords=" + retiredWords.ToString() + " reuseCount=" + reuseCount.ToString()
       +" close=1")
@@ -1071,18 +1071,18 @@ func RunS13PathSmoke() {
   }
 }
 
-func RunS09RSmoke() {
+func RunPrimitiveSmoke() {
   if Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") != "1" {
     throw InvalidOperationException("GOO_VK_DIAGNOSTICS=1 is required")
   }
-  let root = S09RSmokeCell{}
+  let root = PrimitiveSmokeCell{}
   let capturedError = StringWriter()
   let originalError = Console.Error
   var window Window? = nil
   Console.SetError(capturedError)
   try {
     let opened = Window{
-      Title: "Goo S09R public smoke",
+      Title: "Goo Primitive public smoke",
       Width: 400,
       Height: 220,
       VSync: false,
@@ -1091,10 +1091,10 @@ func RunS09RSmoke() {
     window = opened
     opened.Open()
     opened.Pump(0.0)
-    if !opened.IsOpen || !S09RSmokeCell.Root.IsMounted
-      || !S09RSmokeCell.ScrollViewport.IsMounted
-      || !S09RSmokeCell.ScrollLeaf.IsMounted{
-        throw InvalidOperationException("S09R smoke did not mount its public handles")
+    if !opened.IsOpen || !PrimitiveSmokeCell.Root.IsMounted
+      || !PrimitiveSmokeCell.ScrollViewport.IsMounted
+      || !PrimitiveSmokeCell.ScrollLeaf.IsMounted{
+        throw InvalidOperationException("Primitive smoke did not mount its public handles")
       }
     var pumps int32
     while pumps < 8 {
@@ -1102,34 +1102,34 @@ func RunS09RSmoke() {
       pumps = pumps + 1
     }
     if !opened.IsOpen
-      || S09RSmokeCell.Root.BorderBox.Width <= 0.0
-      || S09RSmokeCell.Root.BorderBox.Height <= 0.0
-      || S09RSmokeCell.SolidBox.BorderBox.Width <= 0.0
-      || S09RSmokeCell.RoundedBox.BorderBox.Height <= 0.0
-      || S09RSmokeCell.SolidBorderBox.BorderBox.Width <= 0.0
-      || S09RSmokeCell.DashedBorderBox.BorderBox.Height <= 0.0
-      || S09RSmokeCell.DottedBorderBox.BorderBox.Width <= 0.0
-      || S09RSmokeCell.LinearGradientBox.BorderBox.Height <= 0.0
-      || S09RSmokeCell.RadialGradientBox.BorderBox.Width <= 0.0
-      || S09RSmokeCell.TransformOuter.BorderBox.Width <= 0.0
-      || S09RSmokeCell.TransformInner.BorderBox.Height <= 0.0
-      || S09RSmokeCell.ScrollViewport.BorderBox.Width <= 0.0
-      || S09RSmokeCell.ClipOuter.BorderBox.Height <= 0.0
-      || S09RSmokeCell.ClipInner.BorderBox.Width <= 0.0
-      || S09RSmokeCell.ScrollLeaf.BorderBox.Height <= 0.0
-      || S09RSmokeCell.OpacityLeaf.BorderBox.Width <= 0.0
-      || S09RSmokeCell.BackStack.BorderBox.Height <= 0.0
-      || S09RSmokeCell.FrontStack.BorderBox.Width <= 0.0 {
-        throw InvalidOperationException("S09R smoke did not settle positive public geometry")
+      || PrimitiveSmokeCell.Root.BorderBox.Width <= 0.0
+      || PrimitiveSmokeCell.Root.BorderBox.Height <= 0.0
+      || PrimitiveSmokeCell.SolidBox.BorderBox.Width <= 0.0
+      || PrimitiveSmokeCell.RoundedBox.BorderBox.Height <= 0.0
+      || PrimitiveSmokeCell.SolidBorderBox.BorderBox.Width <= 0.0
+      || PrimitiveSmokeCell.DashedBorderBox.BorderBox.Height <= 0.0
+      || PrimitiveSmokeCell.DottedBorderBox.BorderBox.Width <= 0.0
+      || PrimitiveSmokeCell.LinearGradientBox.BorderBox.Height <= 0.0
+      || PrimitiveSmokeCell.RadialGradientBox.BorderBox.Width <= 0.0
+      || PrimitiveSmokeCell.TransformOuter.BorderBox.Width <= 0.0
+      || PrimitiveSmokeCell.TransformInner.BorderBox.Height <= 0.0
+      || PrimitiveSmokeCell.ScrollViewport.BorderBox.Width <= 0.0
+      || PrimitiveSmokeCell.ClipOuter.BorderBox.Height <= 0.0
+      || PrimitiveSmokeCell.ClipInner.BorderBox.Width <= 0.0
+      || PrimitiveSmokeCell.ScrollLeaf.BorderBox.Height <= 0.0
+      || PrimitiveSmokeCell.OpacityLeaf.BorderBox.Width <= 0.0
+      || PrimitiveSmokeCell.BackStack.BorderBox.Height <= 0.0
+      || PrimitiveSmokeCell.FrontStack.BorderBox.Width <= 0.0 {
+        throw InvalidOperationException("Primitive smoke did not settle positive public geometry")
       }
-    let beforeOffset = S09RSmokeCell.ScrollViewport.ScrollOffset.X
-    let before = S09RSmokeCell.ScrollLeaf.BorderBox
-    if !S09RSmokeCell.ScrollViewport.ScrollTo(24.0, 0.0) {
-      throw InvalidOperationException("S09R smoke public scroll failed")
+    let beforeOffset = PrimitiveSmokeCell.ScrollViewport.ScrollOffset.X
+    let before = PrimitiveSmokeCell.ScrollLeaf.BorderBox
+    if !PrimitiveSmokeCell.ScrollViewport.ScrollTo(24.0, 0.0) {
+      throw InvalidOperationException("Primitive smoke public scroll failed")
     }
     opened.Pump(0.05)
-    let afterOffset = S09RSmokeCell.ScrollViewport.ScrollOffset.X
-    let after = S09RSmokeCell.ScrollLeaf.BorderBox
+    let afterOffset = PrimitiveSmokeCell.ScrollViewport.ScrollOffset.X
+    let after = PrimitiveSmokeCell.ScrollLeaf.BorderBox
     let offsetShift = afterOffset - beforeOffset
     let borderShift = before.X - after.X
     if afterOffset <= beforeOffset
@@ -1137,10 +1137,10 @@ func RunS09RSmoke() {
       || after.Width != before.Width
       || after.Height != before.Height
       || Math.Abs(borderShift - offsetShift) > 0.01 {
-        throw InvalidOperationException("S09R smoke public scroll was not applied once")
+        throw InvalidOperationException("Primitive smoke public scroll was not applied once")
       }
     if !CloseWindow(opened) {
-      throw InvalidOperationException("S09R smoke window did not close")
+      throw InvalidOperationException("Primitive smoke window did not close")
     }
     let diagnostics = capturedError.ToString()
     let validationErrors = DiagnosticCounterValue(diagnostics, "validationErrorCount")
@@ -1148,16 +1148,16 @@ func RunS09RSmoke() {
     if diagnostics.Contains("\"kind\":\"fatal\"")
       || diagnostics.Contains("\"event\":325")
       || validationErrors != 0uL || resultFailures != 0uL {
-        throw InvalidOperationException("S09R smoke emitted Vulkan diagnostics errors")
+        throw InvalidOperationException("Primitive smoke emitted Vulkan diagnostics errors")
       }
     let drawCount = DiagnosticCounterValue(diagnostics, "drawCount")
     let planCompileCount = DiagnosticCounterValue(diagnostics, "planCompileCount")
     let recordCount = DiagnosticCounterValue(diagnostics, "recordCount")
     if drawCount <= 0 || planCompileCount <= 0 || recordCount <= 0 {
-      throw InvalidOperationException("S09R smoke did not record draw, plan, and record work")
+      throw InvalidOperationException("Primitive smoke did not record draw, plan, and record work")
     }
     Console.SetError(originalError)
-    Console.WriteLine("s09r: mounted=1 scroll=1 drawCount=" + drawCount.ToString()
+    Console.WriteLine("primitive: mounted=1 scroll=1 drawCount=" + drawCount.ToString()
       +" planCompileCount=" + planCompileCount.ToString()
       +" recordCount=" + recordCount.ToString() + " close=1")
   } finally {
@@ -1846,35 +1846,35 @@ func RunRegisteredFontSmoke() {
 
 func Main() {
   Window.ConfigureApplication("Goo package smoke", "0.1.0", "io.github.obselate.goo.smoke")
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S13_PATH_SMOKE") == "1" {
-    RunS13PathSmoke()
+  if Environment.GetEnvironmentVariable("GOO_PATH_SMOKE") == "1" {
+    RunPathSmoke()
     return
   }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S13_CLIP_MASK_SMOKE") == "1" {
-    RunS13ClipMaskSmoke()
+  if Environment.GetEnvironmentVariable("GOO_CLIP_MASK_SMOKE") == "1" {
+    RunClipMaskSmoke()
     return
   }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S13_COMPILED_VECTOR_SMOKE") == "1" {
-    RunS13CompiledVectorSmoke()
+  if Environment.GetEnvironmentVariable("GOO_COMPILED_VECTOR_SMOKE") == "1" {
+    RunCompiledVectorSmoke()
     return
   }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_S09R_SMOKE") == "1" {
-    RunS09RSmoke()
+  if Environment.GetEnvironmentVariable("GOO_PRIMITIVE_SMOKE") == "1" {
+    RunPrimitiveSmoke()
     return
   }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_TEXT_CONTROLS_SMOKE") == "1" {
+  if Environment.GetEnvironmentVariable("GOO_TEXT_INPUT_SMOKE") == "1" {
     RunTextControlsSmoke()
     return
   }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_TEXT_ATLAS_SMOKE") == "1" {
+  if Environment.GetEnvironmentVariable("GOO_TEXT_ATLAS_SMOKE") == "1" {
     RunTextAtlasSmoke()
     return
   }
-  if Environment.GetEnvironmentVariable("GOO_REGISTERED_FONT_SMOKE") == "1" {
+  if Environment.GetEnvironmentVariable("GOO_FONT_SMOKE") == "1" {
     RunRegisteredFontSmoke()
     return
   }
-  if Environment.GetEnvironmentVariable("GOO_NATIVE_MULTIWINDOW_SMOKE") == "1" {
+  if Environment.GetEnvironmentVariable("GOO_MULTI_WINDOW_SMOKE") == "1" {
     let firstRoot = Cell{}
     let secondRoot = Cell{}
     let thirdRoot = Cell{}
@@ -1951,8 +1951,8 @@ func Main() {
     }
     return
   }
-  let nativeSmoke = Environment.GetEnvironmentVariable("GOO_NATIVE_SMOKE") == "1"
-  let pressureSmoke = Environment.GetEnvironmentVariable("GOO_NATIVE_IMAGE_PRESSURE_SMOKE") == "1"
+  let nativeSmoke = Environment.GetEnvironmentVariable("GOO_WINDOW_SMOKE") == "1"
+  let pressureSmoke = Environment.GetEnvironmentVariable("GOO_IMAGE_PRESSURE_SMOKE") == "1"
   var imageProvider VersionedImageProvider?
   var backgroundProvider VersionedImageProvider?
   var imageV1 ImageSource?
@@ -2078,9 +2078,7 @@ func Main() {
       }
     }
     return
-  } else if Environment.GetEnvironmentVariable("GOO_NATIVE_PLAYGROUND") == "1" {
-    window.Run()
-  } else if Environment.GetEnvironmentVariable("GOO_NATIVE_SMOKE") == "1" {
+  } else if Environment.GetEnvironmentVariable("GOO_WINDOW_SMOKE") == "1" {
     window.Open()
     window.Pump(0.0)
     if !SmokeCell.Viewport.IsMounted || !SmokeCell.ScrollLeaf.IsMounted {

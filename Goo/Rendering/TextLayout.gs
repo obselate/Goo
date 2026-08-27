@@ -216,12 +216,8 @@ internal class TextLayouts {
       if n.Kind == NodeKind.Image {
         ImageLayouts.Dispose(n)
       }
-      if n.Kind == NodeKind.Shape {
-        ShapeGeometry.Dispose(n)
-      }
       BackgroundImageLayouts.Dispose(n)
       ShaderEffectStyles.Dispose(n)
-      ClipPathGeometry.Dispose(n)
       for i in 0 ... n.Children.Count {
         if let error = disposeTree(n.Children[i]) {
           if firstError == nil {

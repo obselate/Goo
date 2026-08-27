@@ -2,7 +2,6 @@
 /*
 !/.gitignore
 !/.gitattributes
-!/gslint.json
 !/.github/
 /.github/*
 !/.github/workflows/
@@ -42,21 +41,10 @@
 !/docs/assets/**
 !/docs/api/
 !/docs/api/**
-!/docs/audits/
-/docs/audits/*
-!/docs/audits/2026-08-16-vulkan-capability-census.md
-!/docs/audits/2026-08-17-vulkan-shader-toolchain.md
 !/docs/perf/
 /docs/perf/*
-!/docs/perf/2026-08-19-vulkan-async-readback-baseline.md
-!/docs/perf/2026-08-19-vulkan-aa-o16-linux.md
-!/docs/perf/2026-08-20-vulkan-s15-first-slice-linux.md
-!/docs/perf/2026-08-20-vulkan-s16-first-slice-linux.md
-!/docs/perf/2026-08-21-vulkan-s16-d02-linux-before.md
-!/docs/perf/q10-workloads-v1.json
-!/docs/perf/2026-08-20-s19-linux-qualification.md
-!/docs/perf/2026-08-21-vulkan-shader-effects-p04-accepted-linux.md
-!/docs/perf/2026-08-23-vulkan-s15-exact-cull-virtualization-linux.md
+!/docs/perf/performance-workloads.json
+!/docs/perf/linux-release-qualification.md
 
 !/tools/
 /tools/*
@@ -76,10 +64,6 @@
 !/tools/Goo.SvgCompiler/
 !/tools/Goo.SvgCompiler/**
 
-!/proofs/
-/proofs/*
-!/proofs/Goo.VulkanProof/
-!/proofs/Goo.VulkanProof/**
 
 
 !/vendor/

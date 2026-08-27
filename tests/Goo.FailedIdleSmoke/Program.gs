@@ -697,11 +697,11 @@ func Main() {
     warmSerials = FailedIdleTestFixture.SubmissionSerials(opened)
     Require(
       sawPrimitiveSlot0 && sawPrimitiveSlot1 && sawTextSlot0 && sawTextSlot1,
-      "S15 warm operation did not observe independent primitive and text frame slots")
+      "Retained warm operation did not observe independent primitive and text frame slots")
     Require(
       warmSerials.Slot0Serial > 0uL && warmSerials.Slot1Serial > 0uL,
-      "S15 warm operation did not accept submissions into both frame slots")
-    RequireFailedIdleWarmReuse(warmPrimitive, warmText, "S15 warm operation")
+      "Retained warm operation did not accept submissions into both frame slots")
+    RequireFailedIdleWarmReuse(warmPrimitive, warmText, "Retained warm operation")
     let plateauEnd = FailedIdleTestFixture.Counters(opened)
     RequireLifecyclePlateau(plateauStart, plateauEnd)
     Require(opened.IsOpen && other.IsOpen && third.IsOpen,
@@ -738,7 +738,7 @@ func Main() {
       surfaceAfterPrimitive,
       surfaceBeforeText,
       surfaceAfterText,
-      "S15 surface rebuild")
+      "Retained surface rebuild")
     RequireFailedIdleFreshSerials(
       surfaceBeforeSerials,
       surfaceAfterSerials,
@@ -746,7 +746,7 @@ func Main() {
       surfaceAfterPrimitive,
       surfaceBeforeText,
       surfaceAfterText,
-      "S15 surface rebuild")
+      "Retained surface rebuild")
 
     let layerPoolCreateCountBeforeDeviceLoss =
     FailedIdleTestFixture.Counters(opened).layerPoolCreateCount
@@ -767,7 +767,7 @@ func Main() {
       RequireFailedIdleCompleteRebuild(
         afterPrimitive,
         afterText,
-        "S15 device rebuild")
+        "Retained device rebuild")
       RequireFailedIdleFreshSerials(
         beforeSerials,
         afterSerials,
@@ -775,7 +775,7 @@ func Main() {
         afterPrimitive,
         beforeText,
         afterText,
-        "S15 device rebuild")
+        "Retained device rebuild")
       if deviceLoss == 0 {
         firstDeviceAfterPrimitive = afterPrimitive
         firstDeviceAfterText = afterText
@@ -799,7 +799,7 @@ func Main() {
             || (postRecoveryThirdText.WrittenBytes > 0uL
                 && postRecoveryThirdText.DirtySegmentCount > 0
                 && postRecoveryThirdText.MappedWrites > 0uL)),
-      "S15 post-recovery unseen text did not upload changed records")
+      "Retained post-recovery unseen text did not upload changed records")
     PumpRecoveryWindows(opened, other, third, 12)
     Require(otherRoot.TextRevision == 1 && thirdRoot.TextRevision == 1,
       "post-recovery text state did not update")
@@ -851,7 +851,7 @@ func Main() {
         && finalText.LastUseSerial == 0uL
         && finalSerials.Slot0Serial == 0uL
         && finalSerials.Slot1Serial == 0uL,
-      "S15 final close did not return frame state to zero")
+      "Retained final close did not return frame state to zero")
     let imageDiagnostics = capturedError.ToString()
 
     let failedIdle = Window{
@@ -1161,32 +1161,32 @@ func Main() {
         && validationErrorCount == 0uL,
       "failed idle diagnostics did not record recovered text atlas upload and draw")
     Console.SetError(originalError)
-    Console.WriteLine("s15_slots=primitive0="
+    Console.WriteLine("retained_slots=primitive0="
       +sawPrimitiveSlot0.ToString() + " primitive1="
       +sawPrimitiveSlot1.ToString() + " text0=" + sawTextSlot0.ToString()
       +" text1=" + sawTextSlot1.ToString() + " serial0="
       +warmSerials.Slot0Serial.ToString() + " serial1="
       +warmSerials.Slot1Serial.ToString())
-    Console.WriteLine("s15_surface_rebuild=1 primitive_generation="
+    Console.WriteLine("retained_surface_rebuild=1 primitive_generation="
       +surfaceAfterPrimitive.BufferGeneration.ToString() + " text_generation="
       +surfaceAfterText.BufferGeneration.ToString() + " serial0="
       +surfaceAfterSerials.Slot0Serial.ToString() + " serial1="
       +surfaceAfterSerials.Slot1Serial.ToString())
-    Console.WriteLine("s15_device_rebuild=1 primitive_full="
+    Console.WriteLine("retained_device_rebuild=1 primitive_full="
       +firstDeviceAfterPrimitive.FullUpload.ToString() + " text_full="
       +firstDeviceAfterText.FullUpload.ToString() + " primitive_generation="
       +firstDeviceAfterPrimitive.BufferGeneration.ToString() + " text_generation="
       +firstDeviceAfterText.BufferGeneration.ToString() + " serial0="
       +firstDeviceAfterSerials.Slot0Serial.ToString() + " serial1="
       +firstDeviceAfterSerials.Slot1Serial.ToString())
-    Console.WriteLine("s15_warm_reuse=1 primitive_skipped="
+    Console.WriteLine("retained_warm_reuse=1 primitive_skipped="
       +warmPrimitive.SkippedBytes.ToString() + " primitive_mapped="
       +warmPrimitive.MappedWrites.ToString() + " primitive_flushes="
       +warmPrimitive.Flushes.ToString() + " text_skipped="
       +warmText.SkippedBytes.ToString() + " text_mapped="
       +warmText.MappedWrites.ToString() + " text_flushes="
       +warmText.Flushes.ToString())
-    Console.WriteLine("s15_close=1 frame_zero=1 resource_zero=1")
+    Console.WriteLine("retained_close=1 frame_zero=1 resource_zero=1")
     Console.WriteLine("normal-close: three-windows=1 device-idle-delta=0 siblings-usable=1")
     Console.WriteLine("lifecycle: windows=3 operations=1000 plateau=1 independent=1")
     Console.WriteLine("surface-loss: injected=10 observed="

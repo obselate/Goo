@@ -5,7 +5,6 @@ internal class ClipPathGeometry {
     internal func Contains(n Node, x float32, y float32) bool {
       if !n.HasClipPath { return true }
       guard let clip = ClipPaths.Get(n) else {
-        Dispose(n)
         return true
       }
       if x < n.Rect.X || y < n.Rect.Y
@@ -22,6 +21,5 @@ internal class ClipPathGeometry {
       return PathGeometry.For(clip.Path).Contains(localX, localY, clip.FillRule)
     }
 
-    internal func Dispose(n Node) { }
   }
 }

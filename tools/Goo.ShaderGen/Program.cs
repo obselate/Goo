@@ -7,8 +7,8 @@ using System.Text.Json.Serialization;
 
 internal static class Program
 {
-    private const string ShaderDirectory = "proofs/Goo.VulkanProof/Shaders";
-    private const string GeneratedDirectory = "proofs/Goo.VulkanProof/Generated/Shaders";
+    private const string ShaderDirectory = "tests/Goo.VulkanProof/Shaders";
+    private const string GeneratedDirectory = "tests/Goo.VulkanProof/Generated/Shaders";
     private const string ProductionDirectory = "Goo/Shaders/Vulkan";
     private const string InputManifestName = "shader-manifest.json";
     private const string CompilerVersionMarker = "1:";
@@ -950,20 +950,20 @@ internal static class Program
         RequireAssembly(manifest.Assemblies[0], "hb_gpu_vertex", new[]
         {
             new AssemblyPart { Path = HarfBuzzVertexPath, Sha256 = HarfBuzzVertexSha256 },
-            new AssemblyPart { Path = "proofs/Goo.VulkanProof/Shaders/hb_gpu.vert.wrapper.glsl", Sha256 = "fa6b174882dd8b5aea6bf956e8fbeed11ff9619517556e233c653acf0d9d79c8" }
+            new AssemblyPart { Path = "tests/Goo.VulkanProof/Shaders/hb_gpu.vert.wrapper.glsl", Sha256 = "fa6b174882dd8b5aea6bf956e8fbeed11ff9619517556e233c653acf0d9d79c8" }
         });
         RequireAssembly(manifest.Assemblies[1], "hb_gpu_draw_fragment", new[]
         {
             new AssemblyPart { Path = HarfBuzzFragmentPath, Sha256 = HarfBuzzFragmentSha256 },
             new AssemblyPart { Path = HarfBuzzDrawFragmentPath, Sha256 = HarfBuzzDrawFragmentSha256 },
-            new AssemblyPart { Path = "proofs/Goo.VulkanProof/Shaders/hb_gpu_draw.frag.wrapper.glsl", Sha256 = "bbe849dd5e152672391f6a33fabb141bf37475eb2ddd61812de7c8e7e27117d4" }
+            new AssemblyPart { Path = "tests/Goo.VulkanProof/Shaders/hb_gpu_draw.frag.wrapper.glsl", Sha256 = "bbe849dd5e152672391f6a33fabb141bf37475eb2ddd61812de7c8e7e27117d4" }
         });
         RequireAssembly(manifest.Assemblies[2], "hb_gpu_paint_fragment", new[]
         {
             new AssemblyPart { Path = HarfBuzzFragmentPath, Sha256 = HarfBuzzFragmentSha256 },
             new AssemblyPart { Path = HarfBuzzDrawFragmentPath, Sha256 = HarfBuzzDrawFragmentSha256 },
             new AssemblyPart { Path = HarfBuzzPaintFragmentPath, Sha256 = HarfBuzzPaintFragmentSha256 },
-            new AssemblyPart { Path = "proofs/Goo.VulkanProof/Shaders/hb_gpu_paint.frag.wrapper.glsl", Sha256 = "86e84e0433951de4095f98cf057fb3819fa78270adb7b4a0efa57e668b8911f7" }
+            new AssemblyPart { Path = "tests/Goo.VulkanProof/Shaders/hb_gpu_paint.frag.wrapper.glsl", Sha256 = "86e84e0433951de4095f98cf057fb3819fa78270adb7b4a0efa57e668b8911f7" }
         });
         if (manifest.Shaders.Count != 18)
         {

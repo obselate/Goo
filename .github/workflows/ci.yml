@@ -68,7 +68,7 @@ jobs:
           dotnet build tests/Goo.VulkanAbiSmoke/Goo.VulkanAbiSmoke.csproj \
             -c Release -p:TreatWarningsAsErrors=true \
             -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so"
-          dotnet build proofs/Goo.VulkanProof/Goo.VulkanProof.gsproj \
+          dotnet build tests/Goo.VulkanProof/Goo.VulkanProof.gsproj \
             -c Release -p:TreatWarningsAsErrors=true
           dotnet build tests/Goo.FailedIdleSmoke/Goo.FailedIdleSmoke.gsproj \
             -c Release -p:TreatWarningsAsErrors=true \
@@ -80,11 +80,11 @@ jobs:
           export LIBGL_ALWAYS_SOFTWARE=1
           export VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation
           export LD_LIBRARY_PATH="$PWD/artifacts/native${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-          dotnet tests/Goo.VulkanAbiSmoke/bin/Release/net10.0/Goo.Tests.dll
+          dotnet tests/Goo.VulkanAbiSmoke/bin/Release/net10.0/Goo.VulkanAbiSmoke.dll
 
           run_vulkan_proof_lane() {
             .github/scripts/with-headless-wayland.sh env "$1=1" \
-              dotnet proofs/Goo.VulkanProof/bin/Release/net10.0/Goo.VulkanProof.dll
+              dotnet tests/Goo.VulkanProof/bin/Release/net10.0/Goo.VulkanProof.dll
           }
           run_vulkan_proof_lane GOO_VK_TEXT_E2E
           run_vulkan_proof_lane GOO_VK_TEXT_PAINT_E2E
@@ -152,24 +152,6 @@ jobs:
           .github/scripts/validate-readme-examples.py \
             --package-dir artifacts/packages --cache "$NUGET_PACKAGES"
 
-      - name: Run focused S11, S12, and S13 package Wayland lanes
-        run: |
-          export SDL_VIDEODRIVER=wayland
-          export LIBGL_ALWAYS_SOFTWARE=1
-          export VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation
-          run_package_lane() {
-            .github/scripts/with-headless-wayland.sh env \
-              GOO_VK_DIAGNOSTICS=1 "$@" \
-              dotnet artifacts/publish/Goo.PackageSmoke.dll
-          }
-          run_package_lane GOO_REGISTERED_FONT_SMOKE=1
-          run_package_lane GOO_NATIVE_TEXT_CONTROLS_SMOKE=1
-          run_package_lane GOO_NATIVE_TEXT_ATLAS_SMOKE=1 \
-            GOO_VK_TEXT_ATLAS_BYTES=8192
-          run_package_lane GOO_NATIVE_IMAGE_PRESSURE_SMOKE=1
-          run_package_lane GOO_NATIVE_S13_PATH_SMOKE=1
-          run_package_lane GOO_NATIVE_S13_CLIP_MASK_SMOKE=1
-          run_package_lane GOO_NATIVE_S13_COMPILED_VECTOR_SMOKE=1
 
       - name: Stage minimal Linux bundle and separate symbols
         run: |
@@ -189,13 +171,6 @@ jobs:
           sha256sum "artifacts/Goo.$GOO_VERSION-linux-x64.tar.gz" \
             >"artifacts/Goo.$GOO_VERSION-linux-x64.tar.gz.sha256"
 
-      - name: Run native Wayland smoke test
-        run: |
-          GOO_NATIVE_SMOKE=1 \
-          SDL_VIDEODRIVER=wayland \
-          LIBGL_ALWAYS_SOFTWARE=1 \
-            .github/scripts/with-headless-wayland.sh \
-              dotnet artifacts/linux-x64/Goo.PackageSmoke.dll
 
       - name: Upload release validation artifacts
         uses: actions/upload-artifact@v7

@@ -3,7 +3,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <AssemblyName>Goo.Tests</AssemblyName>
+    <AssemblyName>Goo.CoreBehaviorTests</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
@@ -12,8 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Goo\Goo.gsproj"
-                      Targets="Rebuild"
-                      AdditionalProperties="Configuration=Test$(Configuration);IncludeTestFixtures=true;GooTestFixturesProps=$(MSBuildProjectDirectory)/Goo.CoreBehaviorTestFixtures.props" />
+                      AdditionalProperties="Configuration=CoreTestRelease;IncludeTestFixtures=true;GooTestFixturesProps=$(MSBuildProjectDirectory)/Goo.CoreBehaviorTestFixtures.props" />
   </ItemGroup>
   <Target Name="UseGooLinuxSdlForTests"
           AfterTargets="CopyFilesToOutputDirectory"

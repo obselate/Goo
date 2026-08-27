@@ -40,19 +40,19 @@ artifacts, not system-library replacements or a runtime fallback.
 
 The proof's deterministic color-font fixtures originate from the same pinned
 HarfBuzz test archive. `HarfBuzz-chromacheck-colr.ttf` is covered by the
-ChromaCheck MIT notice in `proofs/Goo.VulkanProof/Assets/Text/ChromaCheck-MIT.txt`.
+ChromaCheck MIT notice in `tests/Goo.VulkanProof/Assets/Text/ChromaCheck-MIT.txt`.
 `HarfBuzz-adwaita-colrv1.ttf` is derived from the exact upstream fixture by
 changing only its CPAL table from version 0 to version 1 with palette type 1.
 It is covered by the HarfBuzz test-font OFL notice in
-`proofs/Goo.VulkanProof/Assets/Text/HarfBuzz-test-fonts-COPYING.txt`.
+`tests/Goo.VulkanProof/Assets/Text/HarfBuzz-test-fonts-COPYING.txt`.
 The `HarfBuzz-TTC.ttc` collection fixture is covered by that same OFL 1.1
 notice. Its two-face source path, SHA-256, and license mapping are recorded in
-`proofs/Goo.VulkanProof/Assets/Text/HarfBuzz-TTC.provenance.json`. Each fixture
+`tests/Goo.VulkanProof/Assets/Text/HarfBuzz-TTC.provenance.json`. Each fixture
 has a SHA-256 and source record beside it.
 
 The CFF corpus fixtures `HarfBuzz-cff-f1.otf` and `HarfBuzz-cff-f2.otf` are
 copied from the pinned HarfBuzz AOTS shape corpus and carry its Apache License
-2.0 notice at `proofs/Goo.VulkanProof/Assets/Text/HarfBuzz-aots-COPYING.txt`.
+2.0 notice at `tests/Goo.VulkanProof/Assets/Text/HarfBuzz-aots-COPYING.txt`.
 `HarfBuzz-cff.otc` is a deterministic two-face collection generated from those
 two exact inputs. The source paths, hashes, face order, and generation record
 are retained in the matching `HarfBuzz-cff-*.provenance.json` files.
@@ -61,7 +61,7 @@ The registered-font corpus also carries three tiny CFF OpenType style fixtures
 from the pinned HarfBuzz API test corpus: `cv01.otf`, `cff1_seac.otf`, and
 `SourceHanSans-Regular.41,3041,4C2E.otf`. They are covered by the HarfBuzz test
 font SIL Open Font License 1.1 notice retained at
-`proofs/Goo.VulkanProof/Assets/Text/HarfBuzz-test-fonts-COPYING.txt`. Their
+`tests/Goo.VulkanProof/Assets/Text/HarfBuzz-test-fonts-COPYING.txt`. Their
 source paths, fixture hashes, CFF format, and measured `U+0041` advance widths
 are recorded in the matching `HarfBuzz-cff-style-*.provenance.json` files.
 
@@ -69,8 +69,8 @@ The hb-gpu GLSL inputs are the pinned HarfBuzz sources
 `src/hb-gpu-vertex.glsl`, `src/hb-gpu-fragment.glsl`,
 `src/hb-gpu-draw-fragment.glsl`, and `src/hb-gpu-paint-fragment.glsl`.
 Goo's Vulkan wrapper GLSL and checked-in SPIR-V under
-`proofs/Goo.VulkanProof/Shaders/` and
-`proofs/Goo.VulkanProof/Generated/Shaders/` are derivative inclusions of those
+`tests/Goo.VulkanProof/Shaders/` and
+`tests/Goo.VulkanProof/Generated/Shaders/` are derivative inclusions of those
 sources and retain the same attribution and license terms.
 
 ## Yoga.Net 3.2.3, based on Meta Yoga v3.2.1

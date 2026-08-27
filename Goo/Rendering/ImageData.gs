@@ -3,7 +3,6 @@ package Goo
 import System
 import System.IO
 import System.Threading
-import System.Threading.Tasks
 
 internal sealed class DecodedImage {
   shared {
@@ -154,12 +153,10 @@ internal sealed class ImageRequest {
 
 internal class ImageDecoding {
   shared {
-    private var synthetic bool
 
     internal func Request(path string) ImageRequest {
       let canonical = Canonicalize(path)
-      let image = synthetic ? SyntheticImage(20, 10) : DecodedImage.Failed
-      return ImageRequest(canonical, image)
+      return ImageRequest(canonical, DecodedImage.Failed)
     }
 
     internal func MatchesPath(request ImageRequest?, path string) bool {
@@ -167,17 +164,6 @@ internal class ImageDecoding {
       return StringComparerForPlatform().Equals(request?.Path, Canonicalize(path))
     }
 
-    internal func SetDecodeGateForTests(gate Task?) { }
-    internal func ClearDecodeGateForTests() { }
-    internal func UseSyntheticDecoderForTests(enabled bool) { synthetic = enabled }
-    internal func SetCacheByteBudgetForTests(bytes int64) {
-      if bytes < -1 { throw ArgumentOutOfRangeException("bytes") }
-    }
-    internal func CacheCountForTests() int32 -> 0
-    internal func DecodeWorkerCountForTests() int32 -> 0
-    internal func PendingDecodeCountForTests() int32 -> 0
-    internal func CachedDecodedBytesForTests() int64 -> 0L
-    internal func ResetForTests() { synthetic = false }
 
     private func Canonicalize(path string) string {
       if String.IsNullOrWhiteSpace(path) { return "<empty>" }
@@ -190,19 +176,5 @@ internal class ImageDecoding {
 
     private func StringComparerForPlatform() StringComparer -> OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal
 
-    private func SyntheticImage(width int32, height int32) DecodedImage {
-      let pixels = [width * height * 4]uint8
-      let split = width / 2
-      for y in 0 ... height {
-        for x in 0 ... width {
-          let offset = (y * width + x) * 4
-          pixels[offset] = uint8(x < split ? 255 : 0)
-          pixels[offset + 1] = 0
-          pixels[offset + 2] = uint8(x < split ? 0 : 255)
-          pixels[offset + 3] = uint8(255)
-        }
-      }
-      return DecodedImage.FromRgba(width, height, pixels)
-    }
   }
 }

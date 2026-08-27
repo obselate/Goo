@@ -46,8 +46,5 @@ internal class ShapeGeometry {
       return fillHit || strokeHit
     }
 
-    internal func Dispose(n Node) { }
-
-    internal func ClearShadowArtifacts(n Node) { }
   }
 }

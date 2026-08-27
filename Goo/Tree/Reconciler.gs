@@ -790,7 +790,6 @@ internal class Reconciler {
     var paintChanged = false
     var inputChanged = false
     var hitGeometryChanged = false
-    var geometryChanged = false
     if !n.ShapePath.Equals(s.Path) {
       n.ShapePath = s.Path
       syncYogaField(n, StyleField.AspectRatio)
@@ -799,51 +798,40 @@ internal class Reconciler {
       paintChanged = true
       inputChanged = true
       hitGeometryChanged = true
-      geometryChanged = true
     }
     if n.ShapeFit != s.Fit {
       n.ShapeFit = s.Fit
       paintChanged = true
       inputChanged = true
       hitGeometryChanged = true
-      geometryChanged = true
     }
     if n.ShapeFillRule != s.FillRule {
       n.ShapeFillRule = s.FillRule
       paintChanged = true
       inputChanged = true
       hitGeometryChanged = true
-      geometryChanged = true
     }
     if n.ShapeStrokeCap != s.StrokeCap {
       n.ShapeStrokeCap = s.StrokeCap
       paintChanged = true
-      geometryChanged = true
     }
     if n.ShapeStrokeJoin != s.StrokeJoin {
       n.ShapeStrokeJoin = s.StrokeJoin
       paintChanged = true
-      geometryChanged = true
     }
     if n.MiterLimit != s.MiterLimit {
       n.MiterLimit = s.MiterLimit
       paintChanged = true
-      geometryChanged = true
     }
     if n.ShapeCornerRadius != s.CornerRadius {
       n.ShapeCornerRadius = s.CornerRadius
       paintChanged = true
       inputChanged = true
       hitGeometryChanged = true
-      geometryChanged = true
     }
     if !sameDashPattern(n.Dashes, s.Dashes) {
       n.Dashes = s.Dashes
       paintChanged = true
-      geometryChanged = true
-    }
-    if geometryChanged {
-      ShapeGeometry.Dispose(n)
     }
     if contentChanged {
       MarkEffects(ReconcileEffects.Content)

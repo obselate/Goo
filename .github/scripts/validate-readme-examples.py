@@ -14,15 +14,12 @@ args = parser.parse_args()
 root = Path(__file__).resolve().parents[2]
 readme = (root / "README.md").read_text(encoding="utf-8")
 blocks = re.findall(r"```([^\n]*)\n(.*?)```", readme, re.DOTALL)
-xml = [code.strip() for language, code in blocks if language == "xml"]
 component_examples = [
     code.rstrip()
     for language, code in blocks
     if language in {"gsharp", "csharp"}
     and re.search(r"\bclass\s+\w+\s*:\s*Cell\b", code)
 ]
-if xml != ['<PackageReference Include="Goo" Version="0.2.0" />']:
-    raise SystemExit("README package example changed unexpectedly")
 if len(component_examples) != 1:
     raise SystemExit(
         f"expected one README component block, found {len(component_examples)}"

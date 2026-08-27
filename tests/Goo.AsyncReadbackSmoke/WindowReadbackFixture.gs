@@ -518,25 +518,22 @@ internal partial class VulkanWindowTarget {
 }
 
 public partial class Window {
-  internal func S16HoldNextQueueSubmitForTest() {
+  internal func RuntimeHoldNextQueueSubmitForTest() {
     windowTarget?.HoldNextQueueSubmitForTest()
   }
 
-  internal func S16HoldNextQueuePresentForTest() {
+  internal func RuntimeHoldNextQueuePresentForTest() {
     windowTarget?.HoldNextQueuePresentForTest()
   }
 
-  internal func S16ReleaseHeldQueueCallForTest() {
-    VulkanSharedRuntime.ReleaseHeldQueueCallForTest()
-  }
 
-  internal func S16DeferNextQueueEnqueueForTest() {
+  internal func RuntimeDeferNextQueueEnqueueForTest() {
     VulkanSharedRuntime.DeferNextQueueEnqueueForTest()
   }
 
-  internal func S16WaitForHeldQueueCallForTest(timeoutMs int32) bool -> VulkanSharedRuntime.WaitForHeldQueueCallForTest(timeoutMs)
+  internal func RuntimeWaitForHeldQueueCallForTest(timeoutMs int32) bool -> VulkanSharedRuntime.WaitForHeldQueueCallForTest(timeoutMs)
 
-  internal func S16QueueWorkPendingForTest() bool -> windowTarget?.QueueWorkPending ?? false
+  internal func RuntimeQueueWorkPendingForTest() bool -> windowTarget?.QueueWorkPending ?? false
 
   internal func PollQueueCompletionForTest() bool {
     let completed = windowTarget?.PollQueueCompletion() == true
@@ -738,7 +735,7 @@ public partial class Window {
     windowTarget?.SetExactTextClipCullForTest(value)
   }
 
-  internal func S17ValidateInitialForTest(handle ElementHandle, source string) bool {
+  internal func InputValidateInitialForTest(handle ElementHandle, source string) bool {
     guard let n = handle.AttachedNodeFor(this) else { return false }
     if !n.Password || n.Buffer != source { return false }
     let metrics = TextMetrics()
@@ -792,12 +789,12 @@ public partial class Window {
       && rangeRequired == 1 && rangeValues[0].Width > 0.0
   }
 
-  internal func S17SelectionMappedForTest(handle ElementHandle) bool {
+  internal func InputSelectionMappedForTest(handle ElementHandle) bool {
     guard let n = handle.AttachedNodeFor(this) else { return false }
     return n.Anchor == 2 && n.Caret == 13
   }
 
-  internal func S17ExerciseInputForTest(handle ElementHandle, source string) bool {
+  internal func InputExerciseInputForTest(handle ElementHandle, source string) bool {
     guard let n = handle.AttachedNodeFor(this) else { return false }
     input.SetClipboardFallback("safe")
     let primary = KeyModifiers{ Ctrl: true }
@@ -835,27 +832,27 @@ public partial class Window {
     return n.EntryShape!!.Display == "••••••••"
   }
 
-  internal func S17QueuePointerMoveForTest(x float64, y float64) {
+  internal func InputQueuePointerMoveForTest(x float64, y float64) {
     input.QueuePointerMove(float32(x), float32(y))
   }
 
-  internal func S17QueuePointerPressForTest(x float64, y float64) {
+  internal func InputQueuePointerPressForTest(x float64, y float64) {
     input.QueuePointerPress(float32(x), float32(y), PointerButton.Primary, KeyModifiers{})
   }
 
-  internal func S17QueuePointerReleaseForTest(x float64, y float64) {
+  internal func InputQueuePointerReleaseForTest(x float64, y float64) {
     input.QueuePointerRelease(float32(x), float32(y), PointerButton.Primary, KeyModifiers{})
   }
 
-  internal func S17QueueWheelForTest(x float64, y float64, dx float64, dy float64) {
+  internal func InputQueueWheelForTest(x float64, y float64, dx float64, dy float64) {
     input.QueuePointerWheel(float32(x), float32(y), float32(dx), float32(dy), KeyModifiers{})
   }
 
-  internal func S17QueueKeyPressForTest(key Key) {
+  internal func InputQueueKeyPressForTest(key Key) {
     input.QueueKeyPress(key, KeyModifiers{})
   }
 
-  internal func S17QueueKeyReleaseForTest(key Key) {
+  internal func InputQueueKeyReleaseForTest(key Key) {
     input.QueueKeyRelease(key)
   }
 
@@ -926,7 +923,7 @@ internal partial class SdlHost {
 
 internal class WindowReadbackTestFixture {
   shared {
-    internal func S20VerifyPresentationRetirement() {
+    internal func ShaderEffectVerifyPresentationRetirement() {
       let retirement = VulkanPresentationRetirement(4u, 2u)
       let completed = retirement.RecordPresent(1uL, 0u)
       retirement.CompletePresent(completed)
@@ -988,7 +985,7 @@ internal class WindowReadbackTestFixture {
           let current = window.FrameSubmissionSerialsForTest()
           accepted = current.Slot0Serial != baseline.Slot0Serial
             || current.Slot1Serial != baseline.Slot1Serial
-          let pending = window.S16QueueWorkPendingForTest()
+          let pending = window.RuntimeQueueWorkPendingForTest()
           if accepted && !pending {
             return
           }
@@ -1061,35 +1058,35 @@ internal class WindowReadbackTestFixture {
       window.UpdateTree()
     }
 
-    internal func S17ValidateInitial(window Window, handle ElementHandle, source string) bool -> window.S17ValidateInitialForTest(handle, source)
+    internal func InputValidateInitial(window Window, handle ElementHandle, source string) bool -> window.InputValidateInitialForTest(handle, source)
 
-    internal func S17SelectionMapped(window Window, handle ElementHandle) bool -> window.S17SelectionMappedForTest(handle)
+    internal func InputSelectionMapped(window Window, handle ElementHandle) bool -> window.InputSelectionMappedForTest(handle)
 
-    internal func S17ExerciseInput(window Window, handle ElementHandle, source string) bool -> window.S17ExerciseInputForTest(handle, source)
+    internal func InputExerciseInput(window Window, handle ElementHandle, source string) bool -> window.InputExerciseInputForTest(handle, source)
 
-    internal func S17QueuePointerMove(window Window, x float64, y float64) {
-      window.S17QueuePointerMoveForTest(x, y)
+    internal func InputQueuePointerMove(window Window, x float64, y float64) {
+      window.InputQueuePointerMoveForTest(x, y)
     }
 
-    internal func S17QueuePointerPress(window Window, x float64, y float64) {
-      window.S17QueuePointerPressForTest(x, y)
+    internal func InputQueuePointerPress(window Window, x float64, y float64) {
+      window.InputQueuePointerPressForTest(x, y)
     }
 
-    internal func S17QueuePointerRelease(window Window, x float64, y float64) {
-      window.S17QueuePointerReleaseForTest(x, y)
+    internal func InputQueuePointerRelease(window Window, x float64, y float64) {
+      window.InputQueuePointerReleaseForTest(x, y)
     }
 
-    internal func S17QueueWheel(window Window, x float64, y float64,
+    internal func InputQueueWheel(window Window, x float64, y float64,
       dx float64, dy float64) {
-        window.S17QueueWheelForTest(x, y, dx, dy)
+        window.InputQueueWheelForTest(x, y, dx, dy)
       }
 
-    internal func S17QueueKeyPress(window Window, key Key) {
-      window.S17QueueKeyPressForTest(key)
+    internal func InputQueueKeyPress(window Window, key Key) {
+      window.InputQueueKeyPressForTest(key)
     }
 
-    internal func S17QueueKeyRelease(window Window, key Key) {
-      window.S17QueueKeyReleaseForTest(key)
+    internal func InputQueueKeyRelease(window Window, key Key) {
+      window.InputQueueKeyReleaseForTest(key)
     }
 
     internal func Poll(window Window) VkResult -> window.PollReadbackForTest()
@@ -1128,30 +1125,30 @@ internal class WindowReadbackTestFixture {
     internal func ClipMaskRetention(window Window)
     VulkanClipMaskRetentionTestSnapshot -> window.ClipMaskRetentionSnapshotForTest()
 
-    internal func S16HoldNextQueueSubmit(window Window) {
-      window.S16HoldNextQueueSubmitForTest()
+    internal func RuntimeHoldNextQueueSubmit(window Window) {
+      window.RuntimeHoldNextQueueSubmitForTest()
     }
 
-    internal func S16HoldNextQueuePresent(window Window) {
-      window.S16HoldNextQueuePresentForTest()
+    internal func RuntimeHoldNextQueuePresent(window Window) {
+      window.RuntimeHoldNextQueuePresentForTest()
     }
 
-    internal func S16WaitForHeldQueueCall(window Window, timeoutMs int32) bool -> window.S16WaitForHeldQueueCallForTest(timeoutMs)
+    internal func RuntimeWaitForHeldQueueCall(window Window, timeoutMs int32) bool -> window.RuntimeWaitForHeldQueueCallForTest(timeoutMs)
 
-    internal func S16ReleaseHeldQueueCall() {
+    internal func RuntimeReleaseHeldQueueCall() {
       VulkanSharedRuntime.ReleaseHeldQueueCallForTest()
     }
 
-    internal func S16DeferNextQueueEnqueue(window Window) {
-      window.S16DeferNextQueueEnqueueForTest()
+    internal func RuntimeDeferNextQueueEnqueue(window Window) {
+      window.RuntimeDeferNextQueueEnqueueForTest()
     }
 
-    internal func S16QueueWorkPending(window Window) bool -> window.S16QueueWorkPendingForTest()
+    internal func RuntimeQueueWorkPending(window Window) bool -> window.RuntimeQueueWorkPendingForTest()
 
     internal func DrainWindowQueue(window Window, timeoutMs int32) {
       let timeoutTicks = int64(float64(Stopwatch.Frequency) * float64(timeoutMs) / 1000.0)
       let start = Stopwatch.GetTimestamp()
-      while S16QueueWorkPending(window) {
+      while RuntimeQueueWorkPending(window) {
         SdlRuntime.PumpEvents(Int32.MaxValue)
         window.PollQueueCompletionForTest()
         if Stopwatch.GetTimestamp() - start >= timeoutTicks {
@@ -1161,9 +1158,9 @@ internal class WindowReadbackTestFixture {
       }
     }
 
-    internal func S16DeferredQueueEnqueueCount() int64 -> VulkanSharedRuntime.QueueEnqueueDeferralCountForTest
+    internal func RuntimeDeferredQueueEnqueueCount() int64 -> VulkanSharedRuntime.QueueEnqueueDeferralCountForTest
 
-    internal func RunFramePacingGate() string {
+    internal func RunFramePacingChecks() string {
       let previousUncapped = SdlFramePacing.UncappedBenchmark
       try {
         CheckPresentModes()
@@ -1179,46 +1176,46 @@ internal class WindowReadbackTestFixture {
         pacing.MarkFrame(base)
         pacing.Refresh(uint32(8), 144.0, base + 10.0, false)
         FramePacingRequire(pacing.DisplayId == uint32(8),
-          "S16 pacing display change was not applied")
+          "Runtime pacing display change was not applied")
         FramePacingRequire(Math.Abs(pacing.RefreshRate - 144.0) < 0.000000001,
-          "S16 pacing rate change was not applied")
+          "Runtime pacing rate change was not applied")
         FramePacingRequire(pacing.IsDue(base + 10.0),
-          "S16 pacing display change did not reset the deadline")
+          "Runtime pacing display change did not reset the deadline")
 
         SdlFramePacing.SetUncappedBenchmark(true)
         pacing.MarkFrame(base + 11.0)
         FramePacingRequire(pacing.IsDue(base + 11.0),
-          "S16 uncapped pacing seam did not make the frame due")
+          "Runtime uncapped pacing seam did not make the frame due")
         FramePacingRequire(pacing.WaitMilliseconds(base + 11.0, 100) == 0,
-          "S16 uncapped pacing seam returned a wait")
+          "Runtime uncapped pacing seam returned a wait")
       } finally {
         SdlFramePacing.SetUncappedBenchmark(previousUncapped)
       }
       FramePacingRequire(SdlFramePacing.UncappedBenchmark == previousUncapped,
-        "S16 pacing uncapped seam did not restore its state")
-      return "s16-frame-pacing-gate: rates=60,144,60000/1001 anchored=1 reset=1 defer=1 uncapped=1 presentModes=1"
+        "Runtime pacing uncapped seam did not restore its state")
+      return "frame-pacing-smoke: rates=60,144,60000/1001 anchored=1 reset=1 defer=1 uncapped=1 presentModes=1"
     }
 
     private func CheckPresentModes() {
       var selected VkPresentModeKHR
       FramePacingRequire(VulkanPresentModeSelector.TrySelect(true, true, true, true, out selected)
           && selected == VkConstants.VK_PRESENT_MODE_FIFO_KHR,
-        "S16 VSync-on did not select FIFO")
+        "Runtime VSync-on did not select FIFO")
       FramePacingRequire(VulkanPresentModeSelector.TrySelect(false, true, true, true, out selected)
           && selected == VkConstants.VK_PRESENT_MODE_IMMEDIATE_KHR,
-        "S16 VSync-off did not prefer immediate")
+        "Runtime VSync-off did not prefer immediate")
       FramePacingRequire(VulkanPresentModeSelector.TrySelect(false, false, true, true, out selected)
           && selected == VkConstants.VK_PRESENT_MODE_MAILBOX_KHR,
-        "S16 VSync-off did not fall back to mailbox")
+        "Runtime VSync-off did not fall back to mailbox")
       FramePacingRequire(VulkanPresentModeSelector.TrySelect(false, false, false, true, out selected)
           && selected == VkConstants.VK_PRESENT_MODE_FIFO_KHR,
-        "S16 VSync-off did not fall back to FIFO")
+        "Runtime VSync-off did not fall back to FIFO")
       FramePacingRequire(!VulkanPresentModeSelector.TrySelect(true, true, true, false, out selected),
-        "S16 VSync-on accepted a surface without FIFO")
+        "Runtime VSync-on accepted a surface without FIFO")
       FramePacingRequire(!VulkanPresentModeSelector.TrySelect(false, false, false, false, out selected),
-        "S16 present mode selection accepted an empty mode set")
+        "Runtime present mode selection accepted an empty mode set")
       FramePacingRequire(selected != VkConstants.VK_PRESENT_MODE_FIFO_RELAXED_KHR,
-        "S16 present mode selection returned FIFO relaxed")
+        "Runtime present mode selection returned FIFO relaxed")
     }
 
     private func CheckFramePacingRate(rate float64, display uint32,
@@ -1229,51 +1226,51 @@ internal class WindowReadbackTestFixture {
         let pacing = SdlFramePacing{}
         pacing.Refresh(display, rate, base, true)
         FramePacingRequire(pacing.DisplayId == display,
-          "S16 pacing display identity is incorrect")
+          "Runtime pacing display identity is incorrect")
         FramePacingRequire(Math.Abs(pacing.RefreshRate - rate) < 0.000000001,
-          "S16 pacing refresh rate is incorrect")
+          "Runtime pacing refresh rate is incorrect")
         FramePacingRequire(pacing.IsDue(base),
-          "S16 pacing reset did not make the first frame due")
+          "Runtime pacing reset did not make the first frame due")
         pacing.MarkFrame(base)
         FramePacingRequire(!pacing.IsDue(base + interval - 0.5),
-          "S16 pacing deadline became due early")
+          "Runtime pacing deadline became due early")
         FramePacingRequire(pacing.WaitMilliseconds(base + interval * 0.5, 100)
           == expectedWaitMs,
-          "S16 pacing wait rounding is incorrect")
+          "Runtime pacing wait rounding is incorrect")
         FramePacingRequire(pacing.IsDue(base + interval),
-          "S16 pacing deadline was not due at one refresh interval")
+          "Runtime pacing deadline was not due at one refresh interval")
         let late = base + interval * 5.25
         pacing.MarkFrame(late)
         let expectedNext = base + interval * 6.0
         FramePacingRequire(!pacing.IsDue(expectedNext - 0.5),
-          "S16 pacing late-frame advancement drifted early")
+          "Runtime pacing late-frame advancement drifted early")
         FramePacingRequire(pacing.IsDue(expectedNext + 1.0),
-          "S16 pacing late-frame advancement did not stay anchored")
+          "Runtime pacing late-frame advancement did not stay anchored")
       }
 
     private func CheckFramePacingFallbackAndRetention() {
       let base = 300000.0
       let pacing = SdlFramePacing{}
       FramePacingRequire(!pacing.HasValidSample && pacing.DisplayId == 0u,
-        "S16 pacing fallback started with a display sample")
+        "Runtime pacing fallback started with a display sample")
       FramePacingRequire(Math.Abs(pacing.RefreshRate - 60.0) < 0.000000001,
-        "S16 pacing fallback rate is not 60 Hz")
+        "Runtime pacing fallback rate is not 60 Hz")
       pacing.Refresh(0u, 0.0, base, true)
       FramePacingRequire(!pacing.HasValidSample && pacing.DisplayId == 0u &&
         Math.Abs(pacing.RefreshRate - 60.0) < 0.000000001,
-        "S16 pacing initial invalid sample changed the fallback")
+        "Runtime pacing initial invalid sample changed the fallback")
       pacing.Refresh(uint32(5), 120.0, base + 1.0, true)
       pacing.MarkFrame(base + 1.0)
       pacing.Refresh(0u, 0.0, base + 2.0, true)
       FramePacingRequire(pacing.HasValidSample && pacing.DisplayId == uint32(5) &&
         Math.Abs(pacing.RefreshRate - 120.0) < 0.000000001,
-        "S16 pacing transient invalid sample discarded the last valid sample")
+        "Runtime pacing transient invalid sample discarded the last valid sample")
       FramePacingRequire(pacing.IsDue(base + 2.0),
-        "S16 pacing transient invalid sample did not reset the retained deadline")
+        "Runtime pacing transient invalid sample did not reset the retained deadline")
       pacing.Refresh(uint32(5), -1.0, base + 3.0, false)
       FramePacingRequire(pacing.DisplayId == uint32(5) &&
         Math.Abs(pacing.RefreshRate - 120.0) < 0.000000001,
-        "S16 pacing invalid mode rate changed the retained sample")
+        "Runtime pacing invalid mode rate changed the retained sample")
     }
 
     private func CheckFramePacingDefer() {
@@ -1284,9 +1281,9 @@ internal class WindowReadbackTestFixture {
       pacing.Refresh(uint32(9), 60.0, base, true)
       pacing.Defer(base)
       FramePacingRequire(!pacing.IsDue(base + interval - 0.5),
-        "S16 pacing defer did not honor the full display cadence")
+        "Runtime pacing defer did not honor the full display cadence")
       FramePacingRequire(pacing.IsDue(base + interval + 0.5),
-        "S16 pacing defer did not release at the display cadence")
+        "Runtime pacing defer did not release at the display cadence")
     }
 
     private func FramePacingRequire(condition bool, message string) {

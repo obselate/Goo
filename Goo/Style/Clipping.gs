@@ -34,13 +34,11 @@ internal class ClipPaths {
       if let value = state(n) {
         value.Path = path
         n.HasClipPath = path.CommandCount != 0
-        if !n.HasClipPath { ClipPathGeometry.Dispose(n) }
         prune(n, value)
         return
       }
       if path.CommandCount == 0 {
         n.HasClipPath = false
-        ClipPathGeometry.Dispose(n)
         return
       }
       n.HasClipPath = true
@@ -90,7 +88,6 @@ internal class ClipPaths {
         }
       values?.Remove(n)
       n.HasClipPath = false
-      ClipPathGeometry.Dispose(n)
     }
   }
 }

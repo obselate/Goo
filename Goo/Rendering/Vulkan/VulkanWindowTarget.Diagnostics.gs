@@ -11,9 +11,6 @@ internal unsafe partial class VulkanWindowTarget {
     get { return clipMaskFrameTotals }
   }
 
-  internal func ClipMaskFrameStatsForTest() VulkanClipMaskFrameStats -> clipMaskFrameStats
-
-  internal func ClipMaskFrameTotalsForTest() VulkanClipMaskFrameTotals -> clipMaskFrameTotals
 
   public prop Active bool{
     get { return diagnostics != nil }

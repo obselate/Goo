@@ -795,7 +795,7 @@ internal unsafe partial class VulkanWindowTarget {
   private func ResolveTextAtlasByteSize(maxAtlasBytes uint64) uint64 {
     var atlasByteSize = maxAtlasBytes < 262144uL ? maxAtlasBytes : 262144uL
     if diagnostics == nil
-      || Environment.GetEnvironmentVariable("GOO_NATIVE_TEXT_ATLAS_SMOKE") != "1" {
+      || Environment.GetEnvironmentVariable("GOO_TEXT_ATLAS_SMOKE") != "1" {
         return atlasByteSize
       }
     let overrideValue = Environment.GetEnvironmentVariable("GOO_VK_TEXT_ATLAS_BYTES")

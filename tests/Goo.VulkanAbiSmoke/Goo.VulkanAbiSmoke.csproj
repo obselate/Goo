@@ -2,8 +2,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>Goo.Tests</RootNamespace>
-    <AssemblyName>Goo.Tests</AssemblyName>
+    <RootNamespace>GooVulkanAbiSmoke</RootNamespace>
+    <AssemblyName>Goo.VulkanAbiSmoke</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
     <InvariantGlobalization>true</InvariantGlobalization>
@@ -11,9 +11,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../Goo/Goo.gsproj"
-                      Targets="Rebuild"
-                      AdditionalProperties="Configuration=Test$(Configuration);IncludeTestFixtures=true;GooTestFixturesProps=$(MSBuildProjectDirectory)/Goo.VulkanAbiFixtures.props" />
-    <Content Include="../../proofs/Goo.VulkanProof/Assets/Text/VendSans-VariableFont_wght.ttf"
+                      AdditionalProperties="Configuration=VulkanAbiTestRelease;IncludeTestFixtures=true;GooTestFixturesProps=$(MSBuildProjectDirectory)/Goo.VulkanAbiFixtures.props" />
+    <Content Include="../Goo.VulkanProof/Assets/Text/VendSans-VariableFont_wght.ttf"
              Link="VendSans-VariableFont_wght.ttf"
              CopyToOutputDirectory="PreserveNewest"
              CopyToPublishDirectory="Always" />

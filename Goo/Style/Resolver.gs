@@ -413,7 +413,6 @@ internal class Resolver {
       || !boxShadowListsCompatible(entryShadows(cur), entryShadows(e)) {
         finishTransition(n, StyleField.BoxShadows)
         if writeDirectWithInvalidation(n, e, PaintResourceInvalidated) {
-          if n.Kind == NodeKind.Shape { ShapeGeometry.ClearShadowArtifacts(n) }
           recordResolvedChange(StyleField.BoxShadows)
         }
         return
@@ -521,7 +520,6 @@ internal class Resolver {
           }
           lerpBoxShadows(from, to, work, ft)
           n.BoxShadows = t >= 1.0 ? tr.TargetShadows : work
-          if n.Kind == NodeKind.Shape { ShapeGeometry.ClearShadowArtifacts(n) }
           recordResolvedChange(StyleField.BoxShadows)
         } else {
           if writeDirectWithInvalidation(n, StyleEntry { Field: tr.Field,

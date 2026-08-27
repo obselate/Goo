@@ -6,10 +6,10 @@ import System.IO
 import System.Collections.Generic
 import System.Threading
 import Goo
-import GooS09RFixture
-import GooS14Fixture
+import GooPrimitiveFixture
+import GooReadbackFixture
 
-class S14ReadbackSmokeCell : Cell {
+class ReadbackSmokeCell : Cell {
   shared {
     let Root ElementHandle = ElementHandle{}
   }
@@ -17,7 +17,7 @@ class S14ReadbackSmokeCell : Cell {
   override func Build() Blob -> Container {
     Width: Length.Percent(100),
     Height: Length.Percent(100),
-    Handle: S14ReadbackSmokeCell.Root,
+    Handle: ReadbackSmokeCell.Root,
     Position: PositionType.Relative,
     BackgroundColor: Color.Rgb(12, 20, 32),
     Children: {
@@ -45,7 +45,7 @@ class S14ReadbackSmokeCell : Cell {
   }
 }
 
-class S15RetentionCell : Cell {
+class RetentionCell : Cell {
   private var ColorChanged bool
   private var BoundsChanged bool
   private var ExtraVisible bool
@@ -118,23 +118,23 @@ class S15RetentionCell : Cell {
   override func Build() Blob {
     let children = List[Blob](6)
     children.Add(Container{
-      Key: "s15-stable-top",
+      Key: "retained-stable-top",
       Position: PositionType.Absolute,
       Left: 8,
       Top: 8,
       Width: 64,
       Height: 32,
-      Handle: S15RetentionCell.StableTop,
+      Handle: RetentionCell.StableTop,
       BackgroundColor: Color.Rgb(42, 112, 188),
     })
     children.Add(Container{
-      Key: "s15-mutated-box",
+      Key: "retained-mutated-box",
       Position: PositionType.Absolute,
       Left: if BoundsChanged { 104 } else { 88 },
       Top: 8,
       Width: 64,
       Height: 32,
-      Handle: S15RetentionCell.MutatedBox,
+      Handle: RetentionCell.MutatedBox,
       BackgroundColor: if ColorChanged {
         Color.Rgb(40, 220, 96)
       } else {
@@ -142,23 +142,23 @@ class S15RetentionCell : Cell {
       },
     })
     children.Add(Container{
-      Key: "s15-stable-bottom",
+      Key: "retained-stable-bottom",
       Position: PositionType.Absolute,
       Left: 8,
       Top: 56,
       Width: 64,
       Height: 32,
-      Handle: S15RetentionCell.StableBottom,
+      Handle: RetentionCell.StableBottom,
       BackgroundColor: Color.Rgb(196, 224, 88),
     })
     children.Add(Container{
-      Key: "s15-rounded-box",
+      Key: "retained-rounded-box",
       Position: PositionType.Absolute,
       Left: 88,
       Top: 56,
       Width: 64,
       Height: 32,
-      Handle: S15RetentionCell.RoundedBox,
+      Handle: RetentionCell.RoundedBox,
       BorderTopLeftRadius: 4,
       BorderTopRightRadius: 8,
       BorderBottomRightRadius: 12,
@@ -167,13 +167,13 @@ class S15RetentionCell : Cell {
       BackgroundColor: Color.Rgb(72, 180, 212),
     })
     children.Add(Container{
-      Key: "s15-border-leaf",
+      Key: "retained-border-leaf",
       Position: PositionType.Absolute,
       Left: 168,
       Top: 8,
       Width: 64,
       Height: 32,
-      Handle: S15RetentionCell.BorderLeaf,
+      Handle: RetentionCell.BorderLeaf,
       BorderStyle: BorderStyle.Solid,
       BorderTopWidth: 2,
       BorderRightWidth: 3,
@@ -191,7 +191,7 @@ class S15RetentionCell : Cell {
     })
     if ExtraVisible {
       children.Add(Container{
-        Key: "s15-extra-box",
+        Key: "retained-extra-box",
         Position: PositionType.Absolute,
         Left: 168,
         Top: 56,
@@ -203,7 +203,7 @@ class S15RetentionCell : Cell {
     return Container{
       Width: Length.Percent(100),
       Height: Length.Percent(100),
-      Handle: S15RetentionCell.Root,
+      Handle: RetentionCell.Root,
       Position: PositionType.Relative,
       BackgroundColor: if ParentColorChanged {
         Color.Rgb(18, 30, 48)
@@ -220,7 +220,7 @@ class S15RetentionCell : Cell {
   }
 }
 
-class S17AccessibilityAdapter : AccessibilityAdapter {
+class RecordingAccessibilityAdapter : AccessibilityAdapter {
   internal var Tree AccessibilityTree?
   internal var Updates int32
 
@@ -230,7 +230,7 @@ class S17AccessibilityAdapter : AccessibilityAdapter {
   }
 }
 
-class S17ProtectedTextCell : Cell {
+class ProtectedTextCell : Cell {
   shared {
     let Entry ElementHandle = ElementHandle{}
     let Control ElementHandle = ElementHandle{}
@@ -252,14 +252,14 @@ class S17ProtectedTextCell : Cell {
     BackgroundColor: Color.Rgb(12, 20, 32),
     Children: {
       TextEntry{
-        Handle: S17ProtectedTextCell.Entry,
+        Handle: ProtectedTextCell.Entry,
         Position: PositionType.Absolute,
         Left: 0,
         Top: 0,
         Width: 320,
         Height: 44,
         Padding: 6,
-        FontFamily: "S17GateFont",
+        FontFamily: "InputGateFont",
         FontSize: 20,
         Color: Color.Rgb(240, 244, 248),
         Value: "a\u0301👨‍👩‍👧‍👦b",
@@ -272,14 +272,14 @@ class S17ProtectedTextCell : Cell {
         },
       },
       TextEntry{
-        Handle: S17ProtectedTextCell.Control,
+        Handle: ProtectedTextCell.Control,
         Position: PositionType.Absolute,
         Left: 0,
         Top: 48,
         Width: 320,
         Height: 44,
         Padding: 6,
-        FontFamily: "S17GateFont",
+        FontFamily: "InputGateFont",
         FontSize: 20,
         Color: Color.Rgb(240, 244, 248),
         Value: "•••",
@@ -289,7 +289,7 @@ class S17ProtectedTextCell : Cell {
   }
 }
 
-class S17CoreBehaviorCell : Cell {
+class InputAccessibilityCell : Cell {
   private var disabled bool
   private var motion Anim[float64]
 
@@ -335,7 +335,7 @@ class S17CoreBehaviorCell : Cell {
     BackgroundColor: Color.Rgb(12, 20, 32),
     Children: {
       Button{
-        Handle: S17CoreBehaviorCell.Target,
+        Handle: InputAccessibilityCell.Target,
         Position: PositionType.Absolute,
         Left: 8,
         Top: 8,
@@ -357,7 +357,7 @@ class S17CoreBehaviorCell : Cell {
         TransitionProperties: []TransitionProperty{ TransitionProperty.BackgroundColor },
         Accessibility: Accessibility{
           Role: AccessibilityRole.Button,
-          Name: "S17 action",
+          Name: "Input action",
         },
         OnPointerEnter: func(value PointerEvent) { PointerEnterCount++ },
         OnPointerLeave: func(value PointerEvent) { PointerLeaveCount++ },
@@ -371,7 +371,7 @@ class S17CoreBehaviorCell : Cell {
         OnWheel: func(value WheelEvent) { TargetWheelCount++ },
       },
       Container{
-        Handle: S17CoreBehaviorCell.MotionBox,
+        Handle: InputAccessibilityCell.MotionBox,
         Position: PositionType.Absolute,
         Left: 144.0 + motion.Value,
         Top: 8,
@@ -380,7 +380,7 @@ class S17CoreBehaviorCell : Cell {
         BackgroundColor: Color.Rgb(72, 144, 232),
       },
       Container{
-        Handle: S17CoreBehaviorCell.ScrollViewport,
+        Handle: InputAccessibilityCell.ScrollViewport,
         Position: PositionType.Absolute,
         Left: 8,
         Top: 88,
@@ -390,7 +390,7 @@ class S17CoreBehaviorCell : Cell {
         BackgroundColor: Color.Rgb(24, 32, 48),
         Children: {
           Container{
-            Handle: S17CoreBehaviorCell.ScrollLeaf,
+            Handle: InputAccessibilityCell.ScrollLeaf,
             Width: 120,
             Height: 176,
             BackgroundColor: Color.Rgb(96, 176, 216),
@@ -402,13 +402,13 @@ class S17CoreBehaviorCell : Cell {
   }
 }
 
-func S14Require(condition bool, message string) {
+func Require(condition bool, message string) {
   if !condition {
     throw InvalidOperationException(message)
   }
 }
 
-func S14Field(line string, name string) uint64? {
+func DiagnosticField(line string, name string) uint64? {
   let marker = "\"" + name + "\":"
   let fieldIndex = line.IndexOf(marker)
   if fieldIndex < 0 {
@@ -429,7 +429,7 @@ func S14Field(line string, name string) uint64? {
   }
 }
 
-func S14Counter(diagnostics string, name string) uint64 {
+func DiagnosticCounter(diagnostics string, name string) uint64 {
   let marker = "\"kind\":\"counters\""
   let countersIndex = diagnostics.LastIndexOf(marker)
   if countersIndex < 0 {
@@ -441,11 +441,11 @@ func S14Counter(diagnostics string, name string) uint64 {
   } else {
     diagnostics.Substring(countersIndex, lineEnd - countersIndex)
   }
-  let value = S14Field(line, name)
+  let value = DiagnosticField(line, name)
   return if let result = value { result } else { 0uL }
 }
 
-func S14DiagnosticExcerpt(diagnostics string, kind string) string {
+func DiagnosticExcerpt(diagnostics string, kind string) string {
   let marker = "{\"kind\":\"" + kind + "\""
   let start = diagnostics.LastIndexOf(marker)
   if start < 0 {
@@ -463,7 +463,7 @@ func S14DiagnosticExcerpt(diagnostics string, kind string) string {
   return line
 }
 
-func S14EnvCount(name string, fallback int32, maximum int32) int32 {
+func EnvironmentCount(name string, fallback int32, maximum int32) int32 {
   let text = Environment.GetEnvironmentVariable(name)
   if text == nil || text == "" {
     return fallback
@@ -480,9 +480,9 @@ func S14EnvCount(name string, fallback int32, maximum int32) int32 {
   return value
 }
 
-func S14TicksToNs(ticks int64) int64 -> int64(float64(ticks) * 1000000000.0 / float64(Stopwatch.Frequency))
+func TicksToNanoseconds(ticks int64) int64 -> int64(float64(ticks) * 1000000000.0 / float64(Stopwatch.Frequency))
 
-func S14Percentile(values []int64, percentile float64) int64 {
+func Percentile(values []int64, percentile float64) int64 {
   let sorted = [values.Length]int64
   Array.Copy(values, sorted, values.Length)
   Array.Sort(sorted)
@@ -491,7 +491,7 @@ func S14Percentile(values []int64, percentile float64) int64 {
   return sorted[index]
 }
 
-func S14Max(values []int64) int64 {
+func Maximum(values []int64) int64 {
   var maximum int64 = 0L
   var index int32 = 0
   while index < values.Length {
@@ -503,9 +503,9 @@ func S14Max(values []int64) int64 {
   return maximum
 }
 
-func S14OpenCell(root S14ReadbackSmokeCell) Window {
+func ReadbackOpenCell(root ReadbackSmokeCell) Window {
   let opened = Window{
-    Title: "Goo S14 async readback",
+    Title: "Goo Readback async readback",
     Width: 64,
     Height: 64,
     VSync: false,
@@ -515,18 +515,18 @@ func S14OpenCell(root S14ReadbackSmokeCell) Window {
   return opened
 }
 
-func S14ReadbackArm() string {
-  let arm = Environment.GetEnvironmentVariable("GOO_S14_READBACK_ARM")
+func ReadbackReadbackArm() string {
+  let arm = Environment.GetEnvironmentVariable("GOO_READBACK_ARM")
   if arm == "active" {
     return "active"
   }
   if arm == "disabled" || arm == nil || arm == "" {
     return "disabled"
   }
-  throw InvalidOperationException("GOO_S14_READBACK_ARM must be active or disabled")
+  throw InvalidOperationException("GOO_READBACK_ARM must be active or disabled")
 }
 
-func S14AwaitReadbackReady(window Window, timeoutMs int32) {
+func ReadbackAwaitReadbackReady(window Window, timeoutMs int32) {
   let timeoutTicks = int64(float64(Stopwatch.Frequency) * float64(timeoutMs) / 1000.0)
   let start = Stopwatch.GetTimestamp()
   while Stopwatch.GetTimestamp() - start < timeoutTicks {
@@ -534,14 +534,14 @@ func S14AwaitReadbackReady(window Window, timeoutMs int32) {
     if status == VkConstants.VK_SUCCESS {
       return
     }
-    S14Require(status == VkConstants.VK_NOT_READY,
-      "S14 readback completion failed: " + status.ToString())
+    Require(status == VkConstants.VK_NOT_READY,
+      "Readback completion failed: " + status.ToString())
     Thread.Yield()
   }
-  throw InvalidOperationException("S14 readback did not become ready within the timeout")
+  throw InvalidOperationException("Readback did not become ready within the timeout")
 }
 
-func S14RequestReadbackUntilAccepted(window Window, width uint32, height uint32) {
+func ReadbackRequestReadbackUntilAccepted(window Window, width uint32, height uint32) {
   let timeoutTicks = int64(float64(Stopwatch.Frequency) * 1.0)
   let start = Stopwatch.GetTimestamp()
   var status = WindowReadbackTestFixture.Request(window, width, height)
@@ -549,103 +549,103 @@ func S14RequestReadbackUntilAccepted(window Window, width uint32, height uint32)
     || status == VulkanReadbackRequestStatus.NotReady{
       if Stopwatch.GetTimestamp() - start >= timeoutTicks {
         throw InvalidOperationException(
-          "S14 readback request did not become accepted within the timeout")
+          "Readback request did not become accepted within the timeout")
       }
       WindowReadbackTestFixture.Pump(window, 0.0)
       Thread.Yield()
       status = WindowReadbackTestFixture.Request(window, width, height)
     }
-  S14Require(status == VulkanReadbackRequestStatus.Accepted,
-    "S14 readback request was not accepted: " + status.ToString())
+  Require(status == VulkanReadbackRequestStatus.Accepted,
+    "Readback request was not accepted: " + status.ToString())
 }
 
-func S14TakeReadback(window Window) VulkanReadbackResult {
+func ReadbackTakeReadback(window Window) VulkanReadbackResult {
   let result = WindowReadbackTestFixture.Take(window)
   if let ready = result {
     return ready
   }
-  throw InvalidOperationException("S14 readback result was unavailable after completion")
+  throw InvalidOperationException("Readback result was unavailable after completion")
 }
 
-func S14BeginReadback(window Window) int64 {
+func ReadbackBeginReadback(window Window) int64 {
   let requestStart = Stopwatch.GetTimestamp()
-  S14RequestReadbackUntilAccepted(window, 64u, 64u)
+  ReadbackRequestReadbackUntilAccepted(window, 64u, 64u)
   return requestStart
 }
 
-func S14FinishReadback(window Window, requestStart int64) int64 {
-  S14AwaitReadbackReady(window, 1000)
+func ReadbackFinishReadback(window Window, requestStart int64) int64 {
+  ReadbackAwaitReadbackReady(window, 1000)
   let readyTicks = Stopwatch.GetTimestamp()
   let latency = readyTicks - requestStart
-  S14TakeReadback(window)
+  ReadbackTakeReadback(window)
   return latency
 }
 
-func S14Pixel(pixels []uint8, x int32, y int32, channel int32) uint8 {
+func ReadbackPixel(pixels []uint8, x int32, y int32, channel int32) uint8 {
   let index = (y * 64 + x) * 4 + channel
   return pixels[index]
 }
 
-func S14ValidateReadbackResult(result VulkanReadbackResult) {
-  S14Require(result.Width == 64u && result.Height == 64u,
-    "S14 readback result extent is not 64x64")
-  S14Require(result.RowBytes == 256u,
-    "S14 readback result row bytes are not 256")
-  S14Require(int32(result.Format) == 43,
-    "S14 readback result format is not VK_FORMAT_R8G8B8A8_SRGB")
-  S14Require(result.Generation > 0uL && result.SubmissionSerial > 0uL,
-    "S14 readback result identity is invalid")
-  S14Require(result.Premultiplied && !result.OriginBottomLeft && result.SrgbEncoded,
-    "S14 readback result metadata is invalid")
+func ReadbackValidateReadbackResult(result VulkanReadbackResult) {
+  Require(result.Width == 64u && result.Height == 64u,
+    "Readback result extent is not 64x64")
+  Require(result.RowBytes == 256u,
+    "Readback result row bytes are not 256")
+  Require(int32(result.Format) == 43,
+    "Readback result format is not VK_FORMAT_R8G8B8A8_SRGB")
+  Require(result.Generation > 0uL && result.SubmissionSerial > 0uL,
+    "Readback result identity is invalid")
+  Require(result.Premultiplied && !result.OriginBottomLeft && result.SrgbEncoded,
+    "Readback result metadata is invalid")
   let pixels = result.Pixels
-  S14Require(pixels.Length == 16384,
-    "S14 readback result byte count is not 64x64 RGBA8")
-  let topLeft = S14Pixel(pixels, 0, 0, 0).ToString()
-  +"/" + S14Pixel(pixels, 0, 0, 1).ToString()
-  +"/" + S14Pixel(pixels, 0, 0, 2).ToString()
-  +"/" + S14Pixel(pixels, 0, 0, 3).ToString()
-  S14Require((S14Pixel(pixels, 0, 0, 0) == uint8(12)
-      || S14Pixel(pixels, 0, 0, 0) == uint8(13))
-      && S14Pixel(pixels, 0, 0, 1) == uint8(20)
-      && S14Pixel(pixels, 0, 0, 2) == uint8(32)
-      && S14Pixel(pixels, 0, 0, 3) == uint8(255),
-    "S14 readback top-left pixel is incorrect: " + topLeft)
-  let center = S14Pixel(pixels, 32, 32, 0).ToString()
-  +"/" + S14Pixel(pixels, 32, 32, 1).ToString()
-  +"/" + S14Pixel(pixels, 32, 32, 2).ToString()
-  +"/" + S14Pixel(pixels, 32, 32, 3).ToString()
-  S14Require(Math.Abs(int32(S14Pixel(pixels, 32, 32, 0)) - 161) <= 1
-      && Math.Abs(int32(S14Pixel(pixels, 32, 32, 1)) - 32) <= 1
-      && Math.Abs(int32(S14Pixel(pixels, 32, 32, 2)) - 51) <= 1
-      && S14Pixel(pixels, 32, 32, 3) == uint8(255),
-    "S14 readback center pixel is incorrect: " + center)
+  Require(pixels.Length == 16384,
+    "Readback result byte count is not 64x64 RGBA8")
+  let topLeft = ReadbackPixel(pixels, 0, 0, 0).ToString()
+  +"/" + ReadbackPixel(pixels, 0, 0, 1).ToString()
+  +"/" + ReadbackPixel(pixels, 0, 0, 2).ToString()
+  +"/" + ReadbackPixel(pixels, 0, 0, 3).ToString()
+  Require((ReadbackPixel(pixels, 0, 0, 0) == uint8(12)
+      || ReadbackPixel(pixels, 0, 0, 0) == uint8(13))
+      && ReadbackPixel(pixels, 0, 0, 1) == uint8(20)
+      && ReadbackPixel(pixels, 0, 0, 2) == uint8(32)
+      && ReadbackPixel(pixels, 0, 0, 3) == uint8(255),
+    "Readback top-left pixel is incorrect: " + topLeft)
+  let center = ReadbackPixel(pixels, 32, 32, 0).ToString()
+  +"/" + ReadbackPixel(pixels, 32, 32, 1).ToString()
+  +"/" + ReadbackPixel(pixels, 32, 32, 2).ToString()
+  +"/" + ReadbackPixel(pixels, 32, 32, 3).ToString()
+  Require(Math.Abs(int32(ReadbackPixel(pixels, 32, 32, 0)) - 161) <= 1
+      && Math.Abs(int32(ReadbackPixel(pixels, 32, 32, 1)) - 32) <= 1
+      && Math.Abs(int32(ReadbackPixel(pixels, 32, 32, 2)) - 51) <= 1
+      && ReadbackPixel(pixels, 32, 32, 3) == uint8(255),
+    "Readback center pixel is incorrect: " + center)
 }
 
-func S14ValidateCommonDiagnostics(diagnostics string) {
-  S14ValidateCommonDiagnostics(diagnostics, 0uL)
+func ReadbackValidateCommonDiagnostics(diagnostics string) {
+  ReadbackValidateCommonDiagnostics(diagnostics, 0uL)
 }
 
-func S14ValidateCommonDiagnostics(diagnostics string, expectedResultFailureCount uint64) {
-  S14Require(!diagnostics.Contains("\"kind\":\"fatal\""),
-    "S14 render emitted a fatal diagnostic: "
-    +S14DiagnosticExcerpt(diagnostics, "fatal")
-    +" validation=" + S14DiagnosticExcerpt(diagnostics, "validation")
-    +" validationError=" + S14DiagnosticExcerpt(diagnostics, "\"severity\":4096"))
-  S14Require(S14Counter(diagnostics, "validationErrorCount") == 0uL,
-    "S14 render validation error counter is nonzero: "
-    +S14DiagnosticExcerpt(diagnostics, "validation"))
-  let resultFailureCount = S14Counter(diagnostics, "resultFailureCount")
-  S14Require(resultFailureCount == expectedResultFailureCount,
-    "S14 render result failure count is " + resultFailureCount.ToString()
+func ReadbackValidateCommonDiagnostics(diagnostics string, expectedResultFailureCount uint64) {
+  Require(!diagnostics.Contains("\"kind\":\"fatal\""),
+    "Readback render emitted a fatal diagnostic: "
+    +DiagnosticExcerpt(diagnostics, "fatal")
+    +" validation=" + DiagnosticExcerpt(diagnostics, "validation")
+    +" validationError=" + DiagnosticExcerpt(diagnostics, "\"severity\":4096"))
+  Require(DiagnosticCounter(diagnostics, "validationErrorCount") == 0uL,
+    "Readback render validation error counter is nonzero: "
+    +DiagnosticExcerpt(diagnostics, "validation"))
+  let resultFailureCount = DiagnosticCounter(diagnostics, "resultFailureCount")
+  Require(resultFailureCount == expectedResultFailureCount,
+    "Readback render result failure count is " + resultFailureCount.ToString()
     +", expected " + expectedResultFailureCount.ToString())
-  S14Require(S14Counter(diagnostics, "vulkanObjectCount") == 0uL,
-    "S14 render leaked Vulkan objects")
+  Require(DiagnosticCounter(diagnostics, "vulkanObjectCount") == 0uL,
+    "Readback render leaked Vulkan objects")
 }
 
-func RunS14ReadbackSmoke() {
-  S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
+func RunReadbackSmoke() {
+  Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
     "GOO_VK_DIAGNOSTICS=1 is required")
-  let root = S14ReadbackSmokeCell{}
+  let root = ReadbackSmokeCell{}
   let capturedError = StringWriter()
   let originalError = Console.Error
   Console.SetError(capturedError)
@@ -653,7 +653,7 @@ func RunS14ReadbackSmoke() {
   var requestReadyNs int64 = 0L
   var residentBeforeClose uint64 = 0uL
   try {
-    let opened = S14OpenCell(root)
+    let opened = ReadbackOpenCell(root)
     window = opened
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
     var frame int32 = 0
@@ -661,26 +661,26 @@ func RunS14ReadbackSmoke() {
       WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
       frame = frame + 1
     }
-    S14Require(S14ReadbackSmokeCell.Root.IsMounted
-        && S14ReadbackSmokeCell.Root.BorderBox.Width == 64.0
-        && S14ReadbackSmokeCell.Root.BorderBox.Height == 64.0,
-      "S14 render smoke did not retain 64x64 geometry")
-    let requestStart = S14BeginReadback(opened)
-    S14AwaitReadbackReady(opened, 1000)
+    Require(ReadbackSmokeCell.Root.IsMounted
+        && ReadbackSmokeCell.Root.BorderBox.Width == 64.0
+        && ReadbackSmokeCell.Root.BorderBox.Height == 64.0,
+      "Readback render smoke did not retain 64x64 geometry")
+    let requestStart = ReadbackBeginReadback(opened)
+    ReadbackAwaitReadbackReady(opened, 1000)
     let readyTicks = Stopwatch.GetTimestamp()
-    let result = S14TakeReadback(opened)
-    S14ValidateReadbackResult(result)
-    requestReadyNs = S14TicksToNs(readyTicks - requestStart)
-    S14Require(requestReadyNs > 0L, "S14 readback request-to-ready latency is not positive")
-    S14Require(WindowReadbackTestFixture.RequestCount(opened) == 1uL
+    let result = ReadbackTakeReadback(opened)
+    ReadbackValidateReadbackResult(result)
+    requestReadyNs = TicksToNanoseconds(readyTicks - requestStart)
+    Require(requestReadyNs > 0L, "Readback request-to-ready latency is not positive")
+    Require(WindowReadbackTestFixture.RequestCount(opened) == 1uL
         && WindowReadbackTestFixture.CompletionCount(opened) == 1uL,
-      "S14 readback request and completion counts are incorrect")
+      "Readback request and completion counts are incorrect")
     residentBeforeClose = WindowReadbackTestFixture.ResidentResourceBytes(opened)
-    S14Require(residentBeforeClose >= 16384uL,
-      "S14 readback staging resources are not resident after completion")
+    Require(residentBeforeClose >= 16384uL,
+      "Readback staging resources are not resident after completion")
     opened.RequestClose()
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
-    S14Require(!opened.IsOpen, "S14 render smoke window did not close")
+    Require(!opened.IsOpen, "Readback render smoke window did not close")
   } finally {
     Console.SetError(originalError)
     if let active = window {
@@ -691,17 +691,17 @@ func RunS14ReadbackSmoke() {
     }
   }
   let diagnostics = capturedError.ToString()
-  S14ValidateCommonDiagnostics(diagnostics)
-  Console.WriteLine("s14-readback: frames=9 width=64 height=64 row_bytes=256"
+  ReadbackValidateCommonDiagnostics(diagnostics)
+  Console.WriteLine("readback: frames=9 width=64 height=64 row_bytes=256"
     +" bytes=16384 origin=top-left premultiplied=1 request_ready_ns="
     +requestReadyNs.ToString() + " resource_resident_before_close="
     +residentBeforeClose.ToString() + " resource_resident_after_close=0 cleanup=1 close=1")
 }
 
-func RunD02OffscreenFailureGate() {
-  S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
+func RunOffscreenFailureSmoke() {
+  Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
     "GOO_VK_DIAGNOSTICS=1 is required")
-  let root = S14ReadbackSmokeCell{}
+  let root = ReadbackSmokeCell{}
   let capturedError = StringWriter()
   let originalError = Console.Error
   Console.SetError(capturedError)
@@ -711,16 +711,16 @@ func RunD02OffscreenFailureGate() {
   var storageCleared = false
   var close = false
   try {
-    let opened = S14OpenCell(root)
+    let opened = ReadbackOpenCell(root)
     window = opened
     let staged = WindowReadbackTestFixture.Request(opened, 64u, 64u)
-    S14Require(staged == VulkanReadbackRequestStatus.NotReady,
+    Require(staged == VulkanReadbackRequestStatus.NotReady,
       "D02 offscreen failure request did not stage the window prerequisite")
     WindowReadbackTestFixture.DrainWindowQueue(opened, 2000)
     VulkanSharedRuntime.FailNextGraphicsSubmissionForTest()
     let retry = WindowReadbackTestFixture.Request(opened, 64u, 64u)
     accepted = retry == VulkanReadbackRequestStatus.Accepted
-    S14Require(accepted,
+    Require(accepted,
       "D02 offscreen failure retry was not accepted: " + retry.ToString())
     let timeoutTicks = int64(float64(Stopwatch.Frequency) * 2.0)
     let start = Stopwatch.GetTimestamp()
@@ -734,21 +734,21 @@ func RunD02OffscreenFailureGate() {
       result = WindowReadbackTestFixture.Poll(opened)
     }
     deviceLoss = result == VkConstants.VK_ERROR_DEVICE_LOST
-    S14Require(deviceLoss,
+    Require(deviceLoss,
       "D02 offscreen failure did not report VK_ERROR_DEVICE_LOST: " + result.ToString())
     storageCleared = WindowReadbackTestFixture.ResidentResourceBytes(opened) == 0uL
-    S14Require(storageCleared,
+    Require(storageCleared,
       "D02 offscreen failure left readback storage resident")
     let followup = WindowReadbackTestFixture.Request(opened, 64u, 64u)
-    S14Require(followup != VulkanReadbackRequestStatus.Busy,
+    Require(followup != VulkanReadbackRequestStatus.Busy,
       "D02 offscreen failure left a readback request Busy")
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
-    S14Require(opened.IsOpen,
+    Require(opened.IsOpen,
       "D02 offscreen failure window did not recover before close")
     opened.RequestClose()
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
     close = !opened.IsOpen
-    S14Require(close, "D02 offscreen failure window did not close")
+    Require(close, "D02 offscreen failure window did not close")
   } finally {
     if let active = window {
       if active.IsOpen {
@@ -759,14 +759,14 @@ func RunD02OffscreenFailureGate() {
     Console.SetError(originalError)
   }
   let diagnostics = capturedError.ToString()
-  S14ValidateCommonDiagnostics(diagnostics, 1uL)
+  ReadbackValidateCommonDiagnostics(diagnostics, 1uL)
   Console.WriteLine("d02-offscreen-failure-gate: accepted=" + (if accepted { "1" } else { "0" })
     +" device_loss=" + (if deviceLoss { "1" } else { "0" })
     +" storage_cleared=" + (if storageCleared { "1" } else { "0" })
     +" close=" + (if close { "1" } else { "0" }))
 }
 
-func S14RunCalibration(values []int64) {
+func ReadbackRunCalibration(values []int64) {
   var index int32 = 0
   var sink int64 = 0L
   while index < values.Length {
@@ -780,17 +780,17 @@ func S14RunCalibration(values []int64) {
     index = index + 1
   }
   if sink == 0L {
-    throw InvalidOperationException("S14 timing calibration did not execute")
+    throw InvalidOperationException("Readback timing calibration did not execute")
   }
 }
 
-func RunS14ReadbackMeasure() {
-  S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
+func RunReadbackReadbackMeasure() {
+  Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
     "GOO_VK_DIAGNOSTICS=1 is required")
-  let arm = S14ReadbackArm()
-  let warmup = S14EnvCount("GOO_S14_READBACK_WARMUP", 8, 64)
-  let samplesCount = S14EnvCount("GOO_S14_READBACK_SAMPLES", 64, 512)
-  S14Require(samplesCount > 0, "GOO_S14_READBACK_SAMPLES must be positive")
+  let arm = ReadbackReadbackArm()
+  let warmup = EnvironmentCount("GOO_READBACK_WARMUP", 8, 64)
+  let samplesCount = EnvironmentCount("GOO_READBACK_SAMPLES", 64, 512)
+  Require(samplesCount > 0, "GOO_READBACK_SAMPLES must be positive")
   let frameTicks = [samplesCount]int64
   let frameAllocations = [samplesCount]int64
   let timerOverhead = [samplesCount]int64
@@ -806,7 +806,7 @@ func RunS14ReadbackMeasure() {
   let totalAllocations = [samplesCount]int64
   let gpuSceneReplayValues = [samplesCount]int64
   let gpuCopyValues = [samplesCount]int64
-  let root = S14ReadbackSmokeCell{}
+  let root = ReadbackSmokeCell{}
   let capturedError = StringWriter()
   let originalError = Console.Error
   Console.SetError(capturedError)
@@ -823,15 +823,15 @@ func RunS14ReadbackMeasure() {
   var warmupObjectCreateDelta uint64 = 0uL
   var gpuTimingSampleCount int32 = 0
   try {
-    let opened = S14OpenCell(root)
+    let opened = ReadbackOpenCell(root)
     window = opened
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
     let warmStartBytes = GC.GetAllocatedBytesForCurrentThread()
     var warmIndex int32 = 0
     while warmIndex < warmup {
       if arm == "active" {
-        let requestStart = S14BeginReadback(opened)
-        S14FinishReadback(opened, requestStart)
+        let requestStart = ReadbackBeginReadback(opened)
+        ReadbackFinishReadback(opened, requestStart)
         let timing = WindowReadbackTestFixture.Timing(opened)
         warmupObjectCreateDelta = warmupObjectCreateDelta + timing.ObjectCreateDelta
       } else {
@@ -849,7 +849,7 @@ func RunS14ReadbackMeasure() {
       let start = Stopwatch.GetTimestamp()
       var requestStart int64 = 0L
       if arm == "active" {
-        requestStart = S14BeginReadback(opened)
+        requestStart = ReadbackBeginReadback(opened)
       } else {
         WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
       }
@@ -860,27 +860,27 @@ func RunS14ReadbackMeasure() {
       frameAllocations[sampleIndex] = requestAllocations[sampleIndex]
       if arm == "active" {
         let beforeCompletionBytes = GC.GetAllocatedBytesForCurrentThread()
-        S14AwaitReadbackReady(opened, 1000)
+        ReadbackAwaitReadbackReady(opened, 1000)
         let readyTicks = Stopwatch.GetTimestamp()
-        S14TakeReadback(opened)
+        ReadbackTakeReadback(opened)
         let afterTakeBytes = GC.GetAllocatedBytesForCurrentThread()
         completionAllocations[sampleIndex] = afterTakeBytes - beforeCompletionBytes
         totalAllocations[sampleIndex] = afterTakeBytes - beforeBytes
         takeCountAfterSamples = takeCountAfterSamples + 1uL
         let timing = WindowReadbackTestFixture.Timing(opened)
-        S14Require(timing.ReadyTicks >= timing.RequestStartTicks
+        Require(timing.ReadyTicks >= timing.RequestStartTicks
             && timing.RecordTicks >= timing.RequestStartTicks
             && timing.SubmitTicks >= timing.RecordTicks
             && timing.CpuCopyStartTicks >= timing.SubmitTicks
             && timing.CpuCopyEndTicks >= timing.CpuCopyStartTicks
             && timing.ReadyTicks >= timing.CpuCopyEndTicks,
-          "S14 active measurement timing snapshot is invalid")
+          "Readback active measurement timing snapshot is invalid")
         normalRecordTicks[sampleIndex] = timing.RecordTicks - timing.RequestStartTicks
         requestCpuTicks[sampleIndex] = timing.SubmitTicks - timing.RequestStartTicks
         completionObservedTicks[sampleIndex] = timing.CpuCopyStartTicks - timing.RequestStartTicks
         requestReadyTicks[sampleIndex] = timing.ReadyTicks - timing.RequestStartTicks
-        S14Require(readyTicks >= timing.ReadyTicks,
-          "S14 active measurement ready timestamp is invalid")
+        Require(readyTicks >= timing.ReadyTicks,
+          "Readback active measurement ready timestamp is invalid")
         cpuCopyTicks[sampleIndex] = timing.CpuCopyEndTicks - timing.CpuCopyStartTicks
         objectCreateDeltas[sampleIndex] = timing.ObjectCreateDelta
         objectDestroyDeltas[sampleIndex] = timing.ObjectDestroyDelta
@@ -901,12 +901,12 @@ func RunS14ReadbackMeasure() {
     requestCountAfterSamples = WindowReadbackTestFixture.RequestCount(opened)
     completionCountAfterSamples = WindowReadbackTestFixture.CompletionCount(opened)
     residentBeforeClose = WindowReadbackTestFixture.ResidentResourceBytes(opened)
-    S14RunCalibration(timerOverhead)
-    S14Require(S14ReadbackSmokeCell.Root.IsMounted,
-      "S14 readback measurement lost the root mount")
+    ReadbackRunCalibration(timerOverhead)
+    Require(ReadbackSmokeCell.Root.IsMounted,
+      "Readback measurement lost the root mount")
     opened.RequestClose()
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
-    S14Require(!opened.IsOpen, "S14 readback measurement window did not close")
+    Require(!opened.IsOpen, "Readback measurement window did not close")
   } finally {
     Console.SetError(originalError)
     if let active = window {
@@ -917,7 +917,7 @@ func RunS14ReadbackMeasure() {
     }
   }
   let diagnostics = capturedError.ToString()
-  S14ValidateCommonDiagnostics(diagnostics)
+  ReadbackValidateCommonDiagnostics(diagnostics)
   let frameNs = [samplesCount]int64
   let allocationValues = [samplesCount]int64
   let requestAllocationValues = [samplesCount]int64
@@ -933,17 +933,17 @@ func RunS14ReadbackMeasure() {
   var objectDestroyDeltaTotal uint64 = 0uL
   var index int32 = 0
   while index < samplesCount {
-    frameNs[index] = S14TicksToNs(frameTicks[index])
+    frameNs[index] = TicksToNanoseconds(frameTicks[index])
     allocationValues[index] = frameAllocations[index]
     requestAllocationValues[index] = requestAllocations[index]
     completionAllocationValues[index] = completionAllocations[index]
     totalAllocationValues[index] = totalAllocations[index]
-    overheadNs[index] = S14TicksToNs(timerOverhead[index])
-    normalRecordNs[index] = S14TicksToNs(normalRecordTicks[index])
-    requestCpuNs[index] = S14TicksToNs(requestCpuTicks[index])
-    completionObservedNs[index] = S14TicksToNs(completionObservedTicks[index])
-    requestReadyNs[index] = S14TicksToNs(requestReadyTicks[index])
-    cpuCopyNs[index] = S14TicksToNs(cpuCopyTicks[index])
+    overheadNs[index] = TicksToNanoseconds(timerOverhead[index])
+    normalRecordNs[index] = TicksToNanoseconds(normalRecordTicks[index])
+    requestCpuNs[index] = TicksToNanoseconds(requestCpuTicks[index])
+    completionObservedNs[index] = TicksToNanoseconds(completionObservedTicks[index])
+    requestReadyNs[index] = TicksToNanoseconds(requestReadyTicks[index])
+    cpuCopyNs[index] = TicksToNanoseconds(cpuCopyTicks[index])
     objectCreateDeltaTotal = objectCreateDeltaTotal + objectCreateDeltas[index]
     objectDestroyDeltaTotal = objectDestroyDeltaTotal + objectDestroyDeltas[index]
     index = index + 1
@@ -963,25 +963,25 @@ func RunS14ReadbackMeasure() {
       gpuIndex = gpuIndex + 1
     }
     gpuTimingAvailable = true
-    gpuSceneReplayP95 = S14Percentile(gpuSceneTimingValues, 0.95)
-    gpuSceneReplayMax = S14Max(gpuSceneTimingValues)
-    gpuCopyP95 = S14Percentile(gpuCopyTimingValues, 0.95)
-    gpuCopyMax = S14Max(gpuCopyTimingValues)
+    gpuSceneReplayP95 = Percentile(gpuSceneTimingValues, 0.95)
+    gpuSceneReplayMax = Maximum(gpuSceneTimingValues)
+    gpuCopyP95 = Percentile(gpuCopyTimingValues, 0.95)
+    gpuCopyMax = Maximum(gpuCopyTimingValues)
   }
-  let frameP50 = S14Percentile(frameNs, 0.50)
-  let frameP95 = S14Percentile(frameNs, 0.95)
-  let frameP99 = S14Percentile(frameNs, 0.99)
-  let frameP999 = S14Percentile(frameNs, 0.999)
-  let overheadP95 = S14Percentile(overheadNs, 0.95)
-  let allocationP95 = S14Percentile(allocationValues, 0.95)
-  let allocationMax = S14Max(allocationValues)
+  let frameP50 = Percentile(frameNs, 0.50)
+  let frameP95 = Percentile(frameNs, 0.95)
+  let frameP99 = Percentile(frameNs, 0.99)
+  let frameP999 = Percentile(frameNs, 0.999)
+  let overheadP95 = Percentile(overheadNs, 0.95)
+  let allocationP95 = Percentile(allocationValues, 0.95)
+  let allocationMax = Maximum(allocationValues)
   var requestAllocationP95 int64 = 0L
   var completionAllocationP95 int64 = 0L
   var totalAllocationP95 int64 = 0L
   if arm == "active" {
-    requestAllocationP95 = S14Percentile(requestAllocationValues, 0.95)
-    completionAllocationP95 = S14Percentile(completionAllocationValues, 0.95)
-    totalAllocationP95 = S14Percentile(totalAllocationValues, 0.95)
+    requestAllocationP95 = Percentile(requestAllocationValues, 0.95)
+    completionAllocationP95 = Percentile(completionAllocationValues, 0.95)
+    totalAllocationP95 = Percentile(totalAllocationValues, 0.95)
   }
   var requestReadyP95 int64 = 0L
   var requestReadyMax int64 = 0L
@@ -994,50 +994,50 @@ func RunS14ReadbackMeasure() {
   var cpuCopyP95 int64 = 0L
   var cpuCopyMax int64 = 0L
   if arm == "active" {
-    normalRecordP95 = S14Percentile(normalRecordNs, 0.95)
-    normalRecordMax = S14Max(normalRecordNs)
-    requestReadyP95 = S14Percentile(requestReadyNs, 0.95)
-    requestReadyMax = S14Max(requestReadyNs)
-    requestCpuP95 = S14Percentile(requestCpuNs, 0.95)
-    requestCpuMax = S14Max(requestCpuNs)
-    completionObservedP95 = S14Percentile(completionObservedNs, 0.95)
-    completionObservedMax = S14Max(completionObservedNs)
-    cpuCopyP95 = S14Percentile(cpuCopyNs, 0.95)
-    cpuCopyMax = S14Max(cpuCopyNs)
+    normalRecordP95 = Percentile(normalRecordNs, 0.95)
+    normalRecordMax = Maximum(normalRecordNs)
+    requestReadyP95 = Percentile(requestReadyNs, 0.95)
+    requestReadyMax = Maximum(requestReadyNs)
+    requestCpuP95 = Percentile(requestCpuNs, 0.95)
+    requestCpuMax = Maximum(requestCpuNs)
+    completionObservedP95 = Percentile(completionObservedNs, 0.95)
+    completionObservedMax = Maximum(completionObservedNs)
+    cpuCopyP95 = Percentile(cpuCopyNs, 0.95)
+    cpuCopyMax = Maximum(cpuCopyNs)
   }
   let requestDelta = requestCountAfterSamples - requestCountBeforeSamples
   let completionDelta = completionCountAfterSamples - completionCountBeforeSamples
   let takeDelta = takeCountAfterSamples
   if arm == "active" {
-    S14Require(requestDelta == uint64(samplesCount),
-      "S14 active measurement request count is incomplete")
-    S14Require(completionDelta == uint64(samplesCount),
-      "S14 active measurement completion count is incomplete")
-    S14Require(takeDelta == uint64(samplesCount),
-      "S14 active measurement result take count is incomplete")
-    S14Require(requestedBytes == 16384uL,
-      "S14 active measurement requested region byte size is incorrect")
-    S14Require(residentBeforeClose > 0uL && residentPeak == residentBeforeClose,
-      "S14 active measurement readback residency did not reuse one pool slot")
+    Require(requestDelta == uint64(samplesCount),
+      "Readback active measurement request count is incomplete")
+    Require(completionDelta == uint64(samplesCount),
+      "Readback active measurement completion count is incomplete")
+    Require(takeDelta == uint64(samplesCount),
+      "Readback active measurement result take count is incomplete")
+    Require(requestedBytes == 16384uL,
+      "Readback active measurement requested region byte size is incorrect")
+    Require(residentBeforeClose > 0uL && residentPeak == residentBeforeClose,
+      "Readback active measurement readback residency did not reuse one pool slot")
   } else {
-    S14Require(requestDelta == 0uL && completionDelta == 0uL && takeDelta == 0uL,
-      "S14 disabled measurement performed readback work")
-    S14Require(residentPeak == 0uL && residentBeforeClose == 0uL,
-      "S14 disabled measurement retained readback resources")
+    Require(requestDelta == 0uL && completionDelta == 0uL && takeDelta == 0uL,
+      "Readback disabled measurement performed readback work")
+    Require(residentPeak == 0uL && residentBeforeClose == 0uL,
+      "Readback disabled measurement retained readback resources")
   }
-  let requireZero = Environment.GetEnvironmentVariable("GOO_S14_REQUIRE_ZERO_ALLOC") == "1"
+  let requireZero = Environment.GetEnvironmentVariable("GOO_READBACK_REQUIRE_ZERO_ALLOC") == "1"
   if requireZero && arm == "disabled" {
-    S14Require(allocationMax == 0L,
-      "S14 disabled warm frame allocated managed memory")
+    Require(allocationMax == 0L,
+      "Readback disabled warm frame allocated managed memory")
   }
-  Console.WriteLine("s14-readback-measure: arm=" + arm
+  Console.WriteLine("readback-measure: arm=" + arm
     +" warmup=" + warmup.ToString()
     +" samples=" + samplesCount.ToString()
     +" frame_p50_ns=" + frameP50.ToString()
     +" frame_p95_ns=" + frameP95.ToString()
     +" frame_p99_ns=" + frameP99.ToString()
     +" frame_p999_ns=" + frameP999.ToString()
-    +" frame_max_ns=" + S14Max(frameNs).ToString()
+    +" frame_max_ns=" + Maximum(frameNs).ToString()
     +" harness_p95_ns=" + overheadP95.ToString()
     +" alloc_p95_B=" + allocationP95.ToString()
     +" alloc_max_B=" + allocationMax.ToString()
@@ -1074,15 +1074,15 @@ func RunS14ReadbackMeasure() {
     +" render_path=" + (if arm == "active" { "readback_request" } else { "forced" }))
 }
 
-func S09RPixelIndex(width uint32, x int32, y int32) int32 -> int32((uint64(y) * uint64(width) + uint64(x)) * 4uL)
+func PrimitivePixelIndex(width uint32, x int32, y int32) int32 -> int32((uint64(y) * uint64(width) + uint64(x)) * 4uL)
 
-func S09RLogicalPixel(pixels []uint8, width uint32, metrics WindowMetrics,
+func PrimitiveLogicalPixel(pixels []uint8, width uint32, metrics WindowMetrics,
   x float64, y float64) []uint8{
     let scaleX = if metrics.DisplayScaleX > 0.0 { metrics.DisplayScaleX } else { 1.0 }
     let scaleY = if metrics.DisplayScaleY > 0.0 { metrics.DisplayScaleY } else { 1.0 }
     let px = int32(Math.Floor(x * scaleX))
     let py = int32(Math.Floor(y * scaleY))
-    let index = S09RPixelIndex(width, px, py)
+    let index = PrimitivePixelIndex(width, px, py)
     return []uint8{
       pixels[index],
       pixels[index + 1],
@@ -1091,79 +1091,79 @@ func S09RLogicalPixel(pixels []uint8, width uint32, metrics WindowMetrics,
     }
   }
 
-func S09RPixelText(pixel []uint8) string -> pixel[0].ToString() + "/" + pixel[1].ToString() + "/"
+func PrimitivePixelText(pixel []uint8) string -> pixel[0].ToString() + "/" + pixel[1].ToString() + "/"
 +pixel[2].ToString() + "/" + pixel[3].ToString()
 
-func S09RNear(pixel []uint8, red uint8, green uint8, blue uint8,
+func PrimitiveNear(pixel []uint8, red uint8, green uint8, blue uint8,
   tolerance int32) bool -> Math.Abs(int32(pixel[0]) - int32(red)) <= tolerance
   && Math.Abs(int32(pixel[1]) - int32(green)) <= tolerance
   && Math.Abs(int32(pixel[2]) - int32(blue)) <= tolerance
   && pixel[3] >= uint8(240)
 
-func S09RRequirePixelNear(pixels []uint8, width uint32, metrics WindowMetrics,
+func PrimitiveRequirePixelNear(pixels []uint8, width uint32, metrics WindowMetrics,
   x float64, y float64, red uint8, green uint8, blue uint8, tolerance int32,
   name string) {
-    let pixel = S09RLogicalPixel(pixels, width, metrics, x, y)
-    if !S09RNear(pixel, red, green, blue, tolerance) {
-      throw InvalidOperationException("S09R pixel " + name + " at "
+    let pixel = PrimitiveLogicalPixel(pixels, width, metrics, x, y)
+    if !PrimitiveNear(pixel, red, green, blue, tolerance) {
+      throw InvalidOperationException("Primitive pixel " + name + " at "
         +x.ToString() + "," + y.ToString() + " was "
-        +S09RPixelText(pixel))
+        +PrimitivePixelText(pixel))
     }
   }
 
-func S09RRequirePixelDifferent(pixels []uint8, width uint32, metrics WindowMetrics,
+func PrimitiveRequirePixelDifferent(pixels []uint8, width uint32, metrics WindowMetrics,
   x float64, y float64, red uint8, green uint8, blue uint8, tolerance int32,
   name string) {
-    let pixel = S09RLogicalPixel(pixels, width, metrics, x, y)
+    let pixel = PrimitiveLogicalPixel(pixels, width, metrics, x, y)
     let distance = Math.Abs(int32(pixel[0]) - int32(red))
     +Math.Abs(int32(pixel[1]) - int32(green))
     +Math.Abs(int32(pixel[2]) - int32(blue))
     if distance <= tolerance {
-      throw InvalidOperationException("S09R pixel " + name
-        +" did not change: " + S09RPixelText(pixel))
+      throw InvalidOperationException("Primitive pixel " + name
+        +" did not change: " + PrimitivePixelText(pixel))
     }
   }
 
-func S09RRequireBorderPattern(pixels []uint8, width uint32,
+func PrimitiveRequireBorderPattern(pixels []uint8, width uint32,
   metrics WindowMetrics, left int32, right int32, name string) {
     var painted int32 = 0
     var gaps int32 = 0
     var x = left
     while x <= right {
-      let pixel = S09RLogicalPixel(pixels, width, metrics, float64(x), 11.0)
-      if S09RNear(pixel, uint8(232), uint8(96), uint8(72), 24) {
+      let pixel = PrimitiveLogicalPixel(pixels, width, metrics, float64(x), 11.0)
+      if PrimitiveNear(pixel, uint8(232), uint8(96), uint8(72), 24) {
         painted = painted + 1
-      } else if S09RNear(pixel, uint8(12), uint8(20), uint8(32), 16) {
+      } else if PrimitiveNear(pixel, uint8(12), uint8(20), uint8(32), 16) {
         gaps = gaps + 1
       }
       x = x + 1
     }
     if painted == 0 || gaps == 0 {
-      throw InvalidOperationException("S09R " + name
+      throw InvalidOperationException("Primitive " + name
         +" did not contain both painted coverage and gaps")
     }
   }
 
-func S09RRequireBlended(pixels []uint8, width uint32,
+func PrimitiveRequireBlended(pixels []uint8, width uint32,
   metrics WindowMetrics, x float64, y float64, name string) {
-    let pixel = S09RLogicalPixel(pixels, width, metrics, x, y)
+    let pixel = PrimitiveLogicalPixel(pixels, width, metrics, x, y)
     if pixel[0] <= uint8(12) || pixel[0] >= uint8(232)
       || pixel[1] <= uint8(20) || pixel[1] >= uint8(196)
       || pixel[2] <= uint8(32) || pixel[2] >= uint8(48)
       || pixel[3] != uint8(255) {
-        throw InvalidOperationException("S09R pixel " + name + " was "
-          +S09RPixelText(pixel))
+        throw InvalidOperationException("Primitive pixel " + name + " was "
+          +PrimitivePixelText(pixel))
       }
   }
 
-func S14RequireTextCoverage(pixels []uint8, width uint32, metrics WindowMetrics,
+func RequireTextCoverage(pixels []uint8, width uint32, metrics WindowMetrics,
   left int32, top int32, right int32, bottom int32, name string) {
     var covered int32 = 0
     var y = top
     while y <= bottom {
       var x = left
       while x <= right {
-        let pixel = S09RLogicalPixel(pixels, width, metrics, float64(x), float64(y))
+        let pixel = PrimitiveLogicalPixel(pixels, width, metrics, float64(x), float64(y))
         if pixel[0] >= uint8(180) && pixel[1] >= uint8(180)
           && pixel[2] >= uint8(180) && pixel[3] >= uint8(240) {
             covered = covered + 1
@@ -1173,19 +1173,19 @@ func S14RequireTextCoverage(pixels []uint8, width uint32, metrics WindowMetrics,
       y = y + 1
     }
     if covered < 3 {
-      throw InvalidOperationException("S14 text " + name
+      throw InvalidOperationException("Readback text " + name
         +" did not produce white coverage: " + covered.ToString())
     }
   }
 
-func S14RequireColorCoverage(pixels []uint8, width uint32, metrics WindowMetrics,
+func RequireColorCoverage(pixels []uint8, width uint32, metrics WindowMetrics,
   left int32, top int32, right int32, bottom int32, name string) {
     var covered int32 = 0
     var y = top
     while y <= bottom {
       var x = left
       while x <= right {
-        let pixel = S09RLogicalPixel(pixels, width, metrics, float64(x), float64(y))
+        let pixel = PrimitiveLogicalPixel(pixels, width, metrics, float64(x), float64(y))
         if pixel[3] >= uint8(240)
           && (pixel[0] > uint8(48) || pixel[1] > uint8(48) || pixel[2] > uint8(48)) {
             covered = covered + 1
@@ -1195,39 +1195,39 @@ func S14RequireColorCoverage(pixels []uint8, width uint32, metrics WindowMetrics
       y = y + 1
     }
     if covered < 3 {
-      throw InvalidOperationException("S14 color glyph " + name
+      throw InvalidOperationException("Readback color glyph " + name
         +" did not produce coverage: " + covered.ToString())
     }
   }
 
-func S09RValidateResult(result VulkanReadbackResult, metrics WindowMetrics) {
+func PrimitiveValidateResult(result VulkanReadbackResult, metrics WindowMetrics) {
   let expectedBytes = uint64(result.Width) * uint64(result.Height) * 4uL
-  S14Require(result.Width == uint32(metrics.FramebufferWidth)
+  Require(result.Width == uint32(metrics.FramebufferWidth)
       && result.Height == uint32(metrics.FramebufferHeight),
-    "S09R readback extent does not match the framebuffer")
-  S14Require(result.RowBytes == result.Width * 4u,
-    "S09R readback row bytes are incorrect")
-  S14Require(uint64(result.Pixels.Length) == expectedBytes,
-    "S09R readback byte count is incorrect")
-  S14Require(int32(result.Format) == 43 && result.Premultiplied
+    "Primitive readback extent does not match the framebuffer")
+  Require(result.RowBytes == result.Width * 4u,
+    "Primitive readback row bytes are incorrect")
+  Require(uint64(result.Pixels.Length) == expectedBytes,
+    "Primitive readback byte count is incorrect")
+  Require(int32(result.Format) == 43 && result.Premultiplied
       && !result.OriginBottomLeft && result.SrgbEncoded,
-    "S09R readback metadata is incorrect")
-  S14Require(result.Generation > 0uL && result.SubmissionSerial > 0uL,
-    "S09R readback identity is invalid")
+    "Primitive readback metadata is incorrect")
+  Require(result.Generation > 0uL && result.SubmissionSerial > 0uL,
+    "Primitive readback identity is invalid")
 }
 
-func S09RReadback(window Window, metrics WindowMetrics) VulkanReadbackResult {
-  S14Require(metrics.FramebufferWidth > 0 && metrics.FramebufferHeight > 0,
-    "S09R framebuffer metrics are invalid")
-  S14RequestReadbackUntilAccepted(window, uint32(metrics.FramebufferWidth),
+func PrimitiveReadback(window Window, metrics WindowMetrics) VulkanReadbackResult {
+  Require(metrics.FramebufferWidth > 0 && metrics.FramebufferHeight > 0,
+    "Primitive framebuffer metrics are invalid")
+  ReadbackRequestReadbackUntilAccepted(window, uint32(metrics.FramebufferWidth),
     uint32(metrics.FramebufferHeight))
-  S14AwaitReadbackReady(window, 10000)
-  let result = S14TakeReadback(window)
-  S09RValidateResult(result, metrics)
+  ReadbackAwaitReadbackReady(window, 10000)
+  let result = ReadbackTakeReadback(window)
+  PrimitiveValidateResult(result, metrics)
   return result
 }
 
-func S15RequireOutsideStable(before []uint8, after []uint8, width uint32,
+func RetainedRequireOutsideStable(before []uint8, after []uint8, width uint32,
   height uint32, left int32, top int32, right int32, bottom int32) {
     var y uint32 = 0u
     while y < height {
@@ -1241,7 +1241,7 @@ func S15RequireOutsideStable(before []uint8, after []uint8, width uint32,
           while channel < 4 {
             if Math.Abs(int32(before[index + channel])
               -int32(after[index + channel])) > 1 {
-                throw InvalidOperationException("S15 retained scene changed a pixel outside the mutation")
+                throw InvalidOperationException("Retained scene changed a pixel outside the mutation")
               }
             channel = channel + 1
           }
@@ -1252,12 +1252,12 @@ func S15RequireOutsideStable(before []uint8, after []uint8, width uint32,
     }
   }
 
-func S15RequireBorderPayload(state VulkanSceneRetentionTestSnapshot,
+func RetainedRequireBorderPayload(state VulkanSceneRetentionTestSnapshot,
   bounds ElementRect, scaleX float64, scaleY float64, radiusScale float64,
   topWidth float64, rightWidth float64, bottomWidth float64, leftWidth float64,
   radius float64, topColor uint32, rightColor uint32, bottomColor uint32,
   leftColor uint32, style uint32, name string) {
-    S14Require(state.BorderLeafFound && state.BorderLeafCount == 1u
+    Require(state.BorderLeafFound && state.BorderLeafCount == 1u
         && Math.Abs(float64(state.BorderLeafBoundsX) - bounds.X * scaleX) <= 0.01
         && Math.Abs(float64(state.BorderLeafBoundsY) - bounds.Y * scaleY) <= 0.01
         && Math.Abs(float64(state.BorderLeafBoundsWidth) - bounds.Width * scaleX) <= 0.01
@@ -1276,13 +1276,13 @@ func S15RequireBorderPayload(state VulkanSceneRetentionTestSnapshot,
         && state.BorderLeafLeftColor == leftColor
         && state.BorderLeafStyle == style
         && state.BorderLeafTransformIndex == -1,
-      "S15 " + name + " did not preserve the exact per-edge border payload")
+      "Retained " + name + " did not preserve the exact per-edge border payload")
   }
 
-func RunS15RetentionGate() {
-  S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
+func RunRetentionSmoke() {
+  Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
     "GOO_VK_DIAGNOSTICS=1 is required")
-  let root = S15RetentionCell{}
+  let root = RetentionCell{}
   let capturedError = StringWriter()
   let originalError = Console.Error
   var window Window? = nil
@@ -1319,7 +1319,7 @@ func RunS15RetentionGate() {
   var borderMutatedPrimitive VulkanPrimitiveFrameRetentionTestSnapshot{}
   try {
     let opened = Window{
-      Title: "Goo S15 retained scene gate",
+      Title: "Goo Retained scene gate",
       Width: 240,
       Height: 140,
       VSync: false,
@@ -1330,13 +1330,13 @@ func RunS15RetentionGate() {
     opened.Open()
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
     let metrics = WindowReadbackTestFixture.Metrics(opened)
-    S14Require(metrics.LogicalWidth == 240 && metrics.LogicalHeight == 140,
-      "S15 retained scene metrics are incorrect")
+    Require(metrics.LogicalWidth == 240 && metrics.LogicalHeight == 140,
+      "Retained scene metrics are incorrect")
     let scaleX = if metrics.DisplayScaleX > 0.0 { metrics.DisplayScaleX } else { 1.0 }
     let scaleY = if metrics.DisplayScaleY > 0.0 { metrics.DisplayScaleY } else { 1.0 }
     let radiusScale = if scaleX < scaleY { scaleX } else { scaleY }
-    let roundedBounds = S15RetentionCell.RoundedBox.BorderBox
-    let borderBounds = S15RetentionCell.BorderLeaf.BorderBox
+    let roundedBounds = RetentionCell.RoundedBox.BorderBox
+    let borderBounds = RetentionCell.BorderLeaf.BorderBox
     let roundedColor = (uint32(72) << 24) | (uint32(180) << 16)
     | (uint32(212) << 8) | uint32(255)
     let initialMutatedColor = (uint32(220) << 24) | (uint32(40) << 16)
@@ -1354,48 +1354,48 @@ func RunS15RetentionGate() {
     let borderLeftColor = (uint32(224) << 24) | (uint32(184) << 16)
     | (uint32(72) << 8) | uint32(255)
     let solidBorderStyle = uint32(int32(BorderStyle.Solid))
-    S14Require(S15RetentionCell.Root.IsMounted
-        && S15RetentionCell.MutatedBox.IsMounted
-        && S15RetentionCell.RoundedBox.IsMounted
-        && S15RetentionCell.BorderLeaf.IsMounted,
-      "S15 retained scene did not mount the mutation box")
+    Require(RetentionCell.Root.IsMounted
+        && RetentionCell.MutatedBox.IsMounted
+        && RetentionCell.RoundedBox.IsMounted
+        && RetentionCell.BorderLeaf.IsMounted,
+      "Retained scene did not mount the mutation box")
     initialState = WindowReadbackTestFixture.SceneRetention(opened)
-    S14Require(initialState.ActiveSceneVersion > 0uL
+    Require(initialState.ActiveSceneVersion > 0uL
         && initialState.SceneVersion == initialState.ActiveSceneVersion
         && initialState.AcquiredImageState
         && initialState.FullRedraw
         && !initialState.PartialRedraw
         && initialState.DamageWidth == metrics.FramebufferWidth
         && initialState.DamageHeight == metrics.FramebufferHeight,
-      "S15 first use did not force a full redraw")
-    S14Require(initialState.DirtyChunkCount > 0u
+      "Retained first use did not force a full redraw")
+    Require(initialState.DirtyChunkCount > 0u
         && initialState.PendingImageCount == 1u
         && initialState.ActivePendingSceneVersion == initialState.ActiveSceneVersion
         && initialState.PendingSceneVersion == initialState.ActiveSceneVersion,
-      "S15 first use did not publish the scene to the acquired image")
-    S14Require(initialState.AppliedImageCount == 0u
+      "Retained first use did not publish the scene to the acquired image")
+    Require(initialState.AppliedImageCount == 0u
         && initialState.PromotedImageCount == 0u
         && initialState.ActiveAppliedSceneVersion == 0uL,
-      "S15 first use promoted a scene before presentation")
-    S14Require(initialState.RetainedLeafTotalCount == 4uL
+      "Retained first use promoted a scene before presentation")
+    Require(initialState.RetainedLeafTotalCount == 4uL
         && initialState.RetainedLeafHitCount == 0uL
         && initialState.RetainedLeafRebuildCount == 4uL
         && initialState.RetainedLeafFallbackCount == 0uL
         && initialState.RetainedLeafInvalidationCount == 0uL,
-      "S15 first use did not rebuild the exact solid and rounded leaves")
-    S14Require(initialState.RetainedParentBoxTotalCount == 1uL
+      "Retained first use did not rebuild the exact solid and rounded leaves")
+    Require(initialState.RetainedParentBoxTotalCount == 1uL
         && initialState.RetainedParentBoxHitCount == 0uL
         && initialState.RetainedParentBoxRebuildCount == 1uL
         && initialState.RetainedParentBoxFallbackCount == 0uL
         && initialState.RetainedParentBoxInvalidationCount == 0uL,
-      "S15 first use did not rebuild the retained parent box")
-    S14Require(initialState.RetainedBorderTotalCount == 1uL
+      "Retained first use did not rebuild the retained parent box")
+    Require(initialState.RetainedBorderTotalCount == 1uL
         && initialState.RetainedBorderHitCount == 0uL
         && initialState.RetainedBorderRebuildCount == 1uL
         && initialState.RetainedBorderFallbackCount == 0uL
         && initialState.RetainedBorderInvalidationCount == 0uL,
-      "S15 first use did not rebuild the exact solid border leaf")
-    S14Require(initialState.RoundedLeafCount == 1u
+      "Retained first use did not rebuild the exact solid border leaf")
+    Require(initialState.RoundedLeafCount == 1u
         && Math.Abs(float64(initialState.RoundedLeafBoundsX)
           -roundedBounds.X * scaleX) <= 0.01
         && Math.Abs(float64(initialState.RoundedLeafBoundsY)
@@ -1410,22 +1410,22 @@ func RunS15RetentionGate() {
         && Math.Abs(float64(initialState.RoundedLeafRadiusBottomLeft) - 16.0 * radiusScale) <= 0.01
         && initialState.RoundedLeafColor == roundedColor
         && Math.Abs(float64(initialState.RoundedLeafOpacity) - 1.0) <= 0.01,
-      "S15 first use did not emit the exact rounded kind, bounds, color, opacity, and radii")
-    S14Require(initialState.MutatedSolidLeafFound
+      "Retained first use did not emit the exact rounded kind, bounds, color, opacity, and radii")
+    Require(initialState.MutatedSolidLeafFound
         && Math.Abs(float64(initialState.MutatedSolidLeafBoundsX) - 88.0 * scaleX) <= 0.01
         && Math.Abs(float64(initialState.MutatedSolidLeafBoundsY) - 8.0 * scaleY) <= 0.01
         && Math.Abs(float64(initialState.MutatedSolidLeafBoundsWidth) - 64.0 * scaleX) <= 0.01
         && Math.Abs(float64(initialState.MutatedSolidLeafBoundsHeight) - 32.0 * scaleY) <= 0.01
         && initialState.MutatedSolidLeafColor == initialMutatedColor
         && Math.Abs(float64(initialState.MutatedSolidLeafOpacity) - 1.0) <= 0.01,
-      "S15 first use did not emit the exact solid leaf payload")
-    S15RequireBorderPayload(initialState, borderBounds, scaleX, scaleY, radiusScale,
+      "Retained first use did not emit the exact solid leaf payload")
+    RetainedRequireBorderPayload(initialState, borderBounds, scaleX, scaleY, radiusScale,
       2.0, 3.0, 4.0, 5.0, 0.0, initialBorderTopColor, borderRightColor,
       borderBottomColor, borderLeftColor, solidBorderStyle, "first-use border")
     initialPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
-    S14Require(initialPrimitive.SlotIndex == 0 || initialPrimitive.SlotIndex == 1,
-      "S15 first primitive frame used an invalid slot")
-    S14Require(initialPrimitive.RecordCount > 1
+    Require(initialPrimitive.SlotIndex == 0 || initialPrimitive.SlotIndex == 1,
+      "Retained first primitive frame used an invalid slot")
+    Require(initialPrimitive.RecordCount > 1
         && initialPrimitive.ByteCount
       == uint64(initialPrimitive.RecordCount) * 128uL
         && initialPrimitive.FullUpload
@@ -1436,19 +1436,19 @@ func RunS15RetentionGate() {
         && initialPrimitive.MappedWrites == 1uL
         && initialPrimitive.Flushes == 1uL
         && initialPrimitive.RetainedReuse == 0uL,
-      "S15 first primitive frame did not force a full upload")
-    initialResult = S09RReadback(opened, metrics)
-    S09RRequirePixelNear(initialResult!!.Pixels, initialResult!!.Width, metrics,
+      "Retained first primitive frame did not force a full upload")
+    initialResult = PrimitiveReadback(opened, metrics)
+    PrimitiveRequirePixelNear(initialResult!!.Pixels, initialResult!!.Width, metrics,
       120.0, 24.0, uint8(220), uint8(40), uint8(64), 4, "initial_mutated_box")
-    S09RRequirePixelNear(initialResult!!.Pixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialResult!!.Pixels, initialResult!!.Width, metrics,
       200.0, 9.0, uint8(232), uint8(96), uint8(72), 8, "initial_border_top")
-    S09RRequirePixelNear(initialResult!!.Pixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialResult!!.Pixels, initialResult!!.Width, metrics,
       200.0, 9.0, uint8(232), uint8(96), uint8(72), 8, "initial_border_top")
-    S09RRequirePixelNear(initialResult!!.Pixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialResult!!.Pixels, initialResult!!.Width, metrics,
       230.0, 24.0, uint8(96), uint8(224), uint8(128), 8, "initial_border_right")
-    S09RRequirePixelNear(initialResult!!.Pixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialResult!!.Pixels, initialResult!!.Width, metrics,
       200.0, 38.0, uint8(72), uint8(144), uint8(232), 8, "initial_border_bottom")
-    S09RRequirePixelNear(initialResult!!.Pixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialResult!!.Pixels, initialResult!!.Width, metrics,
       170.0, 24.0, uint8(224), uint8(184), uint8(72), 8, "initial_border_left")
 
     var sawPrimitiveSlot0 bool = false
@@ -1485,17 +1485,17 @@ func RunS15RetentionGate() {
         }
         primitiveWarmupFrame = primitiveWarmupFrame + 1
       }
-    S14Require(sawPrimitiveSlot0 && sawPrimitiveSlot1
+    Require(sawPrimitiveSlot0 && sawPrimitiveSlot1
         && sawPrimitiveSlot0Clean && sawPrimitiveSlot1Clean
         && warmPrimitive.RecordCount == initialPrimitive.RecordCount
         && warmPrimitive.ByteCount == initialPrimitive.ByteCount,
-      "S15 unchanged primitive content did not retain both frame slots")
+      "Retained unchanged primitive content did not retain both frame slots")
     warmState = WindowReadbackTestFixture.SceneRetention(opened)
     let warmLeafTotal = warmState.RetainedLeafTotalCount
     -initialState.RetainedLeafTotalCount
     let warmLeafHits = warmState.RetainedLeafHitCount
     -initialState.RetainedLeafHitCount
-    S14Require(warmLeafTotal > 0uL
+    Require(warmLeafTotal > 0uL
         && warmLeafHits == warmLeafTotal
         && warmState.RetainedLeafRebuildCount
       == initialState.RetainedLeafRebuildCount
@@ -1503,12 +1503,12 @@ func RunS15RetentionGate() {
       == initialState.RetainedLeafFallbackCount
         && warmState.RetainedLeafInvalidationCount
       == initialState.RetainedLeafInvalidationCount,
-      "S15 unchanged leaves did not produce exact warm solid and rounded hits")
+      "Retained unchanged leaves did not produce exact warm solid and rounded hits")
     let warmParentTotal = warmState.RetainedParentBoxTotalCount
     -initialState.RetainedParentBoxTotalCount
     let warmParentHits = warmState.RetainedParentBoxHitCount
     -initialState.RetainedParentBoxHitCount
-    S14Require(warmParentTotal > 0uL
+    Require(warmParentTotal > 0uL
         && warmParentHits == warmParentTotal
         && warmState.RetainedParentBoxRebuildCount
       == initialState.RetainedParentBoxRebuildCount
@@ -1516,12 +1516,12 @@ func RunS15RetentionGate() {
       == initialState.RetainedParentBoxFallbackCount
         && warmState.RetainedParentBoxInvalidationCount
       == initialState.RetainedParentBoxInvalidationCount,
-      "S15 warm parent box did not hit while continuing into generic children")
+      "Retained warm parent box did not hit while continuing into generic children")
     let warmBorderTotal = warmState.RetainedBorderTotalCount
     -initialState.RetainedBorderTotalCount
     let warmBorderHits = warmState.RetainedBorderHitCount
     -initialState.RetainedBorderHitCount
-    S14Require(warmBorderTotal > 0uL
+    Require(warmBorderTotal > 0uL
         && warmBorderHits == warmBorderTotal
         && warmState.RetainedBorderRebuildCount
       == initialState.RetainedBorderRebuildCount
@@ -1529,11 +1529,11 @@ func RunS15RetentionGate() {
       == initialState.RetainedBorderFallbackCount
         && warmState.RetainedBorderInvalidationCount
       == initialState.RetainedBorderInvalidationCount,
-      "S15 unchanged border leaf did not produce exact warm hits")
-    S15RequireBorderPayload(warmState, borderBounds, scaleX, scaleY, radiusScale,
+      "Retained unchanged border leaf did not produce exact warm hits")
+    RetainedRequireBorderPayload(warmState, borderBounds, scaleX, scaleY, radiusScale,
       2.0, 3.0, 4.0, 5.0, 0.0, initialBorderTopColor, borderRightColor,
       borderBottomColor, borderLeftColor, solidBorderStyle, "warm border")
-    S14Require(warmState.RoundedLeafCount == initialState.RoundedLeafCount
+    Require(warmState.RoundedLeafCount == initialState.RoundedLeafCount
         && Math.Abs(float64(warmState.RoundedLeafBoundsX)
           -roundedBounds.X * scaleX) <= 0.01
         && Math.Abs(float64(warmState.RoundedLeafBoundsY)
@@ -1548,12 +1548,12 @@ func RunS15RetentionGate() {
         && Math.Abs(float64(warmState.RoundedLeafRadiusBottomLeft) - 16.0 * radiusScale) <= 0.01
         && warmState.RoundedLeafColor == roundedColor
         && Math.Abs(float64(warmState.RoundedLeafOpacity) - 1.0) <= 0.01,
-      "S15 warm rounded leaf did not preserve exact emitted payload")
+      "Retained warm rounded leaf did not preserve exact emitted payload")
 
     root.MutateBox()
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     mutatedPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
-    S14Require(mutatedPrimitive.RecordCount == warmPrimitive.RecordCount
+    Require(mutatedPrimitive.RecordCount == warmPrimitive.RecordCount
         && mutatedPrimitive.ByteCount == warmPrimitive.ByteCount
         && !mutatedPrimitive.FullUpload
         && mutatedPrimitive.DirtyRecordCount == 1
@@ -1564,7 +1564,7 @@ func RunS15RetentionGate() {
         && mutatedPrimitive.Flushes == 1uL
         && mutatedPrimitive.RetainedReuse
       == uint64(mutatedPrimitive.RecordCount - 1),
-      "S15 one-box mutation did not upload one dirty primitive record")
+      "Retained one-box mutation did not upload one dirty primitive record")
     mutatedState = WindowReadbackTestFixture.SceneRetention(opened)
     let colorLeafTotal = mutatedState.RetainedLeafTotalCount
     -warmState.RetainedLeafTotalCount
@@ -1574,26 +1574,26 @@ func RunS15RetentionGate() {
     -warmState.RetainedLeafRebuildCount
     let colorLeafInvalidations = mutatedState.RetainedLeafInvalidationCount
     -warmState.RetainedLeafInvalidationCount
-    S14Require(colorLeafTotal > 0uL
+    Require(colorLeafTotal > 0uL
         && colorLeafRebuilds == 1uL
         && colorLeafHits == colorLeafTotal - 1uL
         && colorLeafInvalidations == 1uL
         && mutatedState.RetainedLeafFallbackCount
       == warmState.RetainedLeafFallbackCount,
-      "S15 color mutation did not miss exactly one leaf with clean siblings retained")
-    S14Require(mutatedState.MutatedSolidLeafFound
+      "Retained color mutation did not miss exactly one leaf with clean siblings retained")
+    Require(mutatedState.MutatedSolidLeafFound
         && Math.Abs(float64(mutatedState.MutatedSolidLeafBoundsX) - 88.0 * scaleX) <= 0.01
         && Math.Abs(float64(mutatedState.MutatedSolidLeafBoundsY) - 8.0 * scaleY) <= 0.01
         && Math.Abs(float64(mutatedState.MutatedSolidLeafBoundsWidth) - 64.0 * scaleX) <= 0.01
         && Math.Abs(float64(mutatedState.MutatedSolidLeafBoundsHeight) - 32.0 * scaleY) <= 0.01
         && mutatedState.MutatedSolidLeafColor == changedMutatedColor
         && Math.Abs(float64(mutatedState.MutatedSolidLeafOpacity) - 1.0) <= 0.01,
-      "S15 color mutation did not emit the current packed solid payload")
+      "Retained color mutation did not emit the current packed solid payload")
     let changedLeft = int32(Math.Floor(88.0 * scaleX))
     let changedTop = int32(Math.Floor(8.0 * scaleY))
     let changedRight = int32(Math.Ceiling(152.0 * scaleX))
     let changedBottom = int32(Math.Ceiling(40.0 * scaleY))
-    S14Require(mutatedState.ActiveSceneVersion > initialState.ActiveSceneVersion
+    Require(mutatedState.ActiveSceneVersion > initialState.ActiveSceneVersion
         && mutatedState.SceneVersion == mutatedState.ActiveSceneVersion
         && mutatedState.AcquiredImageState
         && mutatedState.ActiveAppliedSceneVersion < mutatedState.ActiveSceneVersion
@@ -1605,7 +1605,7 @@ func RunS15RetentionGate() {
         && mutatedState.DamageY <= changedTop
         && mutatedState.DamageX + mutatedState.DamageWidth >= changedRight
         && mutatedState.DamageY + mutatedState.DamageHeight >= changedBottom,
-      "S15 box mutation did not produce bounded partial damage: scene="
+      "Retained box mutation did not produce bounded partial damage: scene="
       +mutatedState.SceneVersion.ToString() + " active="
       +mutatedState.ActiveSceneVersion.ToString() + " acquired="
       +mutatedState.AcquiredImageState.ToString() + " applied="
@@ -1627,17 +1627,17 @@ func RunS15RetentionGate() {
       +warmState.ReusedChunkCount.ToString() + " mutatedDirty="
       +mutatedState.DirtyChunkCount.ToString() + " mutatedReused="
       +mutatedState.ReusedChunkCount.ToString())
-    S14Require(mutatedState.DirtyChunkCount > 0u
+    Require(mutatedState.DirtyChunkCount > 0u
         && mutatedState.ReusedChunkCount > 0u,
-      "S15 box mutation did not retain clean chunks")
-    S14Require(mutatedState.PendingImageCount == 1u
+      "Retained box mutation did not retain clean chunks")
+    Require(mutatedState.PendingImageCount == 1u
         && mutatedState.ActivePendingSceneVersion == mutatedState.ActiveSceneVersion
         && mutatedState.PendingSceneVersion == mutatedState.ActiveSceneVersion,
-      "S15 box mutation did not publish its scene version to the acquired image")
-    mutatedResult = S09RReadback(opened, metrics)
-    S09RRequirePixelNear(mutatedResult!!.Pixels, mutatedResult!!.Width, metrics,
+      "Retained box mutation did not publish its scene version to the acquired image")
+    mutatedResult = PrimitiveReadback(opened, metrics)
+    PrimitiveRequirePixelNear(mutatedResult!!.Pixels, mutatedResult!!.Width, metrics,
       120.0, 24.0, uint8(40), uint8(220), uint8(96), 4, "mutated_box")
-    S15RequireOutsideStable(initialResult!!.Pixels, mutatedResult!!.Pixels,
+    RetainedRequireOutsideStable(initialResult!!.Pixels, mutatedResult!!.Pixels,
       mutatedResult!!.Width, mutatedResult!!.Height,
       changedLeft, changedTop, changedRight, changedBottom)
 
@@ -1652,24 +1652,24 @@ func RunS15RetentionGate() {
     -mutatedState.RetainedLeafRebuildCount
     let boundsLeafInvalidations = boundsState.RetainedLeafInvalidationCount
     -mutatedState.RetainedLeafInvalidationCount
-    S14Require(boundsLeafTotal > 0uL
+    Require(boundsLeafTotal > 0uL
         && boundsLeafRebuilds == 1uL
         && boundsLeafHits == boundsLeafTotal - 1uL
         && boundsLeafInvalidations == 1uL
         && boundsState.RetainedLeafFallbackCount
       == mutatedState.RetainedLeafFallbackCount,
-      "S15 bounds mutation did not rebuild exactly one leaf with clean siblings retained")
-    S14Require(boundsState.MutatedSolidLeafFound
+      "Retained bounds mutation did not rebuild exactly one leaf with clean siblings retained")
+    Require(boundsState.MutatedSolidLeafFound
         && Math.Abs(float64(boundsState.MutatedSolidLeafBoundsX) - 104.0 * scaleX) <= 0.01
         && Math.Abs(float64(boundsState.MutatedSolidLeafBoundsY) - 8.0 * scaleY) <= 0.01
         && Math.Abs(float64(boundsState.MutatedSolidLeafBoundsWidth) - 64.0 * scaleX) <= 0.01
         && Math.Abs(float64(boundsState.MutatedSolidLeafBoundsHeight) - 32.0 * scaleY) <= 0.01
         && boundsState.MutatedSolidLeafColor == changedMutatedColor
         && Math.Abs(float64(boundsState.MutatedSolidLeafOpacity) - 1.0) <= 0.01,
-      "S15 bounds mutation did not emit the exact moved solid payload")
-    let movedBounds = S15RetentionCell.MutatedBox.BorderBox
-    S14Require(movedBounds.Width > 0.0 && movedBounds.Height > 0.0,
-      "S15 bounds mutation lost the moved box geometry")
+      "Retained bounds mutation did not emit the exact moved solid payload")
+    let movedBounds = RetentionCell.MutatedBox.BorderBox
+    Require(movedBounds.Width > 0.0 && movedBounds.Height > 0.0,
+      "Retained bounds mutation lost the moved box geometry")
     let movedLeft = int32(Math.Floor(movedBounds.X * scaleX))
     let movedTop = int32(Math.Floor(movedBounds.Y * scaleY))
     let movedRight = int32(Math.Ceiling((movedBounds.X + movedBounds.Width) * scaleX))
@@ -1688,7 +1688,7 @@ func RunS15RetentionGate() {
     } else {
       unionBottom
     }
-    S14Require(boundsState.ActiveSceneVersion > mutatedState.ActiveSceneVersion
+    Require(boundsState.ActiveSceneVersion > mutatedState.ActiveSceneVersion
         && boundsState.SceneVersion == boundsState.ActiveSceneVersion
         && boundsState.AcquiredImageState
         && boundsState.ActiveAppliedSceneVersion < boundsState.ActiveSceneVersion
@@ -1700,7 +1700,7 @@ func RunS15RetentionGate() {
         && boundsState.DamageY <= damageTop
         && boundsState.DamageX + boundsState.DamageWidth >= damageRight
         && boundsState.DamageY + boundsState.DamageHeight >= damageBottom,
-      "S15 bounds mutation did not damage both old and new bounds: x="
+      "Retained bounds mutation did not damage both old and new bounds: x="
       +boundsState.DamageX.ToString() + " y=" + boundsState.DamageY.ToString()
       +" w=" + boundsState.DamageWidth.ToString() + " h="
       +boundsState.DamageHeight.ToString() + " oldLeft=" + changedLeft.ToString()
@@ -1711,12 +1711,12 @@ func RunS15RetentionGate() {
       +" unionBottom=" + unionBottom.ToString() + " clippedBottom="
       +damageBottom.ToString() + " partial="
       +boundsState.PartialRedraw.ToString())
-    boundsResult = S09RReadback(opened, metrics)
-    S09RRequirePixelNear(boundsResult!!.Pixels, boundsResult!!.Width, metrics,
+    boundsResult = PrimitiveReadback(opened, metrics)
+    PrimitiveRequirePixelNear(boundsResult!!.Pixels, boundsResult!!.Width, metrics,
       136.0, 24.0, uint8(40), uint8(220), uint8(96), 4, "bounds_mutated_box")
-    S09RRequirePixelNear(boundsResult!!.Pixels, boundsResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(boundsResult!!.Pixels, boundsResult!!.Width, metrics,
       96.0, 24.0, uint8(12), uint8(20), uint8(32), 8, "bounds_old_only_background")
-    S15RequireOutsideStable(mutatedResult!!.Pixels, boundsResult!!.Pixels,
+    RetainedRequireOutsideStable(mutatedResult!!.Pixels, boundsResult!!.Pixels,
       boundsResult!!.Width, boundsResult!!.Height,
       damageLeft, damageTop, damageRight, damageBottom)
 
@@ -1727,14 +1727,14 @@ func RunS15RetentionGate() {
     -boundsState.RetainedLeafFallbackCount
     let unsupportedLeafInvalidations = unsupportedState.RetainedLeafInvalidationCount
     -boundsState.RetainedLeafInvalidationCount
-    S14Require(unsupportedLeafFallbacks == 1uL
+    Require(unsupportedLeafFallbacks == 1uL
         && unsupportedLeafInvalidations == 1uL
         && unsupportedState.AcquiredImageState
         && unsupportedState.FullRedraw
         && !unsupportedState.PartialRedraw
         && unsupportedState.DamageWidth == metrics.FramebufferWidth
         && unsupportedState.DamageHeight == metrics.FramebufferHeight,
-      "S15 unsupported leaf feature did not force one generic fallback and full damage"
+      "Retained unsupported leaf feature did not force one generic fallback and full damage"
       +" fallbackDelta=" + unsupportedLeafFallbacks.ToString()
       +" invalidationDelta=" + unsupportedLeafInvalidations.ToString()
       +" acquired=" + unsupportedState.AcquiredImageState.ToString()
@@ -1754,22 +1754,22 @@ func RunS15RetentionGate() {
     -unsupportedState.RetainedLeafRebuildCount
     let recapturedLeafInvalidations = recapturedState.RetainedLeafInvalidationCount
     -unsupportedState.RetainedLeafInvalidationCount
-    S14Require(recapturedLeafRebuilds == 1uL
+    Require(recapturedLeafRebuilds == 1uL
         && recapturedLeafInvalidations == 0uL
         && recapturedState.RetainedLeafFallbackCount
       == unsupportedState.RetainedLeafFallbackCount,
-      "S15 unsupported leaf removal did not safely recapture the rounded leaf")
+      "Retained unsupported leaf removal did not safely recapture the rounded leaf")
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     recapturedWarmState = WindowReadbackTestFixture.SceneRetention(opened)
     let recapturedWarmLeafTotal = recapturedWarmState.RetainedLeafTotalCount
     -recapturedState.RetainedLeafTotalCount
     let recapturedWarmLeafHits = recapturedWarmState.RetainedLeafHitCount
     -recapturedState.RetainedLeafHitCount
-    S14Require(recapturedWarmLeafTotal > 0uL
+    Require(recapturedWarmLeafTotal > 0uL
         && recapturedWarmLeafHits == recapturedWarmLeafTotal
         && recapturedWarmState.RetainedLeafRebuildCount
       == recapturedState.RetainedLeafRebuildCount,
-      "S15 rounded leaf did not return to exact warm retention after fallback"
+      "Retained rounded leaf did not return to exact warm retention after fallback"
       +" warmTotalDelta=" + recapturedWarmLeafTotal.ToString()
       +" warmHitDelta=" + recapturedWarmLeafHits.ToString()
       +" recapturedRebuilds="
@@ -1795,7 +1795,7 @@ func RunS15RetentionGate() {
       +" damageHeight=" + recapturedWarmState.DamageHeight.ToString()
       +" framebufferWidth=" + metrics.FramebufferWidth.ToString()
       +" framebufferHeight=" + metrics.FramebufferHeight.ToString())
-    S14Require(recapturedWarmState.RoundedLeafCount == initialState.RoundedLeafCount
+    Require(recapturedWarmState.RoundedLeafCount == initialState.RoundedLeafCount
         && recapturedWarmState.RoundedLeafColor == roundedColor
         && Math.Abs(float64(recapturedWarmState.RoundedLeafRadiusTopLeft)
           -4.0 * radiusScale) <= 0.01
@@ -1805,12 +1805,12 @@ func RunS15RetentionGate() {
           -12.0 * radiusScale) <= 0.01
         && Math.Abs(float64(recapturedWarmState.RoundedLeafRadiusBottomLeft)
           -16.0 * radiusScale) <= 0.01,
-      "S15 rounded leaf recapture did not restore its exact payload")
+      "Retained rounded leaf recapture did not restore its exact payload")
 
     root.ToggleExtra()
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     topologyAddPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
-    S14Require(topologyAddPrimitive.RecordCount != mutatedPrimitive.RecordCount
+    Require(topologyAddPrimitive.RecordCount != mutatedPrimitive.RecordCount
         && topologyAddPrimitive.ByteCount
       == uint64(topologyAddPrimitive.RecordCount) * 128uL
         && topologyAddPrimitive.FullUpload
@@ -1821,9 +1821,9 @@ func RunS15RetentionGate() {
         && topologyAddPrimitive.MappedWrites == 1uL
         && topologyAddPrimitive.Flushes == 1uL
         && topologyAddPrimitive.RetainedReuse == 0uL,
-      "S15 topology add did not force a full primitive upload")
+      "Retained topology add did not force a full primitive upload")
     topologyAddState = WindowReadbackTestFixture.SceneRetention(opened)
-    S14Require(topologyAddState.FullRedraw
+    Require(topologyAddState.FullRedraw
         && topologyAddState.AcquiredImageState
         && !topologyAddState.PartialRedraw
         && topologyAddState.DamageWidth == metrics.FramebufferWidth
@@ -1834,15 +1834,15 @@ func RunS15RetentionGate() {
       -recapturedWarmState.RetainedLeafHitCount == 4uL
         && topologyAddState.RetainedLeafRebuildCount
       -recapturedWarmState.RetainedLeafRebuildCount == 1uL,
-      "S15 topology add did not force full damage")
-    topologyAddResult = S09RReadback(opened, metrics)
-    S09RRequirePixelNear(topologyAddResult!!.Pixels, topologyAddResult!!.Width, metrics,
+      "Retained topology add did not force full damage")
+    topologyAddResult = PrimitiveReadback(opened, metrics)
+    PrimitiveRequirePixelNear(topologyAddResult!!.Pixels, topologyAddResult!!.Width, metrics,
       200.0, 72.0, uint8(128), uint8(72), uint8(220), 6, "topology_added_box")
 
     root.ToggleExtra()
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     topologyRemovePrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
-    S14Require(topologyRemovePrimitive.RecordCount == mutatedPrimitive.RecordCount
+    Require(topologyRemovePrimitive.RecordCount == mutatedPrimitive.RecordCount
         && topologyRemovePrimitive.ByteCount
       == uint64(topologyRemovePrimitive.RecordCount) * 128uL
         && topologyRemovePrimitive.FullUpload
@@ -1853,20 +1853,20 @@ func RunS15RetentionGate() {
         && topologyRemovePrimitive.MappedWrites == 1uL
         && topologyRemovePrimitive.Flushes == 1uL
         && topologyRemovePrimitive.RetainedReuse == 0uL,
-      "S15 topology remove did not force a full primitive upload")
+      "Retained topology remove did not force a full primitive upload")
     topologyRemoveState = WindowReadbackTestFixture.SceneRetention(opened)
-    S14Require(topologyRemoveState.FullRedraw
+    Require(topologyRemoveState.FullRedraw
         && topologyRemoveState.AcquiredImageState
         && !topologyRemoveState.PartialRedraw
         && topologyRemoveState.DamageWidth == metrics.FramebufferWidth
         && topologyRemoveState.DamageHeight == metrics.FramebufferHeight,
-      "S15 topology remove did not force full damage: partial="
+      "Retained topology remove did not force full damage: partial="
       +topologyRemoveState.PartialRedraw.ToString() + " x="
       +topologyRemoveState.DamageX.ToString() + " y="
       +topologyRemoveState.DamageY.ToString() + " w="
       +topologyRemoveState.DamageWidth.ToString() + " h="
       +topologyRemoveState.DamageHeight.ToString())
-    S14Require(topologyRemoveState.RetainedLeafTotalCount
+    Require(topologyRemoveState.RetainedLeafTotalCount
       -topologyAddState.RetainedLeafTotalCount > 0uL
         && topologyRemoveState.RetainedLeafHitCount
       -topologyAddState.RetainedLeafHitCount
@@ -1874,10 +1874,10 @@ func RunS15RetentionGate() {
       -topologyAddState.RetainedLeafTotalCount
         && topologyRemoveState.RetainedLeafRebuildCount
       == topologyAddState.RetainedLeafRebuildCount,
-      "S15 topology remove did not retain the unchanged leaves")
+      "Retained topology remove did not retain the unchanged leaves")
 
-    topologyRemoveResult = S09RReadback(opened, metrics)
-    S09RRequirePixelNear(topologyRemoveResult!!.Pixels, topologyRemoveResult!!.Width, metrics,
+    topologyRemoveResult = PrimitiveReadback(opened, metrics)
+    PrimitiveRequirePixelNear(topologyRemoveResult!!.Pixels, topologyRemoveResult!!.Width, metrics,
       200.0, 72.0, uint8(12), uint8(20), uint8(32), 8, "topology_removed_background")
 
     var borderWarmReady bool = false
@@ -1915,14 +1915,14 @@ func RunS15RetentionGate() {
       }
     borderWarmReady = borderSawSlot0 && borderSawSlot1
       && borderSawSlot0Clean && borderSawSlot1Clean
-    S14Require(borderWarmReady,
-      "S15 border warm primitive expansion did not retain its clean records")
+    Require(borderWarmReady,
+      "Retained border warm primitive expansion did not retain its clean records")
     borderWarmState = WindowReadbackTestFixture.SceneRetention(opened)
 
     root.MutateBorder()
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     borderMutatedPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
-    S14Require(borderMutatedPrimitive.RecordCount == borderWarmPrimitive.RecordCount
+    Require(borderMutatedPrimitive.RecordCount == borderWarmPrimitive.RecordCount
         && borderMutatedPrimitive.ByteCount == borderWarmPrimitive.ByteCount
         && !borderMutatedPrimitive.FullUpload
         && borderMutatedPrimitive.RecordCount >= 9
@@ -1933,7 +1933,7 @@ func RunS15RetentionGate() {
       == borderMutatedPrimitive.ByteCount - 128uL
         && borderMutatedPrimitive.RetainedReuse
       == uint64(borderMutatedPrimitive.RecordCount - 1),
-      "S15 one-edge border mutation did not upload one expanded solid-border record")
+      "Retained one-edge border mutation did not upload one expanded solid-border record")
     borderMutationState = WindowReadbackTestFixture.SceneRetention(opened)
     let borderMutationTotal = borderMutationState.RetainedBorderTotalCount
     -borderWarmState.RetainedBorderTotalCount
@@ -1947,7 +1947,7 @@ func RunS15RetentionGate() {
     -borderWarmState.RetainedLeafTotalCount
     let borderMutationLeafHits = borderMutationState.RetainedLeafHitCount
     -borderWarmState.RetainedLeafHitCount
-    S14Require(borderMutationTotal > 0uL
+    Require(borderMutationTotal > 0uL
         && borderMutationRebuilds == 1uL
         && borderMutationHits == borderMutationTotal - 1uL
         && borderMutationInvalidations == 1uL
@@ -1973,8 +1973,8 @@ func RunS15RetentionGate() {
       == borderWarmState.RetainedParentBoxFallbackCount
         && borderMutationState.RetainedParentBoxInvalidationCount
       == borderWarmState.RetainedParentBoxInvalidationCount,
-      "S15 border color mutation did not isolate one exact border rebuild")
-    S15RequireBorderPayload(borderMutationState, borderBounds, scaleX, scaleY, radiusScale,
+      "Retained border color mutation did not isolate one exact border rebuild")
+    RetainedRequireBorderPayload(borderMutationState, borderBounds, scaleX, scaleY, radiusScale,
       2.0, 3.0, 4.0, 5.0, 0.0, changedBorderTopColor, borderRightColor,
       borderBottomColor, borderLeftColor, solidBorderStyle, "mutated border")
     let borderDamageLeft = int32(Math.Floor(borderBounds.X * scaleX))
@@ -1983,7 +1983,7 @@ func RunS15RetentionGate() {
       (borderBounds.X + borderBounds.Width) * scaleX))
     let borderDamageBottom = int32(Math.Ceiling(
       (borderBounds.Y + borderBounds.Height) * scaleY))
-    S14Require(borderMutationState.AcquiredImageState
+    Require(borderMutationState.AcquiredImageState
         && borderMutationState.PartialRedraw
         && !borderMutationState.FullRedraw
         && borderMutationState.DamageWidth < metrics.FramebufferWidth
@@ -1994,7 +1994,7 @@ func RunS15RetentionGate() {
       >= borderDamageRight
         && borderMutationState.DamageY + borderMutationState.DamageHeight
       >= borderDamageBottom,
-      "S15 border color mutation did not produce bounded acquired-image damage"
+      "Retained border color mutation did not produce bounded acquired-image damage"
       +" acquired=" + borderMutationState.AcquiredImageState.ToString()
       +" partial=" + borderMutationState.PartialRedraw.ToString()
       +" full=" + borderMutationState.FullRedraw.ToString()
@@ -2016,16 +2016,16 @@ func RunS15RetentionGate() {
       +" framebufferHeight=" + metrics.FramebufferHeight.ToString()
       +" dirty=" + borderMutationState.DirtyChunkCount.ToString()
       +" reused=" + borderMutationState.ReusedChunkCount.ToString())
-    borderMutationResult = S09RReadback(opened, metrics)
-    S09RRequirePixelNear(borderMutationResult!!.Pixels, borderMutationResult!!.Width, metrics,
+    borderMutationResult = PrimitiveReadback(opened, metrics)
+    PrimitiveRequirePixelNear(borderMutationResult!!.Pixels, borderMutationResult!!.Width, metrics,
       200.0, 9.0, uint8(248), uint8(196), uint8(48), 8, "mutated_border_top")
-    S09RRequirePixelNear(borderMutationResult!!.Pixels, borderMutationResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(borderMutationResult!!.Pixels, borderMutationResult!!.Width, metrics,
       230.0, 24.0, uint8(96), uint8(224), uint8(128), 8, "mutated_border_right")
-    S09RRequirePixelNear(borderMutationResult!!.Pixels, borderMutationResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(borderMutationResult!!.Pixels, borderMutationResult!!.Width, metrics,
       200.0, 38.0, uint8(72), uint8(144), uint8(232), 8, "mutated_border_bottom")
-    S09RRequirePixelNear(borderMutationResult!!.Pixels, borderMutationResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(borderMutationResult!!.Pixels, borderMutationResult!!.Width, metrics,
       170.0, 24.0, uint8(224), uint8(184), uint8(72), 8, "mutated_border_left")
-    S15RequireOutsideStable(topologyRemoveResult!!.Pixels,
+    RetainedRequireOutsideStable(topologyRemoveResult!!.Pixels,
       borderMutationResult!!.Pixels, borderMutationResult!!.Width,
       borderMutationResult!!.Height, borderDamageLeft, borderDamageTop,
       borderDamageRight, borderDamageBottom)
@@ -2037,15 +2037,15 @@ func RunS15RetentionGate() {
     -borderMutationState.RetainedBorderFallbackCount
     let borderFallbackInvalidations = borderUnsupportedState.RetainedBorderInvalidationCount
     -borderMutationState.RetainedBorderInvalidationCount
-    S14Require(borderFallbacks == 1uL
+    Require(borderFallbacks == 1uL
         && borderFallbackInvalidations == 1uL
         && borderUnsupportedState.AcquiredImageState
         && borderUnsupportedState.FullRedraw
         && !borderUnsupportedState.PartialRedraw
         && borderUnsupportedState.DamageWidth == metrics.FramebufferWidth
         && borderUnsupportedState.DamageHeight == metrics.FramebufferHeight,
-      "S15 rounded border fallback did not force full acquired-image damage")
-    S15RequireBorderPayload(borderUnsupportedState, borderBounds, scaleX, scaleY,
+      "Retained rounded border fallback did not force full acquired-image damage")
+    RetainedRequireBorderPayload(borderUnsupportedState, borderBounds, scaleX, scaleY,
       radiusScale, 2.0, 3.0, 4.0, 5.0, 6.0, changedBorderTopColor,
       borderRightColor, borderBottomColor, borderLeftColor, solidBorderStyle,
       "rounded border fallback")
@@ -2057,12 +2057,12 @@ func RunS15RetentionGate() {
     -borderUnsupportedState.RetainedBorderRebuildCount
     let borderRecapturedInvalidations = borderRecapturedState.RetainedBorderInvalidationCount
     -borderUnsupportedState.RetainedBorderInvalidationCount
-    S14Require(borderRecapturedRebuilds == 1uL
+    Require(borderRecapturedRebuilds == 1uL
         && borderRecapturedInvalidations == 0uL
         && borderRecapturedState.RetainedBorderFallbackCount
       == borderUnsupportedState.RetainedBorderFallbackCount,
-      "S15 rounded border removal did not recapture the exact border leaf")
-    S15RequireBorderPayload(borderRecapturedState, borderBounds, scaleX, scaleY,
+      "Retained rounded border removal did not recapture the exact border leaf")
+    RetainedRequireBorderPayload(borderRecapturedState, borderBounds, scaleX, scaleY,
       radiusScale, 2.0, 3.0, 4.0, 5.0, 0.0, changedBorderTopColor,
       borderRightColor, borderBottomColor, borderLeftColor, solidBorderStyle,
       "recaptured border")
@@ -2072,7 +2072,7 @@ func RunS15RetentionGate() {
     -borderRecapturedState.RetainedBorderTotalCount
     let recapturedBorderHits = borderWarmState.RetainedBorderHitCount
     -borderRecapturedState.RetainedBorderHitCount
-    S14Require(recapturedBorderTotal > 0uL
+    Require(recapturedBorderTotal > 0uL
         && recapturedBorderHits == recapturedBorderTotal
         && borderWarmState.RetainedBorderRebuildCount
       == borderRecapturedState.RetainedBorderRebuildCount
@@ -2080,8 +2080,8 @@ func RunS15RetentionGate() {
       == borderRecapturedState.RetainedBorderFallbackCount
         && borderWarmState.RetainedBorderInvalidationCount
       == borderRecapturedState.RetainedBorderInvalidationCount,
-      "S15 recaptured border leaf did not return to exact warm hits")
-    S15RequireBorderPayload(borderWarmState, borderBounds, scaleX, scaleY, radiusScale,
+      "Retained recaptured border leaf did not return to exact warm hits")
+    RetainedRequireBorderPayload(borderWarmState, borderBounds, scaleX, scaleY, radiusScale,
       2.0, 3.0, 4.0, 5.0, 0.0, changedBorderTopColor, borderRightColor,
       borderBottomColor, borderLeftColor, solidBorderStyle, "recaptured warm border")
 
@@ -2104,7 +2104,7 @@ func RunS15RetentionGate() {
     -borderWarmState.RetainedBorderTotalCount
     let parentMutationBorderHits = parentMutatedState.RetainedBorderHitCount
     -borderWarmState.RetainedBorderHitCount
-    S14Require(parentMutationTotal > 0uL
+    Require(parentMutationTotal > 0uL
         && parentMutationRebuilds == 1uL
         && parentMutationInvalidations == 1uL
         && parentMutationHits == parentMutationTotal - 1uL
@@ -2118,17 +2118,17 @@ func RunS15RetentionGate() {
       == borderWarmState.RetainedBorderFallbackCount
         && parentMutatedState.RetainedBorderInvalidationCount
       == borderWarmState.RetainedBorderInvalidationCount,
-      "S15 parent mutation did not rebuild one own box and continue exact children")
-    parentMutationResult = S09RReadback(opened, metrics)
-    S09RRequirePixelNear(parentMutationResult!!.Pixels, parentMutationResult!!.Width, metrics,
+      "Retained parent mutation did not rebuild one own box and continue exact children")
+    parentMutationResult = PrimitiveReadback(opened, metrics)
+    PrimitiveRequirePixelNear(parentMutationResult!!.Pixels, parentMutationResult!!.Width, metrics,
       200.0, 72.0, uint8(18), uint8(30), uint8(48), 8, "parent_mutated_background")
-    S09RRequirePixelNear(parentMutationResult!!.Pixels, parentMutationResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(parentMutationResult!!.Pixels, parentMutationResult!!.Width, metrics,
       200.0, 9.0, uint8(248), uint8(196), uint8(48), 8, "recaptured_border_top")
-    S09RRequirePixelNear(parentMutationResult!!.Pixels, parentMutationResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(parentMutationResult!!.Pixels, parentMutationResult!!.Width, metrics,
       230.0, 24.0, uint8(96), uint8(224), uint8(128), 8, "recaptured_border_right")
-    S09RRequirePixelNear(parentMutationResult!!.Pixels, parentMutationResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(parentMutationResult!!.Pixels, parentMutationResult!!.Width, metrics,
       200.0, 38.0, uint8(72), uint8(144), uint8(232), 8, "recaptured_border_bottom")
-    S09RRequirePixelNear(parentMutationResult!!.Pixels, parentMutationResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(parentMutationResult!!.Pixels, parentMutationResult!!.Width, metrics,
       170.0, 24.0, uint8(224), uint8(184), uint8(72), 8, "recaptured_border_left")
 
     root.ToggleParentUnsupportedFeature()
@@ -2144,7 +2144,7 @@ func RunS15RetentionGate() {
     -parentMutatedState.RetainedBorderFallbackCount
     let genericBorderInvalidations = parentUnsupportedState.RetainedBorderInvalidationCount
     -parentMutatedState.RetainedBorderInvalidationCount
-    S14Require(parentFallbacks == 1uL
+    Require(parentFallbacks == 1uL
         && parentFallbackInvalidations == 1uL
         && genericChildFallbacks == 4uL
         && genericBorderFallbacks == 1uL
@@ -2152,7 +2152,7 @@ func RunS15RetentionGate() {
         && parentUnsupportedState.MutatedSolidLeafFound
         && parentUnsupportedState.FullRedraw
         && !parentUnsupportedState.PartialRedraw,
-      "S15 parent fallback did not continue through generic child compilation")
+      "Retained parent fallback did not continue through generic child compilation")
 
     root.ToggleParentUnsupportedFeature()
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
@@ -2165,7 +2165,7 @@ func RunS15RetentionGate() {
     -parentUnsupportedState.RetainedBorderRebuildCount
     let parentRecapturedBorderInvalidations = parentRecapturedState.RetainedBorderInvalidationCount
     -parentUnsupportedState.RetainedBorderInvalidationCount
-    S14Require(parentRecapturedRebuilds == 1uL
+    Require(parentRecapturedRebuilds == 1uL
         && parentRecapturedLeafRebuilds == 4uL
         && parentRecapturedBorderRebuilds == 1uL
         && parentRecapturedBorderInvalidations == 0uL
@@ -2173,7 +2173,7 @@ func RunS15RetentionGate() {
       == parentUnsupportedState.RetainedParentBoxFallbackCount
         && parentRecapturedState.RetainedParentBoxInvalidationCount
       == parentUnsupportedState.RetainedParentBoxInvalidationCount,
-      "S15 parent fallback did not recapture the own box and children")
+      "Retained parent fallback did not recapture the own box and children")
 
     finalState = mutatedState
     var frame int32 = 0
@@ -2182,17 +2182,17 @@ func RunS15RetentionGate() {
       finalState = WindowReadbackTestFixture.SceneRetention(opened)
       frame = frame + 1
     }
-    S14Require(finalState.AcquiredImageState
+    Require(finalState.AcquiredImageState
         && finalState.PromotedImageCount == 1u
         && finalState.ActiveAppliedSceneVersion > 0uL,
-      "S15 acquired swapchain image scene version was never promoted")
-    S14Require(finalState.PendingImageCount == 1u
+      "Retained acquired swapchain image scene version was never promoted")
+    Require(finalState.PendingImageCount == 1u
         && finalState.ActivePendingSceneVersion == finalState.ActiveSceneVersion
         && finalState.PendingSceneVersion == finalState.ActiveSceneVersion,
-      "S15 acquired image scene version was not left pending after presentation")
-    S14Require(WindowReadbackTestFixture.RequestCount(opened) == 7uL
+      "Retained acquired image scene version was not left pending after presentation")
+    Require(WindowReadbackTestFixture.RequestCount(opened) == 7uL
         && WindowReadbackTestFixture.CompletionCount(opened) == 7uL,
-      "S15 readback lifecycle counts are incorrect")
+      "Retained readback lifecycle counts are incorrect")
 
     var clipFrame VulkanClipMaskRetentionTestSnapshot =
     WindowReadbackTestFixture.ClipMaskRetention(opened)
@@ -2227,11 +2227,11 @@ func RunS15RetentionGate() {
         clipFrame = nextClipFrame
         clipWarmupFrame = clipWarmupFrame + 1
       }
-    S14Require(warmupBoundReady && alternatedClipSlots
+    Require(warmupBoundReady && alternatedClipSlots
         && sawClipSlot0 && sawClipSlot1 && clipFrame.RetentionEligible
         && clipFrame.Retained && clipFrame.RetentionValid,
-      "S15 clip frame slots did not alternate and retain the eligible payload")
-    S14Require(clipFrame.WrittenBytes == 0uL
+      "Retained clip frame slots did not alternate and retain the eligible payload")
+    Require(clipFrame.WrittenBytes == 0uL
         && clipFrame.MappedWrites == 0uL
         && clipFrame.Flushes == 0uL
         && clipFrame.SkippedBytes == clipFrame.ByteCount
@@ -2240,27 +2240,27 @@ func RunS15RetentionGate() {
         && clipFrame.MaskCount == 0
         && clipFrame.ClipChainCount == 1
         && clipFrame.LayerCount == 0,
-      "S15 retained clip frame payload evidence is invalid: slot="
+      "Retained clip frame payload evidence is invalid: slot="
       +clipFrame.SlotIndex.ToString() + " bytes="
       +clipFrame.ByteCount.ToString() + " skipped="
       +clipFrame.SkippedBytes.ToString())
-    S14Require(clipFrame.TotalMappedWrites > 0uL
+    Require(clipFrame.TotalMappedWrites > 0uL
         && clipFrame.TotalFlushes > 0uL
         && clipFrame.TotalMappedWrites <= warmupMappedWrites
         && clipFrame.TotalFlushes <= warmupFlushes
         && clipFrame.TotalWrittenBytes > 0uL
         && clipFrame.TotalSkippedBytes > 0uL
         && clipFrame.TotalRetainedReuse > 0uL,
-      "S15 clip frame cumulative retention evidence is invalid: mapped="
+      "Retained clip frame cumulative retention evidence is invalid: mapped="
       +clipFrame.TotalMappedWrites.ToString() + " flushes="
       +clipFrame.TotalFlushes.ToString() + " warmupMapped="
       +warmupMappedWrites.ToString() + " warmupFlushes="
       +warmupFlushes.ToString())
     opened.RequestClose()
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
-    S14Require(!opened.IsOpen, "S15 retained scene window did not close")
-    S14Require(WindowReadbackTestFixture.ResidentResourceBytes(opened) == 0uL,
-      "S15 retained scene readback resources remain resident after close")
+    Require(!opened.IsOpen, "Retained scene window did not close")
+    Require(WindowReadbackTestFixture.ResidentResourceBytes(opened) == 0uL,
+      "Retained scene readback resources remain resident after close")
   } finally {
     Console.SetError(originalError)
     if let active = window {
@@ -2271,41 +2271,41 @@ func RunS15RetentionGate() {
     }
   }
   let diagnostics = capturedError.ToString()
-  S14ValidateCommonDiagnostics(diagnostics)
-  S14Require(!diagnostics.Contains("\"event\":325")
+  ReadbackValidateCommonDiagnostics(diagnostics)
+  Require(!diagnostics.Contains("\"event\":325")
       && !diagnostics.Contains("\"event\":326"),
-    "S15 retained scene emitted unsupported-scene diagnostics")
-  let damageCount = S14Counter(diagnostics, "damageCount")
-  let dirtyChunkCount = S14Counter(diagnostics, "dirtyChunkCount")
-  let reusedChunkCount = S14Counter(diagnostics, "reusedChunkCount")
-  let drawCount = S14Counter(diagnostics, "drawCount")
-  let recordCount = S14Counter(diagnostics, "recordCount")
-  let clipFrameWrittenBytes = S14Counter(diagnostics, "clipFrameWrittenBytes")
-  let clipFrameSkippedBytes = S14Counter(diagnostics, "clipFrameSkippedBytes")
-  let clipFrameMappedWrites = S14Counter(diagnostics, "clipFrameMappedWrites")
-  let clipFrameFlushes = S14Counter(diagnostics, "clipFrameFlushes")
-  let clipFrameRetainedReuse = S14Counter(diagnostics, "clipFrameRetainedReuse")
-  let clipFrameRetained = S14Counter(diagnostics, "clipFrameRetained")
-  S14Require(clipFrameWrittenBytes > 0uL
+    "Retained scene emitted unsupported-scene diagnostics")
+  let damageCount = DiagnosticCounter(diagnostics, "damageCount")
+  let dirtyChunkCount = DiagnosticCounter(diagnostics, "dirtyChunkCount")
+  let reusedChunkCount = DiagnosticCounter(diagnostics, "reusedChunkCount")
+  let drawCount = DiagnosticCounter(diagnostics, "drawCount")
+  let recordCount = DiagnosticCounter(diagnostics, "recordCount")
+  let clipFrameWrittenBytes = DiagnosticCounter(diagnostics, "clipFrameWrittenBytes")
+  let clipFrameSkippedBytes = DiagnosticCounter(diagnostics, "clipFrameSkippedBytes")
+  let clipFrameMappedWrites = DiagnosticCounter(diagnostics, "clipFrameMappedWrites")
+  let clipFrameFlushes = DiagnosticCounter(diagnostics, "clipFrameFlushes")
+  let clipFrameRetainedReuse = DiagnosticCounter(diagnostics, "clipFrameRetainedReuse")
+  let clipFrameRetained = DiagnosticCounter(diagnostics, "clipFrameRetained")
+  Require(clipFrameWrittenBytes > 0uL
       && clipFrameSkippedBytes > 0uL
       && clipFrameMappedWrites > 0uL
       && clipFrameFlushes > 0uL
       && clipFrameRetainedReuse > 0uL
       && clipFrameRetained == 1uL,
-    "S15 diagnostics did not emit clip payload retention evidence: written="
+    "Retained diagnostics did not emit clip payload retention evidence: written="
     +clipFrameWrittenBytes.ToString() + " skipped="
     +clipFrameSkippedBytes.ToString() + " mapped="
     +clipFrameMappedWrites.ToString() + " flushes="
     +clipFrameFlushes.ToString() + " reuse="
     +clipFrameRetainedReuse.ToString() + " retained="
     +clipFrameRetained.ToString())
-  S14Require(damageCount >= 2uL && drawCount > 0uL && recordCount > 0uL
+  Require(damageCount >= 2uL && drawCount > 0uL && recordCount > 0uL
       && reusedChunkCount > 0uL,
-    "S15 diagnostics did not retain render and damage evidence: damage="
+    "Retained diagnostics did not retain render and damage evidence: damage="
     +damageCount.ToString() + " dirty=" + dirtyChunkCount.ToString()
     +" reused=" + reusedChunkCount.ToString() + " draw=" + drawCount.ToString()
     +" record=" + recordCount.ToString())
-  Console.WriteLine("s15-retention-gate: first_use_full=1 box_mutation=1 partial_damage=1"
+  Console.WriteLine("retention-smoke: first_use_full=1 box_mutation=1 partial_damage=1"
     +" parent_own_box=1"
     +" bounds_old_background=1 topology_add_full=1 topology_remove_full=1"
     +" exact_leaf_solid_rounded=1 exact_color_miss=1 exact_bounds_miss=1"
@@ -2328,10 +2328,10 @@ func RunS15RetentionGate() {
     +clipFrameRetained.ToString() + " close=1")
 }
 
-func RunS09RPixelGate() {
-  S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
+func RunPrimitivePixelSmoke() {
+  Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
     "GOO_VK_DIAGNOSTICS=1 is required")
-  let root = S09RSmokeCell{}
+  let root = PrimitiveSmokeCell{}
   let capturedError = StringWriter()
   let originalError = Console.Error
   var window Window? = nil
@@ -2339,7 +2339,7 @@ func RunS09RPixelGate() {
   var scrolledResult VulkanReadbackResult? = nil
   try {
     let opened = Window{
-      Title: "Goo S09R Vulkan pixel gate",
+      Title: "Goo Primitive Vulkan pixel gate",
       Width: 400,
       Height: 220,
       VSync: false,
@@ -2355,84 +2355,84 @@ func RunS09RPixelGate() {
       frame = frame + 1
     }
     let metrics = WindowReadbackTestFixture.Metrics(opened)
-    S14Require(metrics.LogicalWidth == 400 && metrics.LogicalHeight == 220,
-      "S09R logical window metrics are incorrect")
-    S14Require(S09RSmokeCell.Root.IsMounted
-        && S09RSmokeCell.ScrollViewport.IsMounted
-        && S09RSmokeCell.ScrollLeaf.IsMounted,
-      "S09R pixel gate did not mount required handles")
-    initialResult = S09RReadback(opened, metrics)
+    Require(metrics.LogicalWidth == 400 && metrics.LogicalHeight == 220,
+      "Primitive logical window metrics are incorrect")
+    Require(PrimitiveSmokeCell.Root.IsMounted
+        && PrimitiveSmokeCell.ScrollViewport.IsMounted
+        && PrimitiveSmokeCell.ScrollLeaf.IsMounted,
+      "Primitive pixel gate did not mount required handles")
+    initialResult = PrimitiveReadback(opened, metrics)
     let initialPixels = initialResult!!.Pixels
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       30.0, 25.0, uint8(42), uint8(112), uint8(188), 4, "solid")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       130.0, 25.0, uint8(82), uint8(176), uint8(112), 4, "rounded")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       95.0, 11.0, uint8(12), uint8(20), uint8(32), 4, "rounded_corner")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       215.0, 11.0, uint8(232), uint8(96), uint8(72), 6, "solid_border_top")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       249.0, 25.0, uint8(96), uint8(224), uint8(128), 6, "solid_border_right")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       215.0, 45.0, uint8(72), uint8(144), uint8(232), 6, "solid_border_bottom")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       181.0, 25.0, uint8(224), uint8(184), uint8(72), 6, "solid_border_left")
-    S09RRequireBorderPattern(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequireBorderPattern(initialPixels, initialResult!!.Width, metrics,
       266, 318, "dashed border")
-    S09RRequireBorderPattern(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequireBorderPattern(initialPixels, initialResult!!.Width, metrics,
       336, 388, "dotted border")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       15.0, 80.0, uint8(27), uint8(75), uint8(140), 10, "linear_gradient_start")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       50.0, 80.0, uint8(46), uint8(126), uint8(196), 8, "linear_gradient_mid")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       95.0, 80.0, uint8(83), uint8(163), uint8(203), 8, "linear_gradient_stop")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       125.0, 80.0, uint8(44), uint8(102), uint8(159), 10, "linear_gradient_end")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       200.0, 86.0, uint8(232), uint8(178), uint8(78), 8, "radial_gradient_center")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       145.0, 86.0, uint8(137), uint8(64), uint8(91), 14, "radial_gradient_edge")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       276.0, 64.0, uint8(24), uint8(42), uint8(72), 8, "transform_outer")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       290.0, 78.0, uint8(196), uint8(224), uint8(88), 8, "transform_inner")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       30.0, 148.0, uint8(52), uint8(196), uint8(112), 8, "scroll_leaf")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       105.0, 148.0, uint8(12), uint8(20), uint8(32), 8, "rect_clip")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       120.0, 155.0, uint8(12), uint8(20), uint8(32), 8, "hidden_leaf")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       202.0, 142.0, uint8(36), uint8(76), uint8(208), 8, "back_stack")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       220.0, 165.0, uint8(220), uint8(48), uint8(48), 8, "front_stack")
-    S09RRequireBlended(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequireBlended(initialPixels, initialResult!!.Width, metrics,
       160.0, 158.0, "opacity_leaf")
-    let beforeOffset = S09RSmokeCell.ScrollViewport.ScrollOffset.X
-    S14Require(S09RSmokeCell.ScrollViewport.ScrollTo(24.0, 0.0),
-      "S09R scroll request was rejected")
+    let beforeOffset = PrimitiveSmokeCell.ScrollViewport.ScrollOffset.X
+    Require(PrimitiveSmokeCell.ScrollViewport.ScrollTo(24.0, 0.0),
+      "Primitive scroll request was rejected")
     WindowReadbackTestFixture.ForceRender(opened, 0.05)
-    let afterOffset = S09RSmokeCell.ScrollViewport.ScrollOffset.X
-    S14Require(afterOffset > beforeOffset,
-      "S09R scroll offset did not advance")
-    scrolledResult = S09RReadback(opened, metrics)
+    let afterOffset = PrimitiveSmokeCell.ScrollViewport.ScrollOffset.X
+    Require(afterOffset > beforeOffset,
+      "Primitive scroll offset did not advance")
+    scrolledResult = PrimitiveReadback(opened, metrics)
     let scrolledPixels = scrolledResult!!.Pixels
-    S09RRequirePixelDifferent(scrolledPixels, scrolledResult!!.Width, metrics,
+    PrimitiveRequirePixelDifferent(scrolledPixels, scrolledResult!!.Width, metrics,
       30.0, 148.0, uint8(52), uint8(196), uint8(112), 12, "scroll_leaf")
-    S09RRequirePixelNear(scrolledPixels, scrolledResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(scrolledPixels, scrolledResult!!.Width, metrics,
       12.0, 148.0, uint8(52), uint8(196), uint8(112), 12, "scroll_clip_sliver")
-    S14Require(WindowReadbackTestFixture.RequestCount(opened) == 2uL
+    Require(WindowReadbackTestFixture.RequestCount(opened) == 2uL
         && WindowReadbackTestFixture.CompletionCount(opened) == 2uL,
-      "S09R readback lifecycle counts are incorrect")
+      "Primitive readback lifecycle counts are incorrect")
     let residentBeforeClose = WindowReadbackTestFixture.ResidentResourceBytes(opened)
-    S14Require(residentBeforeClose >= uint64(scrolledResult!!.Pixels.Length),
-      "S09R readback resources are not resident before close")
+    Require(residentBeforeClose >= uint64(scrolledResult!!.Pixels.Length),
+      "Primitive readback resources are not resident before close")
     opened.RequestClose()
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
-    S14Require(!opened.IsOpen, "S09R pixel gate window did not close")
-    S14Require(WindowReadbackTestFixture.ResidentResourceBytes(opened) == 0uL,
-      "S09R readback resources remain resident after close")
+    Require(!opened.IsOpen, "Primitive pixel gate window did not close")
+    Require(WindowReadbackTestFixture.ResidentResourceBytes(opened) == 0uL,
+      "Primitive readback resources remain resident after close")
   } finally {
     Console.SetError(originalError)
     if let active = window {
@@ -2443,18 +2443,18 @@ func RunS09RPixelGate() {
     }
   }
   let diagnostics = capturedError.ToString()
-  S14ValidateCommonDiagnostics(diagnostics)
-  S14Require(!diagnostics.Contains("\"event\":325")
+  ReadbackValidateCommonDiagnostics(diagnostics)
+  Require(!diagnostics.Contains("\"event\":325")
       && !diagnostics.Contains("\"event\":326"),
-    "S09R pixel gate emitted unsupported-scene diagnostics")
-  let drawCount = S14Counter(diagnostics, "drawCount")
-  let planCompileCount = S14Counter(diagnostics, "planCompileCount")
-  let recordCount = S14Counter(diagnostics, "recordCount")
-  let readbackCount = S14Counter(diagnostics, "readbackCount")
-  S14Require(drawCount > 0uL && planCompileCount > 0uL && recordCount > 0uL
+    "Primitive pixel gate emitted unsupported-scene diagnostics")
+  let drawCount = DiagnosticCounter(diagnostics, "drawCount")
+  let planCompileCount = DiagnosticCounter(diagnostics, "planCompileCount")
+  let recordCount = DiagnosticCounter(diagnostics, "recordCount")
+  let readbackCount = DiagnosticCounter(diagnostics, "readbackCount")
+  Require(drawCount > 0uL && planCompileCount > 0uL && recordCount > 0uL
       && readbackCount == 2uL,
-    "S09R pixel gate did not record the expected render and readback work")
-  Console.WriteLine("s09r-pixel-gate: boxes=1 borders=solid,dashed,dotted gradients=2,4"
+    "Primitive pixel gate did not record the expected render and readback work")
+  Console.WriteLine("primitive-pixel-smoke: boxes=1 borders=solid,dashed,dotted gradients=2,4"
     +" transforms=1 clips=1 scroll=1 visibility=1 opacity=1 stacking=1"
     +" drawCount=" + drawCount.ToString()
     +" planCompileCount=" + planCompileCount.ToString()
@@ -2462,14 +2462,14 @@ func RunS09RPixelGate() {
     +" readbackCount=" + readbackCount.ToString() + " close=1")
 }
 
-func RunS14RoundedOverflowGate() {
-  S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
+func RunRoundedOverflowSmoke() {
+  Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
     "GOO_VK_DIAGNOSTICS=1 is required")
   let fontPath = Path.Combine(AppContext.BaseDirectory, "VendSans-VariableFont_wght.ttf")
-  S14Require(File.Exists(fontPath), "S14 text font asset is missing")
-  let font = FontSource("S14GateFont", 400, false, File.ReadAllBytes(fontPath))
+  Require(File.Exists(fontPath), "Readback text font asset is missing")
+  let font = FontSource("ReadbackGateFont", 400, false, File.ReadAllBytes(fontPath))
   font.Register()
-  let root = S14RoundedOverflowCell{}
+  let root = RoundedOverflowCell{}
   let capturedError = StringWriter()
   let originalError = Console.Error
   var window Window? = nil
@@ -2478,7 +2478,7 @@ func RunS14RoundedOverflowGate() {
   var verticalScrolledResult VulkanReadbackResult? = nil
   try {
     let opened = Window{
-      Title: "Goo S14 mixed-axis clip gate",
+      Title: "Goo Readback mixed-axis clip gate",
       Width: 400,
       Height: 190,
       VSync: false,
@@ -2494,101 +2494,101 @@ func RunS14RoundedOverflowGate() {
       frame = frame + 1
     }
     let metrics = WindowReadbackTestFixture.Metrics(opened)
-    S14Require(metrics.LogicalWidth == 400 && metrics.LogicalHeight == 190,
-      "S14 mixed-axis clip logical window metrics are incorrect")
-    S14Require(S14RoundedOverflowCell.Root.IsMounted
-        && S14RoundedOverflowCell.HorizontalViewport.IsMounted
-        && S14RoundedOverflowCell.HorizontalContent.IsMounted
-        && S14RoundedOverflowCell.HorizontalStripe.IsMounted
-        && S14RoundedOverflowCell.VerticalViewport.IsMounted
-        && S14RoundedOverflowCell.VerticalContent.IsMounted
-        && S14RoundedOverflowCell.VerticalStripe.IsMounted
-        && S14RoundedOverflowCell.RoundedHidden.IsMounted
-        && S14RoundedOverflowCell.RoundedText.IsMounted
-        && S14RoundedOverflowCell.RoundedImage.IsMounted
-        && S14RoundedOverflowCell.RoundedScroll.IsMounted
-        && S14RoundedOverflowCell.RoundedScrollContent.IsMounted
-        && S14RoundedOverflowCell.RoundedScrollStripe.IsMounted
-        && S14RoundedOverflowCell.ClipOuter.IsMounted
-        && S14RoundedOverflowCell.ClipInner.IsMounted
-        && S14RoundedOverflowCell.TransformLeaf.IsMounted,
-      "S14 mixed-axis clip gate did not mount required handles")
-    S14Require(S14RoundedOverflowCell.HorizontalContent.BorderBox.Width
-      > S14RoundedOverflowCell.HorizontalViewport.BorderBox.Width
-        && S14RoundedOverflowCell.VerticalContent.BorderBox.Height
-      > S14RoundedOverflowCell.VerticalViewport.BorderBox.Height
-        && S14RoundedOverflowCell.RoundedScrollContent.BorderBox.Width
-      > S14RoundedOverflowCell.RoundedScroll.BorderBox.Width,
-      "S14 mixed-axis clip gate did not retain overflowing child geometry")
-    initialResult = S09RReadback(opened, metrics)
+    Require(metrics.LogicalWidth == 400 && metrics.LogicalHeight == 190,
+      "Readback mixed-axis clip logical window metrics are incorrect")
+    Require(RoundedOverflowCell.Root.IsMounted
+        && RoundedOverflowCell.HorizontalViewport.IsMounted
+        && RoundedOverflowCell.HorizontalContent.IsMounted
+        && RoundedOverflowCell.HorizontalStripe.IsMounted
+        && RoundedOverflowCell.VerticalViewport.IsMounted
+        && RoundedOverflowCell.VerticalContent.IsMounted
+        && RoundedOverflowCell.VerticalStripe.IsMounted
+        && RoundedOverflowCell.RoundedHidden.IsMounted
+        && RoundedOverflowCell.RoundedText.IsMounted
+        && RoundedOverflowCell.RoundedImage.IsMounted
+        && RoundedOverflowCell.RoundedScroll.IsMounted
+        && RoundedOverflowCell.RoundedScrollContent.IsMounted
+        && RoundedOverflowCell.RoundedScrollStripe.IsMounted
+        && RoundedOverflowCell.ClipOuter.IsMounted
+        && RoundedOverflowCell.ClipInner.IsMounted
+        && RoundedOverflowCell.TransformLeaf.IsMounted,
+      "Readback mixed-axis clip gate did not mount required handles")
+    Require(RoundedOverflowCell.HorizontalContent.BorderBox.Width
+      > RoundedOverflowCell.HorizontalViewport.BorderBox.Width
+        && RoundedOverflowCell.VerticalContent.BorderBox.Height
+      > RoundedOverflowCell.VerticalViewport.BorderBox.Height
+        && RoundedOverflowCell.RoundedScrollContent.BorderBox.Width
+      > RoundedOverflowCell.RoundedScroll.BorderBox.Width,
+      "Readback mixed-axis clip gate did not retain overflowing child geometry")
+    initialResult = PrimitiveReadback(opened, metrics)
     let initialPixels = initialResult!!.Pixels
-    let horizontalBounds = S14RoundedOverflowCell.HorizontalViewport.BorderBox
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    let horizontalBounds = RoundedOverflowCell.HorizontalViewport.BorderBox
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       horizontalBounds.X - 1.0, horizontalBounds.Y - 1.0,
       uint8(12), uint8(20), uint8(32), 8, "horizontal_background")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       68.0, 30.0, uint8(52), uint8(196), uint8(112), 8, "horizontal_initial")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       20.0, 70.0, uint8(52), uint8(196), uint8(112), 8, "horizontal_vertical_visible")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       180.0, 30.0, uint8(228), uint8(160), uint8(64), 8, "vertical_initial")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       268.0, 30.0, uint8(228), uint8(160), uint8(64), 8, "vertical_horizontal_visible")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       9.0, 85.0, uint8(12), uint8(20), uint8(32), 8, "rounded_hidden_top_left")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       130.0, 85.0, uint8(12), uint8(20), uint8(32), 8, "rounded_hidden_top_right")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       9.0, 178.0, uint8(12), uint8(20), uint8(32), 8, "rounded_hidden_bottom_left")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       130.0, 178.0, uint8(12), uint8(20), uint8(32), 8, "rounded_hidden_bottom_right")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       24.0, 130.0, uint8(228), uint8(64), uint8(72), 8, "rounded_hidden_center")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       91.0, 141.0, uint8(248), uint8(72), uint8(72), 28, "image_top_left")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       120.0, 166.0, uint8(236), uint8(196), uint8(72), 28, "image_bottom_right")
-    S14RequireTextCoverage(initialPixels, initialResult!!.Width, metrics,
+    RequireTextCoverage(initialPixels, initialResult!!.Width, metrics,
       18, 96, 98, 128, "rounded_text")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       149.0, 85.0, uint8(12), uint8(20), uint8(32), 8, "rounded_scroll_top_left")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       270.0, 85.0, uint8(12), uint8(20), uint8(32), 8, "rounded_scroll_top_right")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       149.0, 178.0, uint8(12), uint8(20), uint8(32), 8, "rounded_scroll_bottom_left")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       270.0, 178.0, uint8(12), uint8(20), uint8(32), 8, "rounded_scroll_bottom_right")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       210.0, 130.0, uint8(52), uint8(196), uint8(112), 8, "rounded_scroll_initial")
-    let outerBounds = S14RoundedOverflowCell.ClipOuter.BorderBox
-    let innerBounds = S14RoundedOverflowCell.ClipInner.BorderBox
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    let outerBounds = RoundedOverflowCell.ClipOuter.BorderBox
+    let innerBounds = RoundedOverflowCell.ClipInner.BorderBox
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       290.0, 86.0, uint8(12), uint8(20), uint8(32), 8, "outer_clip_corner")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       outerBounds.X + outerBounds.Width * 0.30,
       outerBounds.Y + outerBounds.Height * 0.25,
       uint8(32), uint8(96), uint8(144), 12, "inner_clip_outside")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       innerBounds.X + innerBounds.Width * 0.25,
       innerBounds.Y + innerBounds.Height * 0.75,
       uint8(160), uint8(64), uint8(192), 16, "inner_clip_inside")
-    S09RRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(initialPixels, initialResult!!.Width, metrics,
       340.0, 130.0, uint8(236), uint8(196), uint8(72), 24, "transformed_leaf")
-    let horizontalBefore = S14RoundedOverflowCell.HorizontalViewport.ScrollOffset.X
-    let roundedBefore = S14RoundedOverflowCell.RoundedScroll.ScrollOffset.X
-    S14Require(S14RoundedOverflowCell.HorizontalViewport.ScrollTo(80.0, 0.0),
-      "S14 horizontal scroll request was rejected")
-    S14Require(S14RoundedOverflowCell.RoundedScroll.ScrollTo(80.0, 0.0),
-      "S14 rounded scroll request was rejected")
+    let horizontalBefore = RoundedOverflowCell.HorizontalViewport.ScrollOffset.X
+    let roundedBefore = RoundedOverflowCell.RoundedScroll.ScrollOffset.X
+    Require(RoundedOverflowCell.HorizontalViewport.ScrollTo(80.0, 0.0),
+      "Readback horizontal scroll request was rejected")
+    Require(RoundedOverflowCell.RoundedScroll.ScrollTo(80.0, 0.0),
+      "Readback rounded scroll request was rejected")
     WindowReadbackTestFixture.ForceRender(opened, 0.05)
-    let horizontalAfter = S14RoundedOverflowCell.HorizontalViewport.ScrollOffset.X
-    let roundedAfter = S14RoundedOverflowCell.RoundedScroll.ScrollOffset.X
-    S14Require(horizontalAfter > horizontalBefore && roundedAfter > roundedBefore,
-      "S14 horizontal scroll offsets did not advance")
-    axisScrolledResult = S09RReadback(opened, metrics)
+    let horizontalAfter = RoundedOverflowCell.HorizontalViewport.ScrollOffset.X
+    let roundedAfter = RoundedOverflowCell.RoundedScroll.ScrollOffset.X
+    Require(horizontalAfter > horizontalBefore && roundedAfter > roundedBefore,
+      "Readback horizontal scroll offsets did not advance")
+    axisScrolledResult = PrimitiveReadback(opened, metrics)
     let axisScrolledPixels = axisScrolledResult!!.Pixels
-    let horizontalViewportBoundsAfter = S14RoundedOverflowCell.HorizontalViewport.BorderBox
-    let horizontalStripeBoundsAfter = S14RoundedOverflowCell.HorizontalStripe.BorderBox
+    let horizontalViewportBoundsAfter = RoundedOverflowCell.HorizontalViewport.BorderBox
+    let horizontalStripeBoundsAfter = RoundedOverflowCell.HorizontalStripe.BorderBox
     let horizontalStripeSampleX = if horizontalStripeBoundsAfter.X
     > horizontalViewportBoundsAfter.X{
       horizontalStripeBoundsAfter.X + 4.0
@@ -2597,8 +2597,8 @@ func RunS14RoundedOverflowGate() {
     }
     let horizontalStripeSampleY = horizontalViewportBoundsAfter.Y
     +horizontalViewportBoundsAfter.Height * 0.5
-    let roundedStripeBoundsAfter = S14RoundedOverflowCell.RoundedScrollStripe.BorderBox
-    let roundedViewportBoundsAfter = S14RoundedOverflowCell.RoundedScroll.BorderBox
+    let roundedStripeBoundsAfter = RoundedOverflowCell.RoundedScrollStripe.BorderBox
+    let roundedViewportBoundsAfter = RoundedOverflowCell.RoundedScroll.BorderBox
     let roundedStripeSampleX = if roundedStripeBoundsAfter.X
     > roundedViewportBoundsAfter.X{
       roundedStripeBoundsAfter.X + 4.0
@@ -2607,25 +2607,25 @@ func RunS14RoundedOverflowGate() {
     }
     let roundedStripeSampleY = roundedViewportBoundsAfter.Y
     +roundedViewportBoundsAfter.Height * 0.5
-    S09RRequirePixelNear(axisScrolledPixels, axisScrolledResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(axisScrolledPixels, axisScrolledResult!!.Width, metrics,
       horizontalStripeSampleX, horizontalStripeSampleY,
       uint8(72), uint8(128), uint8(224), 8, "horizontal_scrolled")
-    S09RRequirePixelNear(axisScrolledPixels, axisScrolledResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(axisScrolledPixels, axisScrolledResult!!.Width, metrics,
       20.0, 70.0, uint8(52), uint8(196), uint8(112), 8, "horizontal_y_visible_after")
-    S09RRequirePixelNear(axisScrolledPixels, axisScrolledResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(axisScrolledPixels, axisScrolledResult!!.Width, metrics,
       roundedStripeSampleX, roundedStripeSampleY,
       uint8(72), uint8(128), uint8(224), 8, "rounded_scroll_after")
-    let verticalBefore = S14RoundedOverflowCell.VerticalViewport.ScrollOffset.Y
-    S14Require(S14RoundedOverflowCell.VerticalViewport.ScrollTo(0.0, 80.0),
-      "S14 vertical scroll request was rejected")
+    let verticalBefore = RoundedOverflowCell.VerticalViewport.ScrollOffset.Y
+    Require(RoundedOverflowCell.VerticalViewport.ScrollTo(0.0, 80.0),
+      "Readback vertical scroll request was rejected")
     WindowReadbackTestFixture.ForceRender(opened, 0.05)
-    let verticalAfter = S14RoundedOverflowCell.VerticalViewport.ScrollOffset.Y
-    S14Require(verticalAfter > verticalBefore,
-      "S14 vertical scroll offset did not advance")
-    verticalScrolledResult = S09RReadback(opened, metrics)
+    let verticalAfter = RoundedOverflowCell.VerticalViewport.ScrollOffset.Y
+    Require(verticalAfter > verticalBefore,
+      "Readback vertical scroll offset did not advance")
+    verticalScrolledResult = PrimitiveReadback(opened, metrics)
     let verticalScrolledPixels = verticalScrolledResult!!.Pixels
-    let verticalViewportBoundsAfter = S14RoundedOverflowCell.VerticalViewport.BorderBox
-    let verticalStripeBoundsAfter = S14RoundedOverflowCell.VerticalStripe.BorderBox
+    let verticalViewportBoundsAfter = RoundedOverflowCell.VerticalViewport.BorderBox
+    let verticalStripeBoundsAfter = RoundedOverflowCell.VerticalStripe.BorderBox
     let verticalStripeSampleX = verticalViewportBoundsAfter.X
     +verticalViewportBoundsAfter.Width * 0.5
     let verticalStripeSampleY = if verticalStripeBoundsAfter.Y
@@ -2634,22 +2634,22 @@ func RunS14RoundedOverflowGate() {
     } else {
       verticalViewportBoundsAfter.Y + 4.0
     }
-    S09RRequirePixelNear(verticalScrolledPixels, verticalScrolledResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(verticalScrolledPixels, verticalScrolledResult!!.Width, metrics,
       verticalStripeSampleX, verticalStripeSampleY,
       uint8(196), uint8(88), uint8(200), 8, "vertical_scrolled")
-    S09RRequirePixelNear(verticalScrolledPixels, verticalScrolledResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(verticalScrolledPixels, verticalScrolledResult!!.Width, metrics,
       268.0, 30.0, uint8(228), uint8(160), uint8(64), 8, "vertical_x_visible_after")
-    S14Require(WindowReadbackTestFixture.RequestCount(opened) == 3uL
+    Require(WindowReadbackTestFixture.RequestCount(opened) == 3uL
         && WindowReadbackTestFixture.CompletionCount(opened) == 3uL,
-      "S14 rounded overflow readback lifecycle counts are incorrect")
+      "Readback rounded overflow readback lifecycle counts are incorrect")
     let residentBeforeClose = WindowReadbackTestFixture.ResidentResourceBytes(opened)
-    S14Require(residentBeforeClose >= uint64(verticalScrolledResult!!.Pixels.Length),
-      "S14 rounded overflow readback resources are not resident before close")
+    Require(residentBeforeClose >= uint64(verticalScrolledResult!!.Pixels.Length),
+      "Readback rounded overflow readback resources are not resident before close")
     opened.RequestClose()
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
-    S14Require(!opened.IsOpen, "S14 rounded overflow gate window did not close")
-    S14Require(WindowReadbackTestFixture.ResidentResourceBytes(opened) == 0uL,
-      "S14 rounded overflow readback resources remain resident after close")
+    Require(!opened.IsOpen, "Readback rounded overflow gate window did not close")
+    Require(WindowReadbackTestFixture.ResidentResourceBytes(opened) == 0uL,
+      "Readback rounded overflow readback resources remain resident after close")
   } finally {
     Console.SetError(originalError)
     if let active = window {
@@ -2661,18 +2661,18 @@ func RunS14RoundedOverflowGate() {
     font.Dispose()
   }
   let diagnostics = capturedError.ToString()
-  S14ValidateCommonDiagnostics(diagnostics)
-  S14Require(!diagnostics.Contains("\"event\":325")
+  ReadbackValidateCommonDiagnostics(diagnostics)
+  Require(!diagnostics.Contains("\"event\":325")
       && !diagnostics.Contains("\"event\":326"),
-    "S14 mixed-axis clip gate emitted unsupported-scene diagnostics")
-  let drawCount = S14Counter(diagnostics, "drawCount")
-  let planCompileCount = S14Counter(diagnostics, "planCompileCount")
-  let recordCount = S14Counter(diagnostics, "recordCount")
-  let readbackCount = S14Counter(diagnostics, "readbackCount")
-  S14Require(drawCount > 0uL && planCompileCount > 0uL && recordCount > 0uL
+    "Readback mixed-axis clip gate emitted unsupported-scene diagnostics")
+  let drawCount = DiagnosticCounter(diagnostics, "drawCount")
+  let planCompileCount = DiagnosticCounter(diagnostics, "planCompileCount")
+  let recordCount = DiagnosticCounter(diagnostics, "recordCount")
+  let readbackCount = DiagnosticCounter(diagnostics, "readbackCount")
+  Require(drawCount > 0uL && planCompileCount > 0uL && recordCount > 0uL
       && readbackCount == 3uL,
-    "S14 mixed-axis clip gate did not record expected render and readback work")
-  Console.WriteLine("s14-mixed-axis-clip-gate: horizontal=1 vertical=1 nested_clip=1"
+    "Readback mixed-axis clip gate did not record expected render and readback work")
+  Console.WriteLine("readback-mixed-axis-clip-gate: horizontal=1 vertical=1 nested_clip=1"
     +" transform=1 text=1 image=1 rounded_hidden=1 rounded_scroll=1 corners=8"
     +" readbackCount=" + readbackCount.ToString()
     +" drawCount=" + drawCount.ToString()
@@ -2680,18 +2680,18 @@ func RunS14RoundedOverflowGate() {
     +" recordCount=" + recordCount.ToString() + " close=1")
 }
 
-func RunS14EffectsGate() {
-  S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
+func RunEffectsSmoke() {
+  Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
     "GOO_VK_DIAGNOSTICS=1 is required")
   let fontPath = Path.Combine(AppContext.BaseDirectory, "VendSans-VariableFont_wght.ttf")
   let colorFontPath = Path.Combine(AppContext.BaseDirectory, "HarfBuzz-chromacheck-colr.ttf")
-  S14Require(File.Exists(fontPath), "S14 effects text font asset is missing")
-  S14Require(File.Exists(colorFontPath), "S14 effects color font asset is missing")
-  let font = FontSource("S14GateFont", 400, false, File.ReadAllBytes(fontPath))
-  let colorFont = FontSource("S14Color", 400, false, File.ReadAllBytes(colorFontPath))
+  Require(File.Exists(fontPath), "Readback effects text font asset is missing")
+  Require(File.Exists(colorFontPath), "Readback effects color font asset is missing")
+  let font = FontSource("ReadbackGateFont", 400, false, File.ReadAllBytes(fontPath))
+  let colorFont = FontSource("ReadbackColor", 400, false, File.ReadAllBytes(colorFontPath))
   font.Register()
   colorFont.Register()
-  let root = S14EffectsCell{}
+  let root = EffectsCell{}
   let capturedError = StringWriter()
   let originalError = Console.Error
   var window Window? = nil
@@ -2699,7 +2699,7 @@ func RunS14EffectsGate() {
   var secondResult VulkanReadbackResult? = nil
   try {
     let opened = Window{
-      Title: "Goo S14 Vulkan effects gate",
+      Title: "Goo Readback Vulkan effects gate",
       Width: 440,
       Height: 270,
       VSync: false,
@@ -2715,93 +2715,93 @@ func RunS14EffectsGate() {
       frame = frame + 1
     }
     let metrics = WindowReadbackTestFixture.Metrics(opened)
-    S14Require(metrics.LogicalWidth == 440 && metrics.LogicalHeight == 270,
-      "S14 effects logical window metrics are incorrect")
-    S14Require(S14EffectsCell.Root.IsMounted
-        && S14EffectsCell.ShadowContainer.IsMounted
-        && S14EffectsCell.ShadowButton.IsMounted
-        && S14EffectsCell.ShapeShadow.IsMounted
-        && S14EffectsCell.GroupOuter.IsMounted
-        && S14EffectsCell.GroupInner.IsMounted
-        && S14EffectsCell.ClipViewport.IsMounted
-        && S14EffectsCell.ClipLeaf.IsMounted
-        && S14EffectsCell.ColorGlyph.IsMounted
-        && S14EffectsCell.BlendMultiply.IsMounted
-        && S14EffectsCell.BlendScreen.IsMounted
-        && S14EffectsCell.BlendOverlay.IsMounted
-        && S14EffectsCell.BlendDifference.IsMounted,
-      "S14 effects gate did not mount required handles")
-    S14Require(S14EffectsCell.ShadowContainer.BorderBox.Width == 112.0
-        && S14EffectsCell.ShadowButton.BorderBox.Height == 88.0
-        && S14EffectsCell.GroupOuter.BorderBox.Width == 154.0
-        && S14EffectsCell.ClipViewport.BorderBox.Height == 112.0,
-      "S14 effects gate retained incorrect geometry")
-    firstResult = S09RReadback(opened, metrics)
+    Require(metrics.LogicalWidth == 440 && metrics.LogicalHeight == 270,
+      "Readback effects logical window metrics are incorrect")
+    Require(EffectsCell.Root.IsMounted
+        && EffectsCell.ShadowContainer.IsMounted
+        && EffectsCell.ShadowButton.IsMounted
+        && EffectsCell.ShapeShadow.IsMounted
+        && EffectsCell.GroupOuter.IsMounted
+        && EffectsCell.GroupInner.IsMounted
+        && EffectsCell.ClipViewport.IsMounted
+        && EffectsCell.ClipLeaf.IsMounted
+        && EffectsCell.ColorGlyph.IsMounted
+        && EffectsCell.BlendMultiply.IsMounted
+        && EffectsCell.BlendScreen.IsMounted
+        && EffectsCell.BlendOverlay.IsMounted
+        && EffectsCell.BlendDifference.IsMounted,
+      "Readback effects gate did not mount required handles")
+    Require(EffectsCell.ShadowContainer.BorderBox.Width == 112.0
+        && EffectsCell.ShadowButton.BorderBox.Height == 88.0
+        && EffectsCell.GroupOuter.BorderBox.Width == 154.0
+        && EffectsCell.ClipViewport.BorderBox.Height == 112.0,
+      "Readback effects gate retained incorrect geometry")
+    firstResult = PrimitiveReadback(opened, metrics)
     let firstPixels = firstResult!!.Pixels
-    S09RRequirePixelNear(firstPixels, firstResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(firstPixels, firstResult!!.Width, metrics,
       70.0, 60.0, uint8(44), uint8(92), uint8(132), 20, "container_fill")
-    S09RRequirePixelNear(firstPixels, firstResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(firstPixels, firstResult!!.Width, metrics,
       200.0, 60.0, uint8(36), uint8(116), uint8(84), 20, "button_fill")
-    S09RRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
+    PrimitiveRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
       130.0, 76.0, uint8(12), uint8(20), uint8(32), 18, "container_outer_shadow")
-    S09RRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
+    PrimitiveRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
       200.0, 108.0, uint8(12), uint8(20), uint8(32), 2, "button_outer_shadow")
-    S09RRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
+    PrimitiveRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
       18.0, 60.0, uint8(44), uint8(92), uint8(132), 16, "container_inset_shadow")
-    S09RRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
+    PrimitiveRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
       128.0, 119.0, uint8(12), uint8(20), uint8(32), 12, "shape_outer_shadow")
-    S09RRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
+    PrimitiveRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
       70.0, 108.0, uint8(72), uint8(128), uint8(224), 12, "shape_inset_shadow")
-    S09RRequirePixelNear(firstPixels, firstResult!!.Width, metrics,
+    PrimitiveRequirePixelNear(firstPixels, firstResult!!.Width, metrics,
       70.0, 9.0, uint8(232), uint8(196), uint8(72), 48, "container_outline")
-    let groupPixel = S09RLogicalPixel(firstPixels, firstResult!!.Width, metrics, 286.0, 42.0)
-    S14Require(groupPixel[0] > uint8(70) && groupPixel[2] < uint8(170),
-      "S14 group opacity outer paint is missing: " + S09RPixelText(groupPixel))
-    let groupOverlap = S09RLogicalPixel(firstPixels, firstResult!!.Width, metrics, 330.0, 60.0)
-    S14Require(groupOverlap[2] > groupOverlap[0]
+    let groupPixel = PrimitiveLogicalPixel(firstPixels, firstResult!!.Width, metrics, 286.0, 42.0)
+    Require(groupPixel[0] > uint8(70) && groupPixel[2] < uint8(170),
+      "Readback group opacity outer paint is missing: " + PrimitivePixelText(groupPixel))
+    let groupOverlap = PrimitiveLogicalPixel(firstPixels, firstResult!!.Width, metrics, 330.0, 60.0)
+    Require(groupOverlap[2] > groupOverlap[0]
         && groupOverlap[2] > uint8(48) && groupOverlap[0] > uint8(12),
-      "S14 nested group opacity overlap is incorrect: " + S09RPixelText(groupOverlap))
-    S09RRequirePixelNear(firstPixels, firstResult!!.Width, metrics,
+      "Readback nested group opacity overlap is incorrect: " + PrimitivePixelText(groupOverlap))
+    PrimitiveRequirePixelNear(firstPixels, firstResult!!.Width, metrics,
       15.0, 133.0, uint8(12), uint8(20), uint8(32), 20, "clip_corner")
-    let clipPixel = S09RLogicalPixel(firstPixels, firstResult!!.Width, metrics, 72.0, 188.0)
-    S14Require(clipPixel[0] > uint8(120) && clipPixel[1] > uint8(100)
+    let clipPixel = PrimitiveLogicalPixel(firstPixels, firstResult!!.Width, metrics, 72.0, 188.0)
+    Require(clipPixel[0] > uint8(120) && clipPixel[1] > uint8(100)
         && clipPixel[2] < uint8(140),
-      "S14 transformed clip leaf is missing: " + S09RPixelText(clipPixel))
-    S14RequireColorCoverage(firstPixels, firstResult!!.Width, metrics,
+      "Readback transformed clip leaf is missing: " + PrimitivePixelText(clipPixel))
+    RequireColorCoverage(firstPixels, firstResult!!.Width, metrics,
       178, 144, 274, 230, "colr")
-    S09RRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
+    PrimitiveRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
       310.0, 110.0, uint8(13), uint8(20), uint8(32), 2, "blurred_text_shadow")
-    S09RRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
+    PrimitiveRequirePixelDifferent(firstPixels, firstResult!!.Width, metrics,
       270.0, 123.0, uint8(12), uint8(20), uint8(32), 8, "text_box_shadow")
-    let multiplyPixel = S09RLogicalPixel(firstPixels, firstResult!!.Width, metrics, 44.0, 254.0)
-    let screenPixel = S09RLogicalPixel(firstPixels, firstResult!!.Width, metrics, 150.0, 254.0)
-    let overlayPixel = S09RLogicalPixel(firstPixels, firstResult!!.Width, metrics, 256.0, 254.0)
-    let differencePixel = S09RLogicalPixel(firstPixels, firstResult!!.Width, metrics, 362.0, 254.0)
-    S14Require(multiplyPixel[0] > uint8(40)
+    let multiplyPixel = PrimitiveLogicalPixel(firstPixels, firstResult!!.Width, metrics, 44.0, 254.0)
+    let screenPixel = PrimitiveLogicalPixel(firstPixels, firstResult!!.Width, metrics, 150.0, 254.0)
+    let overlayPixel = PrimitiveLogicalPixel(firstPixels, firstResult!!.Width, metrics, 256.0, 254.0)
+    let differencePixel = PrimitiveLogicalPixel(firstPixels, firstResult!!.Width, metrics, 362.0, 254.0)
+    Require(multiplyPixel[0] > uint8(40)
         && multiplyPixel[2] > uint8(40)
         && Math.Abs(int32(multiplyPixel[0]) - int32(multiplyPixel[2])) <= 8
         && screenPixel[0] > multiplyPixel[0]
         && overlayPixel[2] > uint8(40)
         && differencePixel[0] > uint8(70),
-      "S14 blend overlap matrix is incorrect: multiply=" + S09RPixelText(multiplyPixel)
-      +" screen=" + S09RPixelText(screenPixel)
-      +" overlay=" + S09RPixelText(overlayPixel)
-      +" difference=" + S09RPixelText(differencePixel))
+      "Readback blend overlap matrix is incorrect: multiply=" + PrimitivePixelText(multiplyPixel)
+      +" screen=" + PrimitivePixelText(screenPixel)
+      +" overlay=" + PrimitivePixelText(overlayPixel)
+      +" difference=" + PrimitivePixelText(differencePixel))
     WindowReadbackTestFixture.ForceRender(opened, 0.05)
-    secondResult = S09RReadback(opened, metrics)
-    S14Require(secondResult!!.Pixels.Length == firstResult!!.Pixels.Length,
-      "S14 effects repeated readback extent changed")
-    S14Require(WindowReadbackTestFixture.RequestCount(opened) == 2uL
+    secondResult = PrimitiveReadback(opened, metrics)
+    Require(secondResult!!.Pixels.Length == firstResult!!.Pixels.Length,
+      "Readback effects repeated readback extent changed")
+    Require(WindowReadbackTestFixture.RequestCount(opened) == 2uL
         && WindowReadbackTestFixture.CompletionCount(opened) == 2uL,
-      "S14 effects readback lifecycle counts are incorrect")
+      "Readback effects readback lifecycle counts are incorrect")
     let residentBeforeClose = WindowReadbackTestFixture.ResidentResourceBytes(opened)
-    S14Require(residentBeforeClose >= uint64(secondResult!!.Pixels.Length),
-      "S14 effects readback resources are not resident before close")
+    Require(residentBeforeClose >= uint64(secondResult!!.Pixels.Length),
+      "Readback effects readback resources are not resident before close")
     opened.RequestClose()
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
-    S14Require(!opened.IsOpen, "S14 effects gate window did not close")
-    S14Require(WindowReadbackTestFixture.ResidentResourceBytes(opened) == 0uL,
-      "S14 effects resources remain resident after close")
+    Require(!opened.IsOpen, "Readback effects gate window did not close")
+    Require(WindowReadbackTestFixture.ResidentResourceBytes(opened) == 0uL,
+      "Readback effects resources remain resident after close")
   } finally {
     Console.SetError(originalError)
     if let active = window {
@@ -2814,32 +2814,32 @@ func RunS14EffectsGate() {
     font.Dispose()
   }
   let diagnostics = capturedError.ToString()
-  S14ValidateCommonDiagnostics(diagnostics)
-  S14Require(!diagnostics.Contains("\"event\":325")
+  ReadbackValidateCommonDiagnostics(diagnostics)
+  Require(!diagnostics.Contains("\"event\":325")
       && !diagnostics.Contains("\"event\":326"),
-    "S14 effects gate emitted unsupported-scene diagnostics")
-  let drawCount = S14Counter(diagnostics, "drawCount")
-  let planCompileCount = S14Counter(diagnostics, "planCompileCount")
-  let recordCount = S14Counter(diagnostics, "recordCount")
-  let readbackCount = S14Counter(diagnostics, "readbackCount")
-  let layerPassCount = S14Counter(diagnostics, "layerPoolPassCount")
-  let layerCompositeCount = S14Counter(diagnostics, "layerPoolCompositeCount")
-  let layerCreateCount = S14Counter(diagnostics, "layerPoolCreateCount")
-  let layerFailureCount = S14Counter(diagnostics, "layerPoolFailureCount")
-  let layerPressureFailureCount = S14Counter(diagnostics, "layerPoolPressureFailureCount")
-  let layerResidentBytes = S14Counter(diagnostics, "layerPoolResidentBytes")
-  let layerTargetCount = S14Counter(diagnostics, "layerPoolTargetCount")
-  let layerLeasedCount = S14Counter(diagnostics, "layerPoolLeasedCount")
-  S14Require(drawCount > 0uL && planCompileCount > 0uL && recordCount > 0uL
+    "Readback effects gate emitted unsupported-scene diagnostics")
+  let drawCount = DiagnosticCounter(diagnostics, "drawCount")
+  let planCompileCount = DiagnosticCounter(diagnostics, "planCompileCount")
+  let recordCount = DiagnosticCounter(diagnostics, "recordCount")
+  let readbackCount = DiagnosticCounter(diagnostics, "readbackCount")
+  let layerPassCount = DiagnosticCounter(diagnostics, "layerPoolPassCount")
+  let layerCompositeCount = DiagnosticCounter(diagnostics, "layerPoolCompositeCount")
+  let layerCreateCount = DiagnosticCounter(diagnostics, "layerPoolCreateCount")
+  let layerFailureCount = DiagnosticCounter(diagnostics, "layerPoolFailureCount")
+  let layerPressureFailureCount = DiagnosticCounter(diagnostics, "layerPoolPressureFailureCount")
+  let layerResidentBytes = DiagnosticCounter(diagnostics, "layerPoolResidentBytes")
+  let layerTargetCount = DiagnosticCounter(diagnostics, "layerPoolTargetCount")
+  let layerLeasedCount = DiagnosticCounter(diagnostics, "layerPoolLeasedCount")
+  Require(drawCount > 0uL && planCompileCount > 0uL && recordCount > 0uL
       && readbackCount == 2uL,
-    "S14 effects gate did not record expected render and readback work")
-  S14Require(layerPassCount > 0uL && layerCompositeCount > 0uL && layerCreateCount > 0uL,
-    "S14 effects gate did not record layer pass lifecycle")
-  S14Require(layerFailureCount == 0uL && layerPressureFailureCount == 0uL,
-    "S14 effects gate recorded a layer pool failure")
-  S14Require(layerResidentBytes == 0uL && layerTargetCount == 0uL && layerLeasedCount == 0uL,
-    "S14 effects gate left layer pool resources resident after close")
-  Console.WriteLine("s14-effects-gate: shadows=container,button,text,shape,outer,inset,stacked=1"
+    "Readback effects gate did not record expected render and readback work")
+  Require(layerPassCount > 0uL && layerCompositeCount > 0uL && layerCreateCount > 0uL,
+    "Readback effects gate did not record layer pass lifecycle")
+  Require(layerFailureCount == 0uL && layerPressureFailureCount == 0uL,
+    "Readback effects gate recorded a layer pool failure")
+  Require(layerResidentBytes == 0uL && layerTargetCount == 0uL && layerLeasedCount == 0uL,
+    "Readback effects gate left layer pool resources resident after close")
+  Console.WriteLine("readback-effects-gate: shadows=container,button,text,shape,outer,inset,stacked=1"
     +" text_shadow_blur=plain,colr=1 outline=1 group_opacity=nested=1"
     +" blend=multiply,screen,overlay,difference=1"
     +" clip=rounded,arbitrary transform=1 colr=1 readbackCount=" + readbackCount.ToString()
@@ -2851,9 +2851,9 @@ func RunS14EffectsGate() {
     +" recordCount=" + recordCount.ToString() + " close=1")
 }
 
-func S17ValidateVisual(result VulkanReadbackResult, metrics WindowMetrics) {
-  let first = S17ProtectedTextCell.Entry.BorderBox
-  let second = S17ProtectedTextCell.Control.BorderBox
+func InputValidateVisual(result VulkanReadbackResult, metrics WindowMetrics) {
+  let first = ProtectedTextCell.Entry.BorderBox
+  let second = ProtectedTextCell.Control.BorderBox
   let firstX = int32(Math.Round(first.X * metrics.DisplayScaleX))
   let firstY = int32(Math.Round(first.Y * metrics.DisplayScaleY))
   let secondX = int32(Math.Round(second.X * metrics.DisplayScaleX))
@@ -2872,7 +2872,7 @@ func S17ValidateVisual(result VulkanReadbackResult, metrics WindowMetrics) {
       while channel < 4 {
         if Math.Abs(int32(result.Pixels[firstIndex + channel])
           -int32(result.Pixels[secondIndex + channel])) > 1 {
-            throw InvalidOperationException("S17 protected Vulkan presentation differs from its mask")
+            throw InvalidOperationException("Input protected Vulkan presentation differs from its mask")
           }
         channel++
       }
@@ -2885,17 +2885,17 @@ func S17ValidateVisual(result VulkanReadbackResult, metrics WindowMetrics) {
     }
     y++
   }
-  S14Require(coverage > 20, "S17 protected Vulkan presentation has no glyph coverage")
+  Require(coverage > 20, "Input protected Vulkan presentation has no glyph coverage")
 }
 
-func S17HasAction(node AccessibilityNode, expected AccessibilityAction) bool {
+func InputHasAction(node AccessibilityNode, expected AccessibilityAction) bool {
   for action in node.Actions {
     if action == expected { return true }
   }
   return false
 }
 
-func S17Advance(window Window, duration float64) {
+func InputAdvance(window Window, duration float64) {
   var elapsed = 0.0
   while elapsed < duration {
     let step = Math.Min(1.0 / 30.0, duration - elapsed)
@@ -2904,11 +2904,11 @@ func S17Advance(window Window, duration float64) {
   }
 }
 
-func RunS17CoreBehaviorGate() {
-  S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
+func RunInputAccessibilitySmoke() {
+  Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
     "GOO_VK_DIAGNOSTICS=1 is required")
-  let cell = S17CoreBehaviorCell{}
-  let adapter = S17AccessibilityAdapter{}
+  let cell = InputAccessibilityCell{}
+  let adapter = RecordingAccessibilityAdapter{}
   let window = Window{ Root: cell, Width: 320, Height: 176, VSync: false }
   let capturedError = StringWriter()
   let originalError = Console.Error
@@ -2918,143 +2918,143 @@ func RunS17CoreBehaviorGate() {
     window.Open()
     WindowReadbackTestFixture.ForceRender(window, 0.0)
     WindowReadbackTestFixture.ForceRender(window, 0.0166666666666667)
-    S14Require(S17CoreBehaviorCell.Target.IsMounted
-        && S17CoreBehaviorCell.ScrollViewport.IsMounted
-        && S17CoreBehaviorCell.ScrollLeaf.IsMounted
-        && S17CoreBehaviorCell.MotionBox.IsMounted,
-      "S17 core behavior handles did not mount")
+    Require(InputAccessibilityCell.Target.IsMounted
+        && InputAccessibilityCell.ScrollViewport.IsMounted
+        && InputAccessibilityCell.ScrollLeaf.IsMounted
+        && InputAccessibilityCell.MotionBox.IsMounted,
+      "Input core behavior handles did not mount")
     let metrics = WindowReadbackTestFixture.Metrics(window)
-    let target = S17CoreBehaviorCell.Target.BorderBox
+    let target = InputAccessibilityCell.Target.BorderBox
     let targetX = target.X + target.Width * 0.5
     let targetY = target.Y + target.Height * 0.5
     let borderX = target.X + 1.0
-    let initial = S09RReadback(window, metrics)
-    S09RRequirePixelNear(initial.Pixels, initial.Width, metrics, targetX, targetY,
-      uint8(208), uint8(48), uint8(64), 3, "S17 base state")
+    let initial = PrimitiveReadback(window, metrics)
+    PrimitiveRequirePixelNear(initial.Pixels, initial.Width, metrics, targetX, targetY,
+      uint8(208), uint8(48), uint8(64), 3, "Input base state")
     guard let initialSemantic = adapter.Tree?.Root else {
-      throw InvalidOperationException("S17 core semantic node is missing")
+      throw InvalidOperationException("Input core semantic node is missing")
     }
-    S14Require(initialSemantic.Role == AccessibilityRole.Button
-        && initialSemantic.Name == "S17 action"
+    Require(initialSemantic.Role == AccessibilityRole.Button
+        && initialSemantic.Name == "Input action"
         && !initialSemantic.Disabled
         && !initialSemantic.Focused
-        && S17HasAction(initialSemantic, AccessibilityAction.Focus)
-        && S17HasAction(initialSemantic, AccessibilityAction.Activate),
-      "S17 core semantic contract is incorrect")
+        && InputHasAction(initialSemantic, AccessibilityAction.Focus)
+        && InputHasAction(initialSemantic, AccessibilityAction.Activate),
+      "Input core semantic contract is incorrect")
 
-    WindowReadbackTestFixture.S17QueuePointerMove(window, targetX, targetY)
+    WindowReadbackTestFixture.InputQueuePointerMove(window, targetX, targetY)
     WindowReadbackTestFixture.ForceRender(window, 0.0)
-    S17Advance(window, 0.05)
-    let hoverMid = S09RReadback(window, metrics)
-    let hoverMidPixel = S09RLogicalPixel(hoverMid.Pixels, hoverMid.Width, metrics,
+    InputAdvance(window, 0.05)
+    let hoverMid = PrimitiveReadback(window, metrics)
+    let hoverMidPixel = PrimitiveLogicalPixel(hoverMid.Pixels, hoverMid.Width, metrics,
       targetX, targetY)
-    S14Require(!S09RNear(hoverMidPixel, uint8(208), uint8(48), uint8(64), 3)
-        && !S09RNear(hoverMidPixel, uint8(48), uint8(208), uint8(96), 3),
-      "S17 hover transition did not produce an intermediate frame: "
-      +S09RPixelText(hoverMidPixel))
-    S17Advance(window, 0.06)
-    let hovered = S09RReadback(window, metrics)
-    S09RRequirePixelNear(hovered.Pixels, hovered.Width, metrics, targetX, targetY,
-      uint8(48), uint8(208), uint8(96), 3, "S17 hover state")
-    S14Require(cell.PointerEnterCount == 1 && cell.PointerLeaveCount == 0,
-      "S17 pointer hover lifecycle is incorrect")
+    Require(!PrimitiveNear(hoverMidPixel, uint8(208), uint8(48), uint8(64), 3)
+        && !PrimitiveNear(hoverMidPixel, uint8(48), uint8(208), uint8(96), 3),
+      "Input hover transition did not produce an intermediate frame: "
+      +PrimitivePixelText(hoverMidPixel))
+    InputAdvance(window, 0.06)
+    let hovered = PrimitiveReadback(window, metrics)
+    PrimitiveRequirePixelNear(hovered.Pixels, hovered.Width, metrics, targetX, targetY,
+      uint8(48), uint8(208), uint8(96), 3, "Input hover state")
+    Require(cell.PointerEnterCount == 1 && cell.PointerLeaveCount == 0,
+      "Input pointer hover lifecycle is incorrect")
 
-    WindowReadbackTestFixture.S17QueuePointerPress(window, targetX, targetY)
+    WindowReadbackTestFixture.InputQueuePointerPress(window, targetX, targetY)
     WindowReadbackTestFixture.ForceRender(window, 0.0)
-    S17Advance(window, 0.11)
-    let active = S09RReadback(window, metrics)
-    S09RRequirePixelNear(active.Pixels, active.Width, metrics, targetX, targetY,
-      uint8(64), uint8(96), uint8(232), 3, "S17 active state")
-    S09RRequirePixelNear(active.Pixels, active.Width, metrics, borderX, targetY,
-      uint8(248), uint8(196), uint8(48), 3, "S17 focus state")
-    S14Require(cell.PointerDownCount == 1 && cell.FocusCount == 1,
-      "S17 pointer press or focus callback is incorrect")
+    InputAdvance(window, 0.11)
+    let active = PrimitiveReadback(window, metrics)
+    PrimitiveRequirePixelNear(active.Pixels, active.Width, metrics, targetX, targetY,
+      uint8(64), uint8(96), uint8(232), 3, "Input active state")
+    PrimitiveRequirePixelNear(active.Pixels, active.Width, metrics, borderX, targetY,
+      uint8(248), uint8(196), uint8(48), 3, "Input focus state")
+    Require(cell.PointerDownCount == 1 && cell.FocusCount == 1,
+      "Input pointer press or focus callback is incorrect")
     guard let focusedSemantic = adapter.Tree?.Root else {
-      throw InvalidOperationException("S17 focused semantic node is missing")
+      throw InvalidOperationException("Input focused semantic node is missing")
     }
-    S14Require(focusedSemantic.Focused, "S17 semantic focus state is incorrect")
+    Require(focusedSemantic.Focused, "Input semantic focus state is incorrect")
 
-    WindowReadbackTestFixture.S17QueuePointerRelease(window, targetX, targetY)
+    WindowReadbackTestFixture.InputQueuePointerRelease(window, targetX, targetY)
     WindowReadbackTestFixture.ForceRender(window, 0.0)
-    S17Advance(window, 0.11)
-    let released = S09RReadback(window, metrics)
-    S09RRequirePixelNear(released.Pixels, released.Width, metrics, targetX, targetY,
-      uint8(48), uint8(208), uint8(96), 3, "S17 released hover state")
-    S14Require(cell.PointerUpCount == 1 && cell.ClickCount == 1,
-      "S17 pointer release or activation callback is incorrect")
+    InputAdvance(window, 0.11)
+    let released = PrimitiveReadback(window, metrics)
+    PrimitiveRequirePixelNear(released.Pixels, released.Width, metrics, targetX, targetY,
+      uint8(48), uint8(208), uint8(96), 3, "Input released hover state")
+    Require(cell.PointerUpCount == 1 && cell.ClickCount == 1,
+      "Input pointer release or activation callback is incorrect")
 
-    WindowReadbackTestFixture.S17QueueKeyPress(window, Key.Enter)
+    WindowReadbackTestFixture.InputQueueKeyPress(window, Key.Enter)
     WindowReadbackTestFixture.ForceRender(window, 0.0)
-    S17Advance(window, 0.11)
-    let keyboardActive = S09RReadback(window, metrics)
-    S09RRequirePixelNear(keyboardActive.Pixels, keyboardActive.Width, metrics,
+    InputAdvance(window, 0.11)
+    let keyboardActive = PrimitiveReadback(window, metrics)
+    PrimitiveRequirePixelNear(keyboardActive.Pixels, keyboardActive.Width, metrics,
       targetX, targetY, uint8(64), uint8(96), uint8(232), 3,
-      "S17 keyboard active state")
-    S14Require(cell.KeyDownCount == 1 && cell.ClickCount == 2,
-      "S17 keyboard press or activation callback is incorrect")
-    WindowReadbackTestFixture.S17QueueKeyRelease(window, Key.Enter)
+      "Input keyboard active state")
+    Require(cell.KeyDownCount == 1 && cell.ClickCount == 2,
+      "Input keyboard press or activation callback is incorrect")
+    WindowReadbackTestFixture.InputQueueKeyRelease(window, Key.Enter)
     WindowReadbackTestFixture.ForceRender(window, 0.0)
-    S17Advance(window, 0.11)
-    S14Require(cell.KeyUpCount == 1, "S17 keyboard release callback is incorrect")
+    InputAdvance(window, 0.11)
+    Require(cell.KeyUpCount == 1, "Input keyboard release callback is incorrect")
 
     guard let actionSemantic = adapter.Tree?.Root else {
-      throw InvalidOperationException("S17 action semantic node is missing")
+      throw InvalidOperationException("Input action semantic node is missing")
     }
-    S14Require(window.PerformAccessibilityAction(actionSemantic.Id,
+    Require(window.PerformAccessibilityAction(actionSemantic.Id,
       AccessibilityActionRequest(AccessibilityAction.Activate))
         && cell.ClickCount == 3,
-      "S17 neutral activation did not route through public behavior")
+      "Input neutral activation did not route through public behavior")
     WindowReadbackTestFixture.ForceRender(window, 0.0)
 
-    WindowReadbackTestFixture.S17QueuePointerMove(window, 300.0, 168.0)
+    WindowReadbackTestFixture.InputQueuePointerMove(window, 300.0, 168.0)
     WindowReadbackTestFixture.ForceRender(window, 0.0)
-    S17Advance(window, 0.11)
-    let focused = S09RReadback(window, metrics)
-    S09RRequirePixelNear(focused.Pixels, focused.Width, metrics, targetX, targetY,
-      uint8(208), uint8(48), uint8(64), 3, "S17 focus-only background")
-    S09RRequirePixelNear(focused.Pixels, focused.Width, metrics, borderX, targetY,
-      uint8(248), uint8(196), uint8(48), 3, "S17 retained focus state")
-    S14Require(cell.PointerLeaveCount == 1, "S17 pointer leave callback is incorrect")
+    InputAdvance(window, 0.11)
+    let focused = PrimitiveReadback(window, metrics)
+    PrimitiveRequirePixelNear(focused.Pixels, focused.Width, metrics, targetX, targetY,
+      uint8(208), uint8(48), uint8(64), 3, "Input focus-only background")
+    PrimitiveRequirePixelNear(focused.Pixels, focused.Width, metrics, borderX, targetY,
+      uint8(248), uint8(196), uint8(48), 3, "Input retained focus state")
+    Require(cell.PointerLeaveCount == 1, "Input pointer leave callback is incorrect")
 
-    let scrollBefore = S17CoreBehaviorCell.ScrollLeaf.BorderBox
-    let scrollViewport = S17CoreBehaviorCell.ScrollViewport.BorderBox
-    WindowReadbackTestFixture.S17QueueWheel(window,
+    let scrollBefore = InputAccessibilityCell.ScrollLeaf.BorderBox
+    let scrollViewport = InputAccessibilityCell.ScrollViewport.BorderBox
+    WindowReadbackTestFixture.InputQueueWheel(window,
       scrollViewport.X + scrollViewport.Width * 0.5,
       scrollViewport.Y + scrollViewport.Height * 0.5, 0.0, -1.0)
     WindowReadbackTestFixture.ForceRender(window, 0.0)
-    S17Advance(window, 0.05)
-    let scrollAfter = S17CoreBehaviorCell.ScrollLeaf.BorderBox
-    S14Require(cell.ScrollWheelCount == 1
-        && S17CoreBehaviorCell.ScrollViewport.ScrollOffset.Y > 0.0
+    InputAdvance(window, 0.05)
+    let scrollAfter = InputAccessibilityCell.ScrollLeaf.BorderBox
+    Require(cell.ScrollWheelCount == 1
+        && InputAccessibilityCell.ScrollViewport.ScrollOffset.Y > 0.0
         && scrollAfter.Y < scrollBefore.Y,
-      "S17 wheel input did not move the public scroll state")
+      "Input wheel input did not move the public scroll state")
 
-    let motionBefore = S17CoreBehaviorCell.MotionBox.BorderBox.X
+    let motionBefore = InputAccessibilityCell.MotionBox.BorderBox.X
     cell.StartMotion()
     WindowReadbackTestFixture.ForceRender(window, 0.0)
-    S17Advance(window, 0.09)
-    let motionMid = S17CoreBehaviorCell.MotionBox.BorderBox.X
-    S17Advance(window, 0.10)
-    let motionAfter = S17CoreBehaviorCell.MotionBox.BorderBox.X
-    S14Require(motionMid > motionBefore && motionMid < motionBefore + 64.0
+    InputAdvance(window, 0.09)
+    let motionMid = InputAccessibilityCell.MotionBox.BorderBox.X
+    InputAdvance(window, 0.10)
+    let motionAfter = InputAccessibilityCell.MotionBox.BorderBox.X
+    Require(motionMid > motionBefore && motionMid < motionBefore + 64.0
         && Math.Abs(motionAfter - (motionBefore + 64.0)) <= 0.01
         && !cell.MotionRunning,
-      "S17 motion did not advance and settle through public geometry")
+      "Input motion did not advance and settle through public geometry")
 
     cell.DisableTarget()
     WindowReadbackTestFixture.ForceRender(window, 0.0)
-    S17Advance(window, 0.11)
-    let disabled = S09RReadback(window, metrics)
-    S09RRequirePixelNear(disabled.Pixels, disabled.Width, metrics, targetX, targetY,
-      uint8(112), uint8(120), uint8(132), 3, "S17 disabled state")
-    S14Require(cell.BlurCount == 1 && !S17CoreBehaviorCell.Target.Focus(),
-      "S17 disabled target retained or accepted focus")
+    InputAdvance(window, 0.11)
+    let disabled = PrimitiveReadback(window, metrics)
+    PrimitiveRequirePixelNear(disabled.Pixels, disabled.Width, metrics, targetX, targetY,
+      uint8(112), uint8(120), uint8(132), 3, "Input disabled state")
+    Require(cell.BlurCount == 1 && !InputAccessibilityCell.Target.Focus(),
+      "Input disabled target retained or accepted focus")
     guard let disabledSemantic = adapter.Tree?.Root else {
-      throw InvalidOperationException("S17 disabled semantic node is missing")
+      throw InvalidOperationException("Input disabled semantic node is missing")
     }
-    S14Require(disabledSemantic.Disabled && !disabledSemantic.Focused
+    Require(disabledSemantic.Disabled && !disabledSemantic.Focused
         && disabledSemantic.Actions.Count == 0,
-      "S17 disabled semantic state is incorrect")
+      "Input disabled semantic state is incorrect")
 
     let blockedDown = cell.PointerDownCount
     let blockedUp = cell.PointerUpCount
@@ -3062,26 +3062,26 @@ func RunS17CoreBehaviorGate() {
     let blockedKeyDown = cell.KeyDownCount
     let blockedKeyUp = cell.KeyUpCount
     let blockedWheel = cell.TargetWheelCount
-    WindowReadbackTestFixture.S17QueuePointerMove(window, targetX, targetY)
-    WindowReadbackTestFixture.S17QueuePointerPress(window, targetX, targetY)
-    WindowReadbackTestFixture.S17QueuePointerRelease(window, targetX, targetY)
-    WindowReadbackTestFixture.S17QueueWheel(window, targetX, targetY, 0.0, -1.0)
-    WindowReadbackTestFixture.S17QueueKeyPress(window, Key.Enter)
-    WindowReadbackTestFixture.S17QueueKeyRelease(window, Key.Enter)
+    WindowReadbackTestFixture.InputQueuePointerMove(window, targetX, targetY)
+    WindowReadbackTestFixture.InputQueuePointerPress(window, targetX, targetY)
+    WindowReadbackTestFixture.InputQueuePointerRelease(window, targetX, targetY)
+    WindowReadbackTestFixture.InputQueueWheel(window, targetX, targetY, 0.0, -1.0)
+    WindowReadbackTestFixture.InputQueueKeyPress(window, Key.Enter)
+    WindowReadbackTestFixture.InputQueueKeyRelease(window, Key.Enter)
     WindowReadbackTestFixture.ForceRender(window, 0.0)
-    S14Require(cell.PointerDownCount == blockedDown
+    Require(cell.PointerDownCount == blockedDown
         && cell.PointerUpCount == blockedUp
         && cell.ClickCount == blockedClick
         && cell.KeyDownCount == blockedKeyDown
         && cell.KeyUpCount == blockedKeyUp
         && cell.TargetWheelCount == blockedWheel,
-      "S17 disabled target accepted input")
+      "Input disabled target accepted input")
 
     window.RequestClose()
     WindowReadbackTestFixture.ForceRender(window, 0.0)
-    S14Require(!window.IsOpen, "S17 core behavior gate window did not close")
-    S14Require(WindowReadbackTestFixture.ResidentResourceBytes(window) == 0uL,
-      "S17 core behavior readback resources remain resident after close")
+    Require(!window.IsOpen, "Input core behavior gate window did not close")
+    Require(WindowReadbackTestFixture.ResidentResourceBytes(window) == 0uL,
+      "Input core behavior readback resources remain resident after close")
   } finally {
     if window.IsOpen {
       window.RequestClose()
@@ -3090,24 +3090,24 @@ func RunS17CoreBehaviorGate() {
     Console.SetError(originalError)
   }
   let diagnostics = capturedError.ToString()
-  S14ValidateCommonDiagnostics(diagnostics)
-  S14Require(!diagnostics.Contains("\"event\":325")
+  ReadbackValidateCommonDiagnostics(diagnostics)
+  Require(!diagnostics.Contains("\"event\":325")
       && !diagnostics.Contains("\"event\":326"),
-    "S17 core behavior gate emitted unsupported-scene diagnostics")
-  Console.WriteLine("s17-core-behavior-gate: pointer=1 focus=1 hover=1 active=1 disabled=1"
+    "Input core behavior gate emitted unsupported-scene diagnostics")
+  Console.WriteLine("input-core-behavior-gate: pointer=1 focus=1 hover=1 active=1 disabled=1"
     +" keyboard=1 wheel=1 scroll=1 motion=1 transitions=1 handles=1 semantics=1 close=1")
 }
 
-func RunS17ProtectedTextGate() {
-  S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
+func RunProtectedTextSmoke() {
+  Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
     "GOO_VK_DIAGNOSTICS=1 is required")
   let fontPath = Path.Combine(AppContext.BaseDirectory, "VendSans-VariableFont_wght.ttf")
-  S14Require(File.Exists(fontPath), "S17 text font asset is missing")
-  let font = FontSource("S17GateFont", 400, false, File.ReadAllBytes(fontPath))
+  Require(File.Exists(fontPath), "Input text font asset is missing")
+  let font = FontSource("InputGateFont", 400, false, File.ReadAllBytes(fontPath))
   font.Register()
   let source = "a\u0301👨‍👩‍👧‍👦b"
-  let cell = S17ProtectedTextCell{}
-  let adapter = S17AccessibilityAdapter{}
+  let cell = ProtectedTextCell{}
+  let adapter = RecordingAccessibilityAdapter{}
   let window = Window{ Root: cell, Width: 320, Height: 96, VSync: false }
   let capturedError = StringWriter()
   let originalError = Console.Error
@@ -3119,44 +3119,44 @@ func RunS17ProtectedTextGate() {
     window.Open()
     WindowReadbackTestFixture.ForceRender(window, 0.0)
     WindowReadbackTestFixture.ForceRender(window, 0.0166666666666667)
-    S14Require(S17ProtectedTextCell.Entry.IsMounted && S17ProtectedTextCell.Control.IsMounted,
-      "S17 protected visual pair did not mount")
+    Require(ProtectedTextCell.Entry.IsMounted && ProtectedTextCell.Control.IsMounted,
+      "Input protected visual pair did not mount")
     let metrics = WindowReadbackTestFixture.Metrics(window)
-    let visual = S09RReadback(window, metrics)
-    S17ValidateVisual(visual, metrics)
-    S14Require(WindowReadbackTestFixture.S17ValidateInitial(window,
-      S17ProtectedTextCell.Entry, source),
-      "S17 protected grapheme mapping or geometry is incorrect")
+    let visual = PrimitiveReadback(window, metrics)
+    InputValidateVisual(visual, metrics)
+    Require(WindowReadbackTestFixture.InputValidateInitial(window,
+      ProtectedTextCell.Entry, source),
+      "Input protected grapheme mapping or geometry is incorrect")
 
     guard let initialSemantic = adapter.Tree?.Root else {
-      throw InvalidOperationException("S17 protected semantic node is missing")
+      throw InvalidOperationException("Input protected semantic node is missing")
     }
-    S14Require(initialSemantic.Value == "•••",
-      "S17 protected semantic value was not redacted")
-    S14Require(window.PerformAccessibilityAction(initialSemantic.Id,
+    Require(initialSemantic.Value == "•••",
+      "Input protected semantic value was not redacted")
+    Require(window.PerformAccessibilityAction(initialSemantic.Id,
       AccessibilityActionRequest.SetSelection(1, 1)),
-      "S17 protected semantic selection action failed")
+      "Input protected semantic selection action failed")
     WindowReadbackTestFixture.UpdateTree(window)
     guard let selectedSemantic = adapter.Tree?.Root else {
-      throw InvalidOperationException("S17 protected semantic selection was not published")
+      throw InvalidOperationException("Input protected semantic selection was not published")
     }
-    S14Require(WindowReadbackTestFixture.S17SelectionMapped(window,
-      S17ProtectedTextCell.Entry)
+    Require(WindowReadbackTestFixture.InputSelectionMapped(window,
+      ProtectedTextCell.Entry)
         && selectedSemantic.SelectionStart == 1
         && selectedSemantic.SelectionLength == 1
         && selectedSemantic.Caret == 2,
-      "S17 protected semantic coordinates are incorrect")
+      "Input protected semantic coordinates are incorrect")
 
-    S14Require(S17ProtectedTextCell.Entry.Focus(), "S17 protected entry did not focus")
+    Require(ProtectedTextCell.Entry.Focus(), "Input protected entry did not focus")
     originalClipboard = window.GetClipboardText()
     window.SetClipboardText("safe")
     clipboardChanged = true
-    S14Require(WindowReadbackTestFixture.S17ExerciseInput(window,
-      S17ProtectedTextCell.Entry, source)
+    Require(WindowReadbackTestFixture.InputExerciseInput(window,
+      ProtectedTextCell.Entry, source)
         && cell.CompositionCount == 1
         && cell.CompositionText == "z\u0301"
         && cell.LastValue == source + "safe" + "z\u0301",
-      "S17 protected clipboard or IME behavior is incorrect")
+      "Input protected clipboard or IME behavior is incorrect")
     window.SetClipboardText(originalClipboard)
     clipboardChanged = false
 
@@ -3164,20 +3164,20 @@ func RunS17ProtectedTextGate() {
     window.AccessibilityAdapter = adapter
     WindowReadbackTestFixture.UpdateTree(window)
     guard let finalSemantic = adapter.Tree?.Root else {
-      throw InvalidOperationException("S17 final protected semantic node is missing")
+      throw InvalidOperationException("Input final protected semantic node is missing")
     }
-    S14Require(finalSemantic.Value == "••••••••"
+    Require(finalSemantic.Value == "••••••••"
         && finalSemantic.SelectionStart == 8
         && finalSemantic.SelectionLength == 0
         && finalSemantic.Caret == 8
         && !finalSemantic.Value.Contains("metadata"),
-      "S17 final protected semantic state is incorrect")
-    S14Require(S17ProtectedTextCell.Entry.Blur(), "S17 protected entry did not blur")
+      "Input final protected semantic state is incorrect")
+    Require(ProtectedTextCell.Entry.Blur(), "Input protected entry did not blur")
     window.RequestClose()
     WindowReadbackTestFixture.ForceRender(window, 0.0)
-    S14Require(!window.IsOpen, "S17 protected gate window did not close")
-    S14Require(WindowReadbackTestFixture.ResidentResourceBytes(window) == 0uL,
-      "S17 protected readback resources remain resident after close")
+    Require(!window.IsOpen, "Input protected gate window did not close")
+    Require(WindowReadbackTestFixture.ResidentResourceBytes(window) == 0uL,
+      "Input protected readback resources remain resident after close")
   } finally {
     if window.IsOpen {
       if clipboardChanged { window.SetClipboardText(originalClipboard) }
@@ -3188,124 +3188,120 @@ func RunS17ProtectedTextGate() {
     font.Dispose()
   }
   let diagnostics = capturedError.ToString()
-  S14ValidateCommonDiagnostics(diagnostics)
-  S14Require(!diagnostics.Contains("\"event\":325")
+  ReadbackValidateCommonDiagnostics(diagnostics)
+  Require(!diagnostics.Contains("\"event\":325")
       && !diagnostics.Contains("\"event\":326"),
-    "S17 protected gate emitted unsupported-scene diagnostics")
-  Console.WriteLine("s17-protected-text-gate: graphemes=3,8 visual=1 geometry=1 clipboard=1"
+    "Input protected gate emitted unsupported-scene diagnostics")
+  Console.WriteLine("input-protected-text-gate: graphemes=3,8 visual=1 geometry=1 clipboard=1"
     +" ime=1 semantics=1 close=1")
 }
 
 let managedEntryTimestamp = Stopwatch.GetTimestamp()
-Window.ConfigureApplication("Goo S14 async readback smoke", "0.1.0", "io.github.obselate.goo.s14.readback")
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_Q10_LATENCY_GATE") == "1" {
-  RunS15Q10LatencyBenchmark(managedEntryTimestamp)
+Window.ConfigureApplication("Goo Readback async readback smoke", "0.1.0", "io.github.obselate.goo.readback.readback")
+if Environment.GetEnvironmentVariable("GOO_INPUT_LATENCY_SMOKE") == "1" {
+  RunPerformanceLatencyBenchmark(managedEntryTimestamp)
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_Q10_STAGE_TIMESTAMP_GATE") == "1" {
-  RunS15Q10StageTimestampGate()
+if Environment.GetEnvironmentVariable("GOO_GPU_TIMESTAMPS_SMOKE") == "1" {
+  RunGpuTimestampSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_SDL_ACCEPTANCE_GATE") == "1" {
-  RunS15SdlAcceptanceGate()
+if Environment.GetEnvironmentVariable("GOO_NATIVE_INPUT_SMOKE") == "1" {
+  RunNativeInputSmoke()
   return
 }
 
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_Q10_GATE") == "1" {
-  RunS15Q10Benchmark()
+if Environment.GetEnvironmentVariable("GOO_PERFORMANCE_SMOKE") == "1" {
+  RunPerformanceBenchmark()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S19_IDLE_GATE") == "1" {
-  RunS19IdleGate()
+if Environment.GetEnvironmentVariable("GOO_IDLE_SMOKE") == "1" {
+  RunIdleSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_Q10_GATE") == "1" {
-  RunS15Q10Benchmark()
+if Environment.GetEnvironmentVariable("GOO_OFFSCREEN_FAILURE_SMOKE") == "1" {
+  RunOffscreenFailureSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_D02_OFFSCREEN_FAILURE_GATE") == "1" {
-  RunD02OffscreenFailureGate()
+if Environment.GetEnvironmentVariable("GOO_SCROLLBAR_SMOKE") == "1" {
+  RunScrollbarSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S21_SCROLLBAR_GATE") == "1" {
-  RunS21ScrollbarGate()
+if Environment.GetEnvironmentVariable("GOO_SHADER_EFFECT_SMOKE") == "1" {
+  RunShaderEffectSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S20_SHADER_EFFECT_GATE") == "1" {
-  RunS20ShaderEffectGate()
+if Environment.GetEnvironmentVariable("GOO_SHADER_EFFECT_BENCHMARK") == "1" {
+  RunShaderEffectBenchmark()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S20_SHADER_EFFECT_BENCHMARK") == "1" {
-  RunS20ShaderEffectBenchmark()
+if Environment.GetEnvironmentVariable("GOO_INPUT_ACCESSIBILITY_SMOKE") == "1" {
+  RunInputAccessibilitySmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S17_CORE_BEHAVIOR_GATE") == "1" {
-  RunS17CoreBehaviorGate()
+if Environment.GetEnvironmentVariable("GOO_PROTECTED_TEXT_SMOKE") == "1" {
+  RunProtectedTextSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S17_PROTECTED_TEXT_GATE") == "1" {
-  RunS17ProtectedTextGate()
+if Environment.GetEnvironmentVariable("GOO_TEXT_EDITOR_SMOKE") == "1" {
+  RunTextEditorSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_TEXT_EDITOR_SLOTS_GATE") == "1" {
-  RunTextEditorSlotsGate()
+if Environment.GetEnvironmentVariable("GOO_LIVE_FRAME_PACING_SMOKE") == "1" {
+  RunLiveFramePacingSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S16_LIVE_FRAME_PACING_GATE") == "1" {
-  RunS16LiveFramePacingGate()
+if Environment.GetEnvironmentVariable("GOO_FRAME_PACING_SMOKE") == "1" {
+  RunFramePacingChecks()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S16_FRAME_PACING_GATE") == "1" {
-  RunS16FramePacingGate()
+if Environment.GetEnvironmentVariable("GOO_VSYNC_SMOKE") == "1" {
+  RunVSyncSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S16_VSYNC_GATE") == "1" {
-  RunS16VSyncTransitionGate()
+if Environment.GetEnvironmentVariable("GOO_QUEUE_ISOLATION_SMOKE") == "1" {
+  RunQueueIsolationSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S16_QUEUE_ISOLATION_GATE") == "1" {
-  RunS16QueueIsolationGate()
+if Environment.GetEnvironmentVariable("GOO_VIRTUAL_TABLE_SMOKE") == "1" {
+  RunVirtualTableSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_STOCKS_VIRTUALIZATION_GATE") == "1" {
-  RunS15StocksGridVirtualizationGate()
+if Environment.GetEnvironmentVariable("GOO_VIRTUAL_TABLE_BENCHMARK") == "1" {
+  RunVirtualTableBenchmark()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_STOCKS_GRID") == "1" {
-  RunS15StocksGridBenchmark()
+if Environment.GetEnvironmentVariable("GOO_PRIMITIVE_UPLOAD_BENCHMARK") == "1" {
+  RunPrimitiveUploadBenchmark()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_PRIMITIVE_STAGING_BENCHMARK") == "1" {
-  RunS15PrimitiveStagingBenchmark()
+if Environment.GetEnvironmentVariable("GOO_TEXT_CULLING_SMOKE") == "1" {
+  RunTextCullingSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_TEXT_VIEWPORT_CULL_GATE") == "1" {
-  RunS15TextViewportCullGate()
+if Environment.GetEnvironmentVariable("GOO_TEXT_TRANSPORT_SMOKE") == "1" {
+  RunTextTransportSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_TEXT_TRANSPORT_GATE") == "1" {
-  RunS15TextTransportGate()
+if Environment.GetEnvironmentVariable("GOO_RETENTION_SMOKE") == "1" {
+  RunRetentionSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S15_RETENTION_GATE") == "1" {
-  RunS15RetentionGate()
+if Environment.GetEnvironmentVariable("GOO_EFFECTS_SMOKE") == "1" {
+  RunEffectsSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S14_EFFECTS_GATE") == "1" {
-  RunS14EffectsGate()
+if Environment.GetEnvironmentVariable("GOO_ROUNDED_OVERFLOW_SMOKE") == "1" {
+  RunRoundedOverflowSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S14_ROUNDED_OVERFLOW_GATE") == "1" {
-  RunS14RoundedOverflowGate()
+if Environment.GetEnvironmentVariable("GOO_PRIMITIVE_PIXEL_SMOKE") == "1" {
+  RunPrimitivePixelSmoke()
   return
 }
-if Environment.GetEnvironmentVariable("GOO_NATIVE_S09R_PIXEL_GATE") == "1" {
-  RunS09RPixelGate()
-  return
-}
-let mode = Environment.GetEnvironmentVariable("GOO_S14_READBACK_MODE")
+let mode = Environment.GetEnvironmentVariable("GOO_READBACK_MODE")
 if mode == "measure" {
-  RunS14ReadbackMeasure()
+  RunReadbackReadbackMeasure()
 } else {
-  RunS14ReadbackSmoke()
+  RunReadbackSmoke()
 }
