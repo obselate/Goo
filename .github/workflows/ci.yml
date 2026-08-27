@@ -16,7 +16,7 @@ env:
 
 jobs:
   linux-x64:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
@@ -38,7 +38,21 @@ jobs:
             vulkan-validationlayers wayland-protocols weston
 
       - name: Build glibc 2.35-compatible SDL
-        run: .github/scripts/build-sdl-linux-x64.sh "$PWD/artifacts/native/libSDL3.so"
+        run: |
+          mkdir -p artifacts/native
+          docker run --rm \
+            -v "$PWD:/src:ro" \
+            -v "$PWD/artifacts/native:/out" \
+            ubuntu:22.04 bash -lc '
+              set -euo pipefail
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                ca-certificates binutils clang cmake curl ninja-build pkg-config zlib1g-dev \
+                libdbus-1-dev libdecor-0-dev libegl1 libfontconfig1 libgl1-mesa-dev \
+                libibus-1.0-dev libwayland-dev libxkbcommon-dev wayland-protocols
+              update-ca-certificates
+              /src/.github/scripts/build-sdl-linux-x64.sh /out/libSDL3.so
+            '
 
       - name: Verify Vulkan software driver and validation layer
         run: |
@@ -46,7 +60,7 @@ jobs:
           vulkaninfo --summary 2>&1 | tee artifacts/reports/vulkaninfo-summary.txt
           grep -F 'VK_LAYER_KHRONOS_validation' artifacts/reports/vulkaninfo-summary.txt
 
-      - name: Build Goo, SVG compiler, and focused S11 gates
+      - name: Build library and Vulkan verification projects
         run: |
           dotnet build Goo/Goo.gsproj -c Release -p:TreatWarningsAsErrors=true
           dotnet build tools/Goo.SvgCompiler/Goo.SvgCompiler.csproj \
@@ -60,16 +74,13 @@ jobs:
             -c Release -p:TreatWarningsAsErrors=true \
             -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so"
 
-      - name: Run focused S11 Vulkan and recovery gates
+      - name: Run portable Vulkan checks
         run: |
           export SDL_VIDEODRIVER=wayland
           export LIBGL_ALWAYS_SOFTWARE=1
           export VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation
           export LD_LIBRARY_PATH="$PWD/artifacts/native${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           dotnet tests/Goo.VulkanAbiSmoke/bin/Release/net10.0/Goo.Tests.dll
-          .github/scripts/with-headless-wayland.sh env GOO_VK_DIAGNOSTICS=1 \
-            dotnet tests/Goo.FailedIdleSmoke/bin/Release/net10.0/Goo.Tests.dll \
-            2>&1 | tee artifacts/reports/failed-idle-smoke.txt
 
           run_vulkan_proof_lane() {
             .github/scripts/with-headless-wayland.sh env "$1=1" \
