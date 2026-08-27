@@ -30,7 +30,7 @@
   <Target Name="_BuildGooShaderEffectTool"
           Condition="'@(_GooShaderEffect)' != '' and '$(GooShaderEffectToolProject)' != '' and '$(DesignTimeBuild)' != 'true'">
     <MSBuild Projects="$(GooShaderEffectToolProject)"
-             Targets="Build"
+             Targets="Restore;Build"
              Properties="Configuration=$(Configuration);TreatWarningsAsErrors=true" />
   </Target>
 

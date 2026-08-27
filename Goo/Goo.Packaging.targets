@@ -110,7 +110,7 @@
 
   <Target Name="BuildGooShaderEffectToolForPackage">
     <MSBuild Projects="$(MSBuildProjectDirectory)/../tools/Goo.ShaderEffectTool/Goo.ShaderEffectTool.csproj"
-             Targets="Build"
+             Targets="Restore;Build"
              Properties="Configuration=$(Configuration);TreatWarningsAsErrors=true" />
     <Error Condition="!Exists('$(MSBuildProjectDirectory)/../tools/Goo.ShaderEffectTool/bin/$(Configuration)/net10.0/Goo.ShaderEffectTool.dll')"
            Text="Goo ShaderEffect build tool is missing." />
