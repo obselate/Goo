@@ -188,10 +188,10 @@ unsafe func S15SdlPushText(windowId uint32, value string, out polled int32) bool
 
 func S15SdlRequireInputFrame(before VulkanDiagnosticCounterSnapshot,
   after VulkanDiagnosticCounterSnapshot, kind string) {
-  S14Require(after.submitCount == before.submitCount + 1uL
-      && after.presentCount == before.presentCount + 1uL,
-    "S15 SDL " + kind + " input did not submit and present exactly once")
-}
+    S14Require(after.submitCount == before.submitCount + 1uL
+        && after.presentCount == before.presentCount + 1uL,
+      "S15 SDL " + kind + " input did not submit and present exactly once")
+  }
 
 func RunS15SdlAcceptanceGate() {
   S14Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
@@ -286,8 +286,8 @@ func RunS15SdlAcceptanceGate() {
         && root.TextCount == 1
         && root.CommittedText == "é",
       "S15 SDL committed text callback was not isolated: pointer="
-      +root.PointerCount.ToString() +" keyDown=" + root.KeyDownCount.ToString()
-      +" keyUp=" + root.KeyUpCount.ToString() +" text=" + root.TextCount.ToString()
+      +root.PointerCount.ToString() + " keyDown=" + root.KeyDownCount.ToString()
+      +" keyUp=" + root.KeyUpCount.ToString() + " text=" + root.TextCount.ToString()
       +" value=" + root.CommittedText)
 
     S14Require(acceptedEvents == 5, "S15 SDL acceptance did not accept all five input events")

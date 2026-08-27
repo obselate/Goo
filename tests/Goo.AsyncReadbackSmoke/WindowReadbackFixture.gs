@@ -664,7 +664,6 @@ public partial class Window {
 
   internal func SdlWindowIdForTest() uint32 -> host?.WindowIdForTest() ?? 0u
 
-
   internal func QueueTextForTest(value string) {
     input.QueueText(value)
   }
@@ -1009,13 +1008,11 @@ internal class WindowReadbackTestFixture {
       window.PumpForTest(dt)
     }
 
-
     internal func SdlWindowId(window Window) uint32 -> window.SdlWindowIdForTest()
     internal func PumpNativeEvents() {
       SdlRuntime.PumpEvents(Int32.MaxValue)
     }
     internal func PumpNativeEventsForTest() int32 -> SdlRuntime.PumpEvents(Int32.MaxValue)
-
 
     internal func SetForceFullRedraw(window Window, value bool) {
       window.SetForceFullRedrawForTest(value)

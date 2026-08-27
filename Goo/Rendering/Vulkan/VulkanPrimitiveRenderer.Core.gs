@@ -876,7 +876,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         || (record.Flags & uint32(LayerRecordFlags.SamplesBackdrop)) == 0u {
           throw InvalidOperationException(
             "Vulkan borrowed backdrop requires a sampling effect")
-      }
+        }
       if layerDepth <= 0 {
         throw InvalidOperationException(
           "Vulkan borrowed backdrop has no outer layer")
@@ -891,10 +891,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       if outer.Record.OriginX != record.OriginX
         || outer.Record.OriginY != record.OriginY
         || outer.Record.ExtentWidth != record.ExtentWidth
-        || outer.Record.ExtentHeight != record.ExtentHeight {
+        || outer.Record.ExtentHeight != record.ExtentHeight{
           throw InvalidOperationException(
             "Vulkan borrowed backdrop geometry does not match outer layer")
-      }
+        }
       if primitivePrepass {
         return nil
       }
@@ -960,11 +960,11 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         throw ArgumentOutOfRangeException("layer extent")
       }
       let borrowsParentBackdrop =
-        (record.Flags & uint32(LayerRecordFlags.BorrowsParentBackdrop)) != 0u
+      (record.Flags & uint32(LayerRecordFlags.BorrowsParentBackdrop)) != 0u
       let target = pool.Acquire(record.ExtentWidth, record.ExtentHeight, completedLayerSerial)
       let needsBackdrop = record.BlendMode != 0u
         || (record.EffectIndex >= 0
-          && (record.Flags & uint32(LayerRecordFlags.SamplesBackdrop)) != 0u)
+            && (record.Flags & uint32(LayerRecordFlags.SamplesBackdrop)) != 0u)
       let backdropTarget = if borrowsParentBackdrop {
         borrowedBackdrop
       } else if needsBackdrop {
@@ -1060,7 +1060,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         throw InvalidOperationException("Vulkan layer target is unavailable")
       }
       let borrowedBackdrop =
-        (state.Record.Flags & uint32(LayerRecordFlags.BorrowsParentBackdrop)) != 0u
+      (state.Record.Flags & uint32(LayerRecordFlags.BorrowsParentBackdrop)) != 0u
       EndLayerTimestamp(
         state.TimestampHandle,
         VkConstants.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)

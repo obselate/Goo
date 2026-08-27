@@ -948,7 +948,7 @@ internal partial class VulkanSceneCompiler {
             node.BlendMode, nil)
           if (innerLayerRecord.Flags & uint32(LayerRecordFlags.SamplesBackdrop)) != 0u {
             innerLayerRecord.Flags = innerLayerRecord.Flags
-              | uint32(LayerRecordFlags.BorrowsParentBackdrop)
+            | uint32(LayerRecordFlags.BorrowsParentBackdrop)
             outerLayerRecord.OriginX = innerLayerRecord.OriginX
             outerLayerRecord.OriginY = innerLayerRecord.OriginY
             outerLayerRecord.ExtentWidth = innerLayerRecord.ExtentWidth
