@@ -134,10 +134,9 @@ internal unsafe partial class VulkanWindowTarget {
     var supported VkBool32 = VkConstants.VK_FALSE
     let surfaceSupport = instanceDispatch.vkGetPhysicalDeviceSurfaceSupportKHR
     let result = surfaceSupport(physicalDevice, queueFamilyIndex, surface, &supported)
-    if result != VkConstants.VK_SUCCESS || supported != VkConstants.VK_TRUE
-      || !host.GetVulkanPresentationSupport(instance, physicalDevice, queueFamilyIndex) {
-        throw InvalidOperationException("Vulkan shared queue does not support the SDL surface")
-      }
+    if result != VkConstants.VK_SUCCESS || supported != VkConstants.VK_TRUE {
+      throw InvalidOperationException("Vulkan shared queue does not support the SDL surface")
+    }
   }
 
   private func CreateInstance() {
@@ -284,6 +283,9 @@ internal unsafe partial class VulkanWindowTarget {
   }
 
   private func ResolveInstanceMaintenanceVariant() VulkanSwapchainMaintenanceVariant {
+    if Environment.GetEnvironmentVariable("GOO_VK_DISABLE_SWAPCHAIN_MAINTENANCE") == "1" {
+      return VulkanSwapchainMaintenanceVariant.None
+    }
     let address = ResolveGlobalProc(nint(0), "vkEnumerateInstanceExtensionProperties")
     let nullable = address as (unmanaged[Cdecl](*int8, *uint32, *VkExtensionProperties) -> VkResult)?
     if nullable == nil {
@@ -539,12 +541,11 @@ internal unsafe partial class VulkanWindowTarget {
           let surfaceSupport = instanceDispatch.vkGetPhysicalDeviceSurfaceSupportKHR
           let supportResult = surfaceSupport(
             candidate, familyIndex, surface, &supported)
-          if supportResult == VkConstants.VK_SUCCESS && supported == VkConstants.VK_TRUE
-            && host.GetVulkanPresentationSupport(instance, candidate, familyIndex) {
-              queueFamilyIndex = familyIndex
-              timestampValidBits = family.timestampValidBits
-              return true
-            }
+          if supportResult == VkConstants.VK_SUCCESS && supported == VkConstants.VK_TRUE {
+            queueFamilyIndex = familyIndex
+            timestampValidBits = family.timestampValidBits
+            return true
+          }
         }
       familyIndex = familyIndex + 1u
     }
@@ -587,7 +588,7 @@ internal unsafe partial class VulkanWindowTarget {
     } else if instanceMaintenanceVariant == VulkanSwapchainMaintenanceVariant.Ext && hasMaintenanceExt {
       swapchainMaintenanceVariant = VulkanSwapchainMaintenanceVariant.Ext
     }
-    if !hasSwapchain || swapchainMaintenanceVariant == VulkanSwapchainMaintenanceVariant.None {
+    if !hasSwapchain {
       return false
     }
     memoryBudgetSupported = hasMemoryBudget

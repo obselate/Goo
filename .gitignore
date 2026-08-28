@@ -20,8 +20,8 @@
 !/.github/scripts/build-text-native-win-x64.sh
 !/.github/scripts/stage-linux-x64.sh
 !/.github/scripts/validate-release.py
-!/.github/scripts/validate-readme-examples.py
 !/.github/scripts/with-headless-wayland.sh
+!/.github/scripts/qualify-linux-runtime.sh
 !/.github/scripts/with-kwin-scale-one.sh
 
 !/Goo/

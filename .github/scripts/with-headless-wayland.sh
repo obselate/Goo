@@ -19,7 +19,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-weston --backend=headless-backend.so --use-pixman \
+weston --backend=headless-backend.so --renderer="${GOO_WESTON_RENDERER:-pixman}" \
   --socket="$WAYLAND_DISPLAY" --idle-time=0 >"$weston_log" 2>&1 &
 weston_pid=$!
 for _ in $(seq 1 50); do

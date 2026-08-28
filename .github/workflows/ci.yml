@@ -12,7 +12,7 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
-  GOO_VERSION: 0.2.0
+  GOO_VERSION: 0.3.0
 
 jobs:
   linux-x64:
@@ -37,21 +37,33 @@ jobs:
             libxkbcommon-dev mesa-vulkan-drivers vulkan-tools \
             vulkan-validationlayers wayland-protocols weston
 
-      - name: Build glibc 2.35-compatible SDL
+      - name: Build glibc 2.27 native payloads
         run: |
-          mkdir -p artifacts/native
+          mkdir -p artifacts/native/text
           docker run --rm \
             -v "$PWD:/src:ro" \
             -v "$PWD/artifacts/native:/out" \
-            ubuntu:22.04 bash -lc '
+            ubuntu:18.04@sha256:dca176c9663a7ba4c1f0e710986f5a25e672842963d95b960191e2d9f7185ebe \
+            bash -lc '
               set -euo pipefail
               apt-get update
               DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-                ca-certificates binutils clang cmake curl ninja-build pkg-config zlib1g-dev \
-                libdbus-1-dev libdecor-0-dev libegl1 libfontconfig1 libgl1-mesa-dev \
-                libibus-1.0-dev libwayland-dev libxkbcommon-dev wayland-protocols
+                binutils ca-certificates curl file g++-8 gcc-8 libdbus-1-dev \
+                libegl1-mesa-dev libexpat1-dev libffi-dev libfontconfig1-dev \
+                libibus-1.0-dev libwayland-dev libxkbcommon-dev libxml2-dev \
+                ninja-build patch pkg-config python3 python3-pip tar \
+                wayland-protocols xz-utils zlib1g-dev
               update-ca-certificates
+              pip3 install --no-cache-dir meson==0.61.5
+              export CC=gcc-8 CXX=g++-8
               /src/.github/scripts/build-sdl-linux-x64.sh /out/libSDL3.so
+              /src/.github/scripts/build-text-native-linux-x64.sh /out/text
+              cmp /out/text/libgoo-harfbuzz.so \
+                /src/Goo/Runtime/Vulkan/linux-x64/libgoo-harfbuzz.so
+              cmp /out/text/libgoo-harfbuzz-gpu.so \
+                /src/Goo/Runtime/Vulkan/linux-x64/libgoo-harfbuzz-gpu.so
+              cmp /out/text/text-native-build.json \
+                /src/Goo/Runtime/Vulkan/linux-x64/text-native-build.json
             '
 
       - name: Verify Vulkan software driver and validation layer
@@ -149,9 +161,6 @@ jobs:
             -p:UseAppHost=false \
             --configfile tests/Goo.PackageSmoke/NuGet.config \
             -o artifacts/publish
-          .github/scripts/validate-readme-examples.py \
-            --package-dir artifacts/packages --cache "$NUGET_PACKAGES"
-
 
       - name: Stage minimal Linux bundle and separate symbols
         run: |

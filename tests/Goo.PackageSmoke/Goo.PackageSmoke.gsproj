@@ -6,7 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Shared/PrimitiveScene.gs" Link="PrimitiveScene.gs" />
-    <PackageReference Include="Goo" Version="0.2.0" />
+    <PackageReference Include="Goo" Version="0.3.0" />
     <Content Include="../Goo.VulkanProof/Assets/Text/VendSans-VariableFont_wght.ttf"
              Link="VendSans-VariableFont_wght.ttf"
              CopyToOutputDirectory="PreserveNewest" />

@@ -53,7 +53,7 @@
     },
     "linux": {
       "requiredFormat": "ELF 64-bit LSB shared object, x86-64",
-      "maxGlibc": "2.35",
+      "maxGlibc": "2.27",
       "requiredRpath": {
         "harfbuzz": [],
         "gpu": []
@@ -67,7 +67,8 @@
       "requiredNeeded": {
         "harfbuzz": [
           "libc.so.6",
-          "libm.so.6"
+          "libm.so.6",
+          "libpthread.so.0"
         ],
         "gpu": [
           "libc.so.6",

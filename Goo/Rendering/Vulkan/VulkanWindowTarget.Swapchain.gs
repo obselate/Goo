@@ -52,9 +52,14 @@ internal unsafe partial class VulkanWindowTarget {
       throw OverflowException("Vulkan swapchain generation overflow")
     }
     nextGenerationId = nextGenerationId + 1uL
-    let oldSwapchain = if let old = generation { old.Handle } else { 0uL }
-    if generation != nil {
-      RetireCurrentSwapchain(false)
+    var oldSwapchain VkSwapchainKHR = 0uL
+    if let old = generation {
+      if old.PresentFenceEnabled {
+        oldSwapchain = old.Handle
+      }
+      if !RetireCurrentSwapchain(false) {
+        return false
+      }
     }
     if primitiveRenderer != nil && oldFormat != selection.Format.format {
       primitiveRenderer!!.Dispose()
@@ -146,6 +151,21 @@ internal unsafe partial class VulkanWindowTarget {
         }
       }
       InvalidateLastPresentedImageState()
+      if !old.PresentFenceEnabled {
+        let idleResult = WaitDeviceIdleResult()
+        if idleResult != VkConstants.VK_SUCCESS {
+          RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, idleResult)
+          HandleFrameFailure(idleResult, VulkanDiagnosticEventIds.PresentWait)
+          return false
+        }
+        retiredSwapchains.Enqueue(old, presentationRetirement)
+        generation = nil
+        DisposeRetiredSwapchains()
+        if destroySurface {
+          DestroyCurrentSurface()
+        }
+        return true
+      }
       if destroySurface {
         let presentCompletionResult = old.PollForPresentCompletion(presentationRetirement)
         RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, presentCompletionResult)
@@ -193,7 +213,9 @@ internal unsafe partial class VulkanWindowTarget {
     while retiredSwapchains.TryWaitAndDisposeNext(
       presentationRetirement, out presentCompletionResult) {
         if let result = presentCompletionResult {
-          RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, result)
+          if result != VkConstants.VK_SUCCESS {
+            RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, result)
+          }
         }
       }
   }
@@ -382,10 +404,9 @@ internal unsafe partial class VulkanWindowTarget {
       surfaceLost = true
       return false
     }
-    if supportResult != VkConstants.VK_SUCCESS || support != VkConstants.VK_TRUE
-      || !host.GetVulkanPresentationSupport(instance, physicalDevice, queueFamilyIndex) {
-        throw InvalidOperationException("Vulkan selected queue does not support the SDL surface")
-      }
+    if supportResult != VkConstants.VK_SUCCESS || support != VkConstants.VK_TRUE {
+      throw InvalidOperationException("Vulkan selected queue does not support the SDL surface")
+    }
     selection = VulkanWindowTargetSelection{
       Capabilities: capabilities,
       Format: selectedFormat,
@@ -496,19 +517,21 @@ internal unsafe partial class VulkanWindowTarget {
       frameSlots.Slot(1u)?.AbortPrepared()
     }
     if let current = generation {
-      let result = current.PollForPresentCompletion(presentationRetirement)
-      RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, result)
-      if result == VkConstants.VK_ERROR_SURFACE_LOST_KHR {
-        surfaceLost = true
-        return true
-      }
-      if result == VkConstants.VK_NOT_READY || result == VkConstants.VK_TIMEOUT {
-        frameFailureRetryable = true
-        return false
-      }
-      if result != VkConstants.VK_SUCCESS {
-        HandleFrameFailure(result, VulkanDiagnosticEventIds.PresentWait)
-        return false
+      if current.PresentFenceEnabled {
+        let result = current.PollForPresentCompletion(presentationRetirement)
+        RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, result)
+        if result == VkConstants.VK_ERROR_SURFACE_LOST_KHR {
+          surfaceLost = true
+          return true
+        }
+        if result == VkConstants.VK_NOT_READY || result == VkConstants.VK_TIMEOUT {
+          frameFailureRetryable = true
+          return false
+        }
+        if result != VkConstants.VK_SUCCESS {
+          HandleFrameFailure(result, VulkanDiagnosticEventIds.PresentWait)
+          return false
+        }
       }
     }
     return true

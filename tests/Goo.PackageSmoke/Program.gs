@@ -795,9 +795,11 @@ func CloseWindow(window Window) bool {
   }
   window.RequestClose()
   var pumps int32 = 0
-  while window.IsOpen && pumps < 32 {
+  while window.IsOpen && pumps < 4096 {
     window.Pump(0.0)
-    Thread.Yield()
+    if window.IsOpen {
+      Thread.Sleep(1)
+    }
     pumps = pumps + 1
   }
   return !window.IsOpen

@@ -51,11 +51,11 @@ if manifest["build"]["environments"]["linux-x64"] != {
     raise SystemExit("Linux build environment drift")
 if manifest["build"]["linux"] != {
     "requiredFormat": "ELF 64-bit LSB shared object, x86-64",
-    "maxGlibc": "2.35",
+    "maxGlibc": "2.27",
     "requiredRpath": {"harfbuzz": [], "gpu": []},
     "requiredRunpath": {"harfbuzz": [], "gpu": ["$ORIGIN/"]},
     "requiredNeeded": {
-        "harfbuzz": ["libc.so.6", "libm.so.6"],
+        "harfbuzz": ["libc.so.6", "libm.so.6", "libpthread.so.0"],
         "gpu": ["libc.so.6", "libgoo-harfbuzz.so", "libm.so.6"],
     },
 }:
@@ -122,8 +122,8 @@ for artifact in "$harfbuzz_output" "$gpu_output"; do
   versions="$(readelf --version-info "$artifact" | grep -o 'GLIBC_[0-9.]*' | sort -Vu || true)"
   if [[ -n "$versions" ]]; then
     max_glibc="$(printf '%s\n' "$versions" | tail -n 1 | cut -d_ -f2)"
-    if [[ "$(printf '%s\n' 2.35 "$max_glibc" | sort -V | tail -n 1)" != '2.35' ]]; then
-      printf '%s requires GLIBC_%s; maximum allowed is GLIBC_2.35\n' "$(basename "$artifact")" "$max_glibc" >&2
+    if [[ "$(printf '%s\n' 2.27 "$max_glibc" | sort -V | tail -n 1)" != '2.27' ]]; then
+      printf '%s requires GLIBC_%s; maximum allowed is GLIBC_2.27\n' "$(basename "$artifact")" "$max_glibc" >&2
       exit 1
     fi
   fi

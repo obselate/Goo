@@ -41,18 +41,26 @@ dotnet build tests/Goo.VulkanProof/Goo.VulkanProof.gsproj -c Release
 | `Goo.PackageSmoke` | Clean NuGet consumer, packaged native assets, and public runtime behavior |
 | `Goo.VulkanProof` | Low-level shader, text, image, path, and readback proofs |
 
-## Native requirements
+## Linux requirements
 
 Windowed Vulkan checks require:
 
-- Linux x64
-- A Wayland compositor
+- Linux x86-64, kernel 6.6 or newer
+- glibc 2.27 or newer
+- Wayland 1.18 or newer
 - Vulkan 1.3
-- `VK_EXT_surface_maintenance1` or its KHR equivalent
-- `VK_EXT_swapchain_maintenance1` or its KHR equivalent
+- `VK_KHR_swapchain`
+- Timeline semaphores, synchronization2, and dynamic rendering
+- `R16G16B16A16_SINT` uniform texel-buffer support
 - Khronos validation layers for validation runs
 
-The hosted CI runner uses software Vulkan for portable proof lanes. Hardware lifecycle and performance qualification runs separately on supported devices.
+Surface and swapchain maintenance extensions select the asynchronous
+presentation-retirement path when available. The compatibility path does not
+require them.
+
+`Goo.VulkanProof` keeps maintenance-specific fast-path proofs; the package
+compatibility smoke is the runtime support gate when those extensions are
+absent.
 
 ## Package verification
 
@@ -67,6 +75,25 @@ The complete package flow is defined in [`.github/workflows/ci.yml`](../.github/
 7. Validates native dependencies, checksums, and the bundle size limit.
 
 That workflow is the authoritative source for native environment variables and exact release commands.
+
+## Linux compatibility
+
+[`qualify-linux-runtime.sh`](../.github/scripts/qualify-linux-runtime.sh) runs
+the packaged consumer, resolves every native dependency, and optionally runs
+real multi-window Vulkan rendering under a headless Wayland compositor:
+
+```sh
+DOTNET=/opt/dotnet/dotnet \
+GOO_EXPECT_KERNEL_PREFIX=6.6 \
+GOO_EXPECT_GLIBC=2.39 \
+GOO_COMPAT_WINDOW_SMOKE=1 \
+VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json \
+.github/scripts/qualify-linux-runtime.sh artifacts/linux-x64
+```
+
+The current boundary evidence is recorded in
+[`linux-compatibility.json`](linux-compatibility.json). Distribution names are
+test-fixture details, not support claims.
 
 ## Evidence rules
 

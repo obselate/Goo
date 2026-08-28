@@ -5,7 +5,7 @@ import System.Collections.Generic
 import System.Threading
 
 internal unsafe partial class VulkanDiagnostics {
-  private const TraceCapacity int32 = 1024
+  private const TraceCapacity int32 = 4096
   private const ResultCapacity int32 = 128
   private const ValidationCapacity int32 = 64
   private const ValidationTextCapacity int32 = 512

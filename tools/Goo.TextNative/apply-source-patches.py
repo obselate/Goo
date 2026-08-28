@@ -22,7 +22,7 @@ def run_patch(args, patch_text, source_root):
         input=patch_text,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        text=True,
+        universal_newlines=True,
     )
     if result.returncode != 0:
         raise SystemExit(result.stdout)

@@ -9,7 +9,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 MAX_BYTES = 20_971_520
-MAX_GLIBC = (2, 35)
+MAX_GLIBC = (2, 27)
 PACKAGE_FILES = {
     "_rels/.rels",
     "Goo.nuspec",
@@ -122,7 +122,7 @@ def require_glibc_floor(path: Path) -> None:
     if versions and max(versions) > MAX_GLIBC:
         raise SystemExit(
             f"{path} requires GLIBC_{'.'.join(map(str, max(versions)))}; "
-            "maximum is GLIBC_2.35")
+            "maximum is GLIBC_2.27")
 
 
 def validate_package(path: Path) -> str:

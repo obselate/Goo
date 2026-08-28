@@ -6,7 +6,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>goo-svgc</ToolCommandName>
     <PackageId>Goo.SvgCompiler</PackageId>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Authors>Xaz</Authors>
     <Description>Build-time SVG compiler for Goo GCV1 vector assets.</Description>
     <PackageTags>goo;svg;gcv1;compiler;vulkan</PackageTags>

@@ -66,13 +66,4 @@ internal unsafe partial class SdlHost {
       Hexa.NET.SDL3.VkSurfaceKHR(nint(surface)),
       Hexa.NET.SDL3.VkAllocationCallbacksPtr.Null)
   }
-
-  internal func GetVulkanPresentationSupport(instance nint, physicalDevice nint,
-    queueFamilyIndex uint32) bool{
-      ThrowIfDisposed()
-      return SDL.VulkanGetPresentationSupport(
-        Hexa.NET.SDL3.VkInstance(instance),
-        Hexa.NET.SDL3.VkPhysicalDevice(physicalDevice),
-        queueFamilyIndex)
-    }
 }

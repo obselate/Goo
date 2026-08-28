@@ -17,7 +17,7 @@ Goo applications describe UI as ordinary G# objects. Goo retains mounted state, 
 Goo targets .NET 10 and uses [`Gsharp.NET.Sdk`](https://www.nuget.org/packages/Gsharp.NET.Sdk/).
 
 ```sh
-dotnet add package Goo --version 0.2.0
+dotnet add package Goo --version 0.3.0
 ```
 
 ## Example
@@ -63,6 +63,62 @@ func Main() {
 
 `Cell` owns local state. Event handlers invalidate their owning Cell automatically, so changing `count` rebuilds only this component.
 
+## What G# allows with Goo
+
+Goo trees are ordinary values. Dynamic children use `for`, `if`, `if let`, and
+inferred CLR `out var` directly:
+
+```gsharp
+package ProjectMenuApp
+
+import System
+import System.Collections.Generic
+import Goo
+
+class ProjectMenu : Cell {
+  private let projects []string = []string{ "Goo", "Gex", "SharpTUI" }
+  private var visibleText string = "2"
+  private var selected string? = nil
+
+  override func Build() Blob {
+    var visible = projects.Length
+    if Int32.TryParse(visibleText, out var parsed) {
+      visible = Math.Clamp(parsed, 0, projects.Length)
+    }
+
+    let children = List[Blob](visible + 2)
+    for index in 0 ... visible {
+      let project = projects[index]
+      children.Add(Button{
+        Key: project,
+        OnClick: func() { selected = project },
+        Children: { Text{ Content: project } },
+      })
+    }
+    if visible < projects.Length {
+      children.Add(Text{
+        Content: (projects.Length - visible).ToString() + " more",
+      })
+    }
+    if let project = selected {
+      children.Add(Text{ Content: "Selected: " + project })
+    }
+
+    return Container{
+      Width: 320,
+      Padding: 20,
+      Gap: 8,
+      Children: children,
+    }
+  }
+}
+
+func Main() {
+  Window.ConfigureApplication("Projects", "1.0.0", "com.example.projects")
+  Window{ Title: "Projects", Root: ProjectMenu{} }.Run()
+}
+```
+
 ## Included
 
 - Yoga flexbox layout
@@ -73,9 +129,17 @@ func Main() {
 - Multi-window Vulkan rendering
 - Build-time SVG and ShaderEffect tooling
 
-## Platform status
+## Linux requirements
 
-Linux x64 with glibc 2.35 or newer in a native Wayland session is currently qualified. Windows x64 qualification is still in progress.
+- x86-64
+- Linux 6.6 or newer
+- glibc 2.27 or newer
+- Wayland 1.18 or newer
+- Vulkan 1.3 with `VK_KHR_swapchain`, timeline semaphores, synchronization2,
+  dynamic rendering, and `R16G16B16A16_SINT` uniform texel buffers
+
+Surface and swapchain maintenance extensions are used when available but are
+not required.
 
 ## Documentation
 

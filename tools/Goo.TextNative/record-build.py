@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def command_text(name, args):
-    result = subprocess.run([name, *args], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    result = subprocess.run([name, *args], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
     return result.stdout.splitlines()[0].strip()
 
 
@@ -21,7 +21,7 @@ def sha256(path):
 
 
 def linux_symbols(path):
-    result = subprocess.run(["readelf", "--dyn-syms", "--wide", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    result = subprocess.run(["readelf", "--dyn-syms", "--wide", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
     values = set()
     for line in result.stdout.splitlines():
         fields = line.split()
@@ -34,12 +34,12 @@ def linux_symbols(path):
 
 
 def linux_needed(path):
-    result = subprocess.run(["readelf", "--dynamic", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    result = subprocess.run(["readelf", "--dynamic", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
     return sorted(set(re.findall(r"Shared library: \[([^]]+)\]", result.stdout)))
 
 
 def linux_dynamic_paths(path):
-    result = subprocess.run(["readelf", "--dynamic", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    result = subprocess.run(["readelf", "--dynamic", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
     values = {"rpath": [], "runpath": []}
     for line in result.stdout.splitlines():
         for name, marker in (("rpath", "Library rpath:"), ("runpath", "Library runpath:")):
@@ -52,12 +52,12 @@ def linux_dynamic_paths(path):
 
 
 def linux_format(path):
-    result = subprocess.run(["file", "-b", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    result = subprocess.run(["file", "-b", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
     return result.stdout.strip()
 
 
 def linux_glibc_versions(path):
-    result = subprocess.run(["readelf", "--version-info", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    result = subprocess.run(["readelf", "--version-info", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
     values = set(re.findall(r"GLIBC_([0-9]+(?:\.[0-9]+)+)", result.stdout))
     return sorted(values, key=lambda value: tuple(int(item) for item in value.split(".")))
 
@@ -93,7 +93,7 @@ def verify_environment(manifest, target):
 
 
 def windows_symbols(path, tool_prefix):
-    result = subprocess.run([f"{tool_prefix}-objdump", "-p", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    result = subprocess.run([f"{tool_prefix}-objdump", "-p", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
     values = set()
     active = False
     for line in result.stdout.splitlines():
@@ -110,19 +110,19 @@ def windows_symbols(path, tool_prefix):
 
 
 def windows_needed(path, tool_prefix):
-    result = subprocess.run([f"{tool_prefix}-objdump", "-p", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    result = subprocess.run([f"{tool_prefix}-objdump", "-p", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
     return sorted(set(re.findall(r"DLL Name: ([^\n]+)", result.stdout)))
 
 
 def windows_format(path, tool_prefix):
-    result = subprocess.run([f"{tool_prefix}-objdump", "-f", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    result = subprocess.run([f"{tool_prefix}-objdump", "-f", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
     if "file format pei-x86-64" not in result.stdout:
         raise SystemExit(f"{path.name} is not PE32+ x86-64")
     return "PE32+ x86-64"
 
 
 def windows_image_name(path, tool_prefix):
-    result = subprocess.run([f"{tool_prefix}-objdump", "-p", str(path)], check=True, stdout=subprocess.PIPE, text=True)
+    result = subprocess.run([f"{tool_prefix}-objdump", "-p", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
     match = re.search(r"^\s*Name\s+[0-9a-fA-F]+\s+([^\s]+)\s*$", result.stdout, re.MULTILINE)
     if match is None:
         raise SystemExit(f"{path.name} has no PE image name")

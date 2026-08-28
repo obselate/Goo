@@ -569,6 +569,8 @@ func Main() {
   Require(
     Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
     "GOO_VK_DIAGNOSTICS=1 is required")
+  let maintenanceDisabled = Environment.GetEnvironmentVariable(
+    "GOO_VK_DISABLE_SWAPCHAIN_MAINTENANCE") == "1"
   Window.ConfigureApplication("Goo failed idle smoke", "0.2.0", "io.github.obselate.goo.failed-idle")
   let capturedError = StringWriter()
   let originalError = Console.Error
@@ -617,9 +619,14 @@ func Main() {
     let idleCallsBeforeSiblingClose = VulkanSharedRuntime.DeviceIdleCallCountForTest
     normalClose.RequestClose()
     AwaitWindowClose(normalClose, opened, other)
-    Require(
-      VulkanSharedRuntime.DeviceIdleCallCountForTest == idleCallsBeforeSiblingClose,
-      "normal sibling close called vkDeviceWaitIdle")
+    let idleCallsAfterSiblingClose = VulkanSharedRuntime.DeviceIdleCallCountForTest
+    if maintenanceDisabled {
+      Require(idleCallsAfterSiblingClose > idleCallsBeforeSiblingClose,
+        "compatibility sibling close did not call vkDeviceWaitIdle")
+    } else {
+      Require(idleCallsAfterSiblingClose == idleCallsBeforeSiblingClose,
+        "normal sibling close called vkDeviceWaitIdle")
+    }
     Require(opened.IsOpen && other.IsOpen,
       "normal sibling close stalled or closed a live window")
     let thirdRoot = RecoveryCell{}
@@ -808,8 +815,14 @@ func Main() {
     let idleCallsBeforeRecoveredClose = VulkanSharedRuntime.DeviceIdleCallCountForTest
     opened.RequestClose()
     AwaitWindowClose(opened, other, third)
-    Require(VulkanSharedRuntime.DeviceIdleCallCountForTest == idleCallsBeforeRecoveredClose,
-      "recovered sibling close called vkDeviceWaitIdle")
+    let idleCallsAfterRecoveredClose = VulkanSharedRuntime.DeviceIdleCallCountForTest
+    if maintenanceDisabled {
+      Require(idleCallsAfterRecoveredClose > idleCallsBeforeRecoveredClose,
+        "compatibility recovered close did not call vkDeviceWaitIdle")
+    } else {
+      Require(idleCallsAfterRecoveredClose == idleCallsBeforeRecoveredClose,
+        "recovered sibling close called vkDeviceWaitIdle")
+    }
     other.Pump(0.0)
     third.Pump(0.0)
     Require(other.IsOpen && third.IsOpen,
@@ -1187,7 +1200,9 @@ func Main() {
       +warmText.MappedWrites.ToString() + " text_flushes="
       +warmText.Flushes.ToString())
     Console.WriteLine("retained_close=1 frame_zero=1 resource_zero=1")
-    Console.WriteLine("normal-close: three-windows=1 device-idle-delta=0 siblings-usable=1")
+    Console.WriteLine("normal-close: three-windows=1 device-idle-path="
+      +(if maintenanceDisabled { "compatibility" } else { "present-fence" })
+      +" siblings-usable=1")
     Console.WriteLine("lifecycle: windows=3 operations=1000 plateau=1 independent=1")
     Console.WriteLine("surface-loss: injected=10 observed="
       +surfaceRecoveryCount.ToString() + " siblings-usable=1")

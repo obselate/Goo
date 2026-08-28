@@ -1,7 +1,7 @@
 {
   "artifacts": {
     "gpu": {
-      "bytes": 195160,
+      "bytes": 186808,
       "exports": [
         "hb_gpu_draw_clear",
         "hb_gpu_draw_create_or_fail",
@@ -44,10 +44,9 @@
       "glibcVersions": [
         "2.2.5",
         "2.4",
-        "2.14",
-        "2.35"
+        "2.14"
       ],
-      "maxGlibc": "2.35",
+      "maxGlibc": "2.14",
       "needed": [
         "libc.so.6",
         "libgoo-harfbuzz.so",
@@ -57,10 +56,10 @@
       "runpath": [
         "$ORIGIN/"
       ],
-      "sha256": "3c469222b9256f2a16ae2384583b505d9422021272d5564c55e975c1d3f1c891"
+      "sha256": "c6297a80c0f2f0ee4004c83513f386c92db5d83d49d1bb2330aac0617293e849"
     },
     "harfbuzz": {
-      "bytes": 1636320,
+      "bytes": 1693504,
       "exports": [
         "hb_aat_layout_feature_type_get_name_id",
         "hb_aat_layout_feature_type_get_selector_infos",
@@ -603,18 +602,17 @@
         "2.3",
         "2.3.4",
         "2.4",
-        "2.14",
-        "2.33",
-        "2.35"
+        "2.14"
       ],
-      "maxGlibc": "2.35",
+      "maxGlibc": "2.14",
       "needed": [
         "libc.so.6",
-        "libm.so.6"
+        "libm.so.6",
+        "libpthread.so.0"
       ],
       "rpath": [],
       "runpath": [],
-      "sha256": "c40fc5e7d035bea49bf1def1dabbe0375f1ad02f64b5c744d81462964a1deca2"
+      "sha256": "b256bd0d3b230a8896e92b36bf90e76f5ab77279da4218b90b285192c64fd983"
     }
   },
   "build": {
@@ -671,7 +669,7 @@
       "-Dwith_libstdcxx=false"
     ],
     "linux": {
-      "maxGlibc": "2.35",
+      "maxGlibc": "2.27",
       "requiredFormat": "ELF 64-bit LSB shared object, x86-64",
       "requiredNeeded": {
         "gpu": [
@@ -681,7 +679,8 @@
         ],
         "harfbuzz": [
           "libc.so.6",
-          "libm.so.6"
+          "libm.so.6",
+          "libpthread.so.0"
         ]
       },
       "requiredRpath": {
@@ -796,7 +795,7 @@
       "-Dwith_libstdcxx=false"
     ],
     "linux": {
-      "maxGlibc": "2.35",
+      "maxGlibc": "2.27",
       "requiredFormat": "ELF 64-bit LSB shared object, x86-64",
       "requiredNeeded": {
         "gpu": [
@@ -806,7 +805,8 @@
         ],
         "harfbuzz": [
           "libc.so.6",
-          "libm.so.6"
+          "libm.so.6",
+          "libpthread.so.0"
         ]
       },
       "requiredRpath": {
@@ -840,10 +840,10 @@
     "system": "Meson and Ninja",
     "target": "linux-x64",
     "toolchain": {
-      "cc": "cc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0",
-      "meson": "0.61.2",
-      "ninja": "1.10.1",
-      "strip": "GNU strip (GNU Binutils for Ubuntu) 2.38"
+      "cc": "gcc-8 (Ubuntu 8.4.0-1ubuntu1~18.04) 8.4.0",
+      "meson": "0.61.5",
+      "ninja": "1.8.2",
+      "strip": "GNU strip (GNU Binutils for Ubuntu) 2.30"
     },
     "windows": {
       "forbiddenImports": [
@@ -943,6 +943,7 @@
       "hb_language_from_string",
       "hb_ot_color_has_layers",
       "hb_ot_color_has_paint",
+      "hb_ot_color_glyph_get_layers",
       "hb_ot_color_glyph_has_paint",
       "hb_ot_font_set_funcs",
       "hb_shape_full"

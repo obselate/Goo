@@ -19,7 +19,7 @@ Goo uses Semantic Versioning.
 
 ## Release
 
-1. Update `Goo/Goo.gsproj`, `CHANGELOG.md`, and `GOO_VERSION` in `.github/workflows/ci.yml`.
+1. Update both package project versions, README install commands, `CHANGELOG.md`, and `GOO_VERSION` in `.github/workflows/ci.yml`.
 2. Push the release commit to `main` and require a green CI run.
 3. Create and push the annotated tag: `git tag -a vX.Y.Z -m "Goo X.Y.Z"`.
 4. The tag run rebuilds and validates the package, publishes it to NuGet.org, and creates the GitHub Release.

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-08-28
+
+Goo 0.3.0 moves production rendering to Vulkan, broadens the Linux native ABI
+to glibc 2.27, and qualifies Linux 6.6 or newer.
+
 ### Changed
 
 - Replaced the Skia renderer with a direct Vulkan 1.3 renderer for Linux Wayland.
@@ -9,6 +14,8 @@
 - Added retained scene compilation, bounded GPU resource caches, damage tracking, asynchronous readback, and multi-window scheduling.
 - Added native HarfBuzz shaping and GPU text paint with registered fonts, fallback, color glyphs, text editing, and IME geometry.
 - Added retained images, vector paths, rounded clipping, borders, gradients, shadows, blend modes, scrolling, and draggable scrollbars.
+- Lowered the Linux native ABI floor to glibc 2.27 and qualified Linux 6.6 or newer.
+- Made Vulkan surface and swapchain maintenance extensions optional with an idle-safe compatibility path.
 
 ### Added
 

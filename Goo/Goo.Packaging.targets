@@ -145,7 +145,7 @@
 
   <Target Name="ValidateGooLinuxSdlPackageAsset" BeforeTargets="Pack">
     <Error Condition="'$(GooLinuxSdlPath)' == '' or !Exists('$(GooLinuxSdlPath)')"
-           Text="Packing Goo requires -p:GooLinuxSdlPath=/absolute/path/to/a glibc-2.35-compatible libSDL3.so." />
+           Text="Packing Goo requires -p:GooLinuxSdlPath=/absolute/path/to/a glibc-2.27-compatible libSDL3.so." />
   </Target>
   <Target Name="_PopulateGooDocFileItems"
           AfterTargets="CoreCompile"
