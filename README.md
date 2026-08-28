@@ -12,12 +12,23 @@
 
 Goo applications describe UI as ordinary G# objects. Goo retains mounted state, rebuilds only dirty `Cell` boundaries, lays out with Yoga, and renders through Vulkan 1.3.
 
-## Install
+## Quick start
 
-Goo targets .NET 10 and uses [`Gsharp.NET.Sdk`](https://www.nuget.org/packages/Gsharp.NET.Sdk/).
+Install [.NET 10](https://dotnet.microsoft.com/download/dotnet/10.0), then:
 
 ```sh
+dotnet new install Gsharp.Templates # once
+
+mkdir hello-goo
+cd hello-goo
+dotnet new gsharp-console
 dotnet add package Goo --version 0.3.0
+```
+
+Replace `Program.gs` with the example below, then run:
+
+```sh
+dotnet run
 ```
 
 ## Example
