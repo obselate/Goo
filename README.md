@@ -42,7 +42,8 @@ class Counter : Cell {
   private var count int32
 
   override func Build() Blob -> Container {
-    Width: 320,
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
     Padding: 24,
     Gap: 12,
     BorderRadius: 16,
@@ -68,7 +69,7 @@ class Counter : Cell {
 
 func Main() {
   Window.ConfigureApplication("Counter", "1.0.0", "com.example.counter")
-  Window{ Title: "Counter", Root: Counter{} }.Run()
+  Window{ Title: "Counter", Width: 320, Height: 180, Root: Counter{} }.Run()
 }
 ```
 
@@ -102,23 +103,34 @@ class ProjectMenu : Cell {
       let project = projects[index]
       children.Add(Button{
         Key: project,
+        Padding: 10,
+        BorderRadius: 8,
+        BackgroundColor: Color.Rgb(54, 92, 168),
         OnClick: func() { selected = project },
-        Children: { Text{ Content: project } },
+        Children: { Text{ Content: project, Color: Color.White } },
       })
     }
     if visible < projects.Length {
       children.Add(Text{
+        Key: "more",
+        Color: Color.Rgb(174, 184, 204),
         Content: (projects.Length - visible).ToString() + " more",
       })
     }
     if let project = selected {
-      children.Add(Text{ Content: "Selected: " + project })
+      children.Add(Text{
+        Key: "selected",
+        Content: "Selected: " + project,
+        Color: Color.Rgb(112, 170, 255),
+      })
     }
 
     return Container{
-      Width: 320,
+      Width: Length.Percent(100),
+      Height: Length.Percent(100),
       Padding: 20,
       Gap: 8,
+      BackgroundColor: Color.Rgb(20, 27, 39),
       Children: children,
     }
   }
@@ -126,7 +138,7 @@ class ProjectMenu : Cell {
 
 func Main() {
   Window.ConfigureApplication("Projects", "1.0.0", "com.example.projects")
-  Window{ Title: "Projects", Root: ProjectMenu{} }.Run()
+  Window{ Title: "Projects", Width: 360, Height: 240, Root: ProjectMenu{} }.Run()
 }
 ```
 
