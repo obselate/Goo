@@ -110,6 +110,12 @@ public class PublicApiTests
             ? "absent|generated-package-containers|member|AutoKey"
             : $"present|generated-package-containers|member|AutoKey|owners:{string.Join(",", autoKeyOwners)}");
 
+        var packageMethods = typeof(Window).Assembly.GetTypes()
+            .Where(IsPackageContainer)
+            .SelectMany(type => type.GetMethods(PublicDeclared));
+        var virtualMethod = Assert.Single(packageMethods, method => method.Name == "Virtual");
+        records.Add($"function|Goo|Virtual|{Visibility(virtualMethod)}|generic:{DescribeGenericParameters(virtualMethod.GetGenericArguments())}|({DescribeParameters(virtualMethod.GetParameters())})->{TypeIdentity(virtualMethod.ReturnType)}");
+
         var duplicates = records
             .GroupBy(record => record, StringComparer.Ordinal)
             .Where(group => group.Count() > 1)

@@ -90,6 +90,8 @@ static string BuildPage(string directory, ApiType[] types, ApiMember[] members, 
     if (directory == "Cell")
         AppendCellInputGuide(text);
     if (directory == "Tree")
+        AppendVirtualizationGuide(text);
+    if (directory == "Tree")
         AppendOwnedImageSourceGuide(text);
     if (directory == "Tree")
         AppendElementMetricsGuide(text);
@@ -181,6 +183,16 @@ static void AppendCellInputGuide(StringBuilder text)
     text.AppendLine("Store local Cell state in ordinary fields. Goo rebuilds the owning Cell after its input callbacks. Call `Rebuild()` after mutations outside Goo input dispatch.");
     text.AppendLine();
     text.AppendLine("A packaged G# component derived from `Cell<TInput>` should override `protected Build(input TInput) Blob`. Goo passes the stored immutable snapshot through this typed dispatch path. Existing same-assembly components that override parameterless `Build()` remain valid. If a component overrides both overloads, the typed overload takes precedence. Override `ShouldRebuild(previous, next)` only when default structural equality does not match the component's rebuild policy.");
+}
+
+static void AppendVirtualizationGuide(StringBuilder text)
+{
+    text.AppendLine();
+    text.AppendLine("## Virtualize complete data sources");
+    text.AppendLine();
+    text.AppendLine("`Virtual(items, itemKey, itemBuilder)` accepts the complete `IReadOnlyList<T>` source. Goo reads its count, measures one realized item, derives list or wrapped-grid placement from `FlexDirection` and `FlexWrap`, and mounts only the viewport window plus one overscan line. The caller does not calculate a range, supply an item count, choose a list or grid primitive, or pass item dimensions.");
+    text.AppendLine();
+    text.AppendLine("Source order controls logical order, and `itemKey` supplies stable identity. Goo uses the item type's equality semantics to retain unchanged visible nodes without calling `itemBuilder`. Newly visible and changed items invoke the builder. Items leaving the viewport unmount through the ordinary Goo lifecycle, including focus, pointer capture, handles, and accessibility state. Keys must be unique and non-empty. Rebuild the owning Cell after same-count content changes. A live source count change is detected directly.");
 }
 
 static void AppendOwnedImageSourceGuide(StringBuilder text)

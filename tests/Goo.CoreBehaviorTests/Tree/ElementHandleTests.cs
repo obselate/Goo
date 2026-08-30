@@ -61,8 +61,8 @@ public sealed class ElementHandleTests
         => Assert.True(new ElementHandleFixtures().MetricsCloseContract());
 
     [Fact]
-    public void MetricsCanDriveABoundedPublicVirtualList()
-        => Assert.True(new ElementHandleFixtures().MetricsVirtualListContract());
+    public void VirtualOwnsListAndGridWindowingOverTheCompleteSource()
+        => Assert.True(new ElementHandleFixtures().VirtualContract());
 
     [Fact]
     public void UnsubscribedHandlesDoNotAllocateDuringAStableDiff()

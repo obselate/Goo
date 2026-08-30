@@ -74,7 +74,9 @@ internal class Layout {
   }
 
   private func collectScroll(n Node) {
-    if n.Kind == NodeKind.Editor || n.OverflowX == Overflow.Scroll || n.OverflowY == Overflow.Scroll {
+    let scrollable = n.Kind == NodeKind.Editor || n.OverflowX == Overflow.Scroll
+      || n.OverflowY == Overflow.Scroll || Virtualization.State(n) != nil
+    if scrollable {
       scrollNodes.Add(n)
     }
     for i in 0 ... n.Children.Count {
@@ -226,14 +228,19 @@ internal class Layout {
   internal func clampScroll(n Node) {
     var cw = 0.0F
     var ch = 0.0F
-    for i in 0 ... n.Children.Count {
-      guard let cy = n.Children[i].Yoga else {
-        continue
+    if let extent = Virtualization.ContentExtent(n) {
+      cw = extent.Width
+      ch = extent.Height
+    } else {
+      for i in 0 ... n.Children.Count {
+        guard let cy = n.Children[i].Yoga else {
+          continue
+        }
+        let right = YGNodeLayoutAPI.YGNodeLayoutGetLeft(cy) + YGNodeLayoutAPI.YGNodeLayoutGetWidth(cy)
+        let bottom = YGNodeLayoutAPI.YGNodeLayoutGetTop(cy) + YGNodeLayoutAPI.YGNodeLayoutGetHeight(cy)
+        if right > cw { cw = right }
+        if bottom > ch { ch = bottom }
       }
-      let right = YGNodeLayoutAPI.YGNodeLayoutGetLeft(cy) + YGNodeLayoutAPI.YGNodeLayoutGetWidth(cy)
-      let bottom = YGNodeLayoutAPI.YGNodeLayoutGetTop(cy) + YGNodeLayoutAPI.YGNodeLayoutGetHeight(cy)
-      if right > cw { cw = right }
-      if bottom > ch { ch = bottom }
     }
     let grewY = ch > n.ContentH
     n.ContentW = cw

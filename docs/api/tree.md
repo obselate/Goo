@@ -4,6 +4,12 @@ Generated from `Goo.xml`. Source declarations supply type ownership and XML-emit
 
 Source: [`Goo/Tree`](../../Goo/Tree)
 
+## Virtualize complete data sources
+
+`Virtual(items, itemKey, itemBuilder)` accepts the complete `IReadOnlyList<T>` source. Goo reads its count, measures one realized item, derives list or wrapped-grid placement from `FlexDirection` and `FlexWrap`, and mounts only the viewport window plus one overscan line. The caller does not calculate a range, supply an item count, choose a list or grid primitive, or pass item dimensions.
+
+Source order controls logical order, and `itemKey` supplies stable identity. Goo uses the item type's equality semantics to retain unchanged visible nodes without calling `itemBuilder`. Newly visible and changed items invoke the builder. Items leaving the viewport unmount through the ordinary Goo lifecycle, including focus, pointer capture, handles, and accessibility state. Keys must be unique and non-empty. Rebuild the owning Cell after same-count content changes. A live source count change is detected directly.
+
 ## Owned image sources
 
 `Image.Source` and `Style.BackgroundImageSource` accept an `ImageSourceProvider`. A source wins over its local image path. Goo preserves the path for a later source removal, but never falls back to it after source failure.

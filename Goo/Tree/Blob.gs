@@ -7,6 +7,7 @@ public enum ScrollbarVisibility { Auto; Always; Hidden }
 
 /// Defines the common surface for Goo-owned declarative elements.
 public open class Blob : Style {
+  private var authoredKey string?
   private var transitionMs float32
   private var transitionDelayMs float32
   private var transitionSelection StyleMask
@@ -19,7 +20,8 @@ public open class Blob : Style {
   internal open func coreBlob();
 
   /// Gets the stable key within the sibling list.
-  public prop Key string? { get; init; }
+  public prop Key string? { get -> authoredKey; init -> authoredKey = value }
+  internal func SetVirtualKey(value string) { authoredKey = value }
   /// Controls whether Goo auto-hides, always shows, or suppresses built-in scrollbars.
   public prop ScrollbarVisibility ScrollbarVisibility{ get; init; }
   /// Gets the consumer-owned handle attached while this element is mounted.

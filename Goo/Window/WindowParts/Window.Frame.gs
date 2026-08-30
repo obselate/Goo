@@ -238,6 +238,24 @@ public partial class Window {
         accessibilityLayout = true
         metricsChanged = true
       }
+      var virtualPass int32
+      while virtualPass < 3 {
+        let virtualEffects = refreshVirtualization(n)
+        if virtualEffects == ReconcileEffects.None { break }
+        effects = combineEffects(effects, virtualEffects)
+        if hasEffect(virtualEffects, ReconcileEffects.Structure) {
+          layout.MarkStructureDirty()
+        }
+        if layout.NeedsLayout(n, viewW, viewH) {
+          calculateLayout(n, viewW, viewH)
+        } else {
+          layout.RefreshRects(n)
+        }
+        layoutChanged = true
+        accessibilityLayout = true
+        metricsChanged = true
+        virtualPass++
+      }
       if hasEffect(effects, ReconcileEffects.Structure)
         || hasEffect(effects, ReconcileEffects.Input)
         || hasEffect(effects, ReconcileEffects.Content)
@@ -271,6 +289,25 @@ public partial class Window {
             metricsChanged = true
             layout.RefreshRects(n)
             let inputTreeProfile = profiling ? profiler.Start() : FrameProfilePoint{}
+            let virtualEffects = refreshVirtualization(n)
+            if virtualEffects != ReconcileEffects.None {
+              effects = combineEffects(effects, virtualEffects)
+              if hasEffect(virtualEffects, ReconcileEffects.Structure) {
+                layout.MarkStructureDirty()
+              }
+              if layout.NeedsLayout(n, viewW, viewH) {
+                calculateLayout(n, viewW, viewH)
+              } else {
+                layout.RefreshRects(n)
+              }
+              layoutChanged = true
+              accessibilityLayout = true
+              input.AfterTreeUpdated(n, resolver, true)
+              effects = combineEffects(effects, resolver.FlushEffects())
+              if layout.NeedsLayout(n, viewW, viewH) {
+                calculateLayout(n, viewW, viewH)
+              }
+            }
             if input.RefreshHover(n, resolver) {
               changed = true
               calculateLayout(n, viewW, viewH)
@@ -467,6 +504,49 @@ public partial class Window {
       }
     }
     return moved
+  }
+
+  private func refreshVirtualization(root Node) ReconcileEffects {
+    let candidates = layout.ScrollNodes(root)
+    var needed = false
+    for i in 0 ... candidates.Count {
+      if let state = Virtualization.State(candidates[i]) {
+        if state.NeedsRefresh(candidates[i]) {
+          needed = true
+          break
+        }
+      }
+    }
+    if !needed { return ReconcileEffects.None }
+
+    ElementHandles.PushOwner(this)
+    let rec = Reconciler{
+      CellInvalidated: cellHook,
+      ImageCompleted: imageCompletionHook,
+      RetainedInvalidated: retainedInvalidationHook,
+      Res: resolver,
+      ChildScratch: childDiffScratch,
+      DeferStyleFlush: true,
+      Pump: motionPump,
+    }
+    var stylesFlushed = false
+    try {
+      for i in 0 ... candidates.Count {
+        Virtualization.Refresh(candidates[i], rec)
+      }
+      rec.FlushStyles()
+      stylesFlushed = true
+      return rec.Effects
+    } finally {
+      try {
+        if !stylesFlushed {
+          pendingReconcileEffects = combineEffects(pendingReconcileEffects, rec.Effects)
+          rec.DiscardStyles()
+        }
+      } finally {
+        ElementHandles.PopOwner()
+      }
+    }
   }
 
   private func approach(v float32, target float32, k float32) float32 {

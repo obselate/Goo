@@ -104,6 +104,8 @@ internal class Reconciler {
 
   private func mountCore(b Blob) Node {
     let result = switch b {
+      case v is VirtualBlobBase: mountVirtual(v)
+      case retained is VirtualRetainedBlob: throw InvalidOperationException("Retained virtual item cannot be mounted")
       case lava is LavaSurface: mountLava(lava)
       case bt is Button: mountButton(bt)
       case c is Container: mountContainer(c)
@@ -142,6 +144,41 @@ internal class Reconciler {
     applyContainer(n, c, true)
     mountChildren(n, c.Children)
     return n
+  }
+
+  internal func mountVirtual(b VirtualBlobBase) Node {
+    let n = Node{ Kind: NodeKind.Container, Key: b.Key }
+    let state = applyVirtual(n, b, true)
+    try {
+      let children = b.Prepare(state, n)
+      mountChildren(n, children)
+      state.Commit()
+      return n
+    } catch (error Exception) {
+      state.Cancel()
+      throw error
+    }
+  }
+
+  internal func applyVirtual(n Node, b Blob, initial bool) VirtualNodeState {
+    applyStyle(n, b, b.Focusable, initial)
+    return Virtualization.Configure(n)
+  }
+
+  internal func diffVirtual(n Node, b VirtualBlobBase) Node {
+    if n.Kind != NodeKind.Container || n.Key != b.Key || Virtualization.State(n) == nil {
+      return replace(n, b)
+    }
+    let state = applyVirtual(n, b, false)
+    try {
+      let children = b.Prepare(state, n)
+      diffChildren(n, children)
+      state.Commit()
+      return n
+    } catch (error Exception) {
+      state.Cancel()
+      throw error
+    }
   }
 
   internal func mountLava(l LavaSurface) Node {
@@ -555,6 +592,12 @@ internal class Reconciler {
   }
 
   private func diffCore(n Node, b Blob) Node {
+    if b is VirtualRetainedBlob {
+      if n.Retired || n.Key != b.Key {
+        throw InvalidOperationException("Retained virtual item does not match the mounted node")
+      }
+      return n
+    }
     if n.Fiber != nil && !(b is CellElement) {
       let replacement = replace(n, b)
       TextLayouts.DisposeTree(n)
@@ -562,6 +605,7 @@ internal class Reconciler {
       return replacement
     }
     let result = switch b {
+      case v is VirtualBlobBase: diffVirtual(n, v)
       case lava is LavaSurface: diffLava(n, lava)
       case bt is Button: diffButton(n, bt)
       case c is Container: diffContainer(n, c)
@@ -897,7 +941,7 @@ internal class Reconciler {
   }
 
   internal func diffContainer(n Node, c Container) Node {
-    if n.Kind != NodeKind.Container || n.Key != c.Key {
+    if n.Kind != NodeKind.Container || n.Key != c.Key || Virtualization.State(n) != nil {
       return replace(n, c)
     }
     applyContainer(n, c, false)
@@ -983,6 +1027,13 @@ internal class Reconciler {
 
   private func keyedHitCompatible(n Node, b Blob) bool {
     switch b {
+      case retained is VirtualRetainedBlob {
+        return !n.Retired && n.Key == b.Key
+      }
+      case virtual is VirtualBlobBase {
+        return n.Fiber == nil && n.Kind == NodeKind.Container && n.Key == b.Key
+          && Virtualization.State(n) != nil
+      }
       case e is CellElement {
         if let cell = n.Fiber {
           return cell.GetType() == e.CellType && cell.mountKey == e.Key && !cell.disposed
@@ -997,6 +1048,7 @@ internal class Reconciler {
       }
       case container is Container {
         return n.Fiber == nil && n.Kind == NodeKind.Container && n.Key == b.Key
+          && Virtualization.State(n) == nil
       }
       case text is Text {
         return n.Fiber == nil && n.Kind == NodeKind.Text && n.Key == b.Key

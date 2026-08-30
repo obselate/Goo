@@ -266,19 +266,56 @@ internal class ElementHandleFixtures {
     return snapshots.Count == 2 && snapshots[0].IsMounted && !snapshots[1].IsMounted
   }
 
-  func MetricsVirtualListContract() bool {
-    let cell = ElementMetricsVirtualListCell{}
+  func VirtualContract() bool {
+    let cell = VirtualFixtureCell(1000, false)
     let window = Window{ Root: cell, Width: 100, Height: 60 }
     window.UpdateTree()
-    if cell.FirstVisible != 0 || !cell.Viewport.ScrollTo(0.0, 40.0) {
+    guard let root = window.Tree else { return false }
+    let listInvalid = root.Children.Count <= 0 || root.Children.Count > 5
+      || cell.Builds.Count > 5 || cell.Handle.ScrollRange.Y != 19940.0
+      || !cell.Handles[0].IsMounted
+    if listInvalid {
       return false
     }
-    window.UpdateTree(1.0)
-    if cell.FirstVisible != 2 {
-      return false
-    }
+
+    cell.Builds.Clear()
     window.UpdateTree()
-    return cell.FirstVisible == 2 && cell.BuiltFirst == 2 && cell.BuiltLast == 4
+    if cell.Builds.Count != 0 { return false }
+    if !cell.Handle.JumpTo(0.0, 10000.0) { return false }
+    window.UpdateTree()
+    let movedInvalid = root.Children.Count <= 0 || root.Children.Count > 5
+      || cell.Builds.Count > 5 || cell.Handles[0].IsMounted
+      || !cell.Handles[500].IsMounted
+    if movedInvalid {
+      return false
+    }
+
+    cell.Builds.Clear()
+    cell.Items[500] = VirtualFixtureItem{ Id: 500, Revision: 1 }
+    cell.Rebuild()
+    window.UpdateTree()
+    if cell.Builds.Count != 1 || cell.Builds[0] != 500 { return false }
+    cell.Items.Add(VirtualFixtureItem{ Id: 1000 })
+    window.UpdateTree()
+    if cell.Handle.ScrollRange.Y != 19960.0 { return false }
+    window.Close()
+    if Virtualization.State(root) != nil || cell.Handles[500].IsMounted { return false }
+
+    let gridCell = VirtualFixtureCell(1000, true)
+    let gridWindow = Window{ Root: gridCell, Width: 100, Height: 60 }
+    gridWindow.UpdateTree()
+    guard let gridRoot = gridWindow.Tree else { return false }
+    if gridRoot.Children.Count <= 0 || gridRoot.Children.Count > 25
+      || gridCell.Builds.Count > 25 || gridCell.Handle.ScrollRange.Y != 3940.0 {
+        return false
+      }
+    if !gridCell.Handle.JumpTo(0.0, 2000.0) { return false }
+    gridCell.Builds.Clear()
+    gridWindow.UpdateTree()
+    let gridBounded = gridRoot.Children.Count > 0 && gridRoot.Children.Count <= 25
+      && gridCell.Builds.Count <= 25 && gridCell.Handles[500].IsMounted
+    gridWindow.Close()
+    return gridBounded && Virtualization.State(gridRoot) == nil
   }
 
   func HandleNoSubscriptionDiffBytes() int64 {
@@ -470,36 +507,60 @@ internal class ElementMetricsPairCell : Cell {
   } }
 }
 
-internal class ElementMetricsVirtualListCell : Cell {
-  internal let Viewport ElementHandle
-  internal var FirstVisible int32
-  internal var BuiltFirst int32
-  internal var BuiltLast int32
+internal class VirtualFixtureCell : Cell {
+  internal let Items List[VirtualFixtureItem]
+  internal let Builds List[int32]
+  internal let Handles List[ElementHandle]
+  internal let Handle ElementHandle
+  private let grid bool
 
-  init() {
-    Viewport = ElementHandle{}
-    FirstVisible = 0
-    Viewport.MetricsChanged += func(metrics ElementMetrics) {
-      let next = int32(metrics.ScrollOffset.Y / 20.0)
-      if FirstVisible != next {
-        FirstVisible = next
-        Rebuild()
-      }
+  init(count int32, isGrid bool) {
+    Items = List[VirtualFixtureItem]()
+    Builds = List[int32]()
+    Handles = List[ElementHandle]()
+    Handle = ElementHandle{}
+    grid = isGrid
+    for i in 0 ... count {
+      Items.Add(VirtualFixtureItem{ Id: i })
+      Handles.Add(ElementHandle{})
     }
   }
 
   override func Build() Blob {
-    BuiltFirst = FirstVisible
-    BuiltLast = BuiltFirst + 2
-    let content = Container{ Height: 400, Position: PositionType.Relative }
-    for i in 0 ... 3 {
-      let row = FirstVisible + i
-      content.Children.Add(Container{ Key: "row-$row", Position: PositionType.Absolute,
-        Top: float64(row * 20), Width: 100, Height: 20, Children: {
-          Text{ Content: "row $row" },
-        } })
+    if grid {
+      return Virtual(
+        Items,
+        (item VirtualFixtureItem) -> "row-${item.Id}",
+        (item VirtualFixtureItem) -> buildItem(item)) {
+          Handle = Handle,
+          Width = 100,
+          Height = 60,
+          FlexDirection = FlexDirection.Row,
+          FlexWrap = FlexWrap.Wrap,
+        }
     }
-    return Container{ Handle: Viewport, Width: 100, Height: 60, OverflowY: Overflow.Scroll,
-      Children: { content } }
+    return Virtual(
+      Items,
+      (item VirtualFixtureItem) -> "row-${item.Id}",
+      (item VirtualFixtureItem) -> buildItem(item)) {
+        Handle = Handle,
+        Width = 100,
+        Height = 60,
+      }
   }
+
+  private func buildItem(item VirtualFixtureItem) Blob {
+    Builds.Add(item.Id)
+    return Container{
+      Handle: Handles[item.Id],
+      Width: grid ? 20 : 100,
+      Height: 20,
+      Children: { Text{ Content: "row ${item.Id}:${item.Revision}" } },
+    }
+  }
+}
+
+internal data struct VirtualFixtureItem {
+  internal var Id int32
+  internal var Revision int32
 }
