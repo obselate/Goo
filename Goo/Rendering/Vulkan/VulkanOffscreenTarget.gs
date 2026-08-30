@@ -36,6 +36,7 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
   private let textAtlases VulkanTextAtlasSet?
   private let resourceGeneration uint64
   private let maxStorageBufferRange VkDeviceSize
+  private let resourcePolicy VulkanResourcePolicy
   private let objectAccounting VulkanObjectAccounting?
   private let diagnostics VulkanDiagnostics?
   private var timestampEnabled bool
@@ -163,6 +164,7 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
     nativeImageResources VulkanImageResources?,
     expectedGeneration uint64,
     nativeMaxStorageBufferRange VkDeviceSize,
+    nativeResourcePolicy VulkanResourcePolicy,
     nativePrimitiveState VulkanSharedPrimitiveState?,
     nativePathAtlas VulkanPathAtlas,
     nativePathResources VulkanPathResources,
@@ -256,6 +258,7 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       textAtlases = nativeTextAtlases
       resourceGeneration = expectedGeneration
       maxStorageBufferRange = nativeMaxStorageBufferRange
+      resourcePolicy = nativeResourcePolicy
       objectAccounting = nativeObjectAccounting
       diagnostics = nativeDiagnostics
       var selectedTimestampEnabled = false
@@ -473,6 +476,7 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       guard let renderer = primitiveRenderer else {
         throw InvalidOperationException("Vulkan offscreen primitive renderer is unavailable")
       }
+      renderer.SetPathAtlas(pathResources.Atlas)
       renderer.PrepareClipMasks(frame, extent, ClipFrameSlot, clipMaskSubmissionSerial)
       renderer.SetPrimitiveFrameSlot(0)
       renderer.PreparePrimitiveFrame(frame, extent, 1.0F, 1.0F, clipMaskSubmissionSerial)
@@ -1425,7 +1429,8 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
         imageResources.DescriptorSetLayout,
         targetFormat,
         objectAccounting,
-        134217728uL,
+        resourcePolicy.OffscreenLayerInitialCapacity,
+        resourcePolicy.OffscreenLayerHardBytes,
         nil)
       primitiveRenderer!!.SetLayerPool(layerPool)
       CreateTimestampQueryPool()

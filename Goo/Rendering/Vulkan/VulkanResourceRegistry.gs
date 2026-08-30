@@ -84,7 +84,7 @@ internal data struct VulkanResourceRegistryStats {
 internal unsafe class VulkanResourceRegistry {
   private const MaxCapacity int32 = 1048576
 
-  private let entries []VulkanResourceEntry
+  private var entries []VulkanResourceEntry
   private let byteBudget VkDeviceSize
   private let logicalSourceBudget VkDeviceSize
   private var entryCount int32
@@ -159,7 +159,7 @@ internal unsafe class VulkanResourceRegistry {
         throw ArgumentOutOfRangeException("bytes")
       }
       ValidateSource(id, source)
-      let existingIndex = FindLogicalIndex(id)
+      let existingIndex = FindIndex(id)
       if existingIndex >= 0 {
         let existing = entries[existingIndex]
         if id.Version < existing.Id.Version {
@@ -211,7 +211,8 @@ internal unsafe class VulkanResourceRegistry {
         index++
       }
       if freeIndex < 0 {
-        throw InvalidOperationException("Vulkan logical resource capacity reached")
+        freeIndex = entries.Length
+        EnsureEntryCapacity(freeIndex + 1)
       }
       AddSourceCharge(source.Bytes)
       entries[freeIndex] = VulkanResourceEntry{
@@ -588,21 +589,24 @@ internal unsafe class VulkanResourceRegistry {
     return -1
   }
 
-  private func FindLogicalIndex(id ResourceId) int32 {
-    if !id.IsValid {
-      return -1
+  private func EnsureEntryCapacity(required int32) {
+    if required <= entries.Length {
+      return
     }
-    var index int32 = 0
-    while index < entries.Length {
-      let entry = entries[index]
-      if entry.State != VulkanResourceState.Empty
-        && entry.Id.Kind == id.Kind
-        && entry.Id.LogicalId == id.LogicalId{
-          return index
-        }
-      index++
+    if required > MaxCapacity {
+      throw InvalidOperationException("Vulkan logical resource metadata hard limit exceeded")
     }
-    return -1
+    var capacity = entries.Length
+    while capacity < required {
+      if capacity > MaxCapacity / 2 {
+        capacity = MaxCapacity
+      } else {
+        capacity = capacity * 2
+      }
+    }
+    let next = [capacity]VulkanResourceEntry
+    Array.Copy(entries, next, entries.Length)
+    entries = next
   }
 
   private func TouchValue() uint64 {

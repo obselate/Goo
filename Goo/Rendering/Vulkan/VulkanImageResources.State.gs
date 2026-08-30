@@ -15,9 +15,26 @@ internal unsafe partial class VulkanImageResources : IDisposable {
       var entry = entries[index]
       if entry.State == VulkanImageResourceState.UploadPending
         && entry.UploadSubmitted && entry.UploadFence <= effectiveCompletedFence{
+          let completedRows = entry.UploadRowOffset + entry.UploadRowCount
+          if entry.UploadRowCount == 0u
+            || entry.UploadRowOffset != entry.UploadCompletedRows
+            || completedRows > entry.Height{
+              throw InvalidOperationException("Vulkan image upload completion range is invalid")
+            }
+          let finalChunk = completedRows == entry.Height
+          if finalChunk {
+            if let currentDiagnostics = diagnostics {
+              currentDiagnostics.AddImageUploadCompleted(1uL)
+            }
+          }
           let pendingRetire = entry.PendingRetire
           if pendingRetire && !entry.GpuPublished {
-            entry.UploadedVersion = entry.Id.Version
+            if finalChunk {
+              entry.UploadedVersion = entry.Id.Version
+            }
+            entry.UploadCompletedRows = completedRows
+            entry.UploadRowOffset = 0u
+            entry.UploadRowCount = 0u
             entry.Upload = VulkanUploadReservation{}
             entry.UploadRecorded = false
             entry.UploadSubmitted = false
@@ -25,6 +42,18 @@ internal unsafe partial class VulkanImageResources : IDisposable {
             entry.UploadFence = 0uL
             entry.PendingRetire = false
             entry.State = VulkanImageResourceState.Retiring
+            entry.LastTouch = TouchValue()
+            entries[index] = entry
+          } else if !finalChunk {
+            entry.UploadCompletedRows = completedRows
+            entry.UploadRowOffset = 0u
+            entry.UploadRowCount = 0u
+            entry.Upload = VulkanUploadReservation{}
+            entry.UploadRecorded = false
+            entry.UploadSubmitted = false
+            entry.UploadCommandBuffer = 0uL
+            entry.UploadFence = 0uL
+            entry.State = VulkanImageResourceState.Resident
             entry.LastTouch = TouchValue()
             entries[index] = entry
           } else {
@@ -49,6 +78,9 @@ internal unsafe partial class VulkanImageResources : IDisposable {
               registry.MarkUploaded(entry.Id, generation)
               entry.UploadedVersion = entry.Id.Version
             }
+            entry.UploadCompletedRows = completedRows
+            entry.UploadRowOffset = 0u
+            entry.UploadRowCount = 0u
             entry.Upload = VulkanUploadReservation{}
             entry.UploadRecorded = false
             entry.UploadSubmitted = false
@@ -177,8 +209,42 @@ internal unsafe partial class VulkanImageResources : IDisposable {
       return false
     }
     currentReferenceCounts[index]--
+    let retire = currentReferenceCounts[index] == 0
+      && entries[index].PendingRetire && entries[index].RecordingUseCount == 0
+    if retire {
+      var entry = entries[index]
+      entry.PendingRetire = false
+      entries[index] = entry
+      if !Retire(id, generation, highestCompletedFence) {
+        throw InvalidOperationException("Vulkan image retirement failed")
+      }
+    }
     return true
   }
+
+  internal func PriorRenderableSourceVersion(source VulkanResourceSource,
+    samplerId ResourceId, samplerMode VulkanImageSamplerMode) VulkanImageResourceLookup{
+      var candidate int32 = -1
+      var candidateVersion uint64
+      var index int32 = 0
+      while index < entries.Length {
+        let entry = entries[index]
+        if entry.State == VulkanImageResourceState.Resident
+          && entry.GpuPublished && !entry.PendingRetire
+          && entry.ProviderId == source.ProviderId
+          && entry.SourceId == source.SourceId
+          && entry.Id.Version < source.Version
+          && entry.Id.Version > candidateVersion{
+            candidate = index
+            candidateVersion = entry.Id.Version
+          }
+        index++
+      }
+      if candidate < 0 {
+        return VulkanImageResourceLookup{ Found: false }
+      }
+      return Lookup(candidate, samplerId, samplerMode)
+    }
 
   internal func Lookup(id ResourceId, expectedGeneration uint64) VulkanImageResourceLookup {
     if disposed || !id.IsValid || id.Kind != SceneResourceKind.Image

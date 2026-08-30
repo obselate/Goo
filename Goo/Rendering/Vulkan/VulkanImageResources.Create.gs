@@ -10,34 +10,49 @@ internal unsafe partial class VulkanImageResources : IDisposable {
       objectAccounting,
       VkConstants.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
       uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT))
-    poolSizes[0] = VkDescriptorPoolSize{}
-    poolSizes[0]._type = VkConstants.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-    poolSizes[0].descriptorCount = uint32(descriptorCapacity)
-    var descriptorIndex int32 = 0
-    while descriptorIndex < descriptorCapacity {
-      descriptorLayouts[descriptorIndex] = descriptorSetLayout
-      descriptorIndex++
-    }
     try {
-      let creation = VulkanDescriptorFactory.CreatePoolAndAllocate(
-        device,
-        dispatch,
-        objectAccounting,
-        &poolSizes[0],
-        1u,
-        &descriptorLayouts[0],
-        uint32(descriptorCapacity),
-        &descriptorSets[0])
-      descriptorPool = creation.Pool
-      if objectAccounting != nil {
-        trackedDescriptorSetCount = int32(creation.SetCount)
-      }
+      CreateDescriptorBlock(capacity, 0)
     } catch (error Exception) {
       DestroyGeneration()
       throw error
     }
     nearestSampler = CreateSampler(VkConstants.VK_FILTER_NEAREST)
     linearSampler = CreateSampler(VkConstants.VK_FILTER_LINEAR)
+  }
+
+  private func CreateDescriptorBlock(imageCount int32, imageOffset int32) {
+    if imageCount <= 0 || imageOffset < 0
+      || imageOffset > capacity - imageCount{
+        throw ArgumentOutOfRangeException("imageCount")
+      }
+    let setCount = imageCount * 2
+    let setOffset = imageOffset * 2
+    poolSizes[0] = VkDescriptorPoolSize{}
+    poolSizes[0]._type = VkConstants.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+    poolSizes[0].descriptorCount = uint32(setCount)
+    let layouts = [setCount]VkDescriptorSetLayout
+    let createdSets = [setCount]VkDescriptorSet
+    var descriptorIndex int32 = 0
+    while descriptorIndex < setCount {
+      layouts[descriptorIndex] = descriptorSetLayout
+      descriptorIndex++
+    }
+    let creation = VulkanDescriptorFactory.CreatePoolAndAllocate(
+      device,
+      dispatch,
+      objectAccounting,
+      &poolSizes[0],
+      1u,
+      &layouts[0],
+      uint32(setCount),
+      &createdSets[0])
+    descriptorPools.Add(creation.Pool)
+    trackedDescriptorPoolCount++
+    Array.Copy(createdSets, 0, descriptorSets, setOffset, setCount)
+    Array.Copy(layouts, 0, descriptorLayouts, setOffset, setCount)
+    if objectAccounting != nil {
+      trackedDescriptorSetCount += int32(creation.SetCount)
+    }
   }
 
   private func CreateSampler(filter VkFilter) VkSampler {

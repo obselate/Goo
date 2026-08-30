@@ -1,6 +1,7 @@
 package Goo
 
 import System
+import System.Collections.Generic
 
 internal unsafe sealed class VulkanOffscreenLayerTarget : IDisposable {
   private let device VkDevice
@@ -350,7 +351,6 @@ internal unsafe sealed class VulkanOffscreenLayerTarget : IDisposable {
 }
 
 internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
-  private const MaxTargetCount int32 = 16
   private const IdleRetirementSerials uint64 = 2uL
   private let device VkDevice
   private let dispatch VkDeviceDispatch
@@ -359,15 +359,15 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
   private let diagnostics VulkanDiagnostics?
   private let targetFormat VkFormat
   private let descriptorLayout VkDescriptorSetLayout
-  private let targets []VulkanOffscreenLayerTarget?
-  private let leased []bool
-  private let inFrame []bool
-  private let descriptorSets []VkDescriptorSet
-  private var descriptorPool VkDescriptorPool = 0uL
+  private var targets []VulkanOffscreenLayerTarget?
+  private var leased []bool
+  private var inFrame []bool
+  private var descriptorSets []VkDescriptorSet
+  private let descriptorPools List[VkDescriptorPool]
   private var sampler VkSampler = 0uL
   private let byteBudget VkDeviceSize
   private var residentBytes VkDeviceSize
-  private var descriptorPoolAccounted bool
+  private var descriptorPoolCount int32
   private var samplerAccounted bool
   private var descriptorSetsAccounted int32
   private var lastCollectedSerial uint64
@@ -405,6 +405,7 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
     nativeDescriptorLayout VkDescriptorSetLayout,
     colorFormat VkFormat,
     nativeObjectAccounting VulkanObjectAccounting?,
+    initialTargetCapacity int32,
     maximumBytes VkDeviceSize,
     nativeDiagnostics VulkanDiagnostics?) {
       if nativeDevice == nint(0) {
@@ -415,6 +416,9 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
       }
       if maximumBytes == 0uL {
         throw ArgumentOutOfRangeException("maximumBytes")
+      }
+      if initialTargetCapacity <= 0 {
+        throw ArgumentOutOfRangeException("initialTargetCapacity")
       }
       device = nativeDevice
       dispatch = nativeDispatch
@@ -427,21 +431,22 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
       residentBytes = 0uL
       lastCollectedSerial = 0uL
       disposed = false
-      targets = [MaxTargetCount]VulkanOffscreenLayerTarget?
-      leased = [MaxTargetCount]bool
-      inFrame = [MaxTargetCount]bool
-      descriptorSets = [MaxTargetCount]VkDescriptorSet
+      targets = [initialTargetCapacity]VulkanOffscreenLayerTarget?
+      leased = [initialTargetCapacity]bool
+      inFrame = [initialTargetCapacity]bool
+      descriptorSets = [initialTargetCapacity]VkDescriptorSet
+      descriptorPools = List[VkDescriptorPool]()
       var descriptorIndex int32 = 0
-      while descriptorIndex < MaxTargetCount {
+      while descriptorIndex < descriptorSets.Length {
         descriptorSets[descriptorIndex] = 0uL
         descriptorIndex++
       }
-      descriptorPoolAccounted = false
+      descriptorPoolCount = 0
       samplerAccounted = false
       descriptorSetsAccounted = 0
       PublishStats()
       try {
-        CreateDescriptorResources()
+        CreateDescriptorResources(initialTargetCapacity, 0)
         sampler = CreateSampler()
       } catch (error Exception) {
         try { Dispose() } catch (cleanup Exception) { }
@@ -486,7 +491,7 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
       throw OverflowException("Vulkan layer target byte size overflow")
     }
     let estimatedBytes = rowBytes * uint64(height)
-    let needsPressure = NeedsCapacity(estimatedBytes)
+    let needsPressure = NeedsBudgetPressure(estimatedBytes)
     if needsPressure {
       RecordPressure(estimatedBytes, completedSerial)
       EvictIdle(estimatedBytes, completedSerial)
@@ -498,9 +503,11 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
     }
     index = FindEmptySlot()
     if index < 0 {
-      RecordPressureFailure(estimatedBytes, uint64(LiveTargetCount))
-      RecordFailure(estimatedBytes, uint64(LiveTargetCount))
-      throw InvalidOperationException("Vulkan layer pool target capacity exhausted")
+      EnsureTargetCapacity(targets.Length + 1)
+      index = FindEmptySlot()
+    }
+    if index < 0 {
+      throw InvalidOperationException("Vulkan layer pool metadata growth failed")
     }
     var target VulkanOffscreenLayerTarget? = nil
     try {
@@ -643,16 +650,20 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
         samplerAccounted = false
       }
     }
-    if descriptorPool != 0uL {
+    if descriptorPools.Count > 0 {
       let destroyPool = dispatch.vkDestroyDescriptorPool
-      destroyPool(device, descriptorPool, nil)
-      descriptorPool = 0uL
-      if descriptorPoolAccounted {
-        if let accounting = objectAccounting {
-          try { accounting.Release() } catch (cleanup Exception) { }
-        }
-        descriptorPoolAccounted = false
+      for pool in descriptorPools {
+        try { destroyPool(device, pool, nil) } catch (cleanup Exception) { }
       }
+      descriptorPools.Clear()
+      if let accounting = objectAccounting {
+        var poolIndex int32 = 0
+        while poolIndex < descriptorPoolCount {
+          try { accounting.Release() } catch (cleanup Exception) { }
+          poolIndex++
+        }
+      }
+      descriptorPoolCount = 0
     }
     if descriptorSetsAccounted > 0 {
       if let accounting = objectAccounting {
@@ -695,14 +706,20 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
         samplerAccounted = false
       }
     }
-    if descriptorPool != 0uL {
+    if descriptorPools.Count > 0 {
       let destroyPool = dispatch.vkDestroyDescriptorPool
-      destroyPool(device, descriptorPool, nil)
-      descriptorPool = 0uL
-      if descriptorPoolAccounted {
-        if let accounting = objectAccounting { accounting.Release() }
-        descriptorPoolAccounted = false
+      for pool in descriptorPools {
+        destroyPool(device, pool, nil)
       }
+      descriptorPools.Clear()
+      if let accounting = objectAccounting {
+        var poolIndex int32 = 0
+        while poolIndex < descriptorPoolCount {
+          accounting.Release()
+          poolIndex++
+        }
+      }
+      descriptorPoolCount = 0
     }
     if descriptorSetsAccounted > 0 {
       if let accounting = objectAccounting {
@@ -723,13 +740,53 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
     disposed = true
   }
 
-  private func CreateDescriptorResources() {
+  private func EnsureTargetCapacity(required int32) {
+    if required <= targets.Length {
+      return
+    }
+    var nextCapacity = targets.Length
+    while nextCapacity < required {
+      if nextCapacity > Int32.MaxValue / 2 {
+        nextCapacity = required
+      } else {
+        nextCapacity = nextCapacity * 2
+      }
+    }
+    let previousTargets = targets
+    let previousLeased = leased
+    let previousInFrame = inFrame
+    let previousDescriptorSets = descriptorSets
+    targets = [nextCapacity]VulkanOffscreenLayerTarget?
+    leased = [nextCapacity]bool
+    inFrame = [nextCapacity]bool
+    descriptorSets = [nextCapacity]VkDescriptorSet
+    Array.Copy(previousTargets, targets, previousTargets.Length)
+    Array.Copy(previousLeased, leased, previousLeased.Length)
+    Array.Copy(previousInFrame, inFrame, previousInFrame.Length)
+    Array.Copy(previousDescriptorSets, descriptorSets, previousDescriptorSets.Length)
+    try {
+      CreateDescriptorResources(nextCapacity - previousTargets.Length, previousTargets.Length)
+    } catch (error Exception) {
+      targets = previousTargets
+      leased = previousLeased
+      inFrame = previousInFrame
+      descriptorSets = previousDescriptorSets
+      throw error
+    }
+  }
+
+  private func CreateDescriptorResources(count int32, destinationOffset int32) {
+    if count <= 0 || destinationOffset < 0
+      || destinationOffset > descriptorSets.Length - count{
+        throw ArgumentOutOfRangeException("count")
+      }
     var poolSize = VkDescriptorPoolSize{}
     poolSize._type = VkConstants.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-    poolSize.descriptorCount = uint32(MaxTargetCount)
-    let layouts * VkDescriptorSetLayout = stackalloc[MaxTargetCount]VkDescriptorSetLayout
+    poolSize.descriptorCount = uint32(count)
+    let layouts = [count]VkDescriptorSetLayout
+    let createdSets = [count]VkDescriptorSet
     var index int32 = 0
-    while index < MaxTargetCount {
+    while index < count {
       layouts[index] = descriptorLayout
       index++
     }
@@ -739,13 +796,14 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
       objectAccounting,
       &poolSize,
       1u,
-      layouts,
-      uint32(MaxTargetCount),
-      &descriptorSets[0])
-    descriptorPool = creation.Pool
+      &layouts[0],
+      uint32(count),
+      &createdSets[0])
+    descriptorPools.Add(creation.Pool)
+    descriptorPoolCount++
+    Array.Copy(createdSets, 0, descriptorSets, destinationOffset, count)
     if objectAccounting != nil {
-      descriptorPoolAccounted = true
-      descriptorSetsAccounted = int32(creation.SetCount)
+      descriptorSetsAccounted += int32(creation.SetCount)
     }
   }
 
@@ -790,7 +848,7 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
 
   private func EvictIdle(required VkDeviceSize, completedSerial uint64) {
     var index int32 = 0
-    while NeedsCapacity(required) {
+    while NeedsBudgetPressure(required) {
       var evicted = false
       index = 0
       while index < targets.Length {
@@ -932,7 +990,6 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
     return required > byteBudget - residentBytes
   }
 
-  private func NeedsCapacity(required VkDeviceSize) bool -> NeedsBudgetPressure(required) || FindEmptySlot() < 0
 
   private func EnsureOpen() {
     if disposed {

@@ -1,6 +1,7 @@
 package Goo
 
 import System
+import System.Collections.Generic
 
 internal unsafe partial class VulkanImageResources : IDisposable {
   internal prop HasUnsubmittedRecordedUpload bool{
@@ -26,15 +27,15 @@ internal unsafe partial class VulkanImageResources : IDisposable {
   private let dispatch VkDeviceDispatch
   private let allocator VulkanMemoryAllocator
   private let registry VulkanResourceRegistry
-  private let capacity int32
-  private let descriptorCapacity int32
+  private var capacity int32
+  private var descriptorCapacity int32
   private let residentByteBudget VkDeviceSize
-  private let entries []VulkanImageResourceEntry
-  private let logicalRecords []VulkanLogicalResource
-  private let descriptorSets []VkDescriptorSet
-  private let descriptorLayouts []VkDescriptorSetLayout
+  private var entries []VulkanImageResourceEntry
+  private var logicalRecords []VulkanLogicalResource
+  private var descriptorSets []VkDescriptorSet
+  private var descriptorLayouts []VkDescriptorSetLayout
   private let poolSizes []VkDescriptorPoolSize
-  private let currentReferenceCounts []int32
+  private var currentReferenceCounts []int32
   private let uploadRing VulkanUploadRing
   private let diagnostics VulkanDiagnostics?
   private let objectAccounting VulkanObjectAccounting?
@@ -42,9 +43,10 @@ internal unsafe partial class VulkanImageResources : IDisposable {
   private let stagingGate object
   private var stagingBuffer VkBuffer
   private var stagingAllocation VulkanMemoryAllocation? = nil
-  private var descriptorPool VkDescriptorPool
+  private let descriptorPools List[VkDescriptorPool]
   private var descriptorSetLayout VkDescriptorSetLayout
   private var trackedDescriptorSetCount int32
+  private var trackedDescriptorPoolCount int32
   private var nearestSampler VkSampler
   private var linearSampler VkSampler
   private var generation uint64
@@ -137,6 +139,7 @@ internal unsafe partial class VulkanImageResources : IDisposable {
       descriptorLayouts = [descriptorCapacity]VkDescriptorSetLayout
       poolSizes = [1]VkDescriptorPoolSize
       currentReferenceCounts = [imageCapacity]int32
+      descriptorPools = List[VkDescriptorPool]()
       generation = initialGeneration
       highestCompletedFence = 0uL
       generationLastUseFence = 0uL

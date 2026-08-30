@@ -224,6 +224,7 @@ internal unsafe partial class VulkanWindowTarget {
             currentImages,
             activeRuntime.Generation,
             activeRuntime.MaxStorageBufferRange,
+            activeRuntime.ResourcePolicy,
             activeRuntime.PrimitiveState,
             currentPaths.Atlas,
             currentPaths,

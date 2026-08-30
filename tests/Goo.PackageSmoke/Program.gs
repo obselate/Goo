@@ -236,6 +236,34 @@ class SmokeCell : Cell {
     }
   }
 }
+class LayerCapacitySmokeCell : Cell {
+  private let depth int32
+
+  init(layerDepth int32) {
+    depth = layerDepth
+  }
+
+  override func Build() Blob -> BuildLayerTree(depth)
+}
+
+func BuildLayerTree(depth int32) Blob {
+  if depth <= 0 {
+    return Container{
+      Width: 48,
+      Height: 48,
+      BackgroundColor: Color.Rgb(72, 160, 236),
+    }
+  }
+  return Container{
+    Width: 64,
+    Height: 64,
+    Opacity: 0.98,
+    Children: {
+      BuildLayerTree(depth - 1)
+    },
+  }
+}
+
 
 class CompiledVectorSmokeCell : Cell {
   shared {
@@ -1630,11 +1658,30 @@ func PumpPressureSwap(window Window, root SmokeCell,
     prior.Dispose()
   }
 
+func RunImageChunkSmoke(window Window, root SmokeCell, initial PressureImageProvider) {
+  let image = CreatePressureImage(4096, 4096, uint8(42))
+  root.SetPressureSource(image)
+  var pumps int32 = 0
+  while pumps < 16 {
+    window.Pump(0.016)
+    pumps++
+  }
+  if !window.IsOpen || image.AcquireCount == 0
+    || initial.ReleasedCount != initial.AcquireCount{
+      throw InvalidOperationException("Native chunked image upload did not settle")
+    }
+  initial.Dispose()
+  if !CloseWindow(window) || image.ReleasedCount != image.AcquireCount {
+    throw InvalidOperationException("Native chunked image upload did not release its final lease")
+  }
+  image.Dispose()
+}
+
 func RunImagePressureSmoke(window Window, root SmokeCell, initial PressureImageProvider) {
   var current = initial
   var index int32 = 0
   while index < 20 {
-    let next = CreatePressureImage(1024, 1024, uint8(index % 251))
+    let next = CreatePressureImage(2048, 2048, uint8(index % 251))
     PumpPressureSwap(window, root, current, next)
     current = next
     index = index + 1
@@ -1846,8 +1893,63 @@ func RunRegisteredFontSmoke() {
   }
 }
 
+func RunLayerCapacitySmoke() {
+  if Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") != "1" {
+    throw InvalidOperationException("GOO_VK_DIAGNOSTICS=1 is required")
+  }
+  let capturedError = StringWriter()
+  let originalError = Console.Error
+  Console.SetError(capturedError)
+  let window = Window{
+    Title: "Goo layer capacity smoke",
+    Width: 96,
+    Height: 96,
+    VSync: false,
+    Root: LayerCapacitySmokeCell(17),
+  }
+  try {
+    window.Open()
+    window.Pump(0.0)
+    window.Pump(0.0)
+    if !window.IsOpen {
+      throw InvalidOperationException("Layer capacity smoke window did not present")
+    }
+    if !CloseWindow(window) {
+      throw InvalidOperationException("Layer capacity smoke window did not close")
+    }
+    let diagnostics = capturedError.ToString()
+    let createCount = DiagnosticCounterValue(diagnostics, "layerPoolCreateCount")
+    let failureCount = DiagnosticCounterValue(diagnostics, "layerPoolFailureCount")
+    let pressureFailureCount = DiagnosticCounterValue(diagnostics, "layerPoolPressureFailureCount")
+    let passCount = DiagnosticCounterValue(diagnostics, "layerPoolPassCount")
+    let compositeCount = DiagnosticCounterValue(diagnostics, "layerPoolCompositeCount")
+    if diagnostics.Contains("\"kind\":\"fatal\"")
+      || diagnostics.Contains("\"event\":325")
+      || createCount < 17uL || passCount < 17uL || compositeCount < 17uL
+      || failureCount != 0uL || pressureFailureCount != 0uL{
+        throw InvalidOperationException("Layer capacity smoke did not exceed the former target ceiling: created="
+          +createCount.ToString() + " passes=" +passCount.ToString()
+          +" composites=" +compositeCount.ToString() + " failures="
+          +failureCount.ToString() + " pressureFailures=" +pressureFailureCount.ToString())
+      }
+    Console.SetError(originalError)
+    Console.WriteLine("layer-capacity: created=" + createCount.ToString()
+      +" passes=" +passCount.ToString() + " composites=" +compositeCount.ToString()
+      +" failures=0 close=1")
+  } finally {
+    Console.SetError(originalError)
+    if window.IsOpen {
+      CloseWindow(window)
+    }
+  }
+}
+
 func Main() {
   Window.ConfigureApplication("Goo package smoke", "0.1.0", "io.github.obselate.goo.smoke")
+  if Environment.GetEnvironmentVariable("GOO_LAYER_CAPACITY_SMOKE") == "1" {
+    RunLayerCapacitySmoke()
+    return
+  }
   if Environment.GetEnvironmentVariable("GOO_PATH_SMOKE") == "1" {
     RunPathSmoke()
     return
@@ -1955,6 +2057,7 @@ func Main() {
   }
   let nativeSmoke = Environment.GetEnvironmentVariable("GOO_WINDOW_SMOKE") == "1"
   let pressureSmoke = Environment.GetEnvironmentVariable("GOO_IMAGE_PRESSURE_SMOKE") == "1"
+  let chunkSmoke = Environment.GetEnvironmentVariable("GOO_IMAGE_CHUNK_SMOKE") == "1"
   var imageProvider VersionedImageProvider?
   var backgroundProvider VersionedImageProvider?
   var imageV1 ImageSource?
@@ -1995,7 +2098,7 @@ func Main() {
     SmokeCell{}
   }
   var pressureInitial PressureImageProvider?
-  if pressureSmoke {
+  if pressureSmoke || chunkSmoke {
     pressureInitial = CreatePressureImage(1, 1, uint8(1))
     smokeRoot.SetPressureSource(pressureInitial!!)
   }
@@ -2026,7 +2129,7 @@ func Main() {
     rootMetricEvents = rootMetricEvents + 1
   }
 
-  if pressureSmoke {
+  if pressureSmoke || chunkSmoke {
     if Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") != "1" {
       throw InvalidOperationException("GOO_VK_DIAGNOSTICS=1 is required")
     }
@@ -2040,7 +2143,11 @@ func Main() {
       if !window.IsOpen || initial.AcquireCount == 0 {
         throw InvalidOperationException("Native image pressure smoke did not mount its initial lease")
       }
-      RunImagePressureSmoke(window, smokeRoot, initial)
+      if chunkSmoke {
+        RunImageChunkSmoke(window, smokeRoot, initial)
+      } else {
+        RunImagePressureSmoke(window, smokeRoot, initial)
+      }
       let diagnostics = capturedError.ToString()
       let imageBudget = DiagnosticCounterValue(diagnostics, "imageByteBudget")
       let imageResident = DiagnosticCounterValue(diagnostics, "imageResidentBytes")
@@ -2049,30 +2156,54 @@ func Main() {
       let imagePeakLiveObjects = DiagnosticCounterValue(diagnostics, "imagePeakLiveObjectCount")
       let imageEvictionCount = DiagnosticCounterValue(diagnostics, "imageEvictionCount")
       let imageRetirementCount = DiagnosticCounterValue(diagnostics, "imageRetirementCount")
+      let uploadCount = DiagnosticCounterValue(diagnostics, "uploadCount")
+      let imageUploadChunkCount = DiagnosticCounterValue(diagnostics, "imageUploadChunkCount")
+      let imageUploadCompletedCount = DiagnosticCounterValue(diagnostics, "imageUploadCompletedCount")
       if diagnostics.Contains("\"kind\":\"fatal\"")
         || diagnostics.Contains("\"event\":325") {
           throw InvalidOperationException("Native image pressure smoke emitted Vulkan diagnostics errors")
         }
-      if imageBudget != 67108864uL || imagePeakResident == 0uL
+      if chunkSmoke {
+        if imageBudget < 67108864uL || imagePeakResident < 67108864uL
+          || imageUploadChunkCount <= imageUploadCompletedCount || imageUploadCompletedCount < 2uL
+          || imageResident != 0uL || imageLiveObjects != 0uL{
+            throw InvalidOperationException("Native chunked image upload did not qualify: budget="
+              +imageBudget.ToString() + " peakResident=" +imagePeakResident.ToString()
+              +" uploadCount=" +uploadCount.ToString()
+              +" imageUploadChunkCount=" +imageUploadChunkCount.ToString()
+              +" imageUploadCompletedCount=" +imageUploadCompletedCount.ToString()
+              +" resident=" +imageResident.ToString() +" liveObjects=" +imageLiveObjects.ToString())
+          }
+      } else if imageBudget < 67108864uL || imagePeakResident == 0uL
         || imagePeakResident > imageBudget
         || imagePeakLiveObjects == 0uL || imageEvictionCount == 0uL
         || imageRetirementCount == 0uL || imageResident != 0uL
-        || imageLiveObjects != 0uL {
+        || imageLiveObjects != 0uL{
           throw InvalidOperationException("Native image pressure smoke did not qualify GPU image pressure: budget="
-            +imageBudget.ToString() + " resident=" + imageResident.ToString()
-            +" liveObjects=" + imageLiveObjects.ToString() + " peakResident="
-            +imagePeakResident.ToString() + " peakLiveObjects=" + imagePeakLiveObjects.ToString()
-            +" evictionCount=" + imageEvictionCount.ToString() + " retirementCount="
+            +imageBudget.ToString() + " resident=" +imageResident.ToString()
+            +" liveObjects=" +imageLiveObjects.ToString() + " peakResident="
+            +imagePeakResident.ToString() + " peakLiveObjects=" +imagePeakLiveObjects.ToString()
+            +" evictionCount=" +imageEvictionCount.ToString() + " retirementCount="
             +imageRetirementCount.ToString())
         }
       Console.SetError(originalError)
-      Console.WriteLine("image-pressure: budget=" + imageBudget.ToString()
-        +" peakResident=" + imagePeakResident.ToString()
-        +" peakLiveObjects=" + imagePeakLiveObjects.ToString()
-        +" evictionCount=" + imageEvictionCount.ToString()
-        +" retirementCount=" + imageRetirementCount.ToString()
-        +" residentAfterClose=" + imageResident.ToString()
-        +" liveObjectsAfterClose=" + imageLiveObjects.ToString() + " close=1")
+      if chunkSmoke {
+        Console.WriteLine("image-chunk: budget=" + imageBudget.ToString()
+          +" peakResident=" + imagePeakResident.ToString()
+          +" uploadCount=" + uploadCount.ToString()
+          +" imageUploadChunkCount=" + imageUploadChunkCount.ToString()
+          +" imageUploadCompletedCount=" + imageUploadCompletedCount.ToString()
+          +" residentAfterClose=" + imageResident.ToString()
+          +" liveObjectsAfterClose=" + imageLiveObjects.ToString() + " close=1")
+      } else {
+        Console.WriteLine("image-pressure: budget=" + imageBudget.ToString()
+          +" peakResident=" + imagePeakResident.ToString()
+          +" peakLiveObjects=" + imagePeakLiveObjects.ToString()
+          +" evictionCount=" + imageEvictionCount.ToString()
+          +" retirementCount=" + imageRetirementCount.ToString()
+          +" residentAfterClose=" + imageResident.ToString()
+          +" liveObjectsAfterClose=" + imageLiveObjects.ToString() + " close=1")
+      }
     } finally {
       Console.SetError(originalError)
       if window.IsOpen {

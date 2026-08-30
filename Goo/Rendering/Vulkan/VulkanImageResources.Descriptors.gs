@@ -148,7 +148,7 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         && registered.Source.Version == source.Version
         && registered.Source.Bytes == source.Bytes
     }
-    let count = registry.CopyLogicalResources(logicalRecords)
+    let count = CopyLogicalResources()
     var index int32 = 0
     while index < count {
       let logical = logicalRecords[index]
@@ -161,6 +161,22 @@ internal unsafe partial class VulkanImageResources : IDisposable {
       index++
     }
     return false
+  }
+
+  private func CopyLogicalResources() int32 {
+    let required = registry.Stats.LogicalCount
+    if logicalRecords.Length < required {
+      var capacity = logicalRecords.Length
+      while capacity < required {
+        if capacity > Int32.MaxValue / 2 {
+          capacity = required
+        } else {
+          capacity = capacity * 2
+        }
+      }
+      logicalRecords = [capacity]VulkanLogicalResource
+    }
+    return registry.CopyLogicalResources(logicalRecords)
   }
 
   private func RetireFence(entry VulkanImageResourceEntry, fence uint64) uint64 {
@@ -192,8 +208,8 @@ internal unsafe partial class VulkanImageResources : IDisposable {
     if stagingBuffer != 0uL {
       count++
     }
-    if descriptorPool != 0uL {
-      count += 1uL + uint64(descriptorCapacity)
+    if descriptorPools.Count > 0 {
+      count += uint64(descriptorPools.Count) + uint64(trackedDescriptorSetCount)
     }
     if descriptorSetLayout != 0uL {
       count++
@@ -214,19 +230,6 @@ internal unsafe partial class VulkanImageResources : IDisposable {
       return uint8(255)
     }
     return uint8(result)
-  }
-
-  private func FindLogicalIndex(id ResourceId) int32 {
-    var index int32 = 0
-    while index < entries.Length {
-      let entry = entries[index]
-      if entry.State != VulkanImageResourceState.Empty
-        && entry.Id.Kind == id.Kind && entry.Id.LogicalId == id.LogicalId{
-          return index
-        }
-      index++
-    }
-    return -1
   }
 
   private func FindExactIndex(id ResourceId) int32 {

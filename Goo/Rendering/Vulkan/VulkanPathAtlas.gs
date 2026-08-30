@@ -33,6 +33,7 @@ internal unsafe partial class VulkanPathAtlas : IDisposable {
   private let objectAccounting VulkanObjectAccounting?
   private let wordCapacity VkDeviceSize
   private let byteCapacity VkDeviceSize
+  private let maximumWordCapacity VkDeviceSize
   private let descriptorSetLayout VkDescriptorSetLayout
   private var atlasBuffer VkBuffer = 0uL
   private var atlasAllocation VulkanMemoryAllocation? = nil
@@ -58,6 +59,7 @@ internal unsafe partial class VulkanPathAtlas : IDisposable {
 
   internal prop WordCapacity VkDeviceSize{ get { return wordCapacity } }
   internal prop ByteCapacity VkDeviceSize{ get { return byteCapacity } }
+  internal prop MaximumWordCapacity VkDeviceSize{ get { return maximumWordCapacity } }
   internal prop Buffer VkBuffer{ get { return atlasBuffer } }
   internal prop StagingBuffer VkBuffer{ get { return stagingBuffer } }
   internal prop DescriptorSetLayout VkDescriptorSetLayout{ get { return descriptorSetLayout } }
@@ -123,6 +125,11 @@ internal unsafe partial class VulkanPathAtlas : IDisposable {
       testMode = false
       wordCapacity = atlasByteSize / WordBytes
       byteCapacity = atlasByteSize
+      var maximumBytes = uint64(nativeMaxStorageBufferRange)
+      if maximumBytes > MaxAtlasBytes {
+        maximumBytes = MaxAtlasBytes
+      }
+      maximumWordCapacity = maximumBytes / WordBytes
       descriptorSetLayout = nativeDescriptorSetLayout
       try {
         CreateAtlasBuffer()
@@ -147,7 +154,27 @@ internal unsafe partial class VulkanPathAtlas : IDisposable {
     testMode = true
     wordCapacity = testWordCapacity
     byteCapacity = testWordCapacity * WordBytes
+    maximumWordCapacity = MaxWordCapacity
     descriptorSetLayout = 1uL
+  }
+
+  internal func CreateReplacement(replacementWordCapacity VkDeviceSize) VulkanPathAtlas {
+    EnsureOpen()
+    if replacementWordCapacity <= wordCapacity
+      || replacementWordCapacity > maximumWordCapacity{
+        throw ArgumentOutOfRangeException("replacementWordCapacity")
+      }
+    if testMode {
+      return VulkanPathAtlas(replacementWordCapacity)
+    }
+    return VulkanPathAtlas(
+      device,
+      dispatch,
+      allocator!!,
+      replacementWordCapacity * WordBytes,
+      uint32(maximumWordCapacity * WordBytes),
+      descriptorSetLayout,
+      objectAccounting)
   }
 
   internal func QueueUpload(source * uint32, sourceWordCount VkDeviceSize) bool -> QueueUpload(source, 0uL, sourceWordCount)

@@ -50,6 +50,9 @@ internal data struct VulkanImageResourceEntry {
   var LinearDescriptor VulkanImageDescriptorBinding
   var ImageLayout VkImageLayout
   var UploadedVersion uint64
+  var UploadCompletedRows uint32
+  var UploadRowOffset uint32
+  var UploadRowCount uint32
   var Upload VulkanUploadReservation
   var UploadRecorded bool
   var UploadSubmitted bool

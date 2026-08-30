@@ -26,6 +26,9 @@ internal class VulkanDiagnosticCounters {
   private var imageLiveObjectCount uint64
   private var imagePeakResidentBytes uint64
   private var imagePeakLiveObjectCount uint64
+  private var imageUploadChunkCount uint64
+  private var imageUploadDeferredCount uint64
+  private var imageUploadCompletedCount uint64
   private var textAtlasCount uint64
   private var textAtlasByteBudget uint64
   private var textAtlasResidentBytes uint64
@@ -150,6 +153,9 @@ internal class VulkanDiagnosticCounters {
         imageLiveObjectCount: Interlocked.Read(ref imageLiveObjectCount),
         imagePeakResidentBytes: Interlocked.Read(ref imagePeakResidentBytes),
         imagePeakLiveObjectCount: Interlocked.Read(ref imagePeakLiveObjectCount),
+        imageUploadChunkCount: Interlocked.Read(ref imageUploadChunkCount),
+        imageUploadDeferredCount: Interlocked.Read(ref imageUploadDeferredCount),
+        imageUploadCompletedCount: Interlocked.Read(ref imageUploadCompletedCount),
         textAtlasCount: Interlocked.Read(ref textAtlasCount),
         textAtlasByteBudget: Interlocked.Read(ref textAtlasByteBudget),
         textAtlasResidentBytes: Interlocked.Read(ref textAtlasResidentBytes),
@@ -462,6 +468,9 @@ internal class VulkanDiagnosticCounters {
   }
   internal func AddImageEviction(value uint64) { Interlocked.Add(ref imageEvictionCount, value) }
   internal func AddImageRetirement(value uint64) { Interlocked.Add(ref imageRetirementCount, value) }
+  internal func AddImageUploadChunk(value uint64) { Interlocked.Add(ref imageUploadChunkCount, value) }
+  internal func AddImageUploadDeferred(value uint64) { Interlocked.Add(ref imageUploadDeferredCount, value) }
+  internal func AddImageUploadCompleted(value uint64) { Interlocked.Add(ref imageUploadCompletedCount, value) }
   internal func AddDraw(value uint64) { Interlocked.Add(ref drawCount, value) }
   internal func AddPipelineChange(value uint64) { Interlocked.Add(ref pipelineChangeCount, value) }
   internal func AddDescriptorChange(value uint64) { Interlocked.Add(ref descriptorChangeCount, value) }

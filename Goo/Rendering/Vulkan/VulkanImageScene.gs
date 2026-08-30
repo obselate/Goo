@@ -46,7 +46,7 @@ internal unsafe sealed class VulkanImageScene : IDisposable {
       imageResources = nativeImageResources
       generation = nativeGeneration
       currentReferences = VulkanCurrentResourceSet(
-        CurrentReferenceCapacity, CurrentReferenceCapacity)
+        CurrentReferenceCapacity, 0)
     }
 
   internal func BeginCompile() {
@@ -104,7 +104,6 @@ internal unsafe sealed class VulkanImageScene : IDisposable {
       }
       let identity = identities.ResolveImage(binding.Source, binding.Version,
         generation, ImageFormat)
-      EnsurePendingReferenceCapacity(identity.ImageId)
       let source = VulkanResourceSource{
         ProviderId: identity.ProviderId,
         SourceId: identity.SourceId,
@@ -119,26 +118,44 @@ internal unsafe sealed class VulkanImageScene : IDisposable {
         true,
         identities.LinearSamplerId,
         VulkanImageSamplerMode.Linear)
-      AddPendingReference(identity.ImageId)
       if !lookup.Renderable {
-        fixed sourcePixels * uint8 = pixels{
-          imageResources.QueueUpload(
-            identity.ImageId,
-            sourcePixels,
-            VkDeviceSize(byteCount),
-            generation)
+        if lookup.Found {
+          fixed sourcePixels * uint8 = pixels{
+            imageResources.QueueUpload(
+              identity.ImageId,
+              sourcePixels,
+              VkDeviceSize(byteCount),
+              generation)
+          }
+          redrawRequired = true
         }
-        redrawRequired = true
+        let prior = imageResources.PriorRenderableSourceVersion(source,
+          identities.LinearSamplerId, VulkanImageSamplerMode.Linear)
+        if prior.Renderable {
+          return EmitLookup(frame, bounds, prior, fit, opacity, transformIndex)
+        }
         return true
       }
-      let fitResult = Fit(bounds, width, height, fit)
+      let emitted = EmitLookup(frame, bounds, lookup, fit, opacity, transformIndex)
+      if emitted {
+        imageResources.PromoteSourceVersion(source)
+      }
+      return emitted
+    }
+
+  private func EmitLookup(frame SceneFrame, bounds ConservativeBounds,
+    lookup VulkanImageResourceLookup, fit ImageFit, opacity float32,
+    transformIndex int32) bool{
+      EnsurePendingReferenceCapacity(lookup.Id)
+      AddPendingReference(lookup.Id)
+      let fitResult = Fit(bounds, lookup.Width, lookup.Height, fit)
       if fitResult.Bounds.IsEmpty {
         return true
       }
       frame.AddCachedImage(CachedImageRefRecord{
         Bounds: fitResult.Bounds,
-        ImageId: identity.ImageId,
-        SamplerId: identities.LinearSamplerId,
+        ImageId: lookup.Id,
+        SamplerId: lookup.SamplerId,
         SourceX: fitResult.SourceX,
         SourceY: fitResult.SourceY,
         SourceWidth: fitResult.SourceWidth,

@@ -45,6 +45,9 @@ internal data struct VulkanPathResourcesStats {
   internal let CompactionCount uint64
   internal let PressureEventCount uint64
   internal let PressureFailureCount uint64
+  internal let GrowthCount uint64
+  internal let DeferredRequestCount uint64
+  internal let RetiredAtlasCount int32
   internal let RetiredWordCount uint64
   internal let ReuseCount uint64
   internal let FullUploadRequired bool
@@ -55,6 +58,11 @@ internal data struct VulkanPathResourcesStats {
 private data struct VulkanPathFreeRange {
   var Start uint32
   var Count uint32
+}
+
+private data struct VulkanRetiredPathAtlas {
+  var Atlas VulkanPathAtlas
+  var Fence uint64
 }
 
 private sealed class VulkanPathResourceRecord {
@@ -89,13 +97,14 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
   private const FillRuleNonZero uint32 = 0u
   private const FillRuleEvenOdd uint32 = 1u
 
-  private let atlas VulkanPathAtlas
+  private var atlas VulkanPathAtlas
   private let identities VulkanPathIdentityRegistry
-  private let atlasId ResourceId
+  private var atlasId ResourceId
   private let records Dictionary[uint64, VulkanPathResourceRecord]
   private let retiredRecords List[VulkanPathResourceRecord]
   private let recordPool List[VulkanPathResourceRecord]
   private let freeRanges List[VulkanPathFreeRange]
+  private let retiredAtlases List[VulkanRetiredPathAtlas]
   private let sceneActivePathIds Dictionary[uint64, Dictionary[uint64, Dictionary[uint64, bool]]]
   private let activePathOwners Dictionary[uint64, int32]
   private let activePathRevisionOwners Dictionary[uint64, Dictionary[uint64, int32]]
@@ -127,6 +136,9 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
   private var reuseCount uint64
   private var pressureEventCount uint64
   private var pressureFailureCount uint64
+  private var growthCount uint64
+  private var deferredRequestCount uint64
+  private var atlasLastUseFence uint64
   private var retiredWordCount uint64
   private var completedSubmissionFence uint64
   private var disposed bool
@@ -172,7 +184,10 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
         PressureFailureCount: pressureFailureCount,
         RetiredWordCount: retiredWordCount,
         ReuseCount: reuseCount,
-        FullUploadRequired: false,
+        FullUploadRequired: growthCount > 0uL && nextWordOffset > publishedWordPrefix,
+        GrowthCount: growthCount,
+        DeferredRequestCount: deferredRequestCount,
+        RetiredAtlasCount: retiredAtlases.Count,
         CompletedSubmissionFence: completedSubmissionFence,
         ActiveReferenceCount: activeReferenceCount,
       }
@@ -216,6 +231,7 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
       revisionOwnerMapPool = List[Dictionary[uint64, int32]]()
       nextSceneId = 1uL
       var capacity = InitialWordCapacity
+      retiredAtlases = List[VulkanRetiredPathAtlas]()
       if nativeAtlas.WordCapacity < uint64(capacity) {
         capacity = int32(nativeAtlas.WordCapacity)
       }
@@ -300,6 +316,9 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
     if submissionFence == 0uL || count < 0 || count > ids.Length {
       throw ArgumentException("Vulkan path usage arguments are invalid")
     }
+    if count > 0 && submissionFence > atlasLastUseFence {
+      atlasLastUseFence = submissionFence
+    }
     var index int32 = 0
     while index < count {
       let id = ids[index]
@@ -352,6 +371,13 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
     }
 
     let baseWord = AllocateWordRange(uint32(wordCount))
+    if baseWord == uint32.MaxValue {
+      RequestRedraw()
+      if records.TryGetValue(identity.PathId.LogicalId, out var prior) {
+        return BuildRenderable(prior, fillRule)
+      }
+      return EmptyRenderable(fillRule)
+    }
 
     let bounds = EncodingBounds(encoding)
     if words.Length > 0 {
@@ -483,7 +509,8 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
     let collected = atlas.Collect(completedFence)
     let published = PublishCompletedUploads()
     let reclaimed = ReclaimRetiredRecordsIfSafe()
-    return collected || published || reclaimed
+    let retiredCollected = CollectRetiredAtlases(completedFence)
+    return collected || published || reclaimed || retiredCollected
   }
 
   internal func RestoreUpload() {
@@ -538,6 +565,10 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
     activeReferenceCount = 0
     disposed = true
     atlas.Dispose()
+    for retired in retiredAtlases {
+      retired.Atlas.Dispose()
+    }
+    retiredAtlases.Clear()
   }
 
   internal func DisposeAfterDeviceLoss() {
@@ -554,6 +585,25 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
     activeReferenceCount = 0
     disposed = true
     atlas.DisposeAfterDeviceLoss()
+    for retired in retiredAtlases {
+      retired.Atlas.DisposeAfterDeviceLoss()
+    }
+    retiredAtlases.Clear()
+  }
+
+  private func CollectRetiredAtlases(completedFence uint64) bool {
+    var collected = false
+    var index = retiredAtlases.Count - 1
+    while index >= 0 {
+      let retired = retiredAtlases[index]
+      if retired.Fence <= completedFence {
+        retired.Atlas.Dispose()
+        retiredAtlases.RemoveAt(index)
+        collected = true
+      }
+      index--
+    }
+    return collected
   }
 
   deinit{
@@ -685,41 +735,97 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
     if let freeRange = TakeFreeRange(required) {
       return freeRange
     }
-    if uint64(nextWordOffset) + uint64(required) <= atlas.WordCapacity
-      && uint64(nextWordOffset) + uint64(required) <= uint64(uint32.MaxValue) {
-        let start = nextWordOffset
-        nextWordOffset = nextWordOffset + required
-        ConsumeTailReuse(start, required)
-        return start
-      }
+    if uint64(nextWordOffset) + uint64(required) <= atlas.WordCapacity {
+      let start = nextWordOffset
+      nextWordOffset = nextWordOffset + required
+      ConsumeTailReuse(start, required)
+      return start
+    }
     if pressureEventCount == uint64.MaxValue {
       throw OverflowException("Vulkan path pressure event count overflow")
     }
     pressureEventCount = pressureEventCount + 1uL
-    if !ReclaimInactiveRecords(required) {
-      capacityExhausted = true
-      if pressureFailureCount == uint64.MaxValue {
-        throw OverflowException("Vulkan path pressure failure count overflow")
+    ReclaimInactiveRecords(required)
+    if let reclaimedRange = TakeFreeRange(required) {
+      return reclaimedRange
+    }
+    if uint64(nextWordOffset) + uint64(required) <= atlas.WordCapacity {
+      let start = nextWordOffset
+      nextWordOffset = nextWordOffset + required
+      ConsumeTailReuse(start, required)
+      return start
+    }
+    if !TryGrowAtlas(required) {
+      return uint32.MaxValue
+    }
+    let start = nextWordOffset
+    nextWordOffset = nextWordOffset + required
+    ConsumeTailReuse(start, required)
+    return start
+  }
+
+  private func TryGrowAtlas(required uint32) bool {
+    let requiredCapacity = uint64(nextWordOffset) + uint64(required)
+    if requiredCapacity > atlas.MaximumWordCapacity
+      || requiredCapacity > uint64(Int32.MaxValue){
+        capacityExhausted = true
+        if pressureFailureCount == uint64.MaxValue {
+          throw OverflowException("Vulkan path pressure failure count overflow")
+        }
+        pressureFailureCount++
+        throw InvalidOperationException(
+          "Vulkan path atlas hard limit exceeded: requestWords=" +required.ToString()
+          +" currentWords=" +nextWordOffset.ToString()
+          +" hardWords=" +atlas.MaximumWordCapacity.ToString())
       }
-      pressureFailureCount = pressureFailureCount + 1uL
-      throw InvalidOperationException("Vulkan path atlas capacity exhausted")
-    }
-    if let freeRange = TakeFreeRange(required) {
-      return freeRange
-    }
-    if uint64(nextWordOffset) + uint64(required) <= atlas.WordCapacity
-      && uint64(nextWordOffset) + uint64(required) <= uint64(uint32.MaxValue) {
-        let start = nextWordOffset
-        nextWordOffset = nextWordOffset + required
-        ConsumeTailReuse(start, required)
-        return start
+    if atlas.UploadPending || uploadQueued {
+      if deferredRequestCount == uint64.MaxValue {
+        throw OverflowException("Vulkan path deferred request count overflow")
       }
-    capacityExhausted = true
-    if pressureFailureCount == uint64.MaxValue {
-      throw OverflowException("Vulkan path pressure failure count overflow")
+      deferredRequestCount++
+      return false
     }
-    pressureFailureCount = pressureFailureCount + 1uL
-    throw InvalidOperationException("Vulkan path atlas capacity exhausted")
+    var replacementCapacity = atlas.WordCapacity
+    while replacementCapacity < requiredCapacity {
+      if replacementCapacity > atlas.MaximumWordCapacity / 2uL {
+        replacementCapacity = atlas.MaximumWordCapacity
+      } else {
+        replacementCapacity = replacementCapacity * 2uL
+      }
+    }
+    if atlasId.Version == uint64.MaxValue || growthCount == uint64.MaxValue {
+      throw OverflowException("Vulkan path atlas generation overflow")
+    }
+    let replacement = atlas.CreateReplacement(replacementCapacity)
+    let previous = atlas
+    if atlasLastUseFence <= completedSubmissionFence {
+      previous.Dispose()
+    } else {
+      retiredAtlases.Add(VulkanRetiredPathAtlas{
+        Atlas: previous,
+        Fence: atlasLastUseFence,
+      })
+    }
+    atlas = replacement
+    atlasId = ResourceId{
+      Kind: SceneResourceKind.Atlas,
+      LogicalId: atlasId.LogicalId,
+      Version: atlasId.Version + 1uL,
+    }
+    atlasLastUseFence = 0uL
+    publishedWordPrefix = 0u
+    queuedWordPrefix = 0u
+    queuedUploadSequence = 0uL
+    queuedUploadStart = 0u
+    queuedUploadEnd = 0u
+    dirtyWordsPending = nextWordOffset > 0u
+    dirtyWordStart = 0u
+    dirtyWordEnd = nextWordOffset
+    tailReusePending = false
+    capacityExhausted = false
+    growthCount++
+    RequestRedraw()
+    return true
   }
 
   private func TakeFreeRange(required uint32)(uint32)? {

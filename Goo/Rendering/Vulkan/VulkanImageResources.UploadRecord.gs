@@ -3,60 +3,75 @@ package Goo
 import System
 
 internal unsafe partial class VulkanImageResources : IDisposable {
-  private func RecordUpload(commandBuffer VkCommandBuffer, entry VulkanImageResourceEntry) {
-    let subresourceRange = VulkanTransitions.ColorSubresourceRange()
-    var srcStageMask VkPipelineStageFlags2
-    var srcAccessMask VkAccessFlags2
-    if entry.ImageLayout == VkConstants.VK_IMAGE_LAYOUT_UNDEFINED {
-      srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
-      srcAccessMask = VkConstants.VK_ACCESS_2_NONE
-    } else if entry.ImageLayout == VkConstants.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL {
-      srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
-      srcAccessMask = VkConstants.VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
-    } else {
-      throw InvalidOperationException("Vulkan image has an unsupported layout")
+  private func RecordUpload(commandBuffer VkCommandBuffer,
+    entry VulkanImageResourceEntry) int32{
+      if entry.UploadRowCount == 0u
+        || entry.UploadRowOffset >= entry.Height
+        || entry.UploadRowCount > entry.Height - entry.UploadRowOffset{
+          throw InvalidOperationException("Vulkan image upload row range is invalid")
+        }
+      let subresourceRange = VulkanTransitions.ColorSubresourceRange()
+      let pipelineBarrier = dispatch.vkCmdPipelineBarrier2
+      var barrierCount int32 = 0
+      if entry.ImageLayout != VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL {
+        var srcStageMask VkPipelineStageFlags2
+        var srcAccessMask VkAccessFlags2
+        if entry.ImageLayout == VkConstants.VK_IMAGE_LAYOUT_UNDEFINED {
+          srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
+          srcAccessMask = VkConstants.VK_ACCESS_2_NONE
+        } else if entry.ImageLayout == VkConstants.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL {
+          srcStageMask = VkConstants.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
+          srcAccessMask = VkConstants.VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
+        } else {
+          throw InvalidOperationException("Vulkan image has an unsupported layout")
+        }
+        VulkanTransitions.RecordImage(
+          commandBuffer,
+          pipelineBarrier,
+          entry.Image,
+          subresourceRange,
+          entry.ImageLayout,
+          VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+          srcStageMask,
+          srcAccessMask,
+          VkConstants.VK_PIPELINE_STAGE_2_COPY_BIT,
+          VkConstants.VK_ACCESS_2_TRANSFER_WRITE_BIT)
+        barrierCount++
+      }
+
+      var copy = VkBufferImageCopy{}
+      copy.bufferOffset = entry.Upload.Offset
+      copy.bufferRowLength = 0u
+      copy.bufferImageHeight = 0u
+      copy.imageSubresource = VkImageSubresourceLayers{}
+      copy.imageSubresource.aspectMask = uint32(VkConstants.VK_IMAGE_ASPECT_COLOR_BIT)
+      copy.imageSubresource.layerCount = 1u
+      copy.imageOffset = VkOffset3D{}
+      copy.imageOffset.y = int32(entry.UploadRowOffset)
+      copy.imageExtent = VkExtent3D{}
+      copy.imageExtent.width = entry.Width
+      copy.imageExtent.height = entry.UploadRowCount
+      copy.imageExtent.depth = 1u
+      let copyBufferToImage = dispatch.vkCmdCopyBufferToImage
+      copyBufferToImage(commandBuffer, stagingBuffer, entry.Image,
+        VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy)
+
+      if entry.UploadRowOffset + entry.UploadRowCount == entry.Height {
+        VulkanTransitions.RecordImage(
+          commandBuffer,
+          pipelineBarrier,
+          entry.Image,
+          subresourceRange,
+          VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+          VkConstants.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+          VkConstants.VK_PIPELINE_STAGE_2_COPY_BIT,
+          VkConstants.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+          VkConstants.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+          VkConstants.VK_ACCESS_2_SHADER_SAMPLED_READ_BIT)
+        barrierCount++
+      }
+      return barrierCount
     }
-    let pipelineBarrier = dispatch.vkCmdPipelineBarrier2
-    VulkanTransitions.RecordImage(
-      commandBuffer,
-      pipelineBarrier,
-      entry.Image,
-      subresourceRange,
-      entry.ImageLayout,
-      VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-      srcStageMask,
-      srcAccessMask,
-      VkConstants.VK_PIPELINE_STAGE_2_COPY_BIT,
-      VkConstants.VK_ACCESS_2_TRANSFER_WRITE_BIT)
-
-    var copy = VkBufferImageCopy{}
-    copy.bufferOffset = entry.Upload.Offset
-    copy.bufferRowLength = 0u
-    copy.bufferImageHeight = 0u
-    copy.imageSubresource = VkImageSubresourceLayers{}
-    copy.imageSubresource.aspectMask = uint32(VkConstants.VK_IMAGE_ASPECT_COLOR_BIT)
-    copy.imageSubresource.layerCount = 1u
-    copy.imageOffset = VkOffset3D{}
-    copy.imageExtent = VkExtent3D{}
-    copy.imageExtent.width = entry.Width
-    copy.imageExtent.height = entry.Height
-    copy.imageExtent.depth = 1u
-    let copyBufferToImage = dispatch.vkCmdCopyBufferToImage
-    copyBufferToImage(commandBuffer, stagingBuffer, entry.Image,
-      VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy)
-
-    VulkanTransitions.RecordImage(
-      commandBuffer,
-      pipelineBarrier,
-      entry.Image,
-      subresourceRange,
-      VkConstants.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-      VkConstants.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      VkConstants.VK_PIPELINE_STAGE_2_COPY_BIT,
-      VkConstants.VK_ACCESS_2_TRANSFER_WRITE_BIT,
-      VkConstants.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-      VkConstants.VK_ACCESS_2_SHADER_SAMPLED_READ_BIT)
-  }
 
   private func Lookup(
     index int32,
@@ -144,22 +159,27 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         try { accounting.Release() } catch (cleanup Exception) { }
       }
     }
-    if descriptorPool != 0uL {
-      let stalePool = descriptorPool
-      let staleSetCount = trackedDescriptorSetCount
-      descriptorPool = 0uL
-      trackedDescriptorSetCount = 0
+    if descriptorPools.Count > 0 {
       let destroyPool = dispatch.vkDestroyDescriptorPool
-      try { destroyPool(device, stalePool, nil) } catch (cleanup Exception) { }
-      var descriptorIndex int32 = 0
-      while descriptorIndex < staleSetCount {
-        if let accounting = objectAccounting {
-          try { accounting.Release() } catch (cleanup Exception) { }
-        }
-        descriptorIndex = descriptorIndex + 1
+      for pool in descriptorPools {
+        try { destroyPool(device, pool, nil) } catch (cleanup Exception) { }
       }
+      descriptorPools.Clear()
+      let staleSetCount = trackedDescriptorSetCount
+      let stalePoolCount = trackedDescriptorPoolCount
+      trackedDescriptorSetCount = 0
+      trackedDescriptorPoolCount = 0
       if let accounting = objectAccounting {
-        try { accounting.Release() } catch (cleanup Exception) { }
+        var descriptorIndex int32 = 0
+        while descriptorIndex < staleSetCount {
+          try { accounting.Release() } catch (cleanup Exception) { }
+          descriptorIndex++
+        }
+        var poolIndex int32 = 0
+        while poolIndex < stalePoolCount {
+          try { accounting.Release() } catch (cleanup Exception) { }
+          poolIndex++
+        }
       }
     }
     if descriptorSetLayout != 0uL {
@@ -206,14 +226,62 @@ internal unsafe partial class VulkanImageResources : IDisposable {
     return -1
   }
 
-  private func EnsureResidentCapacity(bytes VkDeviceSize) {
+  private func TryEnsureResidentCapacity(bytes VkDeviceSize) bool {
     if bytes > residentByteBudget {
-      throw InvalidOperationException("Vulkan image resident byte budget exceeded")
+      return false
     }
-    while residentBytes > residentByteBudget - bytes || FindEmptyIndex() < 0 {
+    while residentBytes > residentByteBudget - bytes {
       if !EvictLeastRecentlyUsed() {
-        throw InvalidOperationException("Vulkan image resident capacity reached")
+        return false
       }
+    }
+    if FindEmptyIndex() < 0 {
+      EnsureImageCapacity(entries.Length + 1)
+    }
+    return true
+  }
+
+  private func EnsureImageCapacity(required int32) {
+    if required <= capacity {
+      return
+    }
+    if required > MaxCapacity {
+      throw InvalidOperationException("Vulkan image metadata hard limit exceeded")
+    }
+    var nextCapacity = capacity
+    while nextCapacity < required {
+      if nextCapacity > MaxCapacity / 2 {
+        nextCapacity = MaxCapacity
+      } else {
+        nextCapacity = nextCapacity * 2
+      }
+    }
+    let previousCapacity = capacity
+    let previousDescriptorCapacity = descriptorCapacity
+    let previousEntries = entries
+    let previousReferences = currentReferenceCounts
+    let previousDescriptorSets = descriptorSets
+    let previousDescriptorLayouts = descriptorLayouts
+    capacity = nextCapacity
+    descriptorCapacity = nextCapacity * 2
+    entries = [nextCapacity]VulkanImageResourceEntry
+    currentReferenceCounts = [nextCapacity]int32
+    descriptorSets = [descriptorCapacity]VkDescriptorSet
+    descriptorLayouts = [descriptorCapacity]VkDescriptorSetLayout
+    Array.Copy(previousEntries, entries, previousEntries.Length)
+    Array.Copy(previousReferences, currentReferenceCounts, previousReferences.Length)
+    Array.Copy(previousDescriptorSets, descriptorSets, previousDescriptorSets.Length)
+    Array.Copy(previousDescriptorLayouts, descriptorLayouts, previousDescriptorLayouts.Length)
+    try {
+      CreateDescriptorBlock(nextCapacity - previousCapacity, previousCapacity)
+    } catch (error Exception) {
+      capacity = previousCapacity
+      descriptorCapacity = previousDescriptorCapacity
+      entries = previousEntries
+      currentReferenceCounts = previousReferences
+      descriptorSets = previousDescriptorSets
+      descriptorLayouts = previousDescriptorLayouts
+      throw error
     }
   }
 
@@ -231,7 +299,7 @@ internal unsafe partial class VulkanImageResources : IDisposable {
   }
 
   private func CaptureLogical(id ResourceId) VulkanLogicalResource? {
-    let count = registry.CopyLogicalResources(logicalRecords)
+    let count = CopyLogicalResources()
     var index int32 = 0
     while index < count {
       let logical = logicalRecords[index]

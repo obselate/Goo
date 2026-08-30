@@ -601,6 +601,9 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
       if let current = generation {
         if let slot = activeFrameSlot {
           let recordStart = DiagnosticTimestamp()
+          if let resources = pathScene {
+            renderer.SetPathAtlas(resources.Resources.Atlas)
+          }
           renderer.ReserveImageReferences(sceneCompiler.Frame)
           clipMaskFrameStarted = true
           let clipFrameStats = renderer.PrepareClipMasks(
