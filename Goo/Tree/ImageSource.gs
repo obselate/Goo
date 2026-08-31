@@ -13,6 +13,35 @@ public interface ImageSourceProvider {
 
 /// Owns one immutable premultiplied RGBA image resource.
 public class ImageSource : ImageSourceProvider, IDisposable {
+  shared {
+    /// Creates an immutable source by taking ownership of an exact pixel buffer.
+    /// @param width The positive pixel width.
+    /// @param height The positive pixel height.
+    /// @param pixels The exact row-major premultiplied RGBA buffer transferred to Goo.
+    /// @param released Called exactly once after Goo can no longer read the transferred array.
+    /// @returns The owned image source.
+    public func Transfer(width int32, height int32, pixels []uint8,
+      released Action) ImageSource{
+        validate(width, height, pixels)
+        if Object.ReferenceEquals(released, nil) { throw ArgumentNullException("released") }
+        let created = DecodedImage.FromTransferredRgba(width, height, pixels, released)
+        return ImageSource(width, height, created)
+      }
+
+    private func validate(width int32, height int32, pixels []uint8) {
+      if width <= 0 { throw ArgumentOutOfRangeException("width") }
+      if height <= 0 { throw ArgumentOutOfRangeException("height") }
+      if Object.ReferenceEquals(pixels, nil) { throw ArgumentNullException("pixels") }
+      if int64(width) > Int64.MaxValue / int64(height) / int64(4) {
+        throw ArgumentOutOfRangeException("width")
+      }
+      let required = int64(width) * int64(height) * int64(4)
+      if required != int64(pixels.Length) {
+        throw ArgumentException("Pixels must exactly fill the image", "pixels")
+      }
+    }
+  }
+
   private let gate object
   private var image DecodedImage?
   private let width int32
@@ -26,19 +55,19 @@ public class ImageSource : ImageSourceProvider, IDisposable {
   /// @param pixels The row-major premultiplied RGBA pixels.
   public init(width int32, height int32, pixels []uint8) {
     gate = Object()
-    if width <= 0 { throw ArgumentOutOfRangeException("width") }
-    if height <= 0 { throw ArgumentOutOfRangeException("height") }
-    if Object.ReferenceEquals(pixels, nil) { throw ArgumentNullException("pixels") }
-    if int64(width) > Int64.MaxValue / int64(height) / int64(4) {
-      throw ArgumentOutOfRangeException("width")
-    }
-    let required = int64(width) * int64(height) * int64(4)
-    if required != int64(pixels.Length) { throw ArgumentException("Pixels must exactly fill the image", "pixels") }
+    validate(width, height, pixels)
     let created = DecodedImage.FromRgba(width, height, pixels)
     if !created.IsValid {
       created.Release()
       throw InvalidOperationException("Unable to create image source")
     }
+    this.width = width
+    this.height = height
+    image = created
+  }
+
+  private init(width int32, height int32, created DecodedImage) {
+    gate = Object()
     this.width = width
     this.height = height
     image = created

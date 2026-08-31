@@ -5,6 +5,7 @@
 ### Added
 
 - Added four bounded, retained `ShaderEffectData` inputs with copy or ownership-transfer publication and shader authoring helpers.
+- Added ownership-transfer construction for immutable `ImageSource` pixels with final-retirement callbacks.
 
 ## 0.3.0 - 2026-08-28
 
