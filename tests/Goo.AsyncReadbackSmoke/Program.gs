@@ -3295,6 +3295,10 @@ if Environment.GetEnvironmentVariable("GOO_ROUNDED_OVERFLOW_SMOKE") == "1" {
   RunRoundedOverflowSmoke()
   return
 }
+if Environment.GetEnvironmentVariable("GOO_PADDING_EDGE_OVERFLOW_SMOKE") == "1" {
+  RunPaddingEdgeOverflowSmoke()
+  return
+}
 if Environment.GetEnvironmentVariable("GOO_CLIP_CAPTURE_SMOKE") == "1" {
   RunClipCaptureSmoke()
   return
