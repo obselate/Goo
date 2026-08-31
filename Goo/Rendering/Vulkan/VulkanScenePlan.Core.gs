@@ -91,6 +91,7 @@ internal partial class SceneFrame {
     customMeshes = [capacity]CustomMeshRecord
     layers = [capacity]LayerRecord
     shaderEffects = [capacity]ShaderEffectRecord
+    InitializeShaderEffectData()
     activeChunk = -1
     activeClipChainId = 0
   }
@@ -163,6 +164,7 @@ internal partial class SceneFrame {
       shaderEffects[shaderIndex] = ShaderEffectRecord{}
       shaderIndex = shaderIndex + 1
     }
+    ResetShaderEffectData()
     chunkCount = 0
     drawRefCount = 0
     resourceRefCount = 0
@@ -614,9 +616,16 @@ internal partial class SceneFrame {
   internal func AddShaderEffect(value ShaderEffectSnapshot) int32 {
     RequireOpenChunk()
     if value.Program == nil || value.ProgramId == 0uL || value.Version == 0uL {
+      ReleaseShaderEffectDataCaptures(value)
       throw ArgumentException("shader effect snapshot is invalid")
     }
-    GrowShaderEffects(NextCount(shaderEffectCount))
+    try {
+      GrowShaderEffects(NextCount(shaderEffectCount))
+    } catch (error Exception) {
+      ReleaseShaderEffectDataCaptures(value)
+      throw error
+    }
+    let data = PackShaderEffectData(value)
     let index = shaderEffectCount
     shaderEffects[index] = ShaderEffectRecord{
       Program: value.Program,
@@ -631,6 +640,8 @@ internal partial class SceneFrame {
       Parameter5: value.Parameter5,
       Parameter6: value.Parameter6,
       Parameter7: value.Parameter7,
+      DataWordOffset: data.WordOffset,
+      DataByteCount: data.ByteCount,
     }
     shaderEffectCount = NextCount(shaderEffectCount)
     recordOperations = recordOperations + 1uL

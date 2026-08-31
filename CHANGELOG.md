@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Added four bounded, retained `ShaderEffectData` inputs with copy or ownership-transfer publication and shader authoring helpers.
+
 ## 0.3.0 - 2026-08-28
 
 Goo 0.3.0 moves production rendering to Vulkan, broadens the Linux native ABI

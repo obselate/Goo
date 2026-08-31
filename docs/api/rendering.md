@@ -19,6 +19,8 @@ let effect = ShaderEffect(File.ReadAllBytes(path),
   samplesBackdrop: true,
   backdropOutset: 24.0F)
 effect.SetParameter(0, Vector4(0.18F, 0.65F, 0.9F, 1.0F))
+let data = ShaderEffectData(BitConverter.GetBytes(1.0F))
+effect.SetData(0, data)
 
 let control = Button{
   Width: 180,
@@ -30,14 +32,15 @@ let control = Button{
 
 Reuse the same effect instance for controls that share program and parameters. `SetParameter` accepts slots 0 through 7, marks mounted users paint-dirty only when a value changes, and stays allocation-free after construction. Create separate effect instances when controls need independent parameter state.
 
-Author ShaderEffects in native Slang by including Goo's fixed module and implementing `float4 gooEffect(float2 uv, float4 source, float4 backdrop)`. GLSL compatibility sources instead include `goo_effect.glsl` and implement the equivalent `vec4` function.
+Author ShaderEffects in native Slang by including Goo's fixed module and implementing `float4 gooEffect(float2 uv, float4 source, float4 backdrop)`. GLSL compatibility sources instead include `goo_effect.glsl` and implement the equivalent `vec4` function. `gooDataByteLength(slot)` and `gooDataWord(slot, wordIndex)` read retained data slots zero through three; invalid slots and out-of-range words return zero.
 
 ```slang
 #include "goo_effect.slang"
 
 float4 gooEffect(float2 uv, float4 source, float4 backdrop)
 {
-    return lerp(source, backdrop, gooParameter(0).x);
+    float gain = gooDataByteLength(0) >= 4 ? asfloat(gooDataWord(0, 0)) : 1.0;
+    return lerp(source, backdrop, gooParameter(0).x) * gain;
 }
 ```
 
@@ -51,7 +54,9 @@ Add the source to the G# project:
 
 Build requires the pinned Slang 2026.16 compiler through `SLANG_SDK` or `PATH` and SPIRV-Tools 2026.3 from Vulkan SDK 1.4.357.0 through `VULKAN_SDK` or `PATH`. Goo compiles and validates the source during the build, writes deterministic intermediates under `obj`, and copies `Shaders/glass.spv` plus `Shaders/glass.spv.json` provenance to build and publish output. Set `TargetPath` on `GooShaderEffect` to override the relative output path. Unchanged inputs skip compilation. Tool-version mismatches, compiler errors, validation errors, ABI mismatches, and unsupported capabilities fail the build.
 
-The fixed ABI binds the isolated source at set 0, the optional backdrop at set 1, Goo primitive data at set 2, Goo clip data at set 3, and eight `vec4` values in a 128-byte fragment push block. `uv` is normalized to the visible element bounds. `source` and `backdrop` are premultiplied linear colors. Return premultiplied linear color. Goo applies retained clip coverage and element opacity after `gooEffect`. Set `backdropOutset` to the largest displacement or filter radius the shader needs beyond those bounds. When backdrop sampling is disabled, the backdrop argument aliases the source and Goo skips the target copy.
+The fixed ABI binds the isolated source at set 0, the optional backdrop at set 1, Goo primitive data at set 2, Goo clip data at set 3, optional retained effect data at set 4, and eight `vec4` values in a 128-byte fragment push block. `uv` is normalized to the visible element bounds. `source` and `backdrop` are premultiplied linear colors. Return premultiplied linear color. Goo applies retained clip coverage and element opacity after `gooEffect`. Set `backdropOutset` to the largest displacement or filter radius the shader needs beyond those bounds. When backdrop sampling is disabled, the backdrop argument aliases the source and Goo skips the target copy.
+
+Each `ShaderEffectData` publication is a complete replacement. The constructor and `Publish` copy bytes. `Transfer` and `PublishTransferred` take array ownership and invoke the supplied callback after Goo no longer reads that publication. Each source is limited to 16 MiB, each compiled scene frame is limited to 64 MiB of effect data, and unchanged retained versions reuse the existing upload. Goo recreates device-local data from the retained publication after device recovery.
 
 SPIR-V stays a sidecar asset in JIT and NativeAOT builds. Goo packages the build adapter, but neither the adapter, authoring modules, nor compiler toolchains are copied to application output. Goo does not invoke a runtime shader compiler. The first use creates a Vulkan pipeline in a device-generation cache. Warm parameter updates reuse that pipeline and the retained layer pool. One target format supports up to 32 distinct effect program identities per device generation. A non-normal `BlendMode` cannot currently share the same element with `ShaderEffect`.
 
@@ -163,6 +168,15 @@ Creates a retained fragment effect with optional bounded backdrop sampling.
 - `samplesBackdrop`: Whether Goo copies the existing target behind the element for shader sampling.
 - `backdropOutset`: The finite nonnegative logical-pixel distance captured around the element, up to 256.
 
+### `SetData(int32,ShaderEffectData)`
+
+Binds one retained data source to a fixed shader input slot.
+
+- `slot`: The data slot from zero through three.
+- `value`: The retained source, or nil to unbind the slot.
+
+Returns: True when the binding changed.
+
 ### `SetParameter(int32,System.Numerics.Vector4)`
 
 Updates one retained shader parameter slot without allocating on the warm path.
@@ -171,6 +185,58 @@ Updates one retained shader parameter slot without allocating on the warm path.
 - `value`: The four finite parameter values.
 
 Returns: True when the retained value changed.
+
+## `ShaderEffectData`
+
+Source:
+
+- [`ShaderEffectData.gs`](../../Goo/Rendering/ShaderEffectData.gs)
+
+Owns one retained byte sequence for ShaderEffect data inputs.
+
+### `new(System.Byte[])`
+
+Copies bytes into the initial retained publication.
+
+- `bytes`: The non-empty byte sequence to copy.
+
+### `Dispose`
+
+Releases the current owner reference. Captured publications remain valid until released.
+
+### `Publish(System.Byte[])`
+
+Copies and publishes a complete replacement byte sequence.
+
+- `bytes`: The non-empty replacement byte sequence.
+
+### `PublishTransferred(System.Byte[],System.Action)`
+
+Publishes a complete replacement by taking ownership of its array.
+
+- `bytes`: The non-empty replacement byte sequence transferred to Goo.
+- `released`: Called once Goo no longer reads the transferred array.
+
+### `Transfer(System.Byte[],System.Action)`
+
+Creates a source that takes ownership of bytes without copying them.
+
+- `bytes`: The non-empty byte sequence transferred to Goo.
+- `released`: Called once Goo no longer reads the transferred array.
+
+Returns: The retained data source.
+
+### `ByteLength`
+
+Gets the current publication byte length, or zero after disposal.
+
+### `ContentVersion`
+
+Gets the monotonically increasing publication version.
+
+### `IsDisposed`
+
+Gets whether this source has released its current publication.
 
 ## `TextAffinity`
 

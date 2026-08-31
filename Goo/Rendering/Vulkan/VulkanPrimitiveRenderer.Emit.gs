@@ -642,6 +642,8 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       primitive.params_y = (value.Bounds.Y - value.OriginY) / targetHeight
       primitive.params_z = value.Bounds.Width / targetWidth
       primitive.params_w = value.Bounds.Height / targetHeight
+      primitive.packedColorsExtra_w = primitiveFrameData.EffectDataWordOffset
+      +effect.DataWordOffset
       if !primitivePrepass {
         EnsureDescriptorLayout(blendPipelineLayout)
         var descriptorSets = stackalloc[2]VkDescriptorSet
@@ -676,6 +678,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         pathAtlasId = ResourceId{}
         textDescriptorBound = false
         textAtlasId = ResourceId{}
+      }
+      if !primitivePrepass {
+        primitiveFrameData.BindEffectData(commandBuffer, blendPipelineLayout, 4u)
+        recordDescriptorChangeCount++
       }
       BindPrimitiveAndDraw(commandBuffer, effectPipeline, blendPipelineLayout,
         *void(&primitive), 3u)

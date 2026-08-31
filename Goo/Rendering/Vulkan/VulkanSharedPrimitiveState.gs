@@ -464,6 +464,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
   private var textPipelineLayout VkPipelineLayout
   private var primitiveDescriptorSetLayout VkDescriptorSetLayout
   private var clipDescriptorSetLayout VkDescriptorSetLayout
+  private var effectDataDescriptorSetLayout VkDescriptorSetLayout
   private var clipMaskPipelineLayout VkPipelineLayout
   private var clipMaskR8Pipeline VkPipeline
   private var clipMaskRgba8Pipeline VkPipeline
@@ -472,6 +473,9 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
   internal prop Generation uint64{ get { return generation } }
   internal prop PipelineLayout VkPipelineLayout{ get { return pipelineLayout } }
   internal prop PrimitiveDescriptorSetLayout VkDescriptorSetLayout{ get { return primitiveDescriptorSetLayout } }
+  internal prop EffectDataDescriptorSetLayout VkDescriptorSetLayout{
+    get -> effectDataDescriptorSetLayout
+  }
   internal prop PathDescriptorSetLayout VkDescriptorSetLayout{ get { return pathDescriptorSetLayout } }
   internal prop PathPipelineLayout VkPipelineLayout{ get { return pathPipelineLayout } }
   internal prop TextDescriptorSetLayout VkDescriptorSetLayout{ get { return textDescriptorSetLayout } }
@@ -506,6 +510,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
       if clipMaskVertexModule != 0uL { count++ }
       if clipMaskFragmentModule != 0uL { count++ }
       if textVertexModule != 0uL { count++ }
+      if effectDataDescriptorSetLayout != 0uL { count++ }
       if textFragmentModule != 0uL { count++ }
       if textPaintFragmentModule != 0uL { count++ }
       if pipelineLayout != 0uL { count++ }
@@ -591,6 +596,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
         textDescriptorSetLayout = CreateTextDescriptorSetLayout()
         primitiveDescriptorSetLayout = CreatePrimitiveDescriptorSetLayout()
         clipDescriptorSetLayout = CreateClipDescriptorSetLayout()
+        effectDataDescriptorSetLayout = CreateEffectDataDescriptorSetLayout()
         pipelineLayout = CreatePipelineLayout()
         blendPipelineLayout = CreateBlendPipelineLayout()
         pathPipelineLayout = CreatePathPipelineLayout()
@@ -699,14 +705,15 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
   private func CreateBlendPipelineLayout() VkPipelineLayout {
     let descriptorLayout = imageResources.DescriptorSetLayout
     if descriptorLayout == 0uL || primitiveDescriptorSetLayout == 0uL
-      || clipDescriptorSetLayout == 0uL {
+      || clipDescriptorSetLayout == 0uL || effectDataDescriptorSetLayout == 0uL {
         throw InvalidOperationException("Vulkan blend descriptor layouts are unavailable")
       }
-    let descriptorLayouts * VkDescriptorSetLayout = stackalloc[4]VkDescriptorSetLayout
+    let descriptorLayouts * VkDescriptorSetLayout = stackalloc[5]VkDescriptorSetLayout
     descriptorLayouts[0] = descriptorLayout
     descriptorLayouts[1] = descriptorLayout
     descriptorLayouts[2] = primitiveDescriptorSetLayout
     descriptorLayouts[3] = clipDescriptorSetLayout
+    descriptorLayouts[4] = effectDataDescriptorSetLayout
     var pushRange = VkPushConstantRange{}
     pushRange.stageFlags = uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT)
     pushRange.offset = 0u
@@ -716,7 +723,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
       dispatch,
       objectAccounting,
       descriptorLayouts,
-      4u,
+      5u,
       &pushRange,
       1u)
   }
@@ -788,6 +795,14 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
     VkConstants.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
     uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT)
     | uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT))
+
+  private func CreateEffectDataDescriptorSetLayout() VkDescriptorSetLayout ->
+  VulkanDescriptorFactory.CreateSingleBindingLayout(
+    device,
+    dispatch,
+    objectAccounting,
+    VkConstants.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+    uint32(VkConstants.VK_SHADER_STAGE_FRAGMENT_BIT))
 
   private func CreateTextPipelineLayout() VkPipelineLayout {
     if textDescriptorSetLayout == 0uL || clipDescriptorSetLayout == 0uL
@@ -959,6 +974,14 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
         accounting.Release()
       }
       primitiveDescriptorSetLayout = 0uL
+    }
+    if effectDataDescriptorSetLayout != 0uL {
+      let destroyDescriptorSetLayout = dispatch.vkDestroyDescriptorSetLayout
+      destroyDescriptorSetLayout(device, effectDataDescriptorSetLayout, nil)
+      if let accounting = objectAccounting {
+        accounting.Release()
+      }
+      effectDataDescriptorSetLayout = 0uL
     }
     if clipDescriptorSetLayout != 0uL {
       let destroyDescriptorSetLayout = dispatch.vkDestroyDescriptorSetLayout

@@ -24,6 +24,7 @@ ctor|Goo.PathBuilder|public|()
 ctor|Goo.PathBuilder|public|(viewBoxX:System.Double,viewBoxY:System.Double,viewBoxWidth:System.Double,viewBoxHeight:System.Double)
 ctor|Goo.RadialGradient|public|(centerX:System.Double,centerY:System.Double,radius:System.Double,stops:Goo.GradientStop[])
 ctor|Goo.RadialGradient|public|(params colors:Goo.Color[])
+ctor|Goo.ShaderEffectData|public|(bytes:System.Byte[])
 ctor|Goo.ShaderEffect|public|(fragmentSpirv:System.Byte[],samplesBackdrop:System.Boolean=false,backdropOutset:System.Single=0)
 ctor|Goo.Shape|public|()
 ctor|Goo.Simulation|public|()
@@ -648,6 +649,11 @@ method|Goo.Point|GetHashCode|instance|public|generic:|()->System.Int32
 method|Goo.Point|ToString|instance|public|generic:|()->System.String
 method|Goo.Point|op_Equality|static|public|generic:|(arg0:Goo.Point,arg1:Goo.Point)->System.Boolean
 method|Goo.Point|op_Inequality|static|public|generic:|(arg0:Goo.Point,arg1:Goo.Point)->System.Boolean
+method|Goo.ShaderEffectData|Dispose|instance|public|generic:|()->System.Void
+method|Goo.ShaderEffectData|PublishTransferred|instance|public|generic:|(bytes:System.Byte[],released:System.Action)->System.Void
+method|Goo.ShaderEffectData|Publish|instance|public|generic:|(bytes:System.Byte[])->System.Void
+method|Goo.ShaderEffectData|Transfer|static|public|generic:|(bytes:System.Byte[],released:System.Action)->Goo.ShaderEffectData
+method|Goo.ShaderEffect|SetData|instance|public|generic:|(slot:System.Int32,value:Goo.ShaderEffectData)->System.Boolean
 method|Goo.ShaderEffect|SetParameter|instance|public|generic:|(slot:System.Int32,value:System.Numerics.Vector4)->System.Boolean
 method|Goo.Simulation|Done|abstract|public|generic:|(elapsed:System.Double)->System.Boolean
 method|Goo.Simulation|Position|abstract|public|generic:|(elapsed:System.Double)->System.Double
@@ -1053,6 +1059,9 @@ property|Goo.RadialGradient|CenterX|System.Double|instance|get:public|index:()
 property|Goo.RadialGradient|CenterY|System.Double|instance|get:public|index:()
 property|Goo.RadialGradient|Radius|System.Double|instance|get:public|index:()
 property|Goo.RadialGradient|Stops|System.Collections.Generic.IReadOnlyList`1<Goo.GradientStop>|instance|get:public|index:()
+property|Goo.ShaderEffectData|ByteLength|System.Int32|instance|get:public|index:()
+property|Goo.ShaderEffectData|ContentVersion|System.UInt64|instance|get:public|index:()
+property|Goo.ShaderEffectData|IsDisposed|System.Boolean|instance|get:public|index:()
 property|Goo.Shape|CornerRadius|System.Double|instance|get:public,init:public|index:()
 property|Goo.Shape|Dashes|Goo.DashPattern|instance|get:public,init:public|index:()
 property|Goo.Shape|FillRule|Goo.FillRule|instance|get:public,init:public|index:()
@@ -1353,6 +1362,7 @@ type|Goo.Point|struct|public|base:System.ValueType|interfaces:|generic:
 type|Goo.PositionType|enum|public|base:System.Enum|interfaces:|generic:
 type|Goo.RadialGradient|sealed-class|public|base:System.Object|interfaces:Goo.Gradient|generic:
 type|Goo.ScrollbarVisibility|enum|public|base:System.Enum|interfaces:|generic:
+type|Goo.ShaderEffectData|class|public|base:System.Object|interfaces:System.IDisposable|generic:
 type|Goo.ShaderEffect|class|public|base:System.Object|interfaces:|generic:
 type|Goo.ShapeFit|enum|public|base:System.Enum|interfaces:|generic:
 type|Goo.Shape|sealed-class|public|base:Goo.Blob|interfaces:|generic:

@@ -27,6 +27,10 @@ layout(set = 3, binding = 1, std430) readonly buffer GooClipChainBuffer
 {
     uint words[];
 } gooClipChainBuffer;
+layout(set = 4, binding = 0, std430) readonly buffer GooEffectDataBuffer
+{
+    uint words[];
+} gooEffectDataBuffer;
 
 layout(push_constant) uniform GooEffectParameters
 {
@@ -42,6 +46,31 @@ const uint GooClipMaxDepth = 8u;
 const uint GooClipHeaderWords = 4u;
 const uint GooClipDrawRefWords = 12u;
 const uint GooClipMaskRecordWords = 12u;
+const uint GooEffectDataSlotCount = 4u;
+GooPrimitiveRecord gooActivePrimitive;
+
+uint gooDataByteLength(uint slot)
+{
+    if (slot >= GooEffectDataSlotCount)
+    {
+        return 0u;
+    }
+    uint baseWord = gooActivePrimitive.packedColorsExtra.w;
+    return gooEffectDataBuffer.words[baseWord + slot * 2u + 1u];
+}
+
+uint gooDataWord(uint slot, uint wordIndex)
+{
+    uint byteLength = gooDataByteLength(slot);
+    if (wordIndex >= (byteLength + 3u) / 4u)
+    {
+        return 0u;
+    }
+    uint baseWord = gooActivePrimitive.packedColorsExtra.w;
+    uint relativeWord = gooEffectDataBuffer.words[baseWord + slot * 2u];
+    return gooEffectDataBuffer.words[baseWord + relativeWord + wordIndex];
+}
+
 
 float gooClipCoverage()
 {
@@ -104,12 +133,12 @@ vec4 gooEffect(vec2 uv, vec4 source, vec4 backdrop);
 
 void main()
 {
-    GooPrimitiveRecord primitive = gooPrimitiveBuffer.records[gooPrimitiveRecordOrdinal];
-    vec2 sourceUv = primitive.params.xy + gooUv * primitive.params.zw;
+    gooActivePrimitive = gooPrimitiveBuffer.records[gooPrimitiveRecordOrdinal];
+    vec2 sourceUv = gooActivePrimitive.params.xy + gooUv * gooActivePrimitive.params.zw;
     vec4 source = texture(gooSourceTexture, sourceUv);
     vec4 backdrop = texture(gooBackdropTexture, sourceUv);
     vec4 color = gooEffect(gooUv, source, backdrop);
-    float coverage = gooClipCoverage() * clamp(primitive.radii.x, 0.0, 1.0);
+    float coverage = gooClipCoverage() * clamp(gooActivePrimitive.radii.x, 0.0, 1.0);
     gooOutputColor = color * coverage;
 }
 

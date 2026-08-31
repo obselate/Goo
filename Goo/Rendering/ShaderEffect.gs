@@ -9,9 +9,12 @@ public sealed class ShaderEffect {
   private const MaximumByteCount int32 = 1048576
   private const MaximumBackdropOutset float32 = 256.0F
   private const ParameterCount int32 = 8
+  private const DataInputCount int32 = 4
   private let gate object
   private let code []uint8
   private let parameters []Vector4
+  private let dataSources []ShaderEffectData?
+  private let dataChanged Action
   private var changedCallbacks([]Action)?
   private let programId uint64
   private let samplesBackdrop bool
@@ -57,6 +60,8 @@ public sealed class ShaderEffect {
     code = [fragmentSpirv.Length]uint8
     Array.Copy(fragmentSpirv, code, fragmentSpirv.Length)
     parameters = [ParameterCount]Vector4
+    dataSources = [DataInputCount]ShaderEffectData?
+    dataChanged = func() { OnDataChanged() }
     programId = allocateProgramId()
     this.samplesBackdrop = samplesBackdrop
     this.backdropOutset = backdropOutset
@@ -75,11 +80,7 @@ public sealed class ShaderEffect {
     lock gate {
       if parameters[slot] != value {
         parameters[slot] = value
-        if version == UInt64.MaxValue {
-          version = 1uL
-        } else {
-          version = version + 1uL
-        }
+        AdvanceVersion()
         changed = true
         callbacks = changedCallbacks
       }
@@ -88,6 +89,34 @@ public sealed class ShaderEffect {
       for callback in current { callback.Invoke() }
     }
     return changed
+  }
+
+  /// Binds one retained data source to a fixed shader input slot.
+  /// @param slot The data slot from zero through three.
+  /// @param value The retained source, or nil to unbind the slot.
+  /// @returns True when the binding changed.
+  public func SetData(slot int32, value ShaderEffectData?) bool {
+    if slot < 0 || slot >= DataInputCount {
+      throw ArgumentOutOfRangeException("slot")
+    }
+    var callbacks([]Action)?
+    lock gate {
+      let previous = dataSources[slot]
+      if Object.ReferenceEquals(previous, value) { return false }
+      let previousUsedElsewhere = ContainsDataSource(previous, slot)
+      let valueAlreadyUsed = ContainsDataSource(value, slot)
+      dataSources[slot] = value
+      if let previousSource = previous {
+        if !previousUsedElsewhere { previousSource.RemoveChanged(dataChanged) }
+      }
+      if let nextSource = value {
+        if !valueAlreadyUsed { nextSource.AddChanged(dataChanged) }
+      }
+      AdvanceVersion()
+      callbacks = changedCallbacks
+    }
+    Notify(callbacks)
+    return true
   }
 
   internal func AddChanged(callback Action) {
@@ -156,7 +185,51 @@ public sealed class ShaderEffect {
         Parameter5: parameters[5],
         Parameter6: parameters[6],
         Parameter7: parameters[7],
+        Data0: CaptureData(0),
+        Data1: CaptureData(1),
+        Data2: CaptureData(2),
+        Data3: CaptureData(3),
       }
+    }
+  }
+
+  private func OnDataChanged() {
+    var callbacks([]Action)?
+    lock gate {
+      AdvanceVersion()
+      callbacks = changedCallbacks
+    }
+    Notify(callbacks)
+  }
+
+  private func ContainsDataSource(value ShaderEffectData?, exceptSlot int32) bool {
+    if value == nil { return false }
+    var index int32
+    while index < dataSources.Length {
+      if index != exceptSlot && Object.ReferenceEquals(dataSources[index], value) {
+        return true
+      }
+      index++
+    }
+    return false
+  }
+
+  private func CaptureData(slot int32) ShaderEffectDataCapture {
+    if let source = dataSources[slot] { return source.Capture() }
+    return ShaderEffectDataCapture{}
+  }
+
+  private func AdvanceVersion() {
+    if version == UInt64.MaxValue {
+      version = 1uL
+    } else {
+      version++
+    }
+  }
+
+  private func Notify(callbacks([]Action)?) {
+    if let current = callbacks {
+      for callback in current { callback.Invoke() }
     }
   }
 
@@ -182,6 +255,10 @@ internal data struct ShaderEffectSnapshot {
   internal var Parameter5 Vector4
   internal var Parameter6 Vector4
   internal var Parameter7 Vector4
+  internal var Data0 ShaderEffectDataCapture
+  internal var Data1 ShaderEffectDataCapture
+  internal var Data2 ShaderEffectDataCapture
+  internal var Data3 ShaderEffectDataCapture
 }
 
 internal class ShaderEffectStyles {

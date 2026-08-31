@@ -1,6 +1,7 @@
 package Goo
 
 import System
+import System.Runtime.InteropServices
 
 internal data struct VulkanPrimitiveFrameStats {
   var SlotIndex int32
@@ -47,9 +48,14 @@ internal unsafe sealed class VulkanPrimitiveFrameSlot : IDisposable {
   internal var RecordedCommandBuffer VkCommandBuffer
   internal var PreparedByteCount VkDeviceSize
   internal var PreparedRecordCount int32
+  internal var PreparedRecordRegionByteCount VkDeviceSize
+  internal var PreparedEffectDataByteCount VkDeviceSize
   internal var FlushPrepared bool
   internal var HistoryWords []uint32
   internal var HistoryRecordCount int32
+  internal var HistoryEffectDataOffset VkDeviceSize
+  internal var HistoryEffectDataByteCount VkDeviceSize
+  internal var HistoryEffectDataVersion uint64
   internal var HistoryBufferGeneration uint64
   internal var HistoryValid bool
   internal var PreparedRanges []VkBufferCopy
@@ -150,15 +156,10 @@ internal unsafe sealed class VulkanPrimitiveFrameSlot : IDisposable {
     }
   }
 
-  internal func EnsureHistoryCapacity(recordCount int32) {
-    if recordCount < 0 {
-      throw ArgumentOutOfRangeException("recordCount")
+  internal func EnsureHistoryWordCapacity(requiredWords int32) {
+    if requiredWords < 0 {
+      throw ArgumentOutOfRangeException("requiredWords")
     }
-    let requiredWords64 = uint64(recordCount) * 32uL
-    if requiredWords64 > uint64(Int32.MaxValue) {
-      throw ArgumentOutOfRangeException("recordCount")
-    }
-    let requiredWords = int32(requiredWords64)
     if requiredWords <= HistoryWords.Length {
       return
     }
@@ -171,11 +172,7 @@ internal unsafe sealed class VulkanPrimitiveFrameSlot : IDisposable {
       next = next * 2
     }
     let replacement = [next]uint32
-    var index int32 = 0
-    while index < HistoryWords.Length {
-      replacement[index] = HistoryWords[index]
-      index++
-    }
+    Array.Copy(HistoryWords, replacement, HistoryWords.Length)
     HistoryWords = replacement
   }
 
@@ -261,6 +258,8 @@ internal unsafe sealed class VulkanPrimitiveFrameSlot : IDisposable {
     Capacity = 0uL
     PreparedByteCount = 0uL
     PreparedRecordCount = 0
+    PreparedRecordRegionByteCount = 0uL
+    PreparedEffectDataByteCount = 0uL
     FlushPrepared = false
     PreparedRangeCount = 0
     Recorded = false
@@ -270,6 +269,9 @@ internal unsafe sealed class VulkanPrimitiveFrameSlot : IDisposable {
 
   internal func InvalidateHistory() {
     HistoryRecordCount = 0
+    HistoryEffectDataOffset = 0uL
+    HistoryEffectDataByteCount = 0uL
+    HistoryEffectDataVersion = 0uL
     HistoryBufferGeneration = 0uL
     HistoryValid = false
   }
@@ -297,16 +299,25 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
   private let allocator VulkanMemoryAllocator
   private let objectAccounting VulkanObjectAccounting?
   private let descriptorSetLayout VkDescriptorSetLayout
+  private let effectDataDescriptorSetLayout VkDescriptorSetLayout
   private let maxStorageBufferRange VkDeviceSize
   private let slotCount int32
   private let slots []VulkanPrimitiveFrameSlot
   private let descriptorSets []VkDescriptorSet
+  private let effectDataDescriptorSets []VkDescriptorSet
   private var descriptorPool VkDescriptorPool = 0uL
   private var descriptorPoolAccounted bool
   private var descriptorSetsAccounted int32
   private var preparedSlot int32 = -1
   private var preparedBytes VkDeviceSize
   private var preparedRecords int32
+  private var preparedRecordBytes VkDeviceSize
+  private var preparedRecordRegionBytes VkDeviceSize
+  private var preparedEffectDataBytes VkDeviceSize
+  private var preparedBufferSpan VkDeviceSize
+  private var preparedEffectDataVersion uint64
+  private var preparedEffectDataNeedsWrite bool
+  private var preparedEffectDataWritten bool
   private var preparedCommandBuffer VkCommandBuffer
   private var lastStats VulkanPrimitiveFrameStats
   private var totalWrittenBytes VkDeviceSize
@@ -322,6 +333,9 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
   internal prop PreparedSlot int32{ get { return preparedSlot } }
   internal prop PreparedBytes VkDeviceSize{ get { return preparedBytes } }
   internal prop PreparedRecordCount int32{ get { return preparedRecords } }
+  internal prop EffectDataWordOffset uint32{
+    get -> uint32(preparedRecordRegionBytes / 4uL)
+  }
   internal prop LastStats VulkanPrimitiveFrameStats{ get { return lastStats } }
   internal prop Totals VulkanPrimitiveFrameStats{
     get {
@@ -354,6 +368,7 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
 
   internal init(nativeDevice VkDevice, nativeDispatch VkDeviceDispatch,
     nativeAllocator VulkanMemoryAllocator, nativeDescriptorSetLayout VkDescriptorSetLayout,
+    nativeEffectDataDescriptorSetLayout VkDescriptorSetLayout,
     nativeMaxStorageBufferRange VkDeviceSize, nativeSlotCount int32,
     nativeObjectAccounting VulkanObjectAccounting?) {
       if nativeDevice == nint(0) {
@@ -365,6 +380,10 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
       if nativeDescriptorSetLayout == 0uL {
         throw ArgumentException("Vulkan primitive descriptor set layout is null", "nativeDescriptorSetLayout")
       }
+      if nativeEffectDataDescriptorSetLayout == 0uL {
+        throw ArgumentException("Vulkan effect data descriptor set layout is null",
+          "nativeEffectDataDescriptorSetLayout")
+      }
       if nativeMaxStorageBufferRange < RecordBytes {
         throw ArgumentOutOfRangeException("nativeMaxStorageBufferRange")
       }
@@ -375,15 +394,16 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
       dispatch = nativeDispatch
       allocator = nativeAllocator
       descriptorSetLayout = nativeDescriptorSetLayout
+      effectDataDescriptorSetLayout = nativeEffectDataDescriptorSetLayout
       maxStorageBufferRange = nativeMaxStorageBufferRange
       slotCount = nativeSlotCount
       objectAccounting = nativeObjectAccounting
       slots = [nativeSlotCount]VulkanPrimitiveFrameSlot
       descriptorSets = [nativeSlotCount]VkDescriptorSet
-      var index int32 = 0
+      effectDataDescriptorSets = [nativeSlotCount]VkDescriptorSet
+      var index int32
       while index < slotCount {
         slots[index] = VulkanPrimitiveFrameSlot(device, dispatch, allocator, objectAccounting)
-        descriptorSets[index] = 0uL
         index++
       }
       try {
@@ -396,6 +416,7 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
     }
 
   internal func BeginPrepare(slotIndex int32, maximumRecordCount uint64,
+    effectDataByteCount int32, effectDataVersion uint64,
     completedSubmissionSerial uint64) {
       EnsureOpen()
       if preparedSlot >= 0 {
@@ -404,32 +425,55 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
       if slotIndex < 0 || slotIndex >= slotCount {
         throw ArgumentOutOfRangeException("slotIndex")
       }
+      if effectDataByteCount < 0 || (effectDataByteCount & 3) != 0 {
+        throw ArgumentOutOfRangeException("effectDataByteCount")
+      }
       var recordLimit = maximumRecordCount
-      if recordLimit == 0uL {
-        recordLimit = 1uL
+      if recordLimit == 0uL { recordLimit = 1uL }
+      if recordLimit >= uint64(Int32.MaxValue)
+        || recordLimit > maxStorageBufferRange / RecordBytes{
+          throw ArgumentOutOfRangeException("maximumRecordCount")
+        }
+      let recordRegionBytes = recordLimit * RecordBytes
+      let dataBytes = uint64(effectDataByteCount)
+      if dataBytes > maxStorageBufferRange
+        || recordRegionBytes > maxStorageBufferRange - dataBytes{
+          throw ArgumentOutOfRangeException("effectDataByteCount")
+        }
+      let requiredBytes = recordRegionBytes + dataBytes
+      let requiredWords = requiredBytes / 4uL
+      if requiredWords > uint64(Int32.MaxValue) {
+        throw ArgumentOutOfRangeException("effectDataByteCount")
       }
-      if recordLimit > uint64(Int32.MaxValue) {
-        throw ArgumentOutOfRangeException("maximumRecordCount")
-      }
-      if recordLimit > maxStorageBufferRange / RecordBytes {
-        throw ArgumentOutOfRangeException("primitive record storage range")
-      }
-      let requiredBytes = recordLimit * RecordBytes
       let slot = slots[slotIndex]
       Collect(completedSubmissionSerial)
       if slot.Prepared || slot.Recorded {
         throw InvalidOperationException("Vulkan primitive frame slot already has prepared work")
       }
       slot.EnsureCapacity(requiredBytes, completedSubmissionSerial)
-      slot.EnsureHistoryCapacity(int32(recordLimit))
-      slot.EnsureRangeCapacity(int32(recordLimit))
+      slot.EnsureHistoryWordCapacity(int32(requiredWords))
+      preparedEffectDataNeedsWrite = dataBytes > 0uL
+        && (!slot.HistoryValid
+            || slot.HistoryBufferGeneration != slot.BufferGeneration
+            || slot.HistoryEffectDataOffset != recordRegionBytes
+            || slot.HistoryEffectDataByteCount != dataBytes
+            || slot.HistoryEffectDataVersion != effectDataVersion)
+      slot.EnsureRangeCapacity(int32(recordLimit) + 1)
       preparedSlot = slotIndex
       preparedBytes = 0uL
+      preparedRecordBytes = 0uL
+      preparedRecordRegionBytes = recordRegionBytes
+      preparedEffectDataBytes = dataBytes
+      preparedBufferSpan = requiredBytes
+      preparedEffectDataVersion = effectDataVersion
+      preparedEffectDataWritten = dataBytes == 0uL
       preparedRecords = 0
       preparedCommandBuffer = nint(0)
       slot.Prepared = true
       slot.PreparedByteCount = 0uL
       slot.PreparedRecordCount = 0
+      slot.PreparedRecordRegionByteCount = recordRegionBytes
+      slot.PreparedEffectDataByteCount = dataBytes
       slot.FlushPrepared = false
       slot.PreparedRangeCount = 0
     }
@@ -457,16 +501,35 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
     preparedRecords = preparedRecords + 1
   }
 
+  internal func WriteEffectData(source []uint8, byteCount int32) {
+    EnsureOpen()
+    if preparedSlot < 0 {
+      throw InvalidOperationException("Vulkan primitive frame data is not prepared")
+    }
+    if byteCount < 0 || uint64(byteCount) != preparedEffectDataBytes
+      || byteCount > source.Length{
+        throw ArgumentOutOfRangeException("byteCount")
+      }
+    if byteCount > 0 && preparedEffectDataNeedsWrite {
+      let destination = nint(slots[preparedSlot].Mapped) + nint(preparedRecordRegionBytes)
+      Marshal.Copy(source, 0, destination, byteCount)
+    }
+    preparedEffectDataWritten = true
+  }
+
   internal func FinishPrepare() {
     EnsureOpen()
     if preparedSlot < 0 {
       throw InvalidOperationException("Vulkan primitive frame data has no prepared work")
     }
+    if !preparedEffectDataWritten {
+      throw InvalidOperationException("Vulkan shader effect data was not written")
+    }
     let slot = slots[preparedSlot]
     if preparedRecords <= 0 {
       preparedRecords = 1
       let destination = *uint32(nint(slot.Mapped))
-      var index int32 = 0
+      var index int32
       while index < 32 {
         destination[index] = 0u
         index++
@@ -475,55 +538,54 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
     if uint64(preparedRecords) > maxStorageBufferRange / RecordBytes {
       throw ArgumentOutOfRangeException("primitive record storage range")
     }
-    preparedBytes = uint64(preparedRecords) * RecordBytes
-    slot.PreparedByteCount = preparedBytes
+    preparedRecordBytes = uint64(preparedRecords) * RecordBytes
+    preparedBytes = preparedRecordBytes + preparedEffectDataBytes
+    slot.PreparedByteCount = preparedBufferSpan
     slot.PreparedRecordCount = preparedRecords
     let fullUpload = !slot.HistoryValid
       || slot.HistoryBufferGeneration != slot.BufferGeneration
       || slot.HistoryRecordCount != preparedRecords
-    var dirtyRecordCount int32 = 0
-    var rangeCount int32 = 0
+    let candidate = *uint32(nint(slot.Mapped))
+    var dirtyRecordCount int32
+    var rangeCount int32
+    let dataChanged = preparedEffectDataNeedsWrite
     if fullUpload {
       dirtyRecordCount = preparedRecords
-      if preparedBytes > 0uL {
-        var fullRange = VkBufferCopy{}
-        fullRange.srcOffset = 0uL
-        fullRange.dstOffset = 0uL
-        fullRange.size = preparedBytes
-        slot.PreparedRanges[0] = fullRange
-        rangeCount = 1
+      if preparedRecordBytes > 0uL {
+        var recordRange = VkBufferCopy{}
+        recordRange.srcOffset = 0uL
+        recordRange.dstOffset = 0uL
+        recordRange.size = preparedRecordBytes
+        slot.PreparedRanges[rangeCount] = recordRange
+        rangeCount++
       }
     } else {
-      let candidate = *uint32(nint(slot.Mapped))
-      var recordIndex int32 = 0
-      var rangeStart int32 = -1
+      var recordIndex int32
+      var rangeStart = -1
       while recordIndex < preparedRecords {
         let firstWord = recordIndex * 32
         var same = true
-        var wordIndex int32 = 0
+        var wordIndex int32
         while wordIndex < 32 {
-          if candidate[firstWord + wordIndex]
-          != slot.HistoryWords[firstWord + wordIndex]{
+          if candidate[firstWord + wordIndex] != slot.HistoryWords[firstWord + wordIndex] {
             same = false
             break
           }
           wordIndex++
         }
         if !same {
-          dirtyRecordCount = dirtyRecordCount + 1
-          if rangeStart < 0 {
-            rangeStart = recordIndex
-          }
+          dirtyRecordCount++
+          if rangeStart < 0 { rangeStart = recordIndex }
         } else if rangeStart >= 0 {
           var copyRange = VkBufferCopy{}
           copyRange.srcOffset = uint64(rangeStart) * RecordBytes
           copyRange.dstOffset = copyRange.srcOffset
           copyRange.size = uint64(recordIndex - rangeStart) * RecordBytes
           slot.PreparedRanges[rangeCount] = copyRange
-          rangeCount = rangeCount + 1
+          rangeCount++
           rangeStart = -1
         }
-        recordIndex = recordIndex + 1
+        recordIndex++
       }
       if rangeStart >= 0 {
         var copyRange = VkBufferCopy{}
@@ -531,15 +593,20 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
         copyRange.dstOffset = copyRange.srcOffset
         copyRange.size = uint64(preparedRecords - rangeStart) * RecordBytes
         slot.PreparedRanges[rangeCount] = copyRange
-        rangeCount = rangeCount + 1
+        rangeCount++
       }
     }
-    slot.PreparedRangeCount = rangeCount
-    let writtenBytes = if fullUpload {
-      preparedBytes
-    } else {
-      uint64(dirtyRecordCount) * RecordBytes
+    if dataChanged {
+      var dataRange = VkBufferCopy{}
+      dataRange.srcOffset = preparedRecordRegionBytes
+      dataRange.dstOffset = preparedRecordRegionBytes
+      dataRange.size = preparedEffectDataBytes
+      slot.PreparedRanges[rangeCount] = dataRange
+      rangeCount++
     }
+    slot.PreparedRangeCount = rangeCount
+    let writtenBytes = uint64(dirtyRecordCount) * RecordBytes
+    +(dataChanged ? preparedEffectDataBytes : 0uL)
     let skippedBytes = preparedBytes - writtenBytes
     let retainedReuse = if fullUpload {
       0uL
@@ -547,7 +614,8 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
       uint64(preparedRecords - dirtyRecordCount)
     }
     let flushes = slot.FlushRanges()
-    UpdateDescriptor(preparedSlot, preparedBytes)
+    UpdateDescriptors(preparedSlot, preparedRecordBytes,
+      preparedEffectDataBytes > 0uL ? preparedBufferSpan : 0uL)
     lastStats = VulkanPrimitiveFrameStats{
       SlotIndex: preparedSlot,
       RecordCount: preparedRecords,
@@ -569,9 +637,7 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
     totalSkippedBytes = SaturatingAdd(totalSkippedBytes, skippedBytes)
     totalDirtyRecordCount = SaturatingAdd(totalDirtyRecordCount, uint64(dirtyRecordCount))
     totalUploadRangeCount = SaturatingAdd(totalUploadRangeCount, uint64(rangeCount))
-    if fullUpload {
-      totalFullUploads = SaturatingAdd(totalFullUploads, 1uL)
-    }
+    if fullUpload { totalFullUploads = SaturatingAdd(totalFullUploads, 1uL) }
     totalMappedWrites = SaturatingAdd(totalMappedWrites, 1uL)
     totalFlushes = SaturatingAdd(totalFlushes, flushes)
     totalRetainedReuse = SaturatingAdd(totalRetainedReuse, retainedReuse)
@@ -612,7 +678,7 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
         dispatch.vkCmdPipelineBarrier2,
         slot.Buffer,
         0uL,
-        preparedBytes,
+        preparedBufferSpan,
         VkConstants.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
         VkConstants.VK_ACCESS_2_TRANSFER_WRITE_BIT,
         VkConstants.VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT
@@ -652,6 +718,22 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
         pipelineLayout, setIndex, 1u, &descriptorSet, 0u, nil)
     }
 
+  internal func BindEffectData(commandBuffer VkCommandBuffer,
+    pipelineLayout VkPipelineLayout, setIndex uint32) {
+      EnsureOpen()
+      if commandBuffer == nint(0) || pipelineLayout == 0uL {
+        throw ArgumentException("Vulkan effect data descriptor binding arguments are invalid")
+      }
+      if preparedSlot < 0 || !slots[preparedSlot].Prepared
+        || preparedEffectDataBytes == 0uL {
+          throw InvalidOperationException("Vulkan shader effect data is not prepared")
+        }
+      var descriptorSet = effectDataDescriptorSets[preparedSlot]
+      let bindDescriptorSets = dispatch.vkCmdBindDescriptorSets
+      bindDescriptorSets(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS,
+        pipelineLayout, setIndex, 1u, &descriptorSet, 0u, nil)
+    }
+
   internal func ValidateSubmission(slotIndex int32, submissionSerial uint64) {
     EnsureOpen()
     if slotIndex < 0 || slotIndex >= slotCount || submissionSerial == 0uL {
@@ -675,6 +757,7 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
     preparedSlot = -1
     preparedBytes = 0uL
     preparedRecords = 0
+    ResetPreparedMetadata()
     preparedCommandBuffer = nint(0)
     lastStats.Prepared = false
     lastStats.LastUseSerial = submissionSerial
@@ -696,6 +779,7 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
       preparedSlot = -1
       preparedBytes = 0uL
       preparedRecords = 0
+      ResetPreparedMetadata()
       preparedCommandBuffer = nint(0)
       lastStats.Prepared = false
       lastStats.LastUseSerial = submissionSerial
@@ -728,6 +812,10 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
     }
     slot.HistoryRecordCount = slot.PreparedRecordCount
     slot.HistoryBufferGeneration = slot.BufferGeneration
+    slot.HistoryEffectDataOffset = slot.PreparedRecordRegionByteCount
+    slot.HistoryEffectDataByteCount = slot.PreparedEffectDataByteCount
+    slot.HistoryEffectDataVersion = slot.PreparedEffectDataByteCount > 0uL
+    ? preparedEffectDataVersion : 0uL
     slot.HistoryValid = true
   }
 
@@ -762,11 +850,14 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
     slot.RecordedCommandBuffer = nint(0)
     slot.PreparedByteCount = 0uL
     slot.PreparedRecordCount = 0
+    slot.PreparedRecordRegionByteCount = 0uL
+    slot.PreparedEffectDataByteCount = 0uL
     slot.FlushPrepared = false
     slot.PreparedRangeCount = 0
     preparedSlot = -1
     preparedBytes = 0uL
     preparedRecords = 0
+    ResetPreparedMetadata()
     preparedCommandBuffer = nint(0)
     lastStats.Prepared = false
   }
@@ -779,6 +870,7 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
     preparedSlot = -1
     preparedBytes = 0uL
     preparedRecords = 0
+    ResetPreparedMetadata()
     preparedCommandBuffer = nint(0)
     var index int32 = 0
     while index < slots.Length {
@@ -818,11 +910,14 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
   private func CreateDescriptorResources() {
     var poolSize = VkDescriptorPoolSize{}
     poolSize._type = VkConstants.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-    poolSize.descriptorCount = uint32(slotCount)
-    let layouts * VkDescriptorSetLayout = stackalloc[2]VkDescriptorSetLayout
-    var index int32 = 0
+    poolSize.descriptorCount = uint32(slotCount * 2)
+    let descriptorCount = slotCount * 2
+    let layouts = [descriptorCount]VkDescriptorSetLayout
+    let allocated = [descriptorCount]VkDescriptorSet
+    var index int32
     while index < slotCount {
       layouts[index] = descriptorSetLayout
+      layouts[slotCount + index] = effectDataDescriptorSetLayout
       index++
     }
     let creation = VulkanDescriptorFactory.CreatePoolAndAllocate(
@@ -831,26 +926,43 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
       objectAccounting,
       &poolSize,
       1u,
-      layouts,
-      uint32(slotCount),
-      &descriptorSets[0])
+      &layouts[0],
+      uint32(descriptorCount),
+      &allocated[0])
     descriptorPool = creation.Pool
+    index = 0
+    while index < slotCount {
+      descriptorSets[index] = allocated[index]
+      effectDataDescriptorSets[index] = allocated[slotCount + index]
+      index++
+    }
     if objectAccounting != nil {
       descriptorPoolAccounted = true
       descriptorSetsAccounted = int32(creation.SetCount)
     }
   }
 
-  private func UpdateDescriptor(slotIndex int32, byteCount VkDeviceSize) {
-    VulkanDescriptorFactory.WriteStorageBuffer(
-      device,
-      dispatch,
-      descriptorSets[slotIndex],
-      0u,
-      slots[slotIndex].Buffer,
-      0uL,
-      byteCount)
-  }
+  private func UpdateDescriptors(slotIndex int32, recordByteCount VkDeviceSize,
+    effectBufferByteCount VkDeviceSize) {
+      VulkanDescriptorFactory.WriteStorageBuffer(
+        device,
+        dispatch,
+        descriptorSets[slotIndex],
+        0u,
+        slots[slotIndex].Buffer,
+        0uL,
+        recordByteCount)
+      if effectBufferByteCount > 0uL {
+        VulkanDescriptorFactory.WriteStorageBuffer(
+          device,
+          dispatch,
+          effectDataDescriptorSets[slotIndex],
+          0u,
+          slots[slotIndex].Buffer,
+          0uL,
+          effectBufferByteCount)
+      }
+    }
 
   private func DisposeSlots() {
     var index int32 = 0
@@ -884,6 +996,21 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
       descriptorSets[index] = 0uL
       index++
     }
+    index = 0
+    while index < effectDataDescriptorSets.Length {
+      effectDataDescriptorSets[index] = 0uL
+      index++
+    }
+  }
+
+  private func ResetPreparedMetadata() {
+    preparedRecordBytes = 0uL
+    preparedRecordRegionBytes = 0uL
+    preparedEffectDataBytes = 0uL
+    preparedBufferSpan = 0uL
+    preparedEffectDataWritten = false
+    preparedEffectDataVersion = 0uL
+    preparedEffectDataNeedsWrite = false
   }
 
   private func EnsureOpen() {

@@ -570,6 +570,8 @@ internal struct ShaderEffectRecord {
   internal var Parameter5 System.Numerics.Vector4
   internal var Parameter6 System.Numerics.Vector4
   internal var Parameter7 System.Numerics.Vector4
+  internal var DataWordOffset uint32
+  internal var DataByteCount int32
 }
 
 internal struct ScenePlanCounters {
