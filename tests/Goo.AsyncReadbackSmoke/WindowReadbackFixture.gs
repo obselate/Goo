@@ -706,6 +706,8 @@ public partial class Window {
     return target.ReadbackCompletionCount
   }
 
+  internal func ReadbackSubmissionReadyForReconcileForTest() bool -> windowTarget?.ReadbackSubmissionReadyForReconcile == true
+
   internal func ReadbackResidentResourceBytesForTest() uint64 {
     guard let target = windowTarget else {
       return 0uL
@@ -1096,6 +1098,8 @@ internal class WindowReadbackTestFixture {
     internal func RequestCount(window Window) uint64 -> window.ReadbackRequestCountForTest()
 
     internal func CompletionCount(window Window) uint64 -> window.ReadbackCompletionCountForTest()
+
+    internal func SubmissionReadyForReconcile(window Window) bool -> window.ReadbackSubmissionReadyForReconcileForTest()
 
     internal func ResidentResourceBytes(window Window) uint64 -> window.ReadbackResidentResourceBytesForTest()
     internal func TargetResidentResourceBytes(target VulkanWindowTarget?) uint64 {

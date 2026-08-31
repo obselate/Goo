@@ -334,6 +334,9 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
       }
     }
     VulkanDeviceRecoveryCoordinator.ServiceQueueCompletions(this)
+    if DeferForPendingReadbackSubmission() {
+      return
+    }
     if let activeRuntime = runtime {
       if activeRuntime.DeviceLost || activeRuntime.Terminal {
         presentationRetirement.ClearPresentationLatency()

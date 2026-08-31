@@ -98,6 +98,11 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
   internal prop ResourceGeneration uint64{ get { return resourceGeneration } }
   internal prop ClipMaskAtlas VulkanClipMaskAtlas{ get { return clipMaskAtlas } }
   internal prop State VulkanOffscreenState{ get { return state } }
+  internal prop SubmissionPendingReconcile bool{ get -> queuePending }
+  internal prop SubmissionReadyForReconcile bool{
+    get -> queuePending
+      && queueMailbox.Phase == VulkanQueueMailboxPhase.SubmitComplete
+  }
   internal prop LastResult VkResult{ get { return lastResult } }
   internal prop DeviceLossDetected bool{
     get {

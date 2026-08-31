@@ -23,6 +23,26 @@ internal unsafe partial class VulkanWindowTarget {
     get { return readbackRequest?.IsPending == true }
   }
 
+  internal prop ReadbackSubmissionReadyForReconcile bool{
+    get -> readbackRequest?.SubmissionReadyForReconcile == true
+  }
+
+  private func DeferForPendingReadbackSubmission() bool {
+    guard let request = readbackRequest else {
+      return false
+    }
+    if !request.SubmissionPendingReconcile {
+      return false
+    }
+    PollReadback()
+    if readbackRequest?.SubmissionPendingReconcile != true {
+      return false
+    }
+    frameFailureRetryable = true
+    host.Wake()
+    return true
+  }
+
   internal prop ReadbackState VulkanReadbackState{
     get {
       if let request = readbackRequest {
