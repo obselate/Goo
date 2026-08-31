@@ -456,7 +456,7 @@ Creates an immutable source by taking ownership of an exact pixel buffer.
 - `width`: The positive pixel width.
 - `height`: The positive pixel height.
 - `pixels`: The exact row-major premultiplied RGBA buffer transferred to Goo.
-- `released`: Called once Goo no longer reads the transferred array.
+- `released`: Called exactly once after Goo can no longer read the transferred array.
 
 Returns: The owned image source.
 
