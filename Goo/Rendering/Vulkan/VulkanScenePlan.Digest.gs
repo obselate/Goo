@@ -708,6 +708,11 @@ internal partial class SceneFrame {
         || effect.Version != value.EffectVersion{
           throw ArgumentException("layer effect identity is invalid")
         }
+      let dataOffset = uint64(effect.DataWordOffset) * 4uL
+      if effect.DataByteCount < 32
+        || dataOffset + uint64(effect.DataByteCount) > uint64(shaderEffectDataCount) {
+          throw ArgumentException("layer effect data is invalid")
+        }
     } else if value.EffectProgramId != 0uL || value.EffectVersion != 0uL {
       throw ArgumentException("layer effect identity is unexpected")
     }

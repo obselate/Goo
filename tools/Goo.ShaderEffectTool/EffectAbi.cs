@@ -1,6 +1,6 @@
 internal static class EffectAbi
 {
-    public const string Id = "goo-shader-effect-1";
+    public const string Id = "goo-shader-effect-2";
 
     private readonly record struct Interface(int Location, string Type);
 
@@ -33,6 +33,9 @@ internal static class EffectAbi
         new(3, 0, "combined-image-sampler", 1, null, "2d", true),
         new(3, 1, "storage-buffer", 1, 4, null, null)
     };
+
+    private static readonly Descriptor DataDescriptor =
+        new(4, 0, "storage-buffer", 1, 4, null, null);
 
     private static readonly SpirvStorageMember[] PrimitiveMembers =
     {
@@ -75,25 +78,35 @@ internal static class EffectAbi
 
     private static void RequireDescriptors(IReadOnlyList<SpirvDescriptor> actual)
     {
-        Require(actual.Count == Descriptors.Length, "descriptors.count", Descriptors.Length.ToString());
+        Require(actual.Count == Descriptors.Length || actual.Count == Descriptors.Length + 1,
+            "descriptors.count", $"{Descriptors.Length} or {Descriptors.Length + 1}");
         for (int index = 0; index < Descriptors.Length; index++)
         {
-            SpirvDescriptor value = actual[index];
-            Descriptor expected = Descriptors[index];
-            string path = $"descriptors[{index}]";
-            Require(value.Set == expected.Set, $"{path}.set", expected.Set.ToString());
-            Require(value.Binding == expected.Binding, $"{path}.binding", expected.Binding.ToString());
-            Require(value.Type == expected.Type, $"{path}.type", expected.Type);
-            Require(value.Count == expected.Count, $"{path}.count", expected.Count.ToString());
-            Require(value.StorageStride == expected.StorageStride,
-                $"{path}.storageStride", Render(expected.StorageStride));
-            Require(value.ImageDimension == expected.ImageDimension,
-                $"{path}.imageDimension", Render(expected.ImageDimension));
-            Require(value.ImageArrayed == expected.ImageArrayed,
-                $"{path}.imageArrayed", Render(expected.ImageArrayed));
+            RequireDescriptor(actual[index], Descriptors[index], index);
         }
         RequireStorageMembers(actual[2].StorageMembers, PrimitiveMembers, "primitiveRecord.members");
         Require(actual[4].StorageMembers.Count == 0, "clipChain.members.count", "0");
+        if (actual.Count == Descriptors.Length + 1)
+        {
+            RequireDescriptor(actual[Descriptors.Length], DataDescriptor, Descriptors.Length);
+            Require(actual[Descriptors.Length].StorageMembers.Count == 0,
+                "effectData.members.count", "0");
+        }
+    }
+
+    private static void RequireDescriptor(SpirvDescriptor value, Descriptor expected, int index)
+    {
+        string path = $"descriptors[{index}]";
+        Require(value.Set == expected.Set, $"{path}.set", expected.Set.ToString());
+        Require(value.Binding == expected.Binding, $"{path}.binding", expected.Binding.ToString());
+        Require(value.Type == expected.Type, $"{path}.type", expected.Type);
+        Require(value.Count == expected.Count, $"{path}.count", expected.Count.ToString());
+        Require(value.StorageStride == expected.StorageStride,
+            $"{path}.storageStride", Render(expected.StorageStride));
+        Require(value.ImageDimension == expected.ImageDimension,
+            $"{path}.imageDimension", Render(expected.ImageDimension));
+        Require(value.ImageArrayed == expected.ImageArrayed,
+            $"{path}.imageArrayed", Render(expected.ImageArrayed));
     }
 
     private static void RequireStorageMembers(

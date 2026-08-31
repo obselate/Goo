@@ -95,6 +95,11 @@ func RunShaderEffectSmoke() {
   Require(File.Exists(shaderPath), "Shader effect asset is missing")
   let shaderBytes = File.ReadAllBytes(shaderPath)
   let effect = ShaderEffect(shaderBytes, true, 20.0F)
+  var transferReleaseCount int32
+  let data = ShaderEffectData.Transfer(BitConverter.GetBytes(1.0F),
+    func() { transferReleaseCount++ })
+  Require(effect.SetData(0, data), "Shader effect rejected its retained data source")
+  Require(!effect.SetData(0, data), "Shader effect reported an unchanged data source as changed")
   Require(effect.SetParameter(0, Vector4(1.0F, 0.25F, 0.25F, 0.0F)),
     "Shader effect rejected its initial parameter")
   Require(!effect.SetParameter(0, Vector4(1.0F, 0.25F, 0.25F, 0.0F)),
@@ -148,6 +153,39 @@ func RunShaderEffectSmoke() {
     Require(cell.ClickCount == 1,
       "Shader effect changed the button hit target")
 
+    let dataCountersBefore = WindowReadbackTestFixture.DiagnosticCounters(opened)
+    data.PublishTransferred(BitConverter.GetBytes(0.5F),
+      func() { transferReleaseCount++ })
+    Require(transferReleaseCount == 1,
+      "ShaderEffect did not release the replaced transferred data")
+    WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+    let dataFrame = PrimitiveReadback(opened, metrics)
+    let dataCenter = PrimitiveLogicalPixel(dataFrame.Pixels, dataFrame.Width,
+      metrics, targetX, targetY)
+    Require(int32(firstCenter[0]) > int32(dataCenter[0]) + 40,
+      "ShaderEffect retained data mutation did not change output: "
+      +PrimitivePixelText(dataCenter))
+    WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+    WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+    let retainedDataFrame = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
+    let dataCountersAfter = WindowReadbackTestFixture.DiagnosticCounters(opened)
+    Require(retainedDataFrame.WrittenBytes == 0uL
+        && retainedDataFrame.RetainedReuse > 0uL,
+      "ShaderEffect unchanged retained data was uploaded again")
+    Require(ShaderEffectDelta(dataCountersAfter.vulkanObjectAllocationCount,
+      dataCountersBefore.vulkanObjectAllocationCount) == 0uL
+        && ShaderEffectDelta(dataCountersAfter.vulkanDeviceMemoryAllocationCount,
+          dataCountersBefore.vulkanDeviceMemoryAllocationCount) == 0uL,
+      "ShaderEffect retained data frame created Vulkan resources")
+    let copiedData = BitConverter.GetBytes(1.0F)
+    data.Publish(copiedData)
+    var copiedDataIndex int32
+    while copiedDataIndex < copiedData.Length {
+      copiedData[copiedDataIndex] = uint8(0)
+      copiedDataIndex++
+    }
+    Require(transferReleaseCount == 2,
+      "ShaderEffect did not release the second transferred publication")
     var slot int32
     effect.SetParameter(0, Vector4(1.0F, 0.25F, 0.25F, 0.0F))
     let beforeBytes = GC.GetAllocatedBytesForCurrentThread()
@@ -252,6 +290,7 @@ func RunShaderEffectSmoke() {
         WindowReadbackTestFixture.ForceRender(active, 0.0)
       }
     }
+    data.Dispose()
   }
   let diagnostics = capturedError.ToString()
   ReadbackValidateCommonDiagnostics(diagnostics, 1uL)
@@ -275,6 +314,7 @@ func RunShaderEffectSmoke() {
       && layerLeasedCount == 0uL,
     "Shader effect gate left layer resources resident after close")
   Console.WriteLine("shader-effect-smoke: control=button backdrop=1 blend=multiply combined=1 clip=rounded input=click"
+    +" data=retained transfer_releases=" + transferReleaseCount.ToString()
     +" resize=1 dpi=" + displayScaleX.ToString("0.###")
     +" device_recovery=" + deviceRecoveries.ToString()
     +" parameter_alloc_B=" + parameterAllocated.ToString()

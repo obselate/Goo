@@ -18,6 +18,7 @@ struct GooPrimitiveRecord
 [[vk::binding(0, 2)]] StructuredBuffer<GooPrimitiveRecord> gooPrimitiveBuffer;
 [[vk::binding(0, 3)]] Sampler2DArray gooClipMaskAtlas;
 [[vk::binding(1, 3)]] StructuredBuffer<uint> gooClipChainBuffer;
+[[vk::binding(0, 4)]] StructuredBuffer<uint> gooEffectDataBuffer;
 
 [[vk::push_constant]] cbuffer GooEffectParameters
 {
@@ -63,6 +64,31 @@ static const uint GooClipMaxDepth = 8;
 static const uint GooClipHeaderWords = 4;
 static const uint GooClipDrawRefWords = 12;
 static const uint GooClipMaskRecordWords = 12;
+static const uint GooEffectDataSlotCount = 4;
+static GooPrimitiveRecord gooActivePrimitive;
+
+uint gooDataByteLength(uint slot)
+{
+    if (slot >= GooEffectDataSlotCount)
+    {
+        return 0;
+    }
+    uint baseWord = gooActivePrimitive.packedColorsExtra.w;
+    return gooEffectDataBuffer[baseWord + slot * 2 + 1];
+}
+
+uint gooDataWord(uint slot, uint wordIndex)
+{
+    uint byteLength = gooDataByteLength(slot);
+    if (wordIndex >= (byteLength + 3) / 4)
+    {
+        return 0;
+    }
+    uint baseWord = gooActivePrimitive.packedColorsExtra.w;
+    uint relativeWord = gooEffectDataBuffer[baseWord + slot * 2];
+    return gooEffectDataBuffer[baseWord + relativeWord + wordIndex];
+}
+
 
 float gooClipCoverage(GooEffectInput input)
 {
@@ -127,12 +153,12 @@ float4 gooEffect(float2 uv, float4 source, float4 backdrop);
 [shader("fragment")]
 GooEffectOutput main(GooEffectInput input)
 {
-    GooPrimitiveRecord primitive = gooPrimitiveBuffer[input.primitiveRecordOrdinal];
-    float2 sourceUv = primitive.params.xy + input.uv * primitive.params.zw;
+    gooActivePrimitive = gooPrimitiveBuffer[input.primitiveRecordOrdinal];
+    float2 sourceUv = gooActivePrimitive.params.xy + input.uv * gooActivePrimitive.params.zw;
     float4 source = gooSourceTexture.Sample(sourceUv);
     float4 backdrop = gooBackdropTexture.Sample(sourceUv);
     float4 color = gooEffect(input.uv, source, backdrop);
-    float coverage = gooClipCoverage(input) * clamp(primitive.radii.x, 0.0, 1.0);
+    float coverage = gooClipCoverage(input) * clamp(gooActivePrimitive.radii.x, 0.0, 1.0);
     GooEffectOutput output;
     output.color = color * coverage;
     return output;

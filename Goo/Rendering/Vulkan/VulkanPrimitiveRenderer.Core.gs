@@ -204,8 +204,8 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       this.primitiveState = sharedState
       this.primitivePipelines = pipelines
       this.primitiveFrameData = VulkanPrimitiveFrameData(device, dispatch, suppliedAllocator,
-        sharedState.PrimitiveDescriptorSetLayout, nativeMaxStorageBufferRange,
-        nativePrimitiveFrameSlotCount, nativeObjectAccounting)
+        sharedState.PrimitiveDescriptorSetLayout, sharedState.EffectDataDescriptorSetLayout,
+        nativeMaxStorageBufferRange, nativePrimitiveFrameSlotCount, nativeObjectAccounting)
       this.textFrameData = VulkanTextFrameData(device, dispatch, suppliedAllocator,
         sharedState.PrimitiveDescriptorSetLayout, nativeMaxStorageBufferRange,
         nativePrimitiveFrameSlotCount, nativeObjectAccounting)
@@ -399,7 +399,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       try {
         textFrameData.Prepare(frame, primitiveFrameSlot, completedSubmissionSerial)
         primitiveFrameData.BeginPrepare(primitiveFrameSlot, maximumRecordCount,
+          frame.ShaderEffectDataByteCount, frame.ShaderEffectDataVersion,
           completedSubmissionSerial)
+        primitiveFrameData.WriteEffectData(frame.ShaderEffectDataBytes,
+          frame.ShaderEffectDataByteCount)
         var drawIndex int32 = 0
         while drawIndex < frame.DrawRefCount {
           currentDrawOrdinal = uint32(drawIndex)
