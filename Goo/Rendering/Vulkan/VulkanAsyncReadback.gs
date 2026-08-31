@@ -24,6 +24,14 @@ internal unsafe sealed class VulkanAsyncReadback : IDisposable {
   internal prop Extent VkExtent2D{ get { return target.Extent } }
   internal prop Region VulkanReadbackRegion{ get { return region } }
   internal prop IsPending bool{ get { return state == VulkanReadbackState.Pending } }
+  internal prop SubmissionPendingReconcile bool{
+    get -> state == VulkanReadbackState.Pending
+      && target.SubmissionPendingReconcile
+  }
+  internal prop SubmissionReadyForReconcile bool{
+    get -> state == VulkanReadbackState.Pending
+      && target.SubmissionReadyForReconcile
+  }
   internal prop TargetPending bool{
     get { return state == VulkanReadbackState.Pending || target.State == VulkanOffscreenState.Pending }
   }
