@@ -174,13 +174,11 @@ internal class TextShaping {
       lock (PrimaryFacesLock) { return PrimaryFaces.Count }
     }
 
-
     internal func PrimaryFaceCacheByteBudgetForTests() int64 -> PrimaryFaceCacheByteBudget
 
     internal func PrimaryFaceCacheBytesForTests() int64 {
       lock (PrimaryFacesLock) { return primaryFaceCacheBytes }
     }
-
 
     private func MeasureUncached(text string, families string, size float32, weight int32,
       italic bool, letterSpacing float32, direction int32) float32 ->
@@ -772,14 +770,19 @@ internal class TextShaping {
         var familyScore int32 = 0
         if aliases {
           if stem.Contains("dejavusans") || stem.Contains("adwaitasans")
-            || stem.Contains("liberationsans") { familyScore = 50 }
+            || stem.Contains("liberationsans") || stem.StartsWith("segoeui")
+            || stem.StartsWith("arial") { familyScore = 50 }
         } else if stem.Contains(requested) {
           familyScore = 100
         }
         if familyScore == 0 { continue }
         var score = familyScore
         let bold = stem.Contains("bold") || stem.Contains("semibold")
+          || stem == "arialbd" || stem == "arialbi" || stem == "segoeuib"
+          || stem == "segoeuibl" || stem == "segoeuisb" || stem == "segoeuiz"
         let slanted = stem.Contains("italic") || stem.Contains("oblique")
+          || stem == "ariali" || stem == "arialbi" || stem == "segoeuii"
+          || stem == "segoeuili" || stem == "segoeuisli" || stem == "segoeuiz"
         if weight >= 600 { score = score + (if bold { 20 } else { -15 }) }
         else { score = score + (if bold { -10 } else { 10 }) }
         if italic { score = score + (if slanted { 20 } else { -15 }) }

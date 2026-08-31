@@ -10,6 +10,12 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 MAX_BYTES = 20_971_520
 MAX_GLIBC = (2, 27)
+WINDOWS_SDL_SHA256 = "2632e21625861a0dc106f2b1abb649e610d8be88534ba74c76a763abe5aefaa3"
+WINDOWS_SDL_IMPORTS = {
+    "ADVAPI32.dll", "GDI32.dll", "IMM32.dll", "KERNEL32.dll", "OLEAUT32.dll",
+    "SETUPAPI.dll", "SHELL32.dll", "USER32.dll", "VERSION.dll", "WINMM.dll",
+    "ole32.dll",
+}
 PACKAGE_FILES = {
     "_rels/.rels",
     "Goo.nuspec",
@@ -51,6 +57,7 @@ PACKAGE_FILES = {
     "runtimes/linux-x64/native/text-native-build.json",
     "runtimes/win-x64/native/goo-harfbuzz-gpu.dll",
     "runtimes/win-x64/native/goo-harfbuzz.dll",
+    "runtimes/win-x64/native/SDL3.dll",
     "runtimes/win-x64/native/text-native-build.json",
     "tools/net10.0/any/Goo.ShaderEffectTool.deps.json",
     "tools/net10.0/any/Goo.ShaderEffectTool.dll",
@@ -125,6 +132,15 @@ def require_glibc_floor(path: Path) -> None:
             "maximum is GLIBC_2.27")
 
 
+def pe_imports(path: Path) -> set[str]:
+    result = subprocess.run(
+        ["objdump", "-p", str(path)], text=True,
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    if result.returncode != 0:
+        raise SystemExit(f"could not inspect PE imports: {path}")
+    return set(re.findall(r"DLL Name:\s+(\S+)", result.stdout))
+
+
 def validate_package(path: Path) -> str:
     if path.stat().st_size > MAX_BYTES:
         raise SystemExit(f"NuGet package exceeds 20 MiB: {path.stat().st_size}")
@@ -158,6 +174,16 @@ def validate_package(path: Path) -> str:
                 raise SystemExit("packaged libSDL3.so is not an ELF library")
             require_glibc_floor(target)
             sdl_digest = digest(target)
+            windows_target = Path(directory) / "SDL3.dll"
+            windows_target.write_bytes(
+                archive.read("runtimes/win-x64/native/SDL3.dll"))
+            if windows_target.read_bytes()[:2] != b"MZ":
+                raise SystemExit("packaged SDL3.dll is not a PE library")
+            if digest(windows_target) != WINDOWS_SDL_SHA256:
+                raise SystemExit("packaged SDL3.dll does not match the pinned SDL release")
+            imports = pe_imports(windows_target)
+            if imports != WINDOWS_SDL_IMPORTS:
+                raise SystemExit(f"unexpected SDL3.dll imports: {sorted(imports)}")
     print(f"Package OK: {path.stat().st_size} bytes")
     return sdl_digest
 

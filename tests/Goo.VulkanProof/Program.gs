@@ -15,6 +15,9 @@ func SDL_Quit() void;
 @DllImport("SDL3", EntryPoint: "SDL_Vulkan_LoadLibrary", CallingConvention: CallingConvention.Cdecl)
 unsafe func SDL_Vulkan_LoadLibrary(path nint) uint8;
 
+@DllImport("SDL3", EntryPoint: "SDL_GetError", CallingConvention: CallingConvention.Cdecl)
+func SDL_GetError() nint;
+
 @DllImport("SDL3", EntryPoint: "SDL_Vulkan_GetVkGetInstanceProcAddr", CallingConvention: CallingConvention.Cdecl)
 unsafe func SDL_Vulkan_GetVkGetInstanceProcAddr() nint;
 
@@ -506,7 +509,8 @@ unsafe func Main() int32 {
     sdlInitialized = true
 
     if SDL_Vulkan_LoadLibrary(nint(0)) == 0u {
-      throw InvalidOperationException("Vulkan loader initialization failed")
+      throw InvalidOperationException("Vulkan loader initialization failed: "
+        +Marshal.PtrToStringUTF8(SDL_GetError()))
     }
     vulkanLoaded = true
 

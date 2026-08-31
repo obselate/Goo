@@ -34,5 +34,9 @@
     <Content Include="../Goo.VulkanProof/Assets/Text/HarfBuzz-cff-style-italic.otf"
              Link="HarfBuzz-cff-style-italic.otf"
              CopyToOutputDirectory="PreserveNewest" />
+    <None Include="run-windows-qualification.ps1"
+          Condition="'$(RuntimeIdentifier)' == 'win-x64'"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="Always" />
   </ItemGroup>
 </Project>

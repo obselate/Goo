@@ -1848,6 +1848,10 @@ func RunRegisteredFontSmoke() {
 
 func Main() {
   Window.ConfigureApplication("Goo package smoke", "0.1.0", "io.github.obselate.goo.smoke")
+  if Environment.GetEnvironmentVariable("GOO_WINDOWS_QUALIFICATION") == "1" {
+    RunWindowsQualification()
+    return
+  }
   if Environment.GetEnvironmentVariable("GOO_PATH_SMOKE") == "1" {
     RunPathSmoke()
     return
