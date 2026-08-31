@@ -22,7 +22,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
   private let dispatch VkDeviceDispatch
   private let targetFormat VkFormat
   private let imageResources VulkanImageResources?
-  private var pathAtlas VulkanPathAtlas
+  private let pathAtlas VulkanPathAtlas
   private let textAtlases VulkanTextAtlasSet?
   private let clipMaskAtlas VulkanClipMaskAtlas?
   private let clipMaskFrameData VulkanClipMaskFrameData?
@@ -117,18 +117,6 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
   }
   internal prop TextFrameStats VulkanTextFrameStats{
     get { return textFrameData.LastStats }
-  }
-
-  internal func SetPathAtlas(value VulkanPathAtlas) {
-    if value == nil {
-      throw ArgumentNullException("value")
-    }
-    if Object.ReferenceEquals(pathAtlas, value) {
-      return
-    }
-    pathAtlas = value
-    pathDescriptorBound = false
-    pathAtlasId = ResourceId{}
   }
 
   internal init(

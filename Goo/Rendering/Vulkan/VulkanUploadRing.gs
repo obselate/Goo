@@ -43,8 +43,9 @@ internal data struct VulkanUploadRingStats {
 }
 
 internal unsafe class VulkanUploadRing {
+  private const MaxRangeCapacity int32 = 1048576
   private let capacity VkDeviceSize
-  private var segments []VulkanUploadSegment
+  private let segments []VulkanUploadSegment
   private var generation uint64
   private var head VkDeviceSize
   private var tail VkDeviceSize
@@ -71,7 +72,7 @@ internal unsafe class VulkanUploadRing {
     if byteCapacity == 0uL {
       throw ArgumentOutOfRangeException("byteCapacity")
     }
-    if rangeCapacity <= 0 {
+    if rangeCapacity <= 0 || rangeCapacity > MaxRangeCapacity {
       throw ArgumentOutOfRangeException("rangeCapacity")
     }
     if initialGeneration == 0uL {
@@ -90,10 +91,7 @@ internal unsafe class VulkanUploadRing {
         || size == 0uL || size > capacity || alignment == 0uL {
           throw ArgumentException("Upload reservation arguments are invalid")
         }
-      if activeRanges == segments.Length {
-        EnsureRangeCapacity(activeRanges + 1)
-      }
-      if size > capacity - usedBytes {
+      if activeRanges == segments.Length || size > capacity - usedBytes {
         return VulkanUploadReservation{ Succeeded: false, Slot: -1 }
       }
       var start VkDeviceSize = 0uL
@@ -394,23 +392,6 @@ internal unsafe class VulkanUploadRing {
       span = (aligned - head) + size
       return true
     }
-
-  private func EnsureRangeCapacity(required int32) {
-    if required <= segments.Length {
-      return
-    }
-    var nextCapacity = segments.Length
-    while nextCapacity < required {
-      if nextCapacity > Int32.MaxValue / 2 {
-        nextCapacity = required
-      } else {
-        nextCapacity = nextCapacity * 2
-      }
-    }
-    let next = [nextCapacity]VulkanUploadSegment
-    Array.Copy(segments, next, segments.Length)
-    segments = next
-  }
 
   private func Align(value VkDeviceSize, alignment VkDeviceSize) VkDeviceSize {
     let remainder = value % alignment

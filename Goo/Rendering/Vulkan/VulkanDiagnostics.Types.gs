@@ -147,9 +147,6 @@ internal data struct VulkanDiagnosticCounterSnapshot {
   var imageLiveObjectCount uint64
   var imagePeakResidentBytes uint64
   var imagePeakLiveObjectCount uint64
-  var imageUploadChunkCount uint64
-  var imageUploadDeferredCount uint64
-  var imageUploadCompletedCount uint64
   var textAtlasCount uint64
   var textAtlasByteBudget uint64
   var textAtlasResidentBytes uint64

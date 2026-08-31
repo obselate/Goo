@@ -610,21 +610,6 @@ internal unsafe partial class VulkanDiagnostics {
     if !EnterWriter() { return }
     try { counters.SetImagePeakLiveObjectCount(value) } finally { ExitWriter() }
   }
-
-  internal func AddImageUploadChunk(value uint64) {
-    if !EnterWriter() { return }
-    try { counters.AddImageUploadChunk(value) } finally { ExitWriter() }
-  }
-
-  internal func AddImageUploadDeferred(value uint64) {
-    if !EnterWriter() { return }
-    try { counters.AddImageUploadDeferred(value) } finally { ExitWriter() }
-  }
-
-  internal func AddImageUploadCompleted(value uint64) {
-    if !EnterWriter() { return }
-    try { counters.AddImageUploadCompleted(value) } finally { ExitWriter() }
-  }
   internal func SetTextAtlasCount(value uint64) {
     if !EnterWriter() { return }
     try { counters.SetTextAtlasCount(value) } finally { ExitWriter() }

@@ -110,11 +110,9 @@ internal unsafe partial class VulkanWindowTarget {
     }
     if layerPool == nil {
       guard let allocator = memoryAllocator,
-      let resources = imageResources,
-      let layerRuntime = runtime else {
+      let resources = imageResources else {
         throw InvalidOperationException("Vulkan layer pool resources are unavailable")
       }
-      let policy = layerRuntime.ResourcePolicy
       layerPool = VulkanOffscreenLayerPool(
         device,
         dispatch,
@@ -122,8 +120,7 @@ internal unsafe partial class VulkanWindowTarget {
         resources.DescriptorSetLayout,
         selection.Format.format,
         windowObjectAccounting,
-        policy.OffscreenLayerInitialCapacity,
-        policy.OffscreenLayerHardBytes,
+        134217728uL,
         diagnostics)
     }
     primitiveRenderer!!.SetLayerPool(layerPool)

@@ -14,6 +14,14 @@ internal data struct VulkanSharedDeviceFacts {
 }
 
 internal unsafe sealed class VulkanSharedRuntime : IDisposable {
+  private const ImageResourceCapacity int32 = 256
+  private const LogicalResourceCapacity int32 = 512
+  private const MaximumResidentImageBytes VkDeviceSize = 67108864uL
+  private const MaximumLogicalSourceBytes VkDeviceSize = 134217728uL
+  private const ImageStagingBytes VkDeviceSize = 16777216uL
+  private const ImageUploadRangeCapacity int32 = 64
+  private const ImageIdentityCapacity int32 = 4096
+  private const PathAtlasBytes VkDeviceSize = 262144uL
   private let instance VkInstance
   private let instanceDispatch VkInstanceDispatch
   private let physicalDevice VkPhysicalDevice
@@ -29,7 +37,6 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
   private let swapchainMaintenanceVariant VulkanSwapchainMaintenanceVariant
   private let facts VulkanSharedDeviceFacts
   private let maxStorageBufferRange VkDeviceSize
-  private let resourcePolicy VulkanResourcePolicy
   private let memoryAllocator VulkanMemoryAllocator
   private let imageResources VulkanImageResources
   private let primitiveState VulkanSharedPrimitiveState
@@ -197,21 +204,16 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
             createdBudget,
             nativeSharedObjectAccounting)
           allocator = createdAllocator
-          createdAllocator.RefreshBudget()
-          let createdResourcePolicy = CreateVulkanResourcePolicy(
-            nativeMemoryProperties,
-            createdAllocator.DriverHeapBudget,
-            nativeMaxStorageBufferRange)
           let createdImageResources = VulkanImageResources(
             nativeDevice,
             nativeDispatch,
             createdAllocator,
-            createdResourcePolicy.ImageInitialResourceCapacity,
-            createdResourcePolicy.ImageInitialLogicalCapacity,
-            createdResourcePolicy.ImageResidentHardBytes,
-            createdResourcePolicy.ImageLogicalSourceHardBytes,
-            createdResourcePolicy.ImageStagingInitialBytes,
-            createdResourcePolicy.ImageUploadInitialRangeCapacity,
+            ImageResourceCapacity,
+            LogicalResourceCapacity,
+            MaximumResidentImageBytes,
+            MaximumLogicalSourceBytes,
+            ImageStagingBytes,
+            ImageUploadRangeCapacity,
             nativeDiagnostics,
             generationSeed,
             nativeSharedObjectAccounting)
@@ -233,12 +235,11 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
             created
           }
           pathIdentityRegistry = retainedPathIdentities
-          let pathAtlasByteSize = if createdResourcePolicy.PathAtlasHardBytes
-            < createdResourcePolicy.PathAtlasInitialBytes{
-              createdResourcePolicy.PathAtlasHardBytes
-            } else {
-              createdResourcePolicy.PathAtlasInitialBytes
-            }
+          let pathAtlasByteSize = if uint64(nativeMaxStorageBufferRange) < PathAtlasBytes {
+            uint64(nativeMaxStorageBufferRange)
+          } else {
+            PathAtlasBytes
+          }
           if pathAtlasByteSize < 4096uL {
             throw InvalidOperationException("Vulkan path atlas capacity is too small")
           }
@@ -255,7 +256,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
           let identityRegistry = if let retained = logicalImageIdentityRegistry {
             retained
           } else {
-            let created = VulkanImageIdentityRegistry(createdResourcePolicy.ImageIdentityInitialCapacity)
+            let created = VulkanImageIdentityRegistry(ImageIdentityCapacity)
             logicalImageIdentityRegistry = created
             createdImageIdentityRegistry = true
             created
@@ -276,7 +277,6 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
             nativeSwapchainMaintenanceVariant,
             nativeFacts,
             nativeMaxStorageBufferRange,
-            createdResourcePolicy,
             createdAllocator,
             createdImageResources,
             createdPrimitiveState,
@@ -366,7 +366,6 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     nativeInstanceMaintenanceVariant VulkanSwapchainMaintenanceVariant,
     nativeSwapchainMaintenanceVariant VulkanSwapchainMaintenanceVariant,
     nativeFacts VulkanSharedDeviceFacts, nativeMaxStorageBufferRange uint32,
-    nativeResourcePolicy VulkanResourcePolicy,
     nativeAllocator VulkanMemoryAllocator,
     nativeImageResources VulkanImageResources,
     nativePrimitiveState VulkanSharedPrimitiveState,
@@ -428,7 +427,6 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
       swapchainMaintenanceVariant = nativeSwapchainMaintenanceVariant
       facts = nativeFacts
       maxStorageBufferRange = VkDeviceSize(nativeMaxStorageBufferRange)
-      resourcePolicy = nativeResourcePolicy
       memoryAllocator = nativeAllocator
       imageResources = nativeImageResources
       primitiveState = nativePrimitiveState
@@ -450,7 +448,6 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     }
 
   internal prop Instance VkInstance{ get { return instance } }
-  internal prop ResourcePolicy VulkanResourcePolicy{ get { return resourcePolicy } }
   internal prop InstanceDispatch VkInstanceDispatch{ get { return instanceDispatch } }
   internal prop PhysicalDevice VkPhysicalDevice{ get { return physicalDevice } }
   internal prop Device VkDevice{ get { return device } }
@@ -749,7 +746,6 @@ internal unsafe sealed class VulkanSharedLease : IDisposable {
   }
   internal prop Facts VulkanSharedDeviceFacts{ get { return owner.Facts } }
   internal prop MaxStorageBufferRange VkDeviceSize{ get { return owner.MaxStorageBufferRange } }
-  internal prop ResourcePolicy VulkanResourcePolicy{ get { return owner.ResourcePolicy } }
   internal prop MemoryAllocator VulkanMemoryAllocator{ get { return owner.MemoryAllocator } }
   internal prop ImageResources VulkanImageResources{ get { return owner.ImageResources } }
   internal prop PrimitiveState VulkanSharedPrimitiveState{ get { return owner.PrimitiveState } }

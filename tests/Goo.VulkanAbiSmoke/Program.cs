@@ -11,12 +11,6 @@ internal static class Program
 
         if (Environment.GetEnvironmentVariable("GOO_VK_SCENE_ALLOC") == "1")
             return RunSceneAllocationGate();
-        if (Environment.GetEnvironmentVariable("GOO_VK_PATH_UPLOAD_GATE") == "1")
-        {
-            RunPathUploadGate();
-            return 0;
-        }
-
 
         var fontPath = Path.Combine(AppContext.BaseDirectory, "VendSans-VariableFont_wght.ttf");
         if (!File.Exists(fontPath))
@@ -28,7 +22,6 @@ internal static class Program
         RunPathMorphGate();
         RunEvenOddPathGate();
         RunPathUploadGate();
-        RunUploadRingGrowthGate();
 
         VulkanTextFont? font = null;
         try
@@ -327,37 +320,6 @@ internal static class Program
         Console.WriteLine("PATH_MORPH_GATE allocated=0 stableGeometry=1 stableEncoding=1 stableIdentity=1 versionedIdentity=1");
     }
 
-    private static void RunUploadRingGrowthGate()
-    {
-        var ring = new VulkanUploadRing(64uL, 1, 1uL);
-        try
-        {
-            var firstId = new ResourceId { Kind = SceneResourceKind.Image, LogicalId = 1uL, Version = 1uL };
-            var secondId = new ResourceId { Kind = SceneResourceKind.Image, LogicalId = 2uL, Version = 1uL };
-            var thirdId = new ResourceId { Kind = SceneResourceKind.Image, LogicalId = 3uL, Version = 1uL };
-            var first = ring.Reserve(firstId, 1uL, 8uL, 1uL);
-            var second = ring.Reserve(secondId, 1uL, 8uL, 1uL);
-            var third = ring.Reserve(thirdId, 1uL, 8uL, 1uL);
-            if (!first.Succeeded || !second.Succeeded || !third.Succeeded
-                || ring.Stats.ActiveRanges != 3 || ring.Stats.UsedBytes != 24uL)
-            {
-                throw new InvalidOperationException("Upload ring range metadata did not grow");
-            }
-            if (!ring.Cancel(first) || !ring.Cancel(second) || !ring.Cancel(third)
-                || ring.Collect(0uL) != 3 || ring.Stats.ActiveRanges != 0
-                || ring.Stats.UsedBytes != 0uL)
-            {
-                throw new InvalidOperationException("Upload ring grown metadata did not retire");
-            }
-            Console.WriteLine("UPLOAD_RING_GROWTH_GATE initialRanges=1 activeRanges=3 retired=3");
-        }
-        finally
-        {
-            ring.Dispose();
-        }
-    }
-
-
     private static void RunPathUploadGate()
     {
         VectorPathNormalizedOwner owner = new VectorPathNormalizedOwner(4, 1, 0.0, 0.0, 100.0, 100.0);
@@ -374,31 +336,11 @@ internal static class Program
         {
             throw new InvalidOperationException("Path upload gate initial update failed");
         }
-        using (VulkanPathAtlas growthAtlas = new VulkanPathAtlas(1uL))
-        using (VulkanPathResources growthResources = new VulkanPathResources(growthAtlas, new VulkanPathIdentityRegistry()))
-        {
-            VulkanPathRenderable growthRenderable = growthResources.Register(path, FillRule.NonZero);
-            growthResources.PrepareUpload();
-            if (growthResources.Stats.GrowthCount != 1uL
-                || growthResources.Atlas.WordCapacity < growthRenderable.WordCount
-                || growthResources.Atlas.UploadWordOffset != 0uL
-                || growthResources.Atlas.UploadWordCount != growthRenderable.WordCount)
-            {
-                throw new InvalidOperationException("Path atlas did not grow transactionally");
-            }
-            SubmitPathUpload(growthResources, 1uL);
-            growthResources.Collect(1uL);
-            VulkanPathRenderable publishedGrowthRenderable = growthResources.Resolve(path, FillRule.NonZero);
-            if (!publishedGrowthRenderable.Published || !publishedGrowthRenderable.Renderable)
-            {
-                throw new InvalidOperationException("Grown path atlas did not publish");
-            }
-        }
         using VulkanPathAtlas vulkanPathAtlas = new VulkanPathAtlas(4096uL);
         using VulkanPathResources vulkanPathResources = new VulkanPathResources(vulkanPathAtlas, new VulkanPathIdentityRegistry());
         VulkanPathRenderable vulkanPathRenderable = vulkanPathResources.Register(path, FillRule.NonZero);
         vulkanPathResources.PrepareUpload();
-        if (vulkanPathResources.Atlas.UploadWordOffset != 0L || vulkanPathResources.Atlas.UploadWordCount != vulkanPathRenderable.WordCount || vulkanPathResources.Atlas.UploadWordCount > vulkanPathResources.Atlas.WordCapacity)
+        if (vulkanPathAtlas.UploadWordOffset != 0L || vulkanPathAtlas.UploadWordCount != vulkanPathRenderable.WordCount || vulkanPathAtlas.UploadWordCount >= vulkanPathAtlas.WordCapacity)
         {
             throw new InvalidOperationException("Initial path atlas upload range was invalid");
         }
@@ -421,7 +363,7 @@ internal static class Program
         }
         VulkanPathRenderable vulkanPathRenderable4 = vulkanPathResources.Register(path, FillRule.NonZero);
         vulkanPathResources.PrepareUpload();
-        if (vulkanPathResources.Atlas.UploadWordOffset != vulkanPathRenderable.WordCount || vulkanPathResources.Atlas.UploadWordCount != vulkanPathRenderable4.WordCount)
+        if (vulkanPathAtlas.UploadWordOffset != vulkanPathRenderable.WordCount || vulkanPathAtlas.UploadWordCount != vulkanPathRenderable4.WordCount)
         {
             throw new InvalidOperationException("Path atlas suffix upload range was invalid");
         }
@@ -442,8 +384,8 @@ internal static class Program
             throw new InvalidOperationException("Path atlas did not reuse the retired range");
         }
         vulkanPathResources.PrepareUpload();
-        ulong uploadWordCount = vulkanPathResources.Atlas.UploadWordCount;
-        if (vulkanPathResources.Atlas.UploadWordOffset != vulkanPathRenderable5.BaseWord || uploadWordCount != vulkanPathRenderable5.WordCount || vulkanPathResources.Atlas.UploadWordOffset + uploadWordCount > vulkanPathResources.Atlas.WordCapacity || uploadWordCount >= vulkanPathResources.Atlas.WordCapacity)
+        ulong uploadWordCount = vulkanPathAtlas.UploadWordCount;
+        if (vulkanPathAtlas.UploadWordOffset != vulkanPathRenderable5.BaseWord || uploadWordCount != vulkanPathRenderable5.WordCount || vulkanPathAtlas.UploadWordOffset + uploadWordCount > vulkanPathAtlas.WordCapacity || uploadWordCount >= vulkanPathAtlas.WordCapacity)
         {
             throw new InvalidOperationException("Path atlas reused upload was not bounded");
         }
@@ -452,12 +394,12 @@ internal static class Program
         {
             throw new InvalidOperationException("Dirty reused path was published before completion");
         }
-        if (!vulkanPathResources.AbortUpload() || !vulkanPathResources.UploadPending || vulkanPathResources.Atlas.UploadPending)
+        if (!vulkanPathResources.AbortUpload() || !vulkanPathResources.UploadPending || vulkanPathAtlas.UploadPending)
         {
             throw new InvalidOperationException("Aborted path upload did not retain dirty work");
         }
         vulkanPathResources.PrepareUpload();
-        if (vulkanPathResources.Atlas.UploadWordOffset != vulkanPathRenderable5.BaseWord || vulkanPathResources.Atlas.UploadWordCount != uploadWordCount)
+        if (vulkanPathAtlas.UploadWordOffset != vulkanPathRenderable5.BaseWord || vulkanPathAtlas.UploadWordCount != uploadWordCount)
         {
             throw new InvalidOperationException("Retained dirty path upload range changed");
         }
@@ -486,7 +428,7 @@ internal static class Program
         }
         SubmitPathUpload(vulkanPathResources, 5uL);
         vulkanPathResources.Collect(5uL);
-        Console.WriteLine("PATH_UPLOAD_GATE atlasWords=" + vulkanPathResources.Atlas.WordCapacity + " growthCount=" + vulkanPathResources.Stats.GrowthCount + " reuseOffset=" + vulkanPathRenderable5.BaseWord + " reuseWords=" + vulkanPathRenderable5.WordCount + " warmAllocated=" + num + " abortRetained=1 unpublished=1 published=1");
+        Console.WriteLine("PATH_UPLOAD_GATE atlasWords=" + vulkanPathAtlas.WordCapacity + " reuseOffset=" + vulkanPathRenderable5.BaseWord + " reuseWords=" + vulkanPathRenderable5.WordCount + " warmAllocated=" + num + " abortRetained=1 unpublished=1 published=1");
     }
 
     private static void RunEvenOddPathGate()
