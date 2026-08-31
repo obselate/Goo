@@ -537,7 +537,7 @@ internal partial class VulkanSceneCompiler {
           && Finite(shadow.Blur.Value)
           && Finite(shadow.Spread.Value)
           && shadow.Blur.Value >= 0.0F
-        let shadowBounds = insetOnly ? InsetShadowBounds(node, bounds) : bounds
+        let shadowBounds = insetOnly ? PaddingEdgeBounds(node, bounds) : bounds
         if !supportedOwner || !validGeometry {
           RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BoxShadows,
             VulkanSceneUnsupportedPrimitive.BoxShadow)
@@ -545,16 +545,16 @@ internal partial class VulkanSceneCompiler {
           frame.AddShadow(ShadowRecord{
             Bounds: shadowBounds,
             RadiusTopLeft: insetOnly
-            ? InsetShadowRadius(node, node.BorderTopLeftRadius, node.BorderRadius,
+            ? PaddingEdgeRadius(node, node.BorderTopLeftRadius, node.BorderRadius,
               bounds, shadowBounds, true, true) : Radius(node.BorderTopLeftRadius, node.BorderRadius, bounds),
             RadiusTopRight: insetOnly
-            ? InsetShadowRadius(node, node.BorderTopRightRadius, node.BorderRadius,
+            ? PaddingEdgeRadius(node, node.BorderTopRightRadius, node.BorderRadius,
               bounds, shadowBounds, false, true) : Radius(node.BorderTopRightRadius, node.BorderRadius, bounds),
             RadiusBottomRight: insetOnly
-            ? InsetShadowRadius(node, node.BorderBottomRightRadius, node.BorderRadius,
+            ? PaddingEdgeRadius(node, node.BorderBottomRightRadius, node.BorderRadius,
               bounds, shadowBounds, false, false) : Radius(node.BorderBottomRightRadius, node.BorderRadius, bounds),
             RadiusBottomLeft: insetOnly
-            ? InsetShadowRadius(node, node.BorderBottomLeftRadius, node.BorderRadius,
+            ? PaddingEdgeRadius(node, node.BorderBottomLeftRadius, node.BorderRadius,
               bounds, shadowBounds, true, false) : Radius(node.BorderBottomLeftRadius, node.BorderRadius, bounds),
             OffsetX: shadow.OffsetX.Px,
             OffsetY: shadow.OffsetY.Px,
@@ -758,7 +758,7 @@ internal partial class VulkanSceneCompiler {
       return result == 0uL ? 1uL : result
     }
 
-  private func InsetShadowBounds(node Node, bounds ConservativeBounds) ConservativeBounds {
+  private func PaddingEdgeBounds(node Node, bounds ConservativeBounds) ConservativeBounds {
     let basis = MinDimension(bounds)
     let left = ResolveLength(node.BorderLeftWidth, basis)
     let top = ResolveLength(node.BorderTopWidth, basis)
@@ -777,7 +777,7 @@ internal partial class VulkanSceneCompiler {
     }
   }
 
-  private func InsetShadowRadius(
+  private func PaddingEdgeRadius(
     node Node,
     value Length,
     fallback Length,
