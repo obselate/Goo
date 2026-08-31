@@ -25,12 +25,16 @@ internal sealed class DecodedImage {
       Array.Copy(source, owned, source.Length)
       return DecodedImage(width, height, owned)
     }
+
+    internal func FromTransferredRgba(width int32, height int32, source []uint8,
+      released Action) DecodedImage -> DecodedImage(width, height, source, released)
   }
 
   private let gate object
   private var pixels([]uint8)?
   private var references int32
   private var disposed bool
+  private var released Action?
 
   private init() {
     gate = Object()
@@ -43,6 +47,15 @@ internal sealed class DecodedImage {
     Height = height
     pixels = owned
     references = 1
+  }
+
+  private init(width int32, height int32, owned []uint8, release Action) {
+    gate = Object()
+    Width = width
+    Height = height
+    pixels = owned
+    references = 1
+    released = release
   }
 
   internal prop Width int32{ get; private set; }
@@ -59,6 +72,7 @@ internal sealed class DecodedImage {
   }
 
   internal func Release() {
+    var completion Action?
     lock gate {
       if pixels == nil || disposed {
         return
@@ -67,7 +81,12 @@ internal sealed class DecodedImage {
       if references == 0 {
         disposed = true
         pixels = nil
+        completion = released
+        released = nil
       }
+    }
+    if let current = completion {
+      try { current.Invoke() } catch (error Exception) { }
     }
   }
 

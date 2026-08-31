@@ -612,6 +612,7 @@ method|Goo.ImageSourceLease|Fail|instance|public|generic:|()->System.Boolean
 method|Goo.ImageSourceProvider|Acquire|abstract|public|generic:|()->Goo.ImageSourceLease
 method|Goo.ImageSource|Acquire|instance|public|generic:|()->Goo.ImageSourceLease
 method|Goo.ImageSource|Dispose|instance|public|generic:|()->System.Void
+method|Goo.ImageSource|Transfer|static|public|generic:|(width:System.Int32,height:System.Int32,pixels:System.Byte[],released:System.Action)->Goo.ImageSource
 method|Goo.KeyEvent|PreventDefault|instance|public|generic:|()->System.Void
 method|Goo.KeyEvent|StopPropagation|instance|public|generic:|()->System.Void
 method|Goo.KeyModifiers|Deconstruct|instance|public|generic:|(out Alt:System.Boolean&,out Shift:System.Boolean&,out Ctrl:System.Boolean&,out Super:System.Boolean&)->System.Void
