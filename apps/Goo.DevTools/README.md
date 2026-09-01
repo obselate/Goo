@@ -6,10 +6,10 @@ The app discovers live Goo targets by reading `goo.devtools/1` descriptors. It c
 
 ## Install
 
-The standalone inspector is distributed as the `Goo.DevTools.App` .NET tool and installs the `goo-devtools` command. Its generated dependency graph pins Goo 0.3.0, and the tool package carries the resolved Goo managed and platform runtime assets needed at launch without copying Goo source or implementation files into this project.
+The standalone inspector is distributed as the `Goo.DevTools.App` .NET tool and installs the `goo-devtools` command. Its generated dependency graph pins Goo 0.4.0, and the tool package carries the resolved Goo managed and platform runtime assets needed at launch without copying Goo source or implementation files into this project.
 
 ```sh
-dotnet tool install --global Goo.DevTools.App --version 0.3.0
+dotnet tool install --global Goo.DevTools.App --version 0.4.0
 goo-devtools
 ```
 
@@ -17,7 +17,7 @@ To install from a checkout, pack the inspector with the compatible Linux SDL pay
 
 ```sh
 dotnet pack apps/Goo.DevTools/Goo.DevTools.gsproj -c Release -o artifacts/packages -p:GooLinuxSdlPath=/absolute/path/to/libSDL3.so
-dotnet tool install --global Goo.DevTools.App --version 0.3.0 --add-source artifacts/packages
+dotnet tool install --global Goo.DevTools.App --version 0.4.0 --add-source artifacts/packages
 ```
 
 The CLI package is separate: `Goo.DevTools` installs `goo`, while `Goo.DevTools.App` installs `goo-devtools`.
@@ -51,4 +51,4 @@ goo-devtools --sample
 
 For source builds, `dotnet run --project apps/Goo.DevTools/Goo.DevTools.gsproj` uses the same live discovery path. Add `-- --sample` to run with fixture data.
 
-The app targets `net10.0` and references Goo 0.3.0.
+The app targets `net10.0` and references Goo 0.4.0.

@@ -2,6 +2,65 @@
 
 Everyone is welcome to contribute to Goo.
 
+## Source setup
+
+Install the .NET 10 SDK and Git. A normal framework build uses the checked-in
+SPIR-V and native HarfBuzz payloads:
+
+```sh
+git clone https://github.com/obselate/goo.git
+cd goo
+dotnet build Goo/Goo.gsproj -c Release
+```
+
+The G# SDK restores from NuGet through `Gsharp.NET.Sdk`. It is not a separate
+system installation.
+
+Install Slang 2026.16 and Vulkan SDK 1.4.357.0 when building Goo Gallery,
+projects with `<GooShaderEffect>` items, or regenerating shaders. Set
+`SLANG_SDK` and `VULKAN_SDK` to their SDK roots. ShaderEffect builds need
+`slangc` and SPIRV-Tools 2026.3 `spirv-val`. Internal shader regeneration also
+needs `glslc` 2026.3.
+
+Linux Vulkan runs also need a native Wayland session, a Vulkan 1.3 driver, and
+a TrueType or OpenType sans-serif font. The CI dependency list in
+[ci.yml](.github/workflows/ci.yml) is the authoritative Ubuntu 24.04 setup.
+Windows builds have been tested on Windows 11 with current vendor Vulkan
+drivers. A minimum supported Windows version has not yet been established.
+
+For NativeAOT, install the target platform's [.NET NativeAOT
+prerequisites](https://learn.microsoft.com/dotnet/core/deploying/native-aot/).
+NativeAOT publishing must run on the target operating system.
+
+## Verification
+
+Run the focused managed checks for ordinary API or behavior changes:
+
+```sh
+dotnet test tests/Goo.ApiContractTests/Goo.ApiContractTests.csproj -c Release
+dotnet test tests/Goo.CoreBehaviorTests/Goo.CoreBehaviorTests.csproj -c Release
+```
+
+Vulkan, package, native payload, template, DevTools, and NativeAOT checks are
+environment-specific. The CI workflow provisions the pinned shader tools,
+builds both platform payloads, installs the locally packed template and .NET
+tools, and exercises the clean package consumer. Use that workflow for release
+parity instead of substituting system SDL or unpinned shader tools.
+
+Packing `Goo` directly requires explicit compatible SDL paths:
+
+```sh
+dotnet pack Goo/Goo.gsproj -c Release \
+  -p:GooLinuxSdlPath=/absolute/path/to/libSDL3.so \
+  -p:GooWindowsSdlPath=/absolute/path/to/SDL3.dll
+```
+
+The pinned Windows SDL fetch and Linux SDL build are implemented in
+[fetch-sdl-win-x64.sh](.github/scripts/fetch-sdl-win-x64.sh) and
+[build-sdl-linux-x64.sh](.github/scripts/build-sdl-linux-x64.sh).
+
+## Submitting changes
+
 Please start with an issue and use the template that best fits your request. Goo
 core is deliberately selective about what it contains. An issue lets us agree on
 whether a change belongs in core and what the smallest solution is before code is

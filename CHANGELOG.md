@@ -1,11 +1,30 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 - 2026-08-31
 
 ### Added
 
+- Added Windows x64 package support, tested on Windows 11, with the pinned SDL 3
+  runtime, shared Vulkan host, software-Vulkan regression coverage, and
+  NativeAOT qualification tooling.
+- Added the `Goo.Templates` application template, the `Goo.DevTools` CLI, the
+  `Goo.DevTools.App` inspector, and VS Code and Rider integrations.
+- Added renderer-driven ShaderEffect playback, computed layout transitions,
+  non-throwing window dispatch, and window diagnostics.
 - Added four bounded, retained `ShaderEffectData` inputs with copy or ownership-transfer publication and shader authoring helpers.
 - Added ownership-transfer construction for immutable `ImageSource` pixels with final-retirement callbacks.
+
+### Changed
+
+- Migrated Goo-owned Vulkan shaders to the pinned Slang 2026.16 toolchain.
+- Replaced the Showcase application with Goo Gallery.
+- Added complete clean-machine setup, conditional tool, DevTools, publishing,
+  NativeAOT, troubleshooting, contributor, and release documentation.
+
+### Fixed
+
+- Fixed transparent Vulkan swapchains, ShaderEffect playback demand,
+  clip-mask atlas pressure, and Windows software-Vulkan presentation.
 
 ## 0.3.0 - 2026-08-28
 

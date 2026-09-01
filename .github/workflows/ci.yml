@@ -12,7 +12,7 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
-  GOO_VERSION: 0.3.0
+  GOO_VERSION: 0.4.0
 
 jobs:
   linux-x64:
@@ -25,6 +25,9 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+
+      - name: Validate onboarding and release metadata
+        run: .github/scripts/validate-onboarding.py --version "$GOO_VERSION"
 
       - name: Fetch pinned Slang compiler
         run: |
@@ -291,6 +294,25 @@ jobs:
           dotnet build "$template_output/Generated.gsproj" \
             -c Release --no-restore -p:TreatWarningsAsErrors=true
 
+      - name: Install packed Goo developer tools
+        run: |
+          tool_path="$RUNNER_TEMP/goo-tools"
+          mkdir -p "$tool_path"
+          dotnet tool install Goo.DevTools \
+            --tool-path "$tool_path" \
+            --version "$GOO_VERSION" \
+            --add-source "$PWD/artifacts/packages"
+          dotnet tool install Goo.DevTools.App \
+            --tool-path "$tool_path" \
+            --version "$GOO_VERSION" \
+            --add-source "$PWD/artifacts/packages"
+          test "$("$tool_path/goo" --version)" = "$GOO_VERSION"
+          test -x "$tool_path/goo-devtools"
+          dotnet tool list --tool-path "$tool_path" \
+            | grep -F "goo.devtools "
+          dotnet tool list --tool-path "$tool_path" \
+            | grep -F "goo.devtools.app "
+
       - name: Publish clean package consumer
         env:
           NUGET_PACKAGES: ${{ runner.temp }}/goo-nuget-packages
@@ -301,6 +323,18 @@ jobs:
             -p:UseAppHost=false \
             --configfile tests/Goo.PackageSmoke/NuGet.config \
             -o artifacts/publish
+
+      - name: Publish and run clean NativeAOT consumer
+        env:
+          NUGET_PACKAGES: ${{ runner.temp }}/goo-nativeaot-packages
+        run: |
+          rm -rf "$NUGET_PACKAGES" artifacts/publish-nativeaot
+          dotnet publish tests/Goo.PackageSmoke/Goo.PackageSmoke.gsproj \
+            -c Release -r linux-x64 --self-contained true \
+            -p:PublishAot=true \
+            --configfile tests/Goo.PackageSmoke/NuGet.config \
+            -o artifacts/publish-nativeaot
+          artifacts/publish-nativeaot/Goo.PackageSmoke
 
       - name: Stage minimal Linux bundle and separate symbols
         run: |
