@@ -392,8 +392,14 @@ internal unsafe partial class VulkanWindowTarget {
       out presentMode) {
         throw InvalidOperationException("Vulkan FIFO present mode is unavailable")
       }
-    let compositeAlpha = SelectCompositeAlpha(capabilities.supportedCompositeAlpha)
+    let compositeAlpha = SelectCompositeAlpha(
+      capabilities.supportedCompositeAlpha,
+      host.Transparent)
     if compositeAlpha == VkCompositeAlphaFlagBitsKHR(0) {
+      if host.Transparent {
+        throw InvalidOperationException(
+          "Vulkan surface has no premultiplied composite alpha mode for a transparent window")
+      }
       throw InvalidOperationException("Vulkan surface has no supported composite alpha mode")
     }
     var support VkBool32 = VkConstants.VK_FALSE
@@ -456,20 +462,30 @@ internal unsafe partial class VulkanWindowTarget {
       return false
     }
 
-  private func SelectCompositeAlpha(supported VkCompositeAlphaFlagsKHR) VkCompositeAlphaFlagBitsKHR {
-    if (supported & uint32(VkConstants.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)) != 0u {
-      return VkConstants.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
-    }
-    if (supported & uint32(VkConstants.VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR)) != 0u {
-      return VkConstants.VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR
-    }
-    if (supported & uint32(VkConstants.VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR)) != 0u {
-      return VkConstants.VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR
-    }
-    if (supported & uint32(VkConstants.VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR)) != 0u {
-      return VkConstants.VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR
-    }
-    return VkCompositeAlphaFlagBitsKHR(0)
+  shared {
+    internal func SelectCompositeAlpha(
+      supported VkCompositeAlphaFlagsKHR,
+      transparent bool) VkCompositeAlphaFlagBitsKHR{
+        if transparent {
+          if (supported & uint32(VkConstants.VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR)) != 0u {
+            return VkConstants.VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR
+          }
+          return VkCompositeAlphaFlagBitsKHR(0)
+        }
+        if (supported & uint32(VkConstants.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)) != 0u {
+          return VkConstants.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
+        }
+        if (supported & uint32(VkConstants.VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR)) != 0u {
+          return VkConstants.VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR
+        }
+        if (supported & uint32(VkConstants.VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR)) != 0u {
+          return VkConstants.VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR
+        }
+        if (supported & uint32(VkConstants.VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR)) != 0u {
+          return VkConstants.VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR
+        }
+        return VkCompositeAlphaFlagBitsKHR(0)
+      }
   }
 
   private func WaitForGpu() bool {
