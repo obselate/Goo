@@ -237,6 +237,7 @@ public sealed class PublicDocumentationTests
     private static readonly HashSet<Type> SynthesizedPrimaryDataTypes =
     [
         typeof(TextChange),
+        typeof(LayoutTransition),
         typeof(AccessibilityId),
         typeof(TextCommand),
         typeof(TextComposition),

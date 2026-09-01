@@ -32,4 +32,11 @@ public sealed class LayoutIntegrationTests
     {
         Assert.True(new LayoutFixtures().LogicalEdgesRespectDirection());
     }
+
+    [Fact]
+    public void LayoutTransitionGlidesComputedPosition()
+    {
+        Assert.True(new LayoutFixtures().LayoutTransitionGlidesComputedPosition());
+    }
+
 }

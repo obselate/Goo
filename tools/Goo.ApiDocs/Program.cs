@@ -92,6 +92,8 @@ static string BuildPage(string directory, ApiType[] types, ApiMember[] members, 
     if (directory == "Tree")
         AppendVirtualizationGuide(text);
     if (directory == "Tree")
+        AppendLayoutTransitionGuide(text);
+    if (directory == "Tree")
         AppendOwnedImageSourceGuide(text);
     if (directory == "Tree")
         AppendElementMetricsGuide(text);
@@ -209,6 +211,14 @@ static void AppendOwnedImageSourceGuide(StringBuilder text)
     text.AppendLine("For streaming content, retain one provider identity and publish each frame as a new immutable source with a monotonically increasing `ContentVersion`. Superseded generations may remain alive until their callbacks return their buffers to a bounded producer pool; never mutate an in-flight generation.");
     text.AppendLine();
     text.AppendLine("Custom providers create one `ImageSourceLease` per mounted binding. Each lease completes once through `Complete(source)` or `Fail()`. Goo releases a replaced or unmounted lease synchronously and raises `Released` exactly once, so providers should cancel outstanding work from that event. Late completion returns `false`; callback exceptions cannot interrupt Goo cleanup. Stable source identity keeps its existing lease, so warm paints do not reacquire or lock provider state.");
+}
+
+static void AppendLayoutTransitionGuide(StringBuilder text)
+{
+    text.AppendLine();
+    text.AppendLine("## Animate computed position changes");
+    text.AppendLine();
+    text.AppendLine("Set `Blob.LayoutTransition` to a `LayoutTransition(durationMs, easing)` value to glide a mounted element when its own computed layout slot changes. It is separate from style `TransitionProperties`. The visual rectangle used by painting, hit testing, metrics, descendants, and accessibility moves together. Ordinary scrolling and ancestor-only movement do not start another glide.");
 }
 
 static void AppendImageSourceProviderMembers(StringBuilder text)

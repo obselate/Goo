@@ -211,6 +211,46 @@ internal class LayoutFixtures {
     return dynamic.Children[0].Rect.X == 70.0F
   }
 
+  func LayoutTransitionGlidesComputedPosition() bool {
+    let pump = MotionPump()
+    let reconciler = Reconciler{
+      Res: Resolver{},
+      Pump: pump,
+      RetainedInvalidated: (effects ReconcileEffects) -> { },
+    }
+    var root = reconciler.Mount(layoutTransitionScene(50))
+    let layout = Layout()
+    layout.Calculate(root, 200.0F, 40.0F)
+    let target = root.Children[1]
+    if target.Rect.X != 50.0F { return false }
+
+    root = reconciler.Diff(root, layoutTransitionScene(100))
+    layout.MarkStructureDirty()
+    layout.Calculate(root, 200.0F, 40.0F)
+    if target.Rect.X != 50.0F { return false }
+    pump.Sweep(0.05)
+    layout.RefreshRects(root)
+    if MathF.Abs(target.Rect.X - 75.0F) > 0.01F { return false }
+    pump.Sweep(0.05)
+    layout.RefreshRects(root)
+    return target.Rect.X == 100.0F
+  }
+
+  private func layoutTransitionScene(firstWidth float64) Container -> Container {
+    Width: 200,
+    Height: 40,
+    FlexDirection: FlexDirection.Row,
+    Children: {
+      Container{ Key: "first", Width: firstWidth, Height: 20 },
+      Container{
+        Key: "target",
+        Width: 20,
+        Height: 20,
+        LayoutTransition: LayoutTransition(100.0, Easing.Linear),
+      },
+    },
+  }
+
   private func layoutScene(firstHeight float64) Container -> Container {
     Width: 400,
     Height: 296,

@@ -172,11 +172,14 @@ internal class Layout {
     guard let yg = n.Yoga else {
       return
     }
-    let absX = originX + YGNodeLayoutAPI.YGNodeLayoutGetLeft(yg)
-    let absY = originY + YGNodeLayoutAPI.YGNodeLayoutGetTop(yg)
+    let localX = YGNodeLayoutAPI.YGNodeLayoutGetLeft(yg)
+    let localY = YGNodeLayoutAPI.YGNodeLayoutGetTop(yg)
+    let absX = originX + localX
+    let absY = originY + localY
+    let visual = LayoutTransitions.Resolve(n, absX, absY, localX, localY)
     n.Rect = Rect{
-      X: absX,
-      Y: absY,
+      X: visual.X,
+      Y: visual.Y,
       W: YGNodeLayoutAPI.YGNodeLayoutGetWidth(yg),
       H: YGNodeLayoutAPI.YGNodeLayoutGetHeight(yg),
     }
@@ -202,7 +205,7 @@ internal class Layout {
       return
     }
     for i in 0 ... n.Children.Count {
-      readRect(n.Children[i], absX - n.ScrollX, absY - n.ScrollY)
+      readRect(n.Children[i], visual.X - n.ScrollX, visual.Y - n.ScrollY)
     }
   }
 

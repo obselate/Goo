@@ -270,6 +270,7 @@ internal class Reconciler {
       || n.TransitionDelayMs != b.TransitionDelayMs
       || n.TransitionEasing != b.TransitionEasing
       || !sameTransitionSelection(n.TransitionSelection, b.TransitionSelection)
+    let layoutTransitionChanged = !sameLayoutTransition(LayoutTransitions.Value(n), b.LayoutTransition)
     let disabledChanged = n.Disabled != b.Disabled
     let styleChanged = initial
       || baseChanged
@@ -278,6 +279,7 @@ internal class Reconciler {
       || focusChanged
       || disabledStyleChanged
       || transitionChanged
+      || layoutTransitionChanged
       || disabledChanged
     if styleChanged {
       if baseChanged { n.BaseStyle = entries }
@@ -290,6 +292,9 @@ internal class Reconciler {
         n.TransitionDelayMs = b.TransitionDelayMs
         n.TransitionEasing = b.TransitionEasing
         n.TransitionSelection = b.TransitionSelection
+      }
+      if layoutTransitionChanged {
+        LayoutTransitions.Configure(n, b.LayoutTransition, Pump, RetainedInvalidated)
       }
       if disabledChanged { n.Disabled = b.Disabled }
       invalidateStyle(n, initial)

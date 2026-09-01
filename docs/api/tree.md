@@ -10,6 +10,10 @@ Source: [`Goo/Tree`](../../Goo/Tree)
 
 Source order controls logical order, and `itemKey` supplies stable identity. Goo uses the item type's equality semantics to retain unchanged visible nodes without calling `itemBuilder`. Newly visible and changed items invoke the builder. Items leaving the viewport unmount through the ordinary Goo lifecycle, including focus, pointer capture, handles, and accessibility state. Keys must be unique and non-empty. Rebuild the owning Cell after same-count content changes. A live source count change is detected directly.
 
+## Animate computed position changes
+
+Set `Blob.LayoutTransition` to a `LayoutTransition(durationMs, easing)` value to glide a mounted element when its own computed layout slot changes. It is separate from style `TransitionProperties`. The visual rectangle used by painting, hit testing, metrics, descendants, and accessibility moves together. Ordinary scrolling and ancestor-only movement do not start another glide.
+
 ## Owned image sources
 
 `Image.Source` and `Style.BackgroundImageSource` accept an `ImageSourceProvider`. A source wins over its local image path. Goo preserves the path for a later source removal, but never falls back to it after source failure.
@@ -89,6 +93,10 @@ Gets the style that applies while the pointer hovers this element.
 ### `Key`
 
 Gets the stable key within the sibling list.
+
+### `LayoutTransition`
+
+Gets the opt-in transition for computed layout position changes.
 
 ### `OnBlur`
 
