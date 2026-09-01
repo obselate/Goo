@@ -479,7 +479,8 @@ public partial class Window {
   // a tick for as long as it's focused), so folding them into demand would
   // latch Pump into an unpaced, unrendered poll spin instead of a bounded
   // sleep. idleWaitMs() below is where their timing actually gets honored.
-  private func hasDemand() bool -> motionPump.Active || resolver.Animating.Count > 0 || renderDirty || pendingRebuild != 0
+  private func hasDemand() bool -> motionPump.Active || resolver.Animating.Count > 0
+    || shaderPlaybackDemand() || renderDirty || pendingRebuild != 0
     || pendingImageCompletion != 0 || pendingRetainedInvalidation != 0 || hasScrollDemand()
     || accessibility?.HasDemand == true || hasPostedActions() || MetricSubscriptions.HasDemand(this)
     || windowTarget?.NeedsRender == true || windowTarget?.QueueWorkPending == true
@@ -550,6 +551,11 @@ public partial class Window {
         }
     }
     return false
+  }
+
+  private func shaderPlaybackDemand() bool {
+    guard let root = node else { return false }
+    return ShaderEffectStyles.TreeHasPlaying(root)
   }
 
   /// Opens the window and processes frames until all open Goo windows close.
