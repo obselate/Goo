@@ -4,6 +4,7 @@ import System
 import System.Numerics
 import System.Runtime.CompilerServices
 import System.Threading
+import System.Diagnostics
 
 public sealed class ShaderEffect {
   private const MaximumByteCount int32 = 1048576
@@ -20,6 +21,9 @@ public sealed class ShaderEffect {
   private let samplesBackdrop bool
   private let backdropOutset float32
   private var version uint64
+  private var playing bool
+  private var elapsedSeconds float64
+  private var playbackTimestamp int64
 
   shared {
     private var nextProgramId int64
@@ -119,6 +123,47 @@ public sealed class ShaderEffect {
     return true
   }
 
+  /// Gets or sets whether Goo advances ElapsedSeconds and renders attached effects continuously.
+  /// Playback is disabled by default.
+  public prop Playing bool{
+    get {
+      lock gate { return playing }
+    }
+    set(v) {
+      var callbacks([]Action)?
+      lock gate {
+        if playing == v { return }
+        if playing {
+          elapsedSeconds = elapsedAt(Stopwatch.GetTimestamp())
+        }
+        playing = v
+        playbackTimestamp = v ? Stopwatch.GetTimestamp() : 0L
+        callbacks = changedCallbacks
+      }
+      Notify(callbacks)
+    }
+  }
+
+  /// Gets or sets the elapsed playback position in seconds.
+  public prop ElapsedSeconds float64{
+    get {
+      lock gate { return elapsedAt(Stopwatch.GetTimestamp()) }
+    }
+    set(v) {
+      if Double.IsNaN(v) || Double.IsInfinity(v) || v < 0.0 {
+        throw ArgumentOutOfRangeException("value")
+      }
+      var callbacks([]Action)?
+      lock gate {
+        if elapsedAt(Stopwatch.GetTimestamp()) == v { return }
+        elapsedSeconds = v
+        playbackTimestamp = playing ? Stopwatch.GetTimestamp() : 0L
+        callbacks = changedCallbacks
+      }
+      Notify(callbacks)
+    }
+  }
+
   internal func AddChanged(callback Action) {
     lock gate {
       if let current = changedCallbacks {
@@ -169,6 +214,10 @@ public sealed class ShaderEffect {
   internal prop SamplesBackdrop bool{ get { return samplesBackdrop } }
   internal prop BackdropOutset float32{ get { return backdropOutset } }
 
+  internal prop PlaybackActive bool{
+    get { lock gate { return playing } }
+  }
+
   internal func CopySnapshot(out snapshot ShaderEffectSnapshot) {
     lock gate {
       snapshot = ShaderEffectSnapshot{
@@ -177,6 +226,7 @@ public sealed class ShaderEffect {
         Version: version,
         SamplesBackdrop: SamplesBackdrop,
         BackdropOutset: BackdropOutset,
+        ElapsedSeconds: float32(elapsedAt(Stopwatch.GetTimestamp())),
         Parameter0: parameters[0],
         Parameter1: parameters[1],
         Parameter2: parameters[2],
@@ -227,6 +277,11 @@ public sealed class ShaderEffect {
     }
   }
 
+  private func elapsedAt(timestamp int64) float64 {
+    if !playing { return elapsedSeconds }
+    return elapsedSeconds + float64(timestamp - playbackTimestamp) / float64(Stopwatch.Frequency)
+  }
+
   private func Notify(callbacks([]Action)?) {
     if let current = callbacks {
       for callback in current { callback.Invoke() }
@@ -247,6 +302,7 @@ internal data struct ShaderEffectSnapshot {
   internal var Version uint64
   internal var SamplesBackdrop bool
   internal var BackdropOutset float32
+  internal var ElapsedSeconds float32
   internal var Parameter0 Vector4
   internal var Parameter1 Vector4
   internal var Parameter2 Vector4
@@ -292,6 +348,18 @@ internal class ShaderEffectStyles {
       guard let value = state(n) else { return }
       values?.Remove(n)
       value.Dispose()
+    }
+
+    internal func TreeHasPlaying(n Node) bool {
+      if let value = state(n) {
+        if value.Effect.PlaybackActive { return true }
+      }
+      var index int32
+      while index < n.Children.Count {
+        if TreeHasPlaying(n.Children[index]) { return true }
+        index++
+      }
+      return false
     }
 
     private func state(n Node) ShaderEffectBinding? {

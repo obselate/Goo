@@ -327,6 +327,9 @@ public partial class Window {
       if profiling {
         profiler.Record(FrameProfileStage.InputTree, inputTreeProfile)
       }
+      if ShaderEffectStyles.TreeHasPlaying(n) {
+        changed = true
+      }
     }
     if hasEffect(effects, ReconcileEffects.Paint) {
       changed = true

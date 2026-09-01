@@ -260,6 +260,8 @@ static void AppendShaderEffectGuide(StringBuilder text)
     text.AppendLine();
     text.AppendLine("Reuse the same effect instance for controls that share program and parameters. `SetParameter` accepts slots 0 through 7, marks mounted users paint-dirty only when a value changes, and stays allocation-free after construction. Create separate effect instances when controls need independent parameter state.");
     text.AppendLine();
+    text.AppendLine("Set `Playing = true` to opt into continuous renderer-driven playback. `ElapsedSeconds` is supplied separately through `gooElapsedSeconds()`, so playback does not consume one of the eight parameter slots. Pausing preserves the current elapsed position, and assigning `ElapsedSeconds` seeks while paused or playing. Goo schedules continuous frames only while a playing effect is mounted.");
+    text.AppendLine();
     text.AppendLine("Author ShaderEffects in native Slang by including Goo's fixed module and implementing `float4 gooEffect(float2 uv, float4 source, float4 backdrop)`. GLSL compatibility sources instead include `goo_effect.glsl` and implement the equivalent `vec4` function. `gooDataByteLength(slot)` and `gooDataWord(slot, wordIndex)` read retained data slots zero through three; invalid slots and out-of-range words return zero.");
     text.AppendLine();
     text.AppendLine("```slang");
@@ -268,7 +270,8 @@ static void AppendShaderEffectGuide(StringBuilder text)
     text.AppendLine("float4 gooEffect(float2 uv, float4 source, float4 backdrop)");
     text.AppendLine("{");
     text.AppendLine("    float gain = gooDataByteLength(0) >= 4 ? asfloat(gooDataWord(0, 0)) : 1.0;");
-    text.AppendLine("    return lerp(source, backdrop, gooParameter(0).x) * gain;");
+    text.AppendLine("    float pulse = 0.5 + 0.5 * sin(gooElapsedSeconds());");
+    text.AppendLine("    return lerp(source, backdrop, gooParameter(0).x * pulse) * gain;");
     text.AppendLine("}");
     text.AppendLine("```");
     text.AppendLine();

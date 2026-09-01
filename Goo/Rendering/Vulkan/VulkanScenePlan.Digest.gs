@@ -602,6 +602,7 @@ internal partial class SceneFrame {
     result = Mix(result, uint64(value.EffectIndex))
     if value.EffectIndex >= 0 {
       let effect = shaderEffects[value.EffectIndex]
+      result = HashFloat(result, effect.ElapsedSeconds)
       result = HashVector4(result, effect.Parameter0)
       result = HashVector4(result, effect.Parameter1)
       result = HashVector4(result, effect.Parameter2)

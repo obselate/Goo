@@ -1074,6 +1074,8 @@ property|Goo.RadialGradient|Stops|System.Collections.Generic.IReadOnlyList`1<Goo
 property|Goo.ShaderEffectData|ByteLength|System.Int32|instance|get:public|index:()
 property|Goo.ShaderEffectData|ContentVersion|System.UInt64|instance|get:public|index:()
 property|Goo.ShaderEffectData|IsDisposed|System.Boolean|instance|get:public|index:()
+property|Goo.ShaderEffect|ElapsedSeconds|System.Double|instance|get:public,set:public|index:()
+property|Goo.ShaderEffect|Playing|System.Boolean|instance|get:public,set:public|index:()
 property|Goo.Shape|CornerRadius|System.Double|instance|get:public,init:public|index:()
 property|Goo.Shape|Dashes|Goo.DashPattern|instance|get:public,init:public|index:()
 property|Goo.Shape|FillRule|Goo.FillRule|instance|get:public,init:public|index:()

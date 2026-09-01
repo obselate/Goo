@@ -32,6 +32,13 @@ struct GooPrimitiveRecord
     float4 gooParameter7;
 };
 
+static GooPrimitiveRecord gooActivePrimitive;
+
+GooPrimitiveRecord gooPrimitive()
+{
+    return gooActivePrimitive;
+}
+
 float4 gooParameter(uint slot)
 {
     switch (slot)
@@ -45,6 +52,11 @@ float4 gooParameter(uint slot)
         case 6: return gooParameter6;
         default: return gooParameter7;
     }
+}
+
+float gooElapsedSeconds()
+{
+    return gooActivePrimitive.stopPositions.x;
 }
 
 struct GooEffectInput
@@ -65,7 +77,6 @@ static const uint GooClipHeaderWords = 4;
 static const uint GooClipDrawRefWords = 12;
 static const uint GooClipMaskRecordWords = 12;
 static const uint GooEffectDataSlotCount = 4;
-static GooPrimitiveRecord gooActivePrimitive;
 
 uint gooDataByteLength(uint slot)
 {
