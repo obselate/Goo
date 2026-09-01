@@ -45,7 +45,6 @@ body:
     attributes:
       label: Current code
       description: Show the smallest relevant composition.
-      render: gsharp
     validations:
       required: true
 
