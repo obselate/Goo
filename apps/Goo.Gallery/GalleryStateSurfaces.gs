@@ -754,14 +754,14 @@ class StateSurfacesChapter : Cell {
     JustifyContent: JustifyContent.Center,
     BackgroundColor: magnetColor(letter.Id),
     BorderRadius: size * 0.28,
-    BorderWidth: 1.0,
+    BorderWidth: 1,
     BorderColor: Color.Rgba(255, 255, 255, 100),
     BoxShadows: MagnetShadows,
     Children: {
       Text{
         Content: letter.Character.ToString(),
         FontSize: size * 0.60,
-        FontWeight: 900.0,
+        FontWeight: 900,
         Color: Color.Rgb(31, 31, 35),
         TextShadows: []TextShadow{
           TextShadow{ OffsetX: 0.0, OffsetY: 1.0, Blur: 0.0, Color: Color.Rgba(255, 255, 255, 135) },
@@ -791,7 +791,7 @@ class StateSurfacesChapter : Cell {
         Text{
           Content: letter.Character.ToString(),
           FontSize: size * 1.02,
-          FontWeight: 520.0,
+          FontWeight: 520,
           LineHeight: 1.0,
           Color: Color.Rgb(29, 37, 46),
         },
@@ -845,8 +845,8 @@ class StateSurfacesChapter : Cell {
         Position: PositionType.Absolute,
         Left: Length.Percent(pen.X),
         Top: Length.Percent(pen.Y),
-        Width: 7.0,
-        Height: 7.0,
+        Width: 7,
+        Height: 7,
         BorderRadius: 3.5,
         BackgroundColor: Color.Rgb(54, 66, 78),
         Transform: PanelTransform{ TranslateX: -3.5, TranslateY: -3.5 },
@@ -866,13 +866,13 @@ class StateSurfacesChapter : Cell {
     AlignItems: AlignItems.Center,
     JustifyContent: JustifyContent.Center,
     BackgroundColor: Color.Rgba(21, 36, 34, 215),
-    BorderWidth: 1.0,
+    BorderWidth: 1,
     BorderColor: Color.Rgba(112, 230, 174, 100),
     Children: {
       Text{
         Content: letter.Character.ToString(),
         FontSize: size * 0.70,
-        FontWeight: 700.0,
+        FontWeight: 700,
         Color: Color.Rgb(146, 246, 192),
       },
     },
@@ -917,22 +917,22 @@ class StateSurfacesChapter : Cell {
   private func fridgeSurface() Blob -> Container {
     Key: "act-surface",
     Position: PositionType.Absolute,
-    Left: 0.0,
-    Top: 0.0,
-    Right: 0.0,
-    Bottom: 0.0,
+    Left: 0,
+    Top: 0,
+    Right: 0,
+    Bottom: 0,
     TransitionMs: 250.0,
     BackgroundColor: Color.Rgb(91, 70, 54),
     Children: {
       Container{
         Position: PositionType.Absolute,
-        Left: Length.Percent(3.0),
-        Top: Length.Percent(3.0),
-        Width: Length.Percent(94.0),
-        Height: Length.Percent(61.0),
+        Left: Length.Percent(3),
+        Top: Length.Percent(3),
+        Width: Length.Percent(94),
+        Height: Length.Percent(61),
         BackgroundGradient: LinearGradient(Color.Rgb(235, 236, 229), Color.Rgb(190, 198, 198)),
-        BorderRadius: 18.0,
-        BorderWidth: 2.0,
+        BorderRadius: 18,
+        BorderWidth: 2,
         BorderColor: Color.Rgb(159, 168, 169),
         BoxShadows: []BoxShadow{
           BoxShadow{ OffsetX: 0.0, OffsetY: 10.0, Blur: 22.0, Spread: -4.0, Color: Color.Rgba(0, 0, 0, 100), Inset: false },
@@ -940,22 +940,22 @@ class StateSurfacesChapter : Cell {
       },
       Container{
         Position: PositionType.Absolute,
-        Left: 0.0,
-        Right: 0.0,
-        Bottom: 0.0,
-        Height: Length.Percent(34.0),
+        Left: 0,
+        Right: 0,
+        Bottom: 0,
+        Height: Length.Percent(34),
         BackgroundGradient: LinearGradient(90.0, Color.Rgb(116, 86, 62), Color.Rgb(73, 54, 43)),
-        BorderTopWidth: 2.0,
+        BorderTopWidth: 2,
         BorderColor: Color.Rgba(35, 25, 20, 120),
       },
       Container{
         Position: PositionType.Absolute,
-        Left: Length.Percent(5.0),
-        Right: Length.Percent(5.0),
-        Bottom: Length.Percent(4.0),
-        Height: Length.Percent(27.0),
+        Left: Length.Percent(5),
+        Right: Length.Percent(5),
+        Bottom: Length.Percent(4),
+        Height: Length.Percent(27),
         BackgroundGradient: LinearGradient(90.0, Color.Rgb(77, 55, 43), Color.Rgb(42, 31, 27)),
-        BorderWidth: 2.0,
+        BorderWidth: 2,
         BorderColor: Color.Rgba(31, 22, 19, 180),
         BoxShadows: []BoxShadow{
           BoxShadow{ OffsetX: 0.0, OffsetY: 7.0, Blur: 12.0, Spread: -3.0, Color: Color.Rgba(0, 0, 0, 130), Inset: true },
@@ -963,10 +963,10 @@ class StateSurfacesChapter : Cell {
         Children: {
           Container{
             Position: PositionType.Absolute,
-            Left: Length.Percent(44.0),
-            Top: 9.0,
-            Width: Length.Percent(12.0),
-            Height: 5.0,
+            Left: Length.Percent(44),
+            Top: 9,
+            Width: Length.Percent(12),
+            Height: 5,
             BackgroundColor: Color.Rgba(205, 183, 151, 120),
           },
         },
@@ -977,21 +977,21 @@ class StateSurfacesChapter : Cell {
   private func inkSurface() Blob -> Container {
     Key: "act-surface",
     Position: PositionType.Absolute,
-    Left: 0.0,
-    Top: 0.0,
-    Right: 0.0,
-    Bottom: 0.0,
+    Left: 0,
+    Top: 0,
+    Right: 0,
+    Bottom: 0,
     TransitionMs: 250.0,
     BackgroundColor: Color.Rgb(224, 217, 198),
     Children: {
       Container{
         Position: PositionType.Absolute,
-        Left: Length.Percent(6.0),
-        Top: Length.Percent(7.0),
-        Width: Length.Percent(88.0),
-        Height: Length.Percent(86.0),
+        Left: Length.Percent(6),
+        Top: Length.Percent(7),
+        Width: Length.Percent(88),
+        Height: Length.Percent(86),
         BackgroundColor: Color.Rgb(244, 239, 221),
-        BorderWidth: 1.0,
+        BorderWidth: 1,
         BorderColor: Color.Rgb(197, 188, 165),
         BoxShadows: []BoxShadow{
           BoxShadow{ OffsetX: 0.0, OffsetY: 8.0, Blur: 18.0, Spread: -4.0, Color: Color.Rgba(38, 31, 24, 80), Inset: false },
@@ -999,18 +999,18 @@ class StateSurfacesChapter : Cell {
         Children: {
           Container{
             Position: PositionType.Absolute,
-            Left: Length.Percent(7.0),
-            Top: 0.0,
-            Bottom: 0.0,
-            Width: 1.0,
+            Left: Length.Percent(7),
+            Top: 0,
+            Bottom: 0,
+            Width: 1,
             BackgroundColor: Color.Rgba(190, 75, 67, 100),
           },
           Container{
             Position: PositionType.Absolute,
-            Left: 0.0,
-            Right: 0.0,
-            Top: Length.Percent(62.0),
-            Height: 1.0,
+            Left: 0,
+            Right: 0,
+            Top: Length.Percent(62),
+            Height: 1,
             BackgroundColor: Color.Rgba(90, 126, 156, 80),
           },
         },
@@ -1029,21 +1029,21 @@ class StateSurfacesChapter : Cell {
       rows.Add(Text{
         Key: "cipher-history-" + index.ToString(),
         Content: cipherTexts[index],
-        FontSize: if Compact { 13.0 } else { 16.0 },
-        FontWeight: 600.0,
-        LetterSpacing: 2.0,
+        FontSize: if Compact { 13 } else { 16 },
+        FontWeight: 600,
+        LetterSpacing: 2,
         Color: Color.Rgba(111, 218, 166, uint8(35 + (5 - distance) * 18)),
       })
       index = index + 1
     }
     return Container{
       Position: PositionType.Absolute,
-      Left: Length.Percent(8.0),
-      Right: Length.Percent(8.0),
-      Bottom: Length.Percent(9.0),
-      Height: 122.0,
+      Left: Length.Percent(8),
+      Right: Length.Percent(8),
+      Bottom: Length.Percent(9),
+      Height: 122,
       FlexDirection: FlexDirection.Column,
-      Gap: 6.0,
+      Gap: 6,
       Children: rows,
     }
   }
@@ -1051,29 +1051,29 @@ class StateSurfacesChapter : Cell {
   private func cipherSurface() Blob -> Container {
     Key: "act-surface",
     Position: PositionType.Absolute,
-    Left: 0.0,
-    Top: 0.0,
-    Right: 0.0,
-    Bottom: 0.0,
+    Left: 0,
+    Top: 0,
+    Right: 0,
+    Bottom: 0,
     TransitionMs: 250.0,
     BackgroundColor: Color.Rgb(9, 18, 18),
-    BorderWidth: 1.0,
+    BorderWidth: 1,
     BorderColor: Color.Rgb(39, 73, 64),
     Children: {
       Container{
         Position: PositionType.Absolute,
-        Left: Length.Percent(7.0),
-        Right: Length.Percent(7.0),
-        Top: Length.Percent(21.0),
-        Height: 1.0,
+        Left: Length.Percent(7),
+        Right: Length.Percent(7),
+        Top: Length.Percent(21),
+        Height: 1,
         BackgroundColor: Color.Rgba(105, 219, 165, 55),
       },
       Container{
         Position: PositionType.Absolute,
-        Left: Length.Percent(7.0),
-        Right: Length.Percent(7.0),
-        Top: Length.Percent(57.0),
-        Height: 1.0,
+        Left: Length.Percent(7),
+        Right: Length.Percent(7),
+        Top: Length.Percent(57),
+        Height: 1,
         BackgroundColor: Color.Rgba(105, 219, 165, 35),
       },
       cipherHistory(),
@@ -1087,14 +1087,14 @@ class StateSurfacesChapter : Cell {
   }
 
   private func actButton(label string, act int32) Blob -> Button {
-    Padding: 10.0,
+    Padding: 10,
     BackgroundColor: if activeAct == act { GalleryTheme.Ink } else { GalleryTheme.SurfaceRaised },
-    BorderWidth: 1.0,
+    BorderWidth: 1,
     BorderColor: if activeAct == act { GalleryTheme.Ink } else { GalleryTheme.Border },
-    BorderRadius: 8.0,
+    BorderRadius: 8,
     TransitionMs: 100.0,
     Hover: Style{ BackgroundColor: if activeAct == act { GalleryTheme.Ink } else { GalleryTheme.Border } },
-    Focus: Style{ OutlineWidth: 1.0, OutlineColor: GalleryTheme.BorderStrong },
+    Focus: Style{ OutlineWidth: 1, OutlineColor: GalleryTheme.BorderStrong },
     Accessibility: Accessibility{
       Role: AccessibilityRole.Button,
       Name: label,
@@ -1103,8 +1103,8 @@ class StateSurfacesChapter : Cell {
     Children: {
       Text{
         Content: label,
-        FontSize: 13.0,
-        FontWeight: 700.0,
+        FontSize: 13,
+        FontWeight: 700,
         Color: if activeAct == act { GalleryTheme.Background } else { GalleryTheme.Ink },
       },
     },
@@ -1124,10 +1124,10 @@ class StateSurfacesChapter : Cell {
       children.Add(GalleryTheme.GhostButton("Replay", () -> replayCipher()))
     }
     return Container{
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       FlexDirection: FlexDirection.Row,
       FlexWrap: FlexWrap.Wrap,
-      Gap: 8.0,
+      Gap: 8,
       Children: children,
     }
   }
@@ -1142,22 +1142,22 @@ class StateSurfacesChapter : Cell {
     }
     return Container{
       Handle: stageHandle,
-      Width: Length.Percent(100.0),
-      Height: if Compact { 390.0 } else { 440.0 },
-      MinWidth: 0.0,
+      Width: Length.Percent(100),
+      Height: if Compact { 390 } else { 440 },
+      MinWidth: 0,
       Position: PositionType.Relative,
       BackgroundColor: GalleryTheme.SurfaceRaised,
-      BorderWidth: 1.0,
+      BorderWidth: 1,
       BorderColor: GalleryTheme.BorderStrong,
       Children: children,
     }
   }
 
   private func content() Blob -> Container {
-    Width: Length.Percent(100.0),
-    MinWidth: 0.0,
+    Width: Length.Percent(100),
+    MinWidth: 0,
     FlexDirection: FlexDirection.Column,
-    Gap: 10.0,
+    Gap: 10,
     Children: { controls(), stage() },
   }
 

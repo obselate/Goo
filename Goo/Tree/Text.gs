@@ -21,4 +21,10 @@ public class Text : Blob {
   public init() {
     Content = ""
   }
+
+  /// Initializes a text element with the displayed content.
+  /// @param content The displayed text.
+  public init(content string) {
+    Content = content
+  }
 }

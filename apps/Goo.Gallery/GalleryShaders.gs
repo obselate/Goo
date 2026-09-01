@@ -255,13 +255,13 @@ class WolfensteinCell : Cell {
     }
 
     return Container{
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       AspectRatio: 16.0 / 9.0,
       Handle: Canvas,
       BackgroundColor: GalleryTheme.SurfaceRaised,
       ShaderEffect: Effect,
       Focusable: true,
-      Focus: Style{ OutlineWidth: 1.0, OutlineColor: GalleryTheme.BorderStrong },
+      Focus: Style{ OutlineWidth: 1, OutlineColor: GalleryTheme.BorderStrong },
       OnFocus: func(e FocusEvent) { focused = true },
       OnBlur: func(e FocusEvent) {
         focused = false
@@ -486,14 +486,14 @@ class ShaderLabCell : Cell {
     let frame = GalleryTheme.Frame(children)
     return Container{
       Key: "spec-" + name,
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       Color: Color.Transparent,
       Focusable: true,
       TransitionMs: 100.0,
       Hover: Style{ Color: GalleryTheme.InkSubtle },
       Focus: Style{
         Color: GalleryTheme.InkSubtle,
-        OutlineWidth: 1.0,
+        OutlineWidth: 1,
         OutlineColor: GalleryTheme.BorderStrong,
       },
       Children: { frame },
@@ -538,13 +538,13 @@ class ShaderLabCell : Cell {
       float32(morph)))
     return Container{
       Key: if effectsReady() { "chrome-live" } else { "chrome-idle" },
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       AspectRatio: 16.0 / 9.0,
       Handle: ChromeCanvas,
       BackgroundColor: GalleryTheme.SurfaceRaised,
       ShaderEffect: activeEffect(effect),
       Focusable: true,
-      Focus: Style{ OutlineWidth: 1.0, OutlineColor: GalleryTheme.BorderStrong },
+      Focus: Style{ OutlineWidth: 1, OutlineColor: GalleryTheme.BorderStrong },
       OnPointerDown: func(e PointerEvent) {
         e.Capture()
         e.PreventDefault()
@@ -590,7 +590,7 @@ class ShaderLabCell : Cell {
     effect.SetParameter(2, Vector4(0.7F, 0.5F, 0.8F, 0.0F))
     return Container{
       Key: if effectsReady() { "corridor-live" } else { "corridor-idle" },
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       AspectRatio: 16.0 / 9.0,
       Handle: CorridorCanvas,
       BackgroundColor: GalleryTheme.SurfaceRaised,
@@ -605,13 +605,13 @@ class ShaderLabCell : Cell {
     effect.SetParameter(2, Vector4(0.45F, 0.9F, 2.0F, 0.0F))
     return Container{
       Key: if effectsReady() { "radial-live" } else { "radial-idle" },
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       AspectRatio: 16.0 / 9.0,
       Handle: RadialCanvas,
       BackgroundColor: GalleryTheme.SurfaceRaised,
       ShaderEffect: activeEffect(effect),
       Focusable: true,
-      Focus: Style{ OutlineWidth: 1.0, OutlineColor: GalleryTheme.BorderStrong },
+      Focus: Style{ OutlineWidth: 1, OutlineColor: GalleryTheme.BorderStrong },
       OnPointerDown: func(e PointerEvent) {
         e.Capture()
         e.PreventDefault()
@@ -644,12 +644,12 @@ class ShaderLabCell : Cell {
       Children: {
         Text{
           Content: "RADIAL",
-          FontSize: 42.0,
-          FontWeight: 700.0,
+          FontSize: 42,
+          FontWeight: 700,
           Color: GalleryTheme.Ink,
           Position: PositionType.Absolute,
-          Left: 24.0,
-          Top: 28.0,
+          Left: 24,
+          Top: 28,
         },
       },
     }
@@ -684,10 +684,10 @@ class ShaderLabCell : Cell {
       layers.Add(Image{
         Key: "source",
         Position: PositionType.Absolute,
-        Left: 0.0,
-        Top: 0.0,
-        Width: Length.Percent(100.0),
-        Height: Length.Percent(100.0),
+        Left: 0,
+        Top: 0,
+        Width: Length.Percent(100),
+        Height: Length.Percent(100),
         Source: assets.Mandelbrot,
         Fit: ImageFit.Fill,
       })
@@ -695,23 +695,23 @@ class ShaderLabCell : Cell {
     layers.Add(Text{
       Key: "ripple-label",
       Content: "RIPPLE / MEMORY",
-      FontSize: 22.0,
-      FontWeight: 700.0,
+      FontSize: 22,
+      FontWeight: 700,
       Color: GalleryTheme.Ink,
       Position: PositionType.Absolute,
-      Left: 18.0,
-      Top: 20.0,
+      Left: 18,
+      Top: 20,
     })
     return Container{
       Key: if effectsReady() { "ripple-live" } else { "ripple-idle" },
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       AspectRatio: 16.0 / 9.0,
       Handle: RippleCanvas,
       Position: PositionType.Relative,
       BackgroundColor: GalleryTheme.SurfaceRaised,
       ShaderEffect: activeEffect(effect),
       Focusable: true,
-      Focus: Style{ OutlineWidth: 1.0, OutlineColor: GalleryTheme.BorderStrong },
+      Focus: Style{ OutlineWidth: 1, OutlineColor: GalleryTheme.BorderStrong },
       OnPointerDown: func(e PointerEvent) {
         e.Capture()
         e.PreventDefault()
@@ -753,14 +753,14 @@ class ShaderLabCell : Cell {
     effect.SetParameter(2, Vector4(0.4F, 0.3F, 0.5F, 0.0F))
     return Container{
       Key: if effectsReady() { "glass-live" } else { "glass-idle" },
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       AspectRatio: 16.0 / 9.0,
       Handle: GlassCanvas,
       Position: PositionType.Relative,
       BackgroundColor: GalleryTheme.SurfaceRaised,
       ShaderEffect: activeEffect(effect),
       Focusable: true,
-      Focus: Style{ OutlineWidth: 1.0, OutlineColor: GalleryTheme.BorderStrong },
+      Focus: Style{ OutlineWidth: 1, OutlineColor: GalleryTheme.BorderStrong },
       OnPointerDown: func(e PointerEvent) {
         e.Capture()
         e.PreventDefault()
@@ -793,27 +793,27 @@ class ShaderLabCell : Cell {
       Children: {
         Container{
           Position: PositionType.Absolute,
-          Left: 20.0,
-          Top: 22.0,
-          Width: 120.0,
-          Height: 72.0,
+          Left: 20,
+          Top: 22,
+          Width: 120,
+          Height: 72,
           BackgroundColor: Color.Rgb(76, 139, 158),
         },
         Container{
           Position: PositionType.Absolute,
-          Left: 108.0,
-          Top: 62.0,
-          Width: 104.0,
-          Height: 76.0,
+          Left: 108,
+          Top: 62,
+          Width: 104,
+          Height: 76,
           BackgroundColor: Color.Rgb(191, 120, 67),
         },
         Text{
           Content: "GLASS",
           Position: PositionType.Absolute,
-          Left: 28.0,
-          Top: 32.0,
-          FontSize: 34.0,
-          FontWeight: 700.0,
+          Left: 28,
+          Top: 32,
+          FontSize: 34,
+          FontWeight: 700,
           Color: GalleryTheme.Ink,
         },
       },
@@ -826,7 +826,7 @@ class ShaderLabCell : Cell {
     effect.SetParameter(2, Vector4(0.9F, 0.4F, 0.5F, 0.0F))
     return Container{
       Key: if effectsReady() { "volume-live" } else { "volume-idle" },
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       AspectRatio: 16.0 / 9.0,
       Handle: VolumeCanvas,
       BackgroundColor: GalleryTheme.SurfaceRaised,
@@ -838,7 +838,7 @@ class ShaderLabCell : Cell {
     let effect = programs.Lab(7)
     return Container{
       Key: if effectsReady() { "dither-live" } else { "dither-idle" },
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       AspectRatio: 16.0 / 9.0,
       BackgroundColor: GalleryTheme.SurfaceRaised,
       ShaderEffect: activeEffect(effect),
@@ -846,18 +846,18 @@ class ShaderLabCell : Cell {
         Text{
           Content: "ORDER / SIGNAL",
           Position: PositionType.Absolute,
-          Left: 20.0,
-          Top: 20.0,
-          FontSize: 30.0,
-          FontWeight: 700.0,
+          Left: 20,
+          Top: 20,
+          FontSize: 30,
+          FontWeight: 700,
           Color: GalleryTheme.Ink,
         },
         Text{
           Content: "4 x 4",
           Position: PositionType.Absolute,
-          Left: 22.0,
-          Bottom: 18.0,
-          FontSize: 13.0,
+          Left: 22,
+          Bottom: 18,
+          FontSize: 13,
           Color: GalleryTheme.InkMuted,
         },
       },
@@ -867,7 +867,7 @@ class ShaderLabCell : Cell {
   private func sliderControl(key string, label string, min float64, max float64,
     value float64, change Action[float64]) Container -> Container{
       Key: "control-" + key,
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       Children: {
         Cell.Mount[GalleryRange](key, func(slider GalleryRange) {
           slider.Label = label
@@ -883,7 +883,7 @@ class ShaderLabCell : Cell {
   private func selectedSpecimen(programs GalleryShaderPrograms, time float64) Blob {
     if Showcase == 0 {
       var wolf Blob = Container{
-        Width: Length.Percent(100.0),
+        Width: Length.Percent(100),
         AspectRatio: 16.0 / 9.0,
         BackgroundColor: GalleryTheme.SurfaceRaised,
       }
@@ -927,7 +927,7 @@ class ShaderLabCell : Cell {
     let controls = List[Blob]()
     controls.Add(Container{
       Key: "lab-play",
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       Children: {
         GalleryTheme.GhostButton(
           if Playing { "Pause ambient motion" } else { "Play ambient motion" },
@@ -958,26 +958,26 @@ class ShaderLabCell : Cell {
       }))
     }
     return Container{
-      Width: Length.Percent(100.0),
-      Height: Length.Percent(100.0),
+      Width: Length.Percent(100),
+      Height: Length.Percent(100),
       FlexDirection: FlexDirection.Row,
-      Gap: 16.0,
+      Gap: 16,
       AlignItems: AlignItems.Center,
       Children: {
         Container{
           Key: "lab-specimen",
-          MinWidth: 0.0,
+          MinWidth: 0,
           FlexGrow: 1.0,
           FlexShrink: 1.0,
           Children: { selectedSpecimen(programs, time) },
         },
         Container{
           Key: "lab-controls",
-          Width: 280.0,
-          MinWidth: 280.0,
+          Width: 280,
+          MinWidth: 280,
           FlexShrink: 0.0,
           FlexDirection: FlexDirection.Column,
-          Gap: 12.0,
+          Gap: 12,
           Children: controls,
         },
       },
@@ -1007,8 +1007,8 @@ class ShaderLabCell : Cell {
       return buildContent(programs)
     }
     return frameChildren("Shader Lab", "Shader programs are loading", Container{
-      Width: Length.Percent(100.0),
-      Height: 120.0,
+      Width: Length.Percent(100),
+      Height: 120,
       BackgroundColor: GalleryTheme.SurfaceRaised,
     })
   }
@@ -1302,15 +1302,15 @@ class StudioCell : Cell {
     let foreground = if selectedStyle { GalleryTheme.Background } else { GalleryTheme.Ink }
     return Button{
       Key: "program-" + index.ToString(),
-      Padding: 9.0,
+      Padding: 9,
       BackgroundColor: background,
-      BorderWidth: 1.0,
+      BorderWidth: 1,
       BorderColor: GalleryTheme.Border,
-      BorderRadius: 8.0,
+      BorderRadius: 8,
       Focusable: true,
       TransitionMs: 100.0,
       Hover: Style{ BackgroundColor: GalleryTheme.Border },
-      Focus: Style{ OutlineWidth: 1.0, OutlineColor: GalleryTheme.BorderStrong },
+      Focus: Style{ OutlineWidth: 1, OutlineColor: GalleryTheme.BorderStrong },
       Accessibility: Accessibility{
         Role: AccessibilityRole.Button,
         Name: label,
@@ -1320,8 +1320,8 @@ class StudioCell : Cell {
       Children: {
         Text{
           Content: label,
-          FontSize: 12.0,
-          FontWeight: 600.0,
+          FontSize: 12,
+          FontWeight: 600,
           Color: foreground,
         },
       },
@@ -1350,15 +1350,15 @@ class StudioCell : Cell {
     let foreground = if selectedStyle { paletteColor(0) } else { GalleryTheme.Ink }
     return Button{
       Key: "palette-" + index.ToString(),
-      Padding: 8.0,
+      Padding: 8,
       BackgroundColor: background,
-      BorderWidth: 1.0,
+      BorderWidth: 1,
       BorderColor: GalleryTheme.Border,
-      BorderRadius: 8.0,
+      BorderRadius: 8,
       Focusable: true,
       TransitionMs: 100.0,
       Hover: Style{ BackgroundColor: GalleryTheme.Border },
-      Focus: Style{ OutlineWidth: 1.0, OutlineColor: GalleryTheme.BorderStrong },
+      Focus: Style{ OutlineWidth: 1, OutlineColor: GalleryTheme.BorderStrong },
       Accessibility: Accessibility{
         Role: AccessibilityRole.Radio,
         Name: label,
@@ -1371,8 +1371,8 @@ class StudioCell : Cell {
       Children: {
         Text{
           Content: label,
-          FontSize: 12.0,
-          FontWeight: 600.0,
+          FontSize: 12,
+          FontWeight: 600,
           Color: foreground,
         },
       },
@@ -1474,10 +1474,10 @@ class StudioCell : Cell {
         content.Add(Image{
           Key: "source",
           Position: PositionType.Absolute,
-          Left: 0.0,
-          Top: 0.0,
-          Width: Length.Percent(100.0),
-          Height: Length.Percent(100.0),
+          Left: 0,
+          Top: 0,
+          Width: Length.Percent(100),
+          Height: Length.Percent(100),
           Source: assets.Mandelbrot,
           Fit: ImageFit.Fill,
         })
@@ -1487,71 +1487,71 @@ class StudioCell : Cell {
       Key: "title",
       Content: title,
       Position: PositionType.Absolute,
-      Left: 30.0,
-      Top: 28.0,
-      FontSize: 48.0,
-      FontWeight: 700.0,
-      LetterSpacing: -1.0,
+      Left: 30,
+      Top: 28,
+      FontSize: 48,
+      FontWeight: 700,
+      LetterSpacing: -1,
       Color: highlight,
     })
     content.Add(Text{
       Key: "program",
       Content: "Goo / " + (selected + 1).ToString("D2"),
       Position: PositionType.Absolute,
-      Left: 34.0,
-      Top: 92.0,
-      FontSize: 13.0,
-      FontWeight: 600.0,
+      Left: 34,
+      Top: 92,
+      FontSize: 13,
+      FontWeight: 600,
       Color: accent,
     })
     content.Add(Container{
       Key: "accent-block",
       Position: PositionType.Absolute,
-      Left: 32.0,
-      Top: 134.0,
-      Width: 120.0,
-      Height: 72.0,
+      Left: 32,
+      Top: 134,
+      Width: 120,
+      Height: 72,
       BackgroundColor: accent,
     })
     content.Add(Container{
       Key: "highlight-bar",
       Position: PositionType.Absolute,
-      Left: 174.0,
-      Top: 134.0,
-      Width: 224.0,
-      Height: 24.0,
+      Left: 174,
+      Top: 134,
+      Width: 224,
+      Height: 24,
       BackgroundColor: highlight,
     })
     content.Add(Container{
       Key: "accent-bar",
       Position: PositionType.Absolute,
-      Left: 174.0,
-      Top: 174.0,
-      Width: 164.0,
-      Height: 32.0,
+      Left: 174,
+      Top: 174,
+      Width: 164,
+      Height: 32,
       BackgroundColor: accent,
     })
     content.Add(Container{
       Key: "swatch",
       Position: PositionType.Absolute,
-      Right: 30.0,
-      Bottom: 30.0,
-      Width: 124.0,
-      Height: 64.0,
-      BorderWidth: 1.0,
+      Right: 30,
+      Bottom: 30,
+      Width: 124,
+      Height: 64,
+      BorderWidth: 1,
       BorderColor: highlight,
       BackgroundColor: background,
     })
     return Container{
       Key: if effectsReady() { "studio-live" } else { "studio-idle" },
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       AspectRatio: 16.0 / 9.0,
       Handle: Canvas,
       Position: PositionType.Relative,
       BackgroundColor: background,
       ShaderEffect: activeEffect(effect),
       Focusable: true,
-      Focus: Style{ OutlineWidth: 1.0, OutlineColor: GalleryTheme.BorderStrong },
+      Focus: Style{ OutlineWidth: 1, OutlineColor: GalleryTheme.BorderStrong },
       OnPointerDown: func(e PointerEvent) {
         e.Capture()
         e.PreventDefault()
@@ -1607,7 +1607,7 @@ class StudioCell : Cell {
     let controls = List[Blob]()
     controls.Add(Container{
       Key: "studio-c0",
-      Width: if Compact { Length.Percent(100.0) } else { Length.Percent(48.0) },
+      Width: if Compact { Length.Percent(100) } else { Length.Percent(48) },
       FlexGrow: 0.0,
       FlexShrink: 1.0,
       Children: {
@@ -1626,7 +1626,7 @@ class StudioCell : Cell {
     })
     controls.Add(Container{
       Key: "studio-c1",
-      Width: if Compact { Length.Percent(100.0) } else { Length.Percent(48.0) },
+      Width: if Compact { Length.Percent(100) } else { Length.Percent(48) },
       FlexGrow: 0.0,
       FlexShrink: 1.0,
       Children: {
@@ -1645,7 +1645,7 @@ class StudioCell : Cell {
     })
     controls.Add(Container{
       Key: "studio-c2",
-      Width: if Compact { Length.Percent(100.0) } else { Length.Percent(48.0) },
+      Width: if Compact { Length.Percent(100) } else { Length.Percent(48) },
       FlexGrow: 0.0,
       FlexShrink: 1.0,
       Children: {
@@ -1669,49 +1669,49 @@ class StudioCell : Cell {
       "The selected program runs over this retained source",
       compositionCanvas(programs, time))
     return Container{
-      Width: Length.Percent(100.0),
-      Height: Length.Percent(100.0),
+      Width: Length.Percent(100),
+      Height: Length.Percent(100),
       FlexDirection: FlexDirection.Row,
-      Gap: 18.0,
+      Gap: 18,
       AlignItems: AlignItems.Center,
       Children: {
         Container{
           Key: "studio-panel",
-          Width: 380.0,
-          MinWidth: 380.0,
+          Width: 380,
+          MinWidth: 380,
           FlexShrink: 0.0,
           FlexDirection: FlexDirection.Column,
-          Gap: 14.0,
+          Gap: 14,
           Children: {
             Container{
               Key: "studio-selectors",
               FlexDirection: FlexDirection.Row,
               FlexWrap: FlexWrap.Wrap,
-              Gap: 8.0,
+              Gap: 8,
               Children: selectors,
             },
             Container{
               Key: "studio-editor",
               FlexDirection: FlexDirection.Column,
-              Gap: 10.0,
+              Gap: 10,
               Children: {
                 TextEntry{
                   Key: "title",
                   Value: title,
-                  Width: Length.Percent(100.0),
+                  Width: Length.Percent(100),
                   Placeholder: "Title",
-                  Height: 38.0,
-                  PaddingLeft: 10.0,
-                  PaddingRight: 10.0,
+                  Height: 38,
+                  PaddingLeft: 10,
+                  PaddingRight: 10,
                   Color: GalleryTheme.Ink,
-                  FontSize: 13.0,
+                  FontSize: 13,
                   BackgroundColor: GalleryTheme.SurfaceRaised,
-                  BorderRadius: 8.0,
-                  BorderWidth: 1.0,
+                  BorderRadius: 8,
+                  BorderWidth: 1,
                   BorderColor: GalleryTheme.Border,
                   SelectionColor: GalleryTheme.BorderStrong,
                   Focus: Style{
-                    OutlineWidth: 1.0,
+                    OutlineWidth: 1,
                     OutlineColor: GalleryTheme.BorderStrong,
                   },
                   OnChange: func(value string) {
@@ -1730,7 +1730,7 @@ class StudioCell : Cell {
                 Container{
                   Key: "studio-palettes",
                   FlexDirection: FlexDirection.Row,
-                  Gap: 8.0,
+                  Gap: 8,
                   Children: palettes,
                 },
               },
@@ -1739,14 +1739,14 @@ class StudioCell : Cell {
               Key: "studio-controls",
               FlexDirection: FlexDirection.Row,
               FlexWrap: FlexWrap.Wrap,
-              Gap: 14.0,
+              Gap: 14,
               Children: controls,
             },
           },
         },
         Container{
           Key: "studio-composition",
-          MinWidth: 0.0,
+          MinWidth: 0,
           FlexGrow: 1.0,
           FlexShrink: 1.0,
           Children: { composition },
@@ -1787,14 +1787,14 @@ class StudioCell : Cell {
     let frame = GalleryTheme.Frame(children)
     return Container{
       Key: "studio-" + name,
-      Width: Length.Percent(100.0),
+      Width: Length.Percent(100),
       Color: Color.Transparent,
       Focusable: true,
       TransitionMs: 100.0,
       Hover: Style{ Color: GalleryTheme.InkSubtle },
       Focus: Style{
         Color: GalleryTheme.InkSubtle,
-        OutlineWidth: 1.0,
+        OutlineWidth: 1,
         OutlineColor: GalleryTheme.BorderStrong,
       },
       Children: { frame },
@@ -1806,8 +1806,8 @@ class StudioCell : Cell {
       return buildContent(programs)
     }
     return studioFrame("Final Synthesis", "Shader programs are loading", Container{
-      Width: Length.Percent(100.0),
-      Height: 120.0,
+      Width: Length.Percent(100),
+      Height: 120,
       BackgroundColor: GalleryTheme.SurfaceRaised,
     })
   }

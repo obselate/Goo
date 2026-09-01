@@ -578,6 +578,12 @@ Defines a text element.
 
 Initializes a text element with empty content.
 
+### `new(string)`
+
+Initializes a text element with the displayed content.
+
+- `content`: The displayed text.
+
 ### `Content`
 
 Gets the displayed text.

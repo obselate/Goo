@@ -62,7 +62,7 @@ class Counter : Cell {
         Padding: 10,
         BorderRadius: 10,
         BackgroundColor: Color.Rgb(74, 125, 255),
-        OnClick: func() { count++ },
+        OnClick: () -> { count++ },
         Children: {
           Text{ Content: "Add one", Color: Color.White },
         },

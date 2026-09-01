@@ -99,15 +99,15 @@ internal class TreeFixtures {
 
   func OutputAndKindReplacementContract() bool {
     let rec = Reconciler{ Res: Resolver{} }
-    let node = rec.Mount(Container{ Children: { Text{ Content: "original" } } })
-    rec.Diff(node, Container{ Children: { Text{ Content: "changed" } } })
+    let node = rec.Mount(Container{ Children: { Text("original") } })
+    rec.Diff(node, Container{ Children: { Text("changed") } })
     if node.Children[0].Content != "changed" { return false }
-    rec.Diff(node, Container{ Children: { Container{ Children: { Text{ Content: "nested" } } } } })
+    rec.Diff(node, Container{ Children: { Container{ Children: { Text("nested") } } } })
     let container = node.Children[0]
     if container.Children.Count != 1 || container.Children[0].Content != "nested" {
       return false
     }
-    rec.Diff(node, Container{ Children: { Text{ Content: "replaced" } } })
+    rec.Diff(node, Container{ Children: { Text("replaced") } })
     let replacement = node.Children[0]
     return replacement.Content == "replaced" && replacement.Children.Count == 0
   }

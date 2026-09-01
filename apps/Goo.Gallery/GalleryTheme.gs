@@ -24,23 +24,23 @@ class GalleryTheme {
 
     func ChapterTitle(content string) Text -> Text {
       Content: content,
-      FontSize: 30.0,
-      FontWeight: 700.0,
+      FontSize: 30,
+      FontWeight: 700,
       LetterSpacing: -0.6,
       Color: Ink,
     }
 
     func ChapterSentence(content string) Text -> Text {
       Content: content,
-      FontSize: 15.0,
+      FontSize: 15,
       LineHeight: 1.5,
       Color: InkMuted,
     }
 
     func SpecimenName(content string) Text -> Text {
       Content: content,
-      FontSize: 13.0,
-      FontWeight: 600.0,
+      FontSize: 13,
+      FontWeight: 600,
       LetterSpacing: 0.4,
       TextTransform: TextTransform.Uppercase,
       Color: InkMuted,
@@ -49,37 +49,37 @@ class GalleryTheme {
     func Hint(content string) Text -> Text {
       Key: "spec-hint",
       Content: content,
-      Width: Length.Percent(100.0),
-      FontSize: 12.0,
+      Width: Length.Percent(100),
+      FontSize: 12,
       TransitionMs: 100.0,
     }
 
     func Frame(children List[Blob]) Container -> Container {
       BackgroundColor: Surface,
-      BorderWidth: 1.0,
+      BorderWidth: 1,
       BorderColor: Border,
-      BorderRadius: 12.0,
-      Padding: 20.0,
+      BorderRadius: 12,
+      Padding: 20,
       FlexDirection: FlexDirection.Column,
-      Gap: 12.0,
+      Gap: 12,
       Children: children,
     }
 
     func GhostButton(content string, onClick Action) Button -> Button {
-      Padding: 10.0,
+      Padding: 10,
       BackgroundColor: SurfaceRaised,
-      BorderWidth: 1.0,
+      BorderWidth: 1,
       BorderColor: Border,
-      BorderRadius: 8.0,
+      BorderRadius: 8,
       TransitionMs: 100.0,
       Hover: Style{ BackgroundColor: Border, BorderColor: BorderStrong },
-      Focus: Style{ OutlineWidth: 1.0, OutlineColor: BorderStrong },
+      Focus: Style{ OutlineWidth: 1, OutlineColor: BorderStrong },
       OnClick: onClick,
       Children: {
         Text{
           Content: content,
-          FontSize: 13.0,
-          FontWeight: 600.0,
+          FontSize: 13,
+          FontWeight: 600,
           Color: Ink,
         },
       },

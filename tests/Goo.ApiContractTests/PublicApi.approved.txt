@@ -49,6 +49,7 @@ ctor|Goo.TextSelection|public|(arg0:Goo.TextPosition,arg1:Goo.TextPosition)
 ctor|Goo.TextStyleRange|public|(arg0:Goo.TextRange,arg1:Goo.Style)
 ctor|Goo.TextStyleSpan|public|(arg0:System.String,arg1:Goo.TextRange,arg2:Goo.Style)
 ctor|Goo.Text|public|()
+ctor|Goo.Text|public|(content:System.String)
 ctor|Goo.Window|public|()
 enum-underlying|Goo.AccessibilityAction|System.Int32
 enum-underlying|Goo.AccessibilityChecked|System.Int32

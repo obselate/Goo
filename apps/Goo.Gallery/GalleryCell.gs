@@ -266,33 +266,33 @@ class GalleryCell : Cell, IDisposable {
   }
 
   private func BuildHeader() Container -> Container {
-    Width: Length.Percent(100.0),
-    Height: 72.0,
-    MinHeight: 72.0,
-    PaddingLeft: if Compact { 24.0 } else { 32.0 },
-    PaddingRight: if Compact { 24.0 } else { 32.0 },
+    Width: Length.Percent(100),
+    Height: 72,
+    MinHeight: 72,
+    PaddingLeft: if Compact { 24 } else { 32 },
+    PaddingRight: if Compact { 24 } else { 32 },
     FlexDirection: FlexDirection.Row,
     AlignItems: AlignItems.Center,
     JustifyContent: JustifyContent.SpaceBetween,
     BackgroundColor: GalleryTheme.Surface,
-    BorderBottomWidth: 1.0,
+    BorderBottomWidth: 1,
     BorderColor: GalleryTheme.Border,
     Children: {
       Container{
         FlexDirection: FlexDirection.Column,
-        Gap: 3.0,
+        Gap: 3,
         Children: {
           Text{
             Content: "GOO GALLERY / " + CurrentChapterTitle().ToUpperInvariant(),
-            FontSize: 11.0,
-            FontWeight: 600.0,
+            FontSize: 11,
+            FontWeight: 600,
             LetterSpacing: 1.2,
             Color: GalleryTheme.InkMuted,
           },
           Text{
             Content: showcaseTitles[currentShowcase],
-            FontSize: 22.0,
-            FontWeight: 700.0,
+            FontSize: 22,
+            FontWeight: 700,
             LetterSpacing: -0.4,
             Color: GalleryTheme.Ink,
           },
@@ -300,30 +300,30 @@ class GalleryCell : Cell, IDisposable {
       },
       Text{
         Content: (currentShowcase + 1).ToString("D2") + " / " + showcaseTitles.Length.ToString("D2"),
-        FontSize: 12.0,
-        FontWeight: 700.0,
-        LetterSpacing: 1.0,
+        FontSize: 12,
+        FontWeight: 700,
+        LetterSpacing: 1,
         Color: GalleryTheme.InkMuted,
       },
     },
   }
 
   private func BuildPagerButton(label string, enabled bool, forward bool) Button -> Button {
-    Width: 124.0,
-    Height: 38.0,
-    PaddingLeft: 14.0,
-    PaddingRight: 14.0,
+    Width: 124,
+    Height: 38,
+    PaddingLeft: 14,
+    PaddingRight: 14,
     BackgroundColor: GalleryTheme.SurfaceRaised,
-    BorderWidth: 1.0,
+    BorderWidth: 1,
     BorderColor: GalleryTheme.Border,
-    BorderRadius: 8.0,
+    BorderRadius: 8,
     Cursor: if enabled { Cursor.Pointer } else { Cursor.Default },
     Focusable: enabled,
     Disabled: !enabled,
     TransitionMs: 100.0,
     Hover: Style{ BackgroundColor: GalleryTheme.Border },
     Active: Style{ BackgroundColor: GalleryTheme.BorderStrong },
-    Focus: Style{ OutlineWidth: 1.0, OutlineColor: GalleryTheme.BorderStrong },
+    Focus: Style{ OutlineWidth: 1, OutlineColor: GalleryTheme.BorderStrong },
     DisabledStyle: Style{ BackgroundColor: GalleryTheme.Surface, Color: GalleryTheme.BorderStrong },
     Accessibility: Accessibility{
       Role: AccessibilityRole.Button,
@@ -339,8 +339,8 @@ class GalleryCell : Cell, IDisposable {
     Children: {
       Text{
         Content: label,
-        FontSize: 12.0,
-        FontWeight: 650.0,
+        FontSize: 12,
+        FontWeight: 650,
         Color: if enabled { GalleryTheme.Ink } else { GalleryTheme.BorderStrong },
         TextAlign: TextAlign.Center,
       },
@@ -348,27 +348,27 @@ class GalleryCell : Cell, IDisposable {
   }
 
   private func BuildFooter() Container -> Container {
-    Width: Length.Percent(100.0),
-    Height: 64.0,
-    MinHeight: 64.0,
-    PaddingLeft: if Compact { 24.0 } else { 32.0 },
-    PaddingRight: if Compact { 24.0 } else { 32.0 },
+    Width: Length.Percent(100),
+    Height: 64,
+    MinHeight: 64,
+    PaddingLeft: if Compact { 24 } else { 32 },
+    PaddingRight: if Compact { 24 } else { 32 },
     FlexDirection: FlexDirection.Row,
     AlignItems: AlignItems.Center,
     JustifyContent: JustifyContent.SpaceBetween,
     BackgroundColor: GalleryTheme.Surface,
-    BorderTopWidth: 1.0,
+    BorderTopWidth: 1,
     BorderColor: GalleryTheme.Border,
     Children: {
       BuildPagerButton("Previous", currentShowcase > 0, false),
       Container{
         FlexDirection: FlexDirection.Column,
         AlignItems: AlignItems.Center,
-        Gap: 2.0,
+        Gap: 2,
         Children: {
           Text{
             Content: CurrentSentence(),
-            FontSize: 11.0,
+            FontSize: 11,
             Color: GalleryTheme.InkMuted,
             TextAlign: TextAlign.Center,
             TextTrimming: TextTrimming.Ellipsis,
@@ -376,9 +376,9 @@ class GalleryCell : Cell, IDisposable {
           },
           Text{
             Content: "PAGE UP / PAGE DOWN",
-            FontSize: 9.0,
-            FontWeight: 700.0,
-            LetterSpacing: 1.0,
+            FontSize: 9,
+            FontWeight: 700,
+            LetterSpacing: 1,
             Color: GalleryTheme.InkSubtle,
           },
         },
@@ -397,59 +397,50 @@ class GalleryCell : Cell, IDisposable {
     }
     let chapter = showcaseChapters[currentShowcase]
     let local = showcaseLocals[currentShowcase]
-    if chapter == 0 {
-      return Cell.Mount[ComposeChapter]("showcase-compose", (c ComposeChapter) -> {
-        c.Assets = Assets
-        c.Programs = Programs
-        c.Compact = Compact
-        c.Showcase = local
-      })
-    }
-    if chapter == 1 {
-      return Container{ Key: "showcase-surfaces-placeholder", Display: Display.None }
-    }
-    if chapter == 2 {
-      return Cell.Mount[MotionChapter]("showcase-motion", (c MotionChapter) -> {
+    return switch chapter {
+      case 0: Cell.Mount[ComposeChapterInput, ComposeChapter](
+        "showcase-compose",
+        ComposeChapterInput{ Showcase: local })
+      case 1: Container { Key: "showcase-surfaces-placeholder", Display: Display.None }
+      case 2: Cell.Mount[MotionChapter]("showcase-motion", (c MotionChapter) -> {
         c.Assets = Assets
         c.Programs = Programs
         c.Compact = Compact
         c.Showcase = local
         c.Active = true
       })
-    }
-    if chapter == 3 {
-      return Cell.Mount[ShaderLabCell]("showcase-shaders", (c ShaderLabCell) -> {
+      case 3: Cell.Mount[ShaderLabCell]("showcase-shaders", (c ShaderLabCell) -> {
         c.Assets = Assets
         c.Programs = Programs
         c.Compact = false
         c.Showcase = local
         c.Active = true
       })
+      default: Cell.Mount[StudioCell]("showcase-studio", (c StudioCell) -> {
+        c.Assets = Assets
+        c.Programs = Programs
+        c.Compact = false
+        c.Active = true
+      })
     }
-    return Cell.Mount[StudioCell]("showcase-studio", (c StudioCell) -> {
-      c.Assets = Assets
-      c.Programs = Programs
-      c.Compact = false
-      c.Active = true
-    })
   }
   private func BuildShowcase() Blob {
     let surfacesActive = currentShowcase == 3
     return Container{
-      Width: Length.Percent(100.0),
-      Height: Length.Percent(100.0),
-      MinWidth: 0.0,
-      MinHeight: 0.0,
+      Width: Length.Percent(100),
+      Height: Length.Percent(100),
+      MinWidth: 0,
+      MinHeight: 0,
       Position: PositionType.Relative,
       Children: {
         Container{
           Key: "persistent-surfaces-host",
           Display: if surfacesActive { Display.Flex } else { Display.None },
           Position: PositionType.Absolute,
-          Left: 0.0,
-          Top: 0.0,
-          Right: 0.0,
-          Bottom: 0.0,
+          Left: 0,
+          Top: 0,
+          Right: 0,
+          Bottom: 0,
           AlignItems: AlignItems.Center,
           JustifyContent: JustifyContent.Center,
           Children: {
@@ -463,10 +454,10 @@ class GalleryCell : Cell, IDisposable {
           Key: "transient-showcase-host",
           Display: if surfacesActive { Display.None } else { Display.Flex },
           Position: PositionType.Absolute,
-          Left: 0.0,
-          Top: 0.0,
-          Right: 0.0,
-          Bottom: 0.0,
+          Left: 0,
+          Top: 0,
+          Right: 0,
+          Bottom: 0,
           AlignItems: AlignItems.Center,
           JustifyContent: JustifyContent.Center,
           Children: { BuildTransientShowcase() },
@@ -477,8 +468,8 @@ class GalleryCell : Cell, IDisposable {
 
   override func Build() Blob -> Container {
     Key: "root",
-    Width: Length.Percent(100.0),
-    Height: Length.Percent(100.0),
+    Width: Length.Percent(100),
+    Height: Length.Percent(100),
     Handle: rootHandle,
     BackgroundColor: GalleryTheme.Background,
     FlexDirection: FlexDirection.Column,
@@ -495,22 +486,22 @@ class GalleryCell : Cell, IDisposable {
       BuildHeader(),
       Container{
         Handle: showcaseHandle,
-        Width: Length.Percent(100.0),
-        MinHeight: 0.0,
+        Width: Length.Percent(100),
+        MinHeight: 0,
         FlexGrow: 1.0,
         FlexShrink: 1.0,
-        PaddingLeft: if Compact { 24.0 } else { GalleryTheme.PadWide },
-        PaddingRight: if Compact { 24.0 } else { GalleryTheme.PadWide },
-        PaddingTop: 16.0,
-        PaddingBottom: 16.0,
+        PaddingLeft: if Compact { 24 } else { GalleryTheme.PadWide },
+        PaddingRight: if Compact { 24 } else { GalleryTheme.PadWide },
+        PaddingTop: 16,
+        PaddingBottom: 16,
         AlignItems: AlignItems.Center,
         JustifyContent: JustifyContent.Center,
         OverflowX: Overflow.Hidden,
         OverflowY: Overflow.Hidden,
         Children: {
           Container{
-            Width: Length.Percent(100.0),
-            Height: Length.Percent(100.0),
+            Width: Length.Percent(100),
+            Height: Length.Percent(100),
             MaxWidth: GalleryTheme.MaxContent,
             AlignItems: AlignItems.Center,
             JustifyContent: JustifyContent.Center,
@@ -782,8 +773,8 @@ class GalleryCell : Cell, IDisposable {
           Text{
             Content: content,
             FontSize: if index == 0 { size * 0.7 } else { size * 0.76 },
-            FontWeight: 850.0,
-            LetterSpacing: -4.0,
+            FontWeight: 850,
+            LetterSpacing: -4,
             Color: GalleryTheme.Ink,
             TextAlign: TextAlign.Center,
           },
@@ -795,7 +786,7 @@ class GalleryCell : Cell, IDisposable {
       let height = if Compact { 420.0 } else { 560.0 }
       guard let programs = Programs else {
         return Container{
-          Width: Length.Percent(100.0),
+          Width: Length.Percent(100),
           MaxWidth: GalleryTheme.MaxContent,
           Height: height,
           BackgroundColor: GalleryTheme.Surface,
@@ -847,22 +838,22 @@ class GalleryCell : Cell, IDisposable {
           0.0F))
       }
       return Container{
-        Width: Length.Percent(100.0),
+        Width: Length.Percent(100),
         MaxWidth: GalleryTheme.MaxContent,
         Height: height,
-        Padding: 12.0,
-        Gap: 10.0,
+        Padding: 12,
+        Gap: 10,
         FlexDirection: FlexDirection.Column,
         BackgroundColor: GalleryTheme.Surface,
-        BorderWidth: 1.0,
+        BorderWidth: 1,
         BorderColor: GalleryTheme.Border,
-        BorderRadius: 12.0,
+        BorderRadius: 12,
         Children: {
           Container{
             Key: "goo-memory-surface",
             Handle: hostHandle,
-            Width: Length.Percent(100.0),
-            MinHeight: 0.0,
+            Width: Length.Percent(100),
+            MinHeight: 0,
             FlexGrow: 1.0,
             FlexShrink: 1.0,
             Position: PositionType.Relative,
@@ -924,11 +915,11 @@ class GalleryCell : Cell, IDisposable {
               Text{
                 Key: "goo-memory-heading",
                 Position: PositionType.Absolute,
-                Left: 18.0,
-                Top: 16.0,
+                Left: 18,
+                Top: 16,
                 Content: "GOO HAS SHAPE MEMORY",
-                FontSize: 11.0,
-                FontWeight: 750.0,
+                FontSize: 11,
+                FontWeight: 750,
                 LetterSpacing: 1.5,
                 Color: GalleryTheme.InkMuted,
               },
@@ -939,10 +930,10 @@ class GalleryCell : Cell, IDisposable {
           },
           Container{
             Key: "goo-memory-controls",
-            Width: Length.Percent(100.0),
+            Width: Length.Percent(100),
             FlexDirection: FlexDirection.Row,
             FlexWrap: FlexWrap.Wrap,
-            Gap: 8.0,
+            Gap: 8,
             Children: {
               GalleryTheme.GhostButton(layoutButtonLabel(0, "Wordmark"), () -> setLayout(0)),
               GalleryTheme.GhostButton(layoutButtonLabel(1, "Stack"), () -> setLayout(1)),
@@ -954,7 +945,7 @@ class GalleryCell : Cell, IDisposable {
           Text{
             Key: "goo-memory-hint",
             Content: "Pull it apart. It remembers where it belongs.",
-            FontSize: 12.0,
+            FontSize: 12,
             Color: GalleryTheme.InkSubtle,
           },
         },
