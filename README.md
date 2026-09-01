@@ -151,6 +151,27 @@ func Main() {
 - Multi-window Vulkan rendering
 - Build-time SVG and ShaderEffect tooling
 
+## Shader build requirements
+
+The quick start does not need a shader compiler. Goo packages its internal
+SPIR-V and does not compile shaders at runtime.
+
+Install the following version-locked tools when a project declares a
+`<GooShaderEffect>` source or when regenerating Goo's internal shaders:
+
+- [Slang 2026.16](https://github.com/shader-slang/slang/releases/tag/v2026.16).
+  Set `SLANG_SDK` to the extracted SDK root or add its `bin` directory to
+  `PATH`.
+- [Vulkan SDK 1.4.357.0](https://vulkan.lunarg.com/sdk/home), including
+  SPIRV-Tools 2026.3 and `glslc` 2026.3. Set `VULKAN_SDK` to the platform SDK
+  root or add its `bin` directory to `PATH` so Goo can find `spirv-val` and
+  the internal shader generator can find `glslc`.
+
+Both toolchains are supported on Linux x64 and Windows x64. Goo rejects other
+tool versions so shader artifacts remain deterministic. See the
+[ShaderEffect build guide](docs/api/rendering.md#apply-fragment-shaders-to-retained-elements)
+for project configuration.
+
 ## Linux requirements
 
 - x86-64
