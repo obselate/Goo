@@ -1,0 +1,23 @@
+<Project Sdk="Gsharp.NET.Sdk/0.4.1">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GooGallery</RootNamespace>
+    <AssemblyName>Goo.Gallery</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Goo/Goo.gsproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <GooShaderEffect Include="Shaders/wolfenstein.frag.slang" TargetPath="Shaders/wolfenstein.spv" />
+    <GooShaderEffect Include="Shaders/chrome_sdf.frag.slang" TargetPath="Shaders/chrome_sdf.spv" />
+    <GooShaderEffect Include="Shaders/corridor.frag.slang" TargetPath="Shaders/corridor.spv" />
+    <GooShaderEffect Include="Shaders/radial_light.frag.slang" TargetPath="Shaders/radial_light.spv" />
+    <GooShaderEffect Include="Shaders/ripple.frag.slang" TargetPath="Shaders/ripple.spv" />
+    <GooShaderEffect Include="Shaders/glass.frag.slang" TargetPath="Shaders/glass.spv" />
+    <GooShaderEffect Include="Shaders/volumetric.frag.slang" TargetPath="Shaders/volumetric.spv" />
+    <GooShaderEffect Include="Shaders/dither.frag.slang" TargetPath="Shaders/dither.spv" />
+  </ItemGroup>
+  <Import Project="../../Goo/Goo.targets" />
+</Project>
