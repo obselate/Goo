@@ -3,7 +3,7 @@
 Install the package and create a Goo application:
 
 ```sh
-dotnet new install Goo.Templates --version 0.4.0
+dotnet new install Goo.Templates@0.4.0
 dotnet new goo --name HelloGoo
 cd HelloGoo
 dotnet run

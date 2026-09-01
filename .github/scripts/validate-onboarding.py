@@ -93,7 +93,7 @@ def release_text(version: str) -> None:
         fail(f"CHANGELOG.md: release heading for {version} is missing")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     required = {
-        f"dotnet new install Goo.Templates --version {version}",
+        f"dotnet new install Goo.Templates@{version}",
         f"dotnet tool install --global Goo.DevTools --version {version}",
         f"dotnet tool install --global Goo.DevTools.App --version {version}",
         f"dotnet tool install --global Goo.SvgCompiler --version {version}",

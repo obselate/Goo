@@ -23,7 +23,7 @@ dotnet tool install --global Goo.DevTools --add-source artifacts/devtools --vers
 Create a project from the template:
 
 ```sh
-dotnet new install Goo.Templates --version 0.4.0
+dotnet new install Goo.Templates@0.4.0
 dotnet new goo --name HelloGoo
 ```
 
