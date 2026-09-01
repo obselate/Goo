@@ -471,6 +471,10 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
   }
 
   internal func Render(root Node?, background Color, dpi Vector2) {
+    Render(root, background, dpi, nil)
+  }
+
+  internal func Render(root Node?, background Color, dpi Vector2, overlay DiagnosticOverlay?) {
     if disposed || !frameBegun || frameRendered {
       return
     }
@@ -503,6 +507,10 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
       let compileResult = sceneCompiler.Compile(root, background, logicalWidth, logicalHeight)
       RecordDiagnosticPlan(planStart, compileResult,
         sceneCompiler.Frame.Counters, sceneCompiler.Frame)
+      if let debugOverlay = overlay {
+        sceneCompiler.AppendDebugOverlay(debugOverlay, compileResult.FrameVersion,
+          logicalWidth, logicalHeight)
+      }
       textRedrawPending = textScene?.RedrawRequired == true
       imageRedrawPending = imageScene?.RedrawRequired == true
       pathRedrawPending = pathScene?.RedrawRequired == true

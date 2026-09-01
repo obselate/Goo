@@ -16,6 +16,13 @@ internal class InputCoordinator {
     text = TextInput()
   }
 
+  internal func SetDiagnostics(
+    pointerHook((Node?, PointerEventKind, float32, float32, PointerButton) -> bool)?,
+    keyboardHook((Key, KeyModifiers) -> bool)?) {
+      pointer.SetDiagnosticsHook(pointerHook)
+      keyboard.SetDiagnosticsHook(keyboardHook)
+    }
+
   internal func Attach(host SdlHost) {
     if disposed { throw ObjectDisposedException("InputCoordinator") }
     if attachedHost == host {

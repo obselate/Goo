@@ -145,6 +145,7 @@ public partial class Window {
       if let semantics = accessibility {
         if semantics.Publish(nil) { requestRender() }
       }
+      DiagnosticsSession?.OnTreeUpdated(nil, ReconcileEffects.None, false, false)
       MetricSubscriptions.Flush(this)
       return false
     }
@@ -348,6 +349,7 @@ public partial class Window {
     if metricsChanged {
       MetricSubscriptions.MarkElementsDirty(this)
     }
+    DiagnosticsSession?.OnTreeUpdated(node, effects, layoutChanged, changed)
     MetricSubscriptions.Flush(this)
     return changed
   }

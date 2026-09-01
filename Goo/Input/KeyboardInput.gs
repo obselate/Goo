@@ -25,6 +25,10 @@ internal class KeyboardInput {
     control = KeyboardDispatchControl()
   }
 
+  internal func SetDiagnosticsHook(value((Key, KeyModifiers) -> bool)?) {
+    InputDiagnostics.SetKeyboard(this, value)
+  }
+
   internal func Bind(host SdlHost) {
     host.KeyPressed += func(key SdlHostKey, modifiers SdlHostModifiers) {
       QueueKeyPress(fromSdlKey(key), fromSdlModifiers(modifiers))
@@ -91,6 +95,12 @@ internal class KeyboardInput {
           queueHead = queueHead + 1
           try {
             if e.Kind == KeyboardEventKind.Press {
+              if let hook = InputDiagnostics.KeyboardHook(this) {
+                if hook(e.Key, e.Modifiers) {
+                  changed = true
+                  continue
+                }
+              }
               if let callback = onKeyPress {
                 callback(e.Key, e.Modifiers)
               }
@@ -240,6 +250,9 @@ internal class KeyboardInput {
   }
 
   internal func HandleKey(root Node?, resolver Resolver, text TextInput, key Key, modifiers KeyModifiers) bool {
+    if let hook = InputDiagnostics.KeyboardHook(this) {
+      if hook(key, modifiers) { return true }
+    }
     let dispatch = DispatchKeyDown(text.FocusedNode(), key, modifiers, false)
     if dispatch.DefaultPrevented { return false }
     return HandleKeyDefault(root, resolver, text, key, modifiers)

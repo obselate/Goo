@@ -4,6 +4,7 @@ These pages are generated from the Release `Goo.xml` file.
 
 - [Accessibility](accessibility.md)
 - [Cell](cell.md)
+- [Diagnostics](diagnostics.md)
 - [Input](input.md)
 - [Layout](layout.md)
 - [Motion](motion.md)

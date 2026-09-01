@@ -53,6 +53,7 @@ public partial class Window {
   /// Reports whether the window is open.
   public prop IsOpen bool{ get; private set; }
   internal prop Tree Node? { get { return node } }
+  internal prop DiagnosticsSession DevToolsSession? { get { return WindowDiagnostics.Session(this) } }
   /// Gets or sets per-window GPU presentation synchronization.
   /// True selects FIFO. False prefers Immediate, then Mailbox, then FIFO.
   /// Window.Run applies internal display-rate pacing for either value.
@@ -403,5 +404,81 @@ public partial class Window {
     accessibility = nil
 
     dpi = Vector2(1.0F, 1.0F)
+  }
+
+  internal func AttachDiagnostics() DevToolsSession {
+    requireUiThread("Window.AttachDiagnostics")
+    if let current = DiagnosticsSession {
+      return current
+    }
+    let session = DevToolsSession(this)
+    WindowDiagnostics.Set(this, session)
+    resolver.DebugOverrides = session.OverrideStore
+    input.SetDiagnostics(
+      func(root Node?, kind PointerEventKind, x float32, y float32, button PointerButton) bool {
+        if let current = DiagnosticsSession { return current.PointerEvent(root, kind, x, y, button) }
+        return false
+      },
+      func(key Key, modifiers KeyModifiers) bool {
+        if let current = DiagnosticsSession { return current.KeyEvent(key) }
+        return false
+      })
+    DevTools.Register(session)
+    requestRender()
+    host?.Wake()
+    return session
+  }
+
+  internal func ClearDiagnostics(session DevToolsSession) {
+    if DiagnosticsSession != session {
+      return
+    }
+    WindowDiagnostics.Clear(this, session)
+    resolver.DebugOverrides = nil
+    input.SetDiagnostics(nil, nil)
+    requestRender()
+  }
+
+  internal func RequestDiagnosticsFrame() {
+    requestRender()
+    host?.Wake()
+  }
+
+  internal func ResetInputForDiagnostics() {
+    input.Reset(node, resolver)
+  }
+
+  internal func RequestDiagnosticsCapture() VulkanReadbackRequestStatus {
+    guard let target = windowTarget else { return VulkanReadbackRequestStatus.NotReady }
+    return target.RequestReadback(node, Background, dpi)
+  }
+
+  internal func PollDiagnosticsCapture() VulkanReadbackResult? {
+    guard let target = windowTarget else { return nil }
+    let result = target.PollReadback()
+    if result != VkConstants.VK_SUCCESS && result != VkConstants.VK_NOT_READY {
+      throw InvalidOperationException("Goo capture readback failed: " + result.ToString())
+    }
+    return target.TakeReadbackResult()
+  }
+
+  internal func RequestDiagnosticsRebuild() {
+    if let cell = Root {
+      cell.Rebuild()
+    }
+    requestReconcile()
+    requestRender()
+    host?.Wake()
+  }
+
+  internal func InvalidateDiagnosticsOverride(n Node) {
+    resolver.Invalidate(n, false)
+  }
+
+  internal func CompleteDiagnosticsOverrideReset(n Node, fields IEnumerable[StyleField]) {
+    for field in fields {
+      if inheritable(field) { resolver.PropagateDebugInheritance(n, field) }
+      resolver.RecordDebugResolvedChange(field)
+    }
   }
 }

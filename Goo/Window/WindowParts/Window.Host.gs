@@ -197,6 +197,7 @@ public partial class Window {
   public func Open() Window {
     requireOpenThread("Window.Open")
     if IsOpen {
+      WindowDiagnostics.AttachIfEnabled(this)
       return this
     }
     prepare()
@@ -237,6 +238,7 @@ public partial class Window {
       schedulerLastTicks = float64(Stopwatch.GetTimestamp())
       schedulerSimulationBank = 0.0
       Window.RegisterLiveWindow(this)
+      WindowDiagnostics.AttachIfEnabled(this)
       return this
     } catch (e Exception) {
       Close()
@@ -616,6 +618,7 @@ public partial class Window {
     stopPosts()
     stopImageCompletions()
     stopRetainedInvalidations()
+    DiagnosticsSession?.WindowClosed()
     try {
       teardownNative()
     } finally {
@@ -655,7 +658,7 @@ public partial class Window {
   private func renderFrame() {
     if let target = windowTarget {
       let paintProfile = profiler.Active ? profiler.Start() : FrameProfilePoint{}
-      target.Render(node, Background, dpi)
+      target.Render(node, Background, dpi, DiagnosticsSession?.Overlay)
       if profiler.Active {
         profiler.Record(FrameProfileStage.Paint, paintProfile)
       }
