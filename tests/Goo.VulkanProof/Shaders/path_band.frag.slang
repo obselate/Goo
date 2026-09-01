@@ -1,42 +1,44 @@
-layout(set = 0, binding = 0, std430) readonly buffer PathBandBuffer {
-    uint words[];
-} pathBandBuffer;
-
+#include "slang_compat.slang"
+[[vk::binding(0, 0)]] StructuredBuffer<uint> pathBandBuffer;
 #ifdef GOO_CLIP_MASK
-layout(push_constant) uniform ClipMaskPushConstants {
-    vec4 transform0;
-    vec4 transform1;
-    vec4 sampleStep;
-    vec4 borderRect;
-    vec4 borderTransform0;
-    vec4 borderTransform1;
-    uvec4 params;
-} pc;
+struct ClipMaskPushConstants
+{
+    float4 transform0;
+    float4 transform1;
+    float4 sampleStep;
+    float4 borderRect;
+    float4 borderTransform0;
+    float4 borderTransform1;
+    uint4 params;
+};
+[[vk::push_constant]] ConstantBuffer<ClipMaskPushConstants> pc;
 #else
-layout(push_constant) uniform PathBandPushConstants {
-    vec4 transform0;
-    vec4 transform1;
-    vec4 sampleStep;
-    vec4 color;
-    uvec4 params;
-} pc;
+struct PathBandPushConstants
+{
+    float4 transform0;
+    float4 transform1;
+    float4 sampleStep;
+    float4 color;
+    uint4 params;
+};
+[[vk::push_constant]] ConstantBuffer<PathBandPushConstants> pc;
 #endif
-
-layout(location = 0) in vec2 pathPosition;
-layout(location = 0) out vec4 outColor;
-
+static float2 pathPosition;
+static float4 gooFragmentPosition;
+static float4 outColor;
 #ifndef GOO_CLIP_MASK
-#include "clip_chain.glsl"
+static uint gooClipDrawOrdinal;
+#include "clip_chain.slang"
 #endif
 
-const uint HeaderWordCount = 12u;
-const uint BandWordCount = 8u;
-const uint CurveWordCount = 8u;
-const uint FormatVersion = 1u;
-const float CoordinateMinimumTolerance = 0.0000001;
-const float CoordinateRelativeTolerance = 0.000001;
-const float MinimumPixelsPerPath = 0.0000152587890625;
-const float EndpointParameterStep = 0.0001;
+static const uint HeaderWordCount = 12u;
+static const uint BandWordCount = 8u;
+static const uint CurveWordCount = 8u;
+static const uint FormatVersion = 1u;
+static const float CoordinateMinimumTolerance = 0.0000001;
+static const float CoordinateRelativeTolerance = 0.000001;
+static const float MinimumPixelsPerPath = 0.0000152587890625;
+static const float EndpointParameterStep = 0.0001;
 
 struct AnalyticBand {
     float minimum;
@@ -50,9 +52,9 @@ struct AnalyticBand {
 };
 
 struct QuadraticCurve {
-    vec2 start;
-    vec2 control;
-    vec2 finish;
+    float2 start;
+    float2 control;
+    float2 finish;
 };
 
 struct AxisRoots {
@@ -63,12 +65,12 @@ struct AxisRoots {
 
 uint pathWord(uint relativeWord)
 {
-    return pathBandBuffer.words[pc.params.x + relativeWord];
+    return pathBandBuffer[pc.params.x + relativeWord];
 }
 
 float wordFloat(uint index)
 {
-    return uintBitsToFloat(pathWord(index));
+    return asfloat(pathWord(index));
 }
 
 uint horizontalBandCount()
@@ -139,9 +141,9 @@ QuadraticCurve curveAt(uint index)
 {
     uint base = curveBase() + index * CurveWordCount;
     QuadraticCurve result;
-    result.start = vec2(wordFloat(base), wordFloat(base + 1u));
-    result.control = vec2(wordFloat(base + 2u), wordFloat(base + 3u));
-    result.finish = vec2(wordFloat(base + 4u), wordFloat(base + 5u));
+    result.start = float2(wordFloat(base), wordFloat(base + 1u));
+    result.control = float2(wordFloat(base + 2u), wordFloat(base + 3u));
+    result.finish = float2(wordFloat(base + 4u), wordFloat(base + 5u));
     return result;
 }
 
@@ -191,19 +193,19 @@ float directionTolerance(QuadraticCurve curve, bool vertical)
 
 uint rootCode(float first, float second, float third)
 {
-    uint firstSign = floatBitsToUint(first) >> 31u;
-    uint secondSign = floatBitsToUint(second) >> 30u;
-    uint thirdSign = floatBitsToUint(third) >> 29u;
+    uint firstSign = asuint(first) >> 31u;
+    uint secondSign = asuint(second) >> 30u;
+    uint thirdSign = asuint(third) >> 29u;
     uint shift = (secondSign & 2u) | (firstSign & ~2u);
     shift = (thirdSign & 4u) | (shift & ~4u);
     return (0x2e74u >> shift) & 0x0101u;
 }
 
-AxisRoots solveHorizontalRoots(QuadraticCurve curve, vec2 point)
+AxisRoots solveHorizontalRoots(QuadraticCurve curve, float2 point)
 {
-    vec2 first = curve.start - point;
-    vec2 second = curve.control - point;
-    vec2 third = curve.finish - point;
+    float2 first = curve.start - point;
+    float2 second = curve.control - point;
+    float2 third = curve.finish - point;
     AxisRoots result;
     result.code = rootCode(first.y, second.y, third.y);
     result.first = result.second = -1.0;
@@ -211,8 +213,8 @@ AxisRoots solveHorizontalRoots(QuadraticCurve curve, vec2 point)
     {
         return result;
     }
-    vec2 a = first - second * 2.0 + third;
-    vec2 b = first - second;
+    float2 a = first - second * 2.0 + third;
+    float2 b = first - second;
     float tolerance = coefficientTolerance(first.y, b.y, a.y);
     if (abs(a.y) > tolerance)
     {
@@ -232,11 +234,11 @@ AxisRoots solveHorizontalRoots(QuadraticCurve curve, vec2 point)
     return result;
 }
 
-AxisRoots solveVerticalRoots(QuadraticCurve curve, vec2 point)
+AxisRoots solveVerticalRoots(QuadraticCurve curve, float2 point)
 {
-    vec2 first = curve.start - point;
-    vec2 second = curve.control - point;
-    vec2 third = curve.finish - point;
+    float2 first = curve.start - point;
+    float2 second = curve.control - point;
+    float2 third = curve.finish - point;
     AxisRoots result;
     result.code = rootCode(first.x, second.x, third.x);
     result.first = result.second = -1.0;
@@ -244,8 +246,8 @@ AxisRoots solveVerticalRoots(QuadraticCurve curve, vec2 point)
     {
         return result;
     }
-    vec2 a = first - second * 2.0 + third;
-    vec2 b = first - second;
+    float2 a = first - second * 2.0 + third;
+    float2 b = first - second;
     float tolerance = coefficientTolerance(first.x, b.x, a.x);
     if (abs(a.x) > tolerance)
     {
@@ -286,13 +288,13 @@ float endpointDirection(QuadraticCurve curve, float root, bool vertical)
     return direction;
 }
 
-float horizontalDistance(QuadraticCurve curve, vec2 point, float root, bool rightRay)
+float horizontalDistance(QuadraticCurve curve, float2 point, float root, bool rightRay)
 {
     float value = curveX(curve, clamp(root, 0.0, 1.0));
     return rightRay ? value - point.x : point.x - value;
 }
 
-float verticalDistance(QuadraticCurve curve, vec2 point, float root, bool downRay)
+float verticalDistance(QuadraticCurve curve, float2 point, float root, bool downRay)
 {
     float value = curveY(curve, clamp(root, 0.0, 1.0));
     return downRay ? value - point.y : point.y - value;
@@ -300,6 +302,7 @@ float verticalDistance(QuadraticCurve curve, vec2 point, float root, bool downRa
 
 bool horizontalRootAt(AxisRoots roots, uint slot, out float root)
 {
+    root = 0.0;
     if (roots.code == 0u)
     {
         return false;
@@ -323,6 +326,7 @@ bool horizontalRootAt(AxisRoots roots, uint slot, out float root)
 
 bool verticalRootAt(AxisRoots roots, uint slot, out float root)
 {
+    root = 0.0;
     if (roots.code == 0u)
     {
         return false;
@@ -345,14 +349,16 @@ bool verticalRootAt(AxisRoots roots, uint slot, out float root)
 }
 
 bool horizontalRootHit(
-    vec2 point,
+    float2 point,
     QuadraticCurve curve,
     float root,
     bool rightRay,
-    vec2 pixelsPerPath,
+    float2 pixelsPerPath,
     out float distancePixels,
     out float direction)
 {
+    distancePixels = 0.0;
+    direction = 0.0;
     if (!rootInRange(root))
     {
         return false;
@@ -371,14 +377,16 @@ bool horizontalRootHit(
 }
 
 bool verticalRootHit(
-    vec2 point,
+    float2 point,
     QuadraticCurve curve,
     float root,
     bool downRay,
-    vec2 pixelsPerPath,
+    float2 pixelsPerPath,
     out float distancePixels,
     out float direction)
 {
+    distancePixels = 0.0;
+    direction = 0.0;
     if (!rootInRange(root))
     {
         return false;
@@ -397,11 +405,11 @@ bool verticalRootHit(
 }
 
 void accumulateHorizontalRoot(
-    vec2 point,
+    float2 point,
     QuadraticCurve curve,
     float root,
     bool rightRay,
-    vec2 pixelsPerPath,
+    float2 pixelsPerPath,
     inout float value,
     inout float weight)
 {
@@ -419,11 +427,11 @@ void accumulateHorizontalRoot(
 }
 
 void accumulateVerticalRoot(
-    vec2 point,
+    float2 point,
     QuadraticCurve curve,
     float root,
     bool downRay,
-    vec2 pixelsPerPath,
+    float2 pixelsPerPath,
     inout float value,
     inout float weight)
 {
@@ -551,10 +559,10 @@ bool rootFollows(
 }
 
 void accumulateHorizontalCurve(
-    vec2 point,
+    float2 point,
     QuadraticCurve curve,
     bool rightRay,
-    vec2 pixelsPerPath,
+    float2 pixelsPerPath,
     inout float value,
     inout float weight)
 {
@@ -571,10 +579,10 @@ void accumulateHorizontalCurve(
 }
 
 void accumulateVerticalCurve(
-    vec2 point,
+    float2 point,
     QuadraticCurve curve,
     bool downRay,
-    vec2 pixelsPerPath,
+    float2 pixelsPerPath,
     inout float value,
     inout float weight)
 {
@@ -591,12 +599,12 @@ void accumulateVerticalCurve(
 }
 
 void accumulateHorizontalEvenOddOrdered(
-    vec2 point,
+    float2 point,
     uint indices,
     uint start,
     uint count,
     bool rightRay,
-    vec2 pixelsPerPath,
+    float2 pixelsPerPath,
     inout float value,
     inout float weight)
 {
@@ -662,12 +670,12 @@ void accumulateHorizontalEvenOddOrdered(
 }
 
 void accumulateVerticalEvenOddOrdered(
-    vec2 point,
+    float2 point,
     uint indices,
     uint start,
     uint count,
     bool downRay,
-    vec2 pixelsPerPath,
+    float2 pixelsPerPath,
     inout float value,
     inout float weight)
 {
@@ -732,18 +740,18 @@ void accumulateVerticalEvenOddOrdered(
     }
 }
 
-const uint MaxFractionalRoots = 32u;
+static const uint MaxFractionalRoots = 32u;
 
 void accumulateHorizontalEvenOdd(
-    vec2 point,
+    float2 point,
     uint indices,
     AnalyticBand band,
-    vec2 pixelsPerPath,
-    out vec2 rightCoverage,
-    out vec2 leftCoverage)
+    float2 pixelsPerPath,
+    out float2 rightCoverage,
+    out float2 leftCoverage)
 {
-    float rightDistances[32];
-    float leftDistances[32];
+    float rightDistances[32] = {};
+    float leftDistances[32] = {};
     uint rightCount = 0u;
     uint leftCount = 0u;
     uint rightParity = 0u;
@@ -883,20 +891,20 @@ void accumulateHorizontalEvenOdd(
         }
     }
 
-    rightCoverage = vec2(rightValue, rightWeight);
-    leftCoverage = vec2(leftValue, leftWeight);
+    rightCoverage = float2(rightValue, rightWeight);
+    leftCoverage = float2(leftValue, leftWeight);
 }
 
 void accumulateVerticalEvenOdd(
-    vec2 point,
+    float2 point,
     uint indices,
     AnalyticBand band,
-    vec2 pixelsPerPath,
-    out vec2 downCoverage,
-    out vec2 upCoverage)
+    float2 pixelsPerPath,
+    out float2 downCoverage,
+    out float2 upCoverage)
 {
-    float downDistances[32];
-    float upDistances[32];
+    float downDistances[32] = {};
+    float upDistances[32] = {};
     uint downCount = 0u;
     uint upCount = 0u;
     uint downParity = 0u;
@@ -1036,13 +1044,13 @@ void accumulateVerticalEvenOdd(
         }
     }
 
-    downCoverage = vec2(downValue, downWeight);
-    upCoverage = vec2(upValue, upWeight);
+    downCoverage = float2(downValue, downWeight);
+    upCoverage = float2(upValue, upWeight);
 }
 
-vec2 horizontalCoverageDirection(
-    vec2 point,
-    vec2 pixelsPerPath,
+float2 horizontalCoverageDirection(
+    float2 point,
+    float2 pixelsPerPath,
     bool rightRay,
     AnalyticBand band)
 {
@@ -1066,12 +1074,12 @@ vec2 horizontalCoverageDirection(
     {
         value = -value;
     }
-    return vec2(value, weight);
+    return float2(value, weight);
 }
 
-vec2 verticalCoverageDirection(
-    vec2 point,
-    vec2 pixelsPerPath,
+float2 verticalCoverageDirection(
+    float2 point,
+    float2 pixelsPerPath,
     bool downRay,
     AnalyticBand band)
 {
@@ -1095,23 +1103,23 @@ vec2 verticalCoverageDirection(
     {
         value = -value;
     }
-    return vec2(value, weight);
+    return float2(value, weight);
 }
 
-vec2 horizontalCoverage(vec2 point, vec2 pixelsPerPath)
+float2 horizontalCoverage(float2 point, float2 pixelsPerPath)
 {
     AnalyticBand band = horizontalBandAt(point.y);
     bool rightRay = point.x < band.split;
-    vec2 primary;
-    vec2 opposite;
+    float2 primary;
+    float2 opposite;
     if (pc.params.y == 1u)
     {
-        vec2 rightCoverage;
-        vec2 leftCoverage;
+        float2 rightCoverage;
+        float2 leftCoverage;
         accumulateHorizontalEvenOdd(point, horizontalIndexBase(), band,
             pixelsPerPath, rightCoverage, leftCoverage);
-        vec2 signedRight = rightCoverage;
-        vec2 signedLeft = vec2(-leftCoverage.x, leftCoverage.y);
+        float2 signedRight = rightCoverage;
+        float2 signedLeft = float2(-leftCoverage.x, leftCoverage.y);
         primary = rightRay ? signedRight : signedLeft;
         opposite = rightRay ? signedLeft : signedRight;
     }
@@ -1125,25 +1133,25 @@ vec2 horizontalCoverage(vec2 point, vec2 pixelsPerPath)
     if (opposite.y > primary.y
         || (opposite.y == primary.y && abs(opposite.x) > abs(primary.x)))
     {
-        return vec2(opposite.x, max(primary.y, opposite.y));
+        return float2(opposite.x, max(primary.y, opposite.y));
     }
-    return vec2(primary.x, max(primary.y, opposite.y));
+    return float2(primary.x, max(primary.y, opposite.y));
 }
 
-vec2 verticalCoverage(vec2 point, vec2 pixelsPerPath)
+float2 verticalCoverage(float2 point, float2 pixelsPerPath)
 {
     AnalyticBand band = verticalBandAt(point.x);
     bool downRay = point.y < band.split;
-    vec2 primary;
-    vec2 opposite;
+    float2 primary;
+    float2 opposite;
     if (pc.params.y == 1u)
     {
-        vec2 downCoverage;
-        vec2 upCoverage;
+        float2 downCoverage;
+        float2 upCoverage;
         accumulateVerticalEvenOdd(point, verticalIndexBase(), band,
             pixelsPerPath, downCoverage, upCoverage);
-        vec2 signedDown = downCoverage;
-        vec2 signedUp = vec2(-upCoverage.x, upCoverage.y);
+        float2 signedDown = downCoverage;
+        float2 signedUp = float2(-upCoverage.x, upCoverage.y);
         primary = downRay ? signedDown : signedUp;
         opposite = downRay ? signedUp : signedDown;
     }
@@ -1157,25 +1165,25 @@ vec2 verticalCoverage(vec2 point, vec2 pixelsPerPath)
     if (opposite.y > primary.y
         || (opposite.y == primary.y && abs(opposite.x) > abs(primary.x)))
     {
-        return vec2(opposite.x, max(primary.y, opposite.y));
+        return float2(opposite.x, max(primary.y, opposite.y));
     }
-    return vec2(primary.x, max(primary.y, opposite.y));
+    return float2(primary.x, max(primary.y, opposite.y));
 }
 
-vec2 pixelsPerPath()
+float2 pixelsPerPath()
 {
     float inverseWidth = max(abs(pc.sampleStep.x), MinimumPixelsPerPath);
     float inverseHeight = max(abs(pc.sampleStep.y), MinimumPixelsPerPath);
     float width = 1.0 / inverseWidth;
     float height = 1.0 / inverseHeight;
-    vec2 pathXAxis = vec2(
+    float2 pathXAxis = float2(
         pc.transform0.x * width * 0.5,
         pc.transform1.x * height * 0.5);
-    vec2 pathYAxis = vec2(
+    float2 pathYAxis = float2(
         pc.transform0.y * width * 0.5,
         pc.transform1.y * height * 0.5);
-    return max(vec2(length(pathXAxis), length(pathYAxis)),
-        vec2(MinimumPixelsPerPath));
+    return max(float2(length(pathXAxis), length(pathYAxis)),
+        float2(MinimumPixelsPerPath));
 }
 
 float combineCoverage(float horizontal, float vertical, float horizontalWeight, float verticalWeight)
@@ -1187,9 +1195,9 @@ float combineCoverage(float horizontal, float vertical, float horizontalWeight, 
 
 float analyticCoverage()
 {
-    vec2 pixels = pixelsPerPath();
-    vec2 horizontal = horizontalCoverage(pathPosition, pixels);
-    vec2 vertical = verticalCoverage(pathPosition, pixels);
+    float2 pixels = pixelsPerPath();
+    float2 horizontal = horizontalCoverage(pathPosition, pixels);
+    float2 vertical = verticalCoverage(pathPosition, pixels);
     return combineCoverage(horizontal.x, vertical.x, horizontal.y, vertical.y);
 }
 
@@ -1206,28 +1214,28 @@ bool validHeader()
 #ifdef GOO_CLIP_MASK
 float clipBorderCoverage()
 {
-    vec3 screenPoint = vec3(gl_FragCoord.xy, 1.0);
-    vec2 borderPoint = vec2(
+    float3 screenPoint = float3(gooFragmentPosition.xy, 1.0);
+    float2 borderPoint = float2(
         dot(pc.borderTransform0.xyz, screenPoint),
         dot(pc.borderTransform1.xyz, screenPoint));
-    vec2 borderCenter = pc.borderRect.xy + pc.borderRect.zw * 0.5;
-    vec2 q = abs(borderPoint - borderCenter) - pc.borderRect.zw * 0.5;
-    float distance = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0);
+    float2 borderCenter = pc.borderRect.xy + pc.borderRect.zw * 0.5;
+    float2 q = abs(borderPoint - borderCenter) - pc.borderRect.zw * 0.5;
+    float distance = length(max(q, float2(0.0))) + min(max(q.x, q.y), 0.0);
     return 1.0 - smoothstep(0.0, max(fwidth(distance), 0.0001), distance);
 }
 
-void main()
+void shade()
 {
     float alpha = validHeader() ? analyticCoverage() : 0.0;
-    outColor = vec4(alpha * clipBorderCoverage(), 0.0, 0.0, 1.0);
+    outColor = float4(alpha * clipBorderCoverage(), 0.0, 0.0, 1.0);
 }
 #else
-void main()
+void shade()
 {
     float alpha = validHeader() ? analyticCoverage() : 0.0;
     if (pc.params.z == 0u)
     {
-        outColor = vec4(0.0, 0.0, 0.0, alpha) * gooClipCoverage();
+        outColor = float4(0.0, 0.0, 0.0, alpha) * gooClipCoverage();
     }
     else
     {
@@ -1235,3 +1243,29 @@ void main()
     }
 }
 #endif
+
+struct PathBandFragmentInput
+{
+    [[vk::location(0)]] float2 pathPosition;
+#ifndef GOO_CLIP_MASK
+    [[vk::location(2)]] nointerpolation uint clipDrawOrdinal;
+#endif
+    float4 position : SV_Position;
+};
+struct PathBandFragmentOutput
+{
+    [[vk::location(0)]] float4 color : SV_Target0;
+};
+[shader("fragment")]
+PathBandFragmentOutput main(PathBandFragmentInput input)
+{
+    pathPosition = input.pathPosition;
+    gooFragmentPosition = input.position;
+#ifndef GOO_CLIP_MASK
+    gooClipDrawOrdinal = input.clipDrawOrdinal;
+#endif
+    shade();
+    PathBandFragmentOutput output;
+    output.color = outColor;
+    return output;
+}

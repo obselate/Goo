@@ -1,23 +1,23 @@
-#include "primitive_record.glsl"
+#include "primitive_record.slang"
+static float2 uv;
+static uint gooClipDrawOrdinal;
+static uint gooPrimitiveRecordOrdinal;
+static float4 gooFragmentPosition;
+static float4 outColor;
+#include "clip_chain.slang"
 
-layout(location = 0) in vec2 uv;
-layout(location = 3) flat in uint gooPrimitiveRecordOrdinal;
-layout(location = 0) out vec4 outColor;
+#define pc gooPrimitiveBuffer[gooPrimitiveRecordOrdinal]
 
-#include "clip_chain.glsl"
-
-#define pc gooPrimitiveBuffer.records[gooPrimitiveRecordOrdinal]
-
-vec4 unpackColor(uint packedRgb, uint packedAlpha, uint alphaIndex)
+float4 unpackColor(uint packedRgb, uint packedAlpha, uint alphaIndex)
 {
-    return vec4(
+    return float4(
         float(packedRgb & 0x7ffu) / 2047.0,
         float((packedRgb >> 11u) & 0x7ffu) / 2047.0,
         float((packedRgb >> 22u) & 0x3ffu) / 1023.0,
         float((packedAlpha >> (alphaIndex * 10u)) & 0x3ffu) / 1023.0);
 }
 
-vec4 stopColor(uint index)
+float4 stopColor(uint index)
 {
     if (index == 0u)
     {
@@ -51,7 +51,7 @@ float stopPosition(uint index)
     return pc.stopPositions.w;
 }
 
-vec4 interpolateStops(float value)
+float4 interpolateStops(float value)
 {
     uint count = clamp(pc.packedColorsExtra.z, 2u, 4u);
     if (value < stopPosition(0u))
@@ -73,33 +73,35 @@ vec4 interpolateStops(float value)
         if (value < right)
         {
             float amount = clamp((value - left) / (right - left), 0.0, 1.0);
-            return mix(stopColor(index - 1u), stopColor(index), amount);
+            return lerp(stopColor(index - 1u), stopColor(index), amount);
         }
     }
     return stopColor(count - 1u);
 }
 
-float roundedDistance(vec2 point, vec2 size, vec4 cornerRadii)
+float roundedDistance(float2 point, float2 size, float4 cornerRadii)
 {
-    vec2 centered = point - size * 0.5;
+    float2 centered = point - size * 0.5;
     bool left = centered.x < 0.0;
     bool top = centered.y < 0.0;
     float radius = top ? (left ? cornerRadii.x : cornerRadii.y) : (left ? cornerRadii.w : cornerRadii.z);
     radius = clamp(radius, 0.0, min(size.x, size.y) * 0.5);
-    vec2 q = abs(centered) - size * 0.5 + vec2(radius);
+    float2 q = abs(centered) - size * 0.5 + float2(radius);
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 }
 
 float roundedCoverage()
 {
-    vec2 point = uv * pc.rect.zw;
+    float2 point = uv * pc.rect.zw;
     float distance = roundedDistance(point, pc.rect.zw, pc.radii);
     return 1.0 - smoothstep(0.0, max(fwidth(distance), 0.0001), distance);
 }
 
-void main()
+void shade()
 {
-    vec2 direction = pc.params.zw - pc.params.xy;
+    float2 direction = pc.params.zw - pc.params.xy;
     float amount = dot(uv - pc.params.xy, direction) / max(dot(direction, direction), 0.0001);
     outColor = interpolateStops(clamp(amount, 0.0, 1.0)) * roundedCoverage() * gooClipCoverage();
 }
+
+#include "analytic_fragment_entry.slang"

@@ -1,33 +1,31 @@
-#include "primitive_record.glsl"
+#include "primitive_record.slang"
+[[vk::binding(0, 0)]] Sampler2D sourceTexture;
+[[vk::binding(0, 1)]] Sampler2D backdropTexture;
+static float2 uv;
+static uint gooClipDrawOrdinal;
+static uint gooPrimitiveRecordOrdinal;
+static float4 gooFragmentPosition;
+static float4 outColor;
+#include "clip_chain_blend.slang"
 
-layout(set = 0, binding = 0) uniform sampler2D sourceTexture;
-layout(set = 1, binding = 0) uniform sampler2D backdropTexture;
+#define pc gooPrimitiveBuffer[gooPrimitiveRecordOrdinal]
 
-layout(location = 0) in vec2 uv;
-layout(location = 2) flat in uint gooClipDrawOrdinal;
-layout(location = 3) flat in uint gooPrimitiveRecordOrdinal;
-layout(location = 0) out vec4 outColor;
-
-#include "clip_chain_blend.glsl"
-
-#define pc gooPrimitiveBuffer.records[gooPrimitiveRecordOrdinal]
-
-float channelMin(vec3 value)
+float channelMin(float3 value)
 {
     return min(value.r, min(value.g, value.b));
 }
 
-float channelMax(vec3 value)
+float channelMax(float3 value)
 {
     return max(value.r, max(value.g, value.b));
 }
 
-float luminance(vec3 value)
+float luminance(float3 value)
 {
-    return dot(value, vec3(0.3, 0.59, 0.11));
+    return dot(value, float3(0.3, 0.59, 0.11));
 }
 
-vec3 clipColor(vec3 value)
+float3 clipColor(float3 value)
 {
     float low = channelMin(value);
     float high = channelMax(value);
@@ -44,21 +42,21 @@ vec3 clipColor(vec3 value)
     return value;
 }
 
-vec3 setLuminance(vec3 value, float lum)
+float3 setLuminance(float3 value, float lum)
 {
     return clipColor(value + (lum - luminance(value)));
 }
 
-vec3 setSaturation(vec3 value, float saturation)
+float3 setSaturation(float3 value, float saturation)
 {
     float low = channelMin(value);
     float high = channelMax(value);
     float delta = high - low;
     if (delta <= 0.0)
     {
-        return vec3(0.0);
+        return float3(0.0);
     }
-    vec3 result = vec3(0.0);
+    float3 result = float3(0.0);
     if (value.r == high)
     {
         result.r = saturation;
@@ -80,7 +78,7 @@ vec3 setSaturation(vec3 value, float saturation)
     return result;
 }
 
-vec3 blendColor(vec3 backdrop, vec3 source, uint mode)
+float3 blendColor(float3 backdrop, float3 source, uint mode)
 {
     if (mode == 1u)
     {
@@ -92,9 +90,9 @@ vec3 blendColor(vec3 backdrop, vec3 source, uint mode)
     }
     if (mode == 3u)
     {
-        return mix(2.0 * backdrop * source,
+        return lerp(2.0 * backdrop * source,
             1.0 - 2.0 * (1.0 - backdrop) * (1.0 - source),
-            step(vec3(0.5), backdrop));
+            step(float3(0.5), backdrop));
     }
     if (mode == 4u)
     {
@@ -106,29 +104,29 @@ vec3 blendColor(vec3 backdrop, vec3 source, uint mode)
     }
     if (mode == 6u)
     {
-        return mix(min(vec3(1.0), backdrop / max(vec3(1e-6), 1.0 - source)),
-            vec3(1.0), step(vec3(1.0), source));
+        return lerp(min(float3(1.0), backdrop / max(float3(1e-6), 1.0 - source)),
+            float3(1.0), step(float3(1.0), source));
     }
     if (mode == 7u)
     {
-        return mix(vec3(0.0), 1.0 - min(vec3(1.0), (1.0 - backdrop) / max(vec3(1e-6), source)),
-            step(vec3(1e-6), source));
+        return lerp(float3(0.0), 1.0 - min(float3(1.0), (1.0 - backdrop) / max(float3(1e-6), source)),
+            step(float3(1e-6), source));
     }
     if (mode == 8u)
     {
-        return mix(2.0 * backdrop * source,
+        return lerp(2.0 * backdrop * source,
             1.0 - 2.0 * (1.0 - backdrop) * (1.0 - source),
-            step(vec3(0.5), source));
+            step(float3(0.5), source));
     }
     if (mode == 9u)
     {
-        vec3 low = backdrop - (1.0 - 2.0 * source) * backdrop * (1.0 - backdrop);
-        vec3 d = mix(vec3(0.0),
-            mix(((16.0 * backdrop - 12.0) * backdrop + 4.0) * backdrop, sqrt(backdrop),
-                step(vec3(0.25), backdrop)),
-            step(vec3(0.5), source));
-        return mix(low, (2.0 * source - 1.0) * (d - backdrop) + backdrop,
-            step(vec3(0.5), source));
+        float3 low = backdrop - (1.0 - 2.0 * source) * backdrop * (1.0 - backdrop);
+        float3 d = lerp(float3(0.0),
+            lerp(((16.0 * backdrop - 12.0) * backdrop + 4.0) * backdrop, sqrt(backdrop),
+                step(float3(0.25), backdrop)),
+            step(float3(0.5), source));
+        return lerp(low, (2.0 * source - 1.0) * (d - backdrop) + backdrop,
+            step(float3(0.5), source));
     }
     if (mode == 10u)
     {
@@ -155,19 +153,21 @@ vec3 blendColor(vec3 backdrop, vec3 source, uint mode)
     return setLuminance(backdrop, luminance(source));
 }
 
-void main()
+void shade()
 {
-    vec2 sourceUv = pc.params.xy + uv * pc.params.zw;
-    vec4 source = texture(sourceTexture, sourceUv);
-    vec4 backdrop = texture(backdropTexture, sourceUv);
+    float2 sourceUv = pc.params.xy + uv * pc.params.zw;
+    float4 source = sourceTexture.Sample(sourceUv);
+    float4 backdrop = backdropTexture.Sample(sourceUv);
     float sourceAlpha = clamp(source.a * clamp(pc.radii.x, 0.0, 1.0), 0.0, 1.0);
     float backdropAlpha = clamp(backdrop.a, 0.0, 1.0);
-    vec3 sourceColor = sourceAlpha > 1e-6 ? source.rgb / max(source.a, 1e-6) : vec3(0.0);
-    vec3 backdropColor = backdropAlpha > 1e-6 ? backdrop.rgb / backdropAlpha : vec3(0.0);
-    vec3 blended = blendColor(clamp(backdropColor, 0.0, 1.0),
+    float3 sourceColor = sourceAlpha > 1e-6 ? source.rgb / max(source.a, 1e-6) : float3(0.0);
+    float3 backdropColor = backdropAlpha > 1e-6 ? backdrop.rgb / backdropAlpha : float3(0.0);
+    float3 blended = blendColor(clamp(backdropColor, 0.0, 1.0),
         clamp(sourceColor, 0.0, 1.0), pc.packedColorsExtra.w);
-    vec3 contribution = (1.0 - backdropAlpha) * source.rgb * clamp(pc.radii.x, 0.0, 1.0)
+    float3 contribution = (1.0 - backdropAlpha) * source.rgb * clamp(pc.radii.x, 0.0, 1.0)
         + sourceAlpha * backdropAlpha * blended;
     float coverage = gooClipCoverage();
-    outColor = vec4(contribution * coverage, sourceAlpha * coverage);
+    outColor = float4(contribution * coverage, sourceAlpha * coverage);
 }
+
+#include "analytic_fragment_entry.slang"

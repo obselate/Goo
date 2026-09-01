@@ -68,10 +68,10 @@ are recorded in the matching `HarfBuzz-cff-style-*.provenance.json` files.
 The hb-gpu GLSL inputs are the pinned HarfBuzz sources
 `src/hb-gpu-vertex.glsl`, `src/hb-gpu-fragment.glsl`,
 `src/hb-gpu-draw-fragment.glsl`, and `src/hb-gpu-paint-fragment.glsl`.
-Goo's Vulkan wrapper GLSL and checked-in SPIR-V under
-`tests/Goo.VulkanProof/Shaders/` and
-`tests/Goo.VulkanProof/Generated/Shaders/` are derivative inclusions of those
-sources and retain the same attribution and license terms.
+Goo's Vulkan GLSL compatibility adapters under
+`tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/` and checked-in SPIR-V
+under `tests/Goo.VulkanProof/Generated/Shaders/` are derivative inclusions of
+those sources and retain the same attribution and license terms.
 
 ## Yoga.Net 3.2.3, based on Meta Yoga v3.2.1
 

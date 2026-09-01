@@ -1,23 +1,23 @@
-#include "primitive_record.glsl"
+#include "primitive_record.slang"
+static float2 uv;
+static uint gooClipDrawOrdinal;
+static uint gooPrimitiveRecordOrdinal;
+static float4 gooFragmentPosition;
+static float4 outColor;
+#include "clip_chain.slang"
 
-layout(location = 0) in vec2 uv;
-layout(location = 3) flat in uint gooPrimitiveRecordOrdinal;
-layout(location = 0) out vec4 outColor;
+#define pc gooPrimitiveBuffer[gooPrimitiveRecordOrdinal]
 
-#include "clip_chain.glsl"
-
-#define pc gooPrimitiveBuffer.records[gooPrimitiveRecordOrdinal]
-
-vec4 unpackColor(uint packedRgb, uint packedAlpha, uint alphaIndex)
+float4 unpackColor(uint packedRgb, uint packedAlpha, uint alphaIndex)
 {
     float red = float(packedRgb & 2047u) / 2047.0;
     float green = float((packedRgb >> 11u) & 2047u) / 2047.0;
     float blue = float((packedRgb >> 22u) & 1023u) / 1023.0;
     float alpha = float((packedAlpha >> (alphaIndex * 10u)) & 1023u) / 1023.0;
-    return vec4(red, green, blue, alpha);
+    return float4(red, green, blue, alpha);
 }
 
-vec4 edgeColor(uint edge)
+float4 edgeColor(uint edge)
 {
     if (edge == 0u)
     {
@@ -34,7 +34,7 @@ vec4 edgeColor(uint edge)
     return unpackColor(pc.packedColorsExtra.x, pc.packedColorsExtra.y, 0u);
 }
 
-float edgeWidth(uint edge, vec2 size)
+float edgeWidth(uint edge, float2 size)
 {
     float top = min(max(pc.radii.x, 0.0), size.y);
     float right = min(max(pc.radii.y, 0.0), size.x);
@@ -55,7 +55,7 @@ float edgeWidth(uint edge, vec2 size)
     return left;
 }
 
-uint selectedEdge(vec2 point, vec2 size)
+uint selectedEdge(float2 point, float2 size)
 {
     float top = min(max(pc.radii.x, 0.0), size.y);
     float right = min(max(pc.radii.y, 0.0), size.x);
@@ -80,7 +80,7 @@ uint selectedEdge(vec2 point, vec2 size)
     return 4u;
 }
 
-float edgeAlong(uint edge, vec2 point, vec2 size)
+float edgeAlong(uint edge, float2 point, float2 size)
 {
     if (edge == 0u)
     {
@@ -97,7 +97,7 @@ float edgeAlong(uint edge, vec2 point, vec2 size)
     return size.y - point.y;
 }
 
-float edgeAcross(uint edge, vec2 point, vec2 size)
+float edgeAcross(uint edge, float2 point, float2 size)
 {
     if (edge == 0u)
     {
@@ -131,12 +131,12 @@ float edgePhase(uint edge)
     return 0.0;
 }
 
-void renderRectangular(vec2 point, vec2 size)
+void renderRectangular(float2 point, float2 size)
 {
     uint edge = selectedEdge(point, size);
     if (edge == 4u)
     {
-        outColor = vec4(0.0);
+        outColor = float4(0.0);
         return;
     }
 
@@ -156,7 +156,7 @@ void renderRectangular(vec2 point, vec2 size)
     float patternCoverage = 1.0;
     if (pc.packedColorsExtra.w == 1u)
     {
-        float patternCoordinate = mod(along + phase, period);
+        float patternCoordinate = fmod(along + phase, period);
         float patternAa = max(fwidth(along), 0.0001);
         float dash = 1.0 - smoothstep(onLength - patternAa, onLength + patternAa, patternCoordinate);
         float wrap = smoothstep(period - patternAa, period, patternCoordinate);
@@ -164,22 +164,22 @@ void renderRectangular(vec2 point, vec2 size)
     }
     else if (pc.packedColorsExtra.w == 2u)
     {
-        float patternCoordinate = mod(along + phase, period);
+        float patternCoordinate = fmod(along + phase, period);
         float dotDiameter = width;
         float dotRadius = max(dotDiameter * 0.5, 0.0001);
         float axial = abs(patternCoordinate - dotRadius);
         axial = min(axial, period - axial);
         float transverse = abs(across - width * 0.5);
-        float dotDistance = length(vec2(axial, transverse));
+        float dotDistance = length(float2(axial, transverse));
         float dotAa = max(max(fwidth(axial), fwidth(transverse)), 0.0001);
         patternCoverage = 1.0 - smoothstep(dotRadius - dotAa, dotRadius + dotAa, dotDistance);
     }
     outColor = edgeColor(edge) * edgeCoverage * patternCoverage;
 }
 
-vec4 normalizeRadii(vec2 size, vec4 source)
+float4 normalizeRadii(float2 size, float4 source)
 {
-    vec4 result = max(source, vec4(0.0));
+    float4 result = max(source, float4(0.0));
     float scale = 1.0;
     float sum = result.x + result.y;
     if (sum > size.x && sum > 0.0)
@@ -204,13 +204,13 @@ vec4 normalizeRadii(vec2 size, vec4 source)
     return result * scale;
 }
 
-float roundedRectDistance(vec2 point, vec2 size, vec4 cornerRadii)
+float roundedRectDistance(float2 point, float2 size, float4 cornerRadii)
 {
     if (size.x <= 0.0 || size.y <= 0.0)
     {
         return 1000000.0;
     }
-    vec2 centered = point - size * 0.5;
+    float2 centered = point - size * 0.5;
     float radius;
     if (centered.x < 0.0)
     {
@@ -220,11 +220,11 @@ float roundedRectDistance(vec2 point, vec2 size, vec4 cornerRadii)
     {
         radius = centered.y < 0.0 ? cornerRadii.y : cornerRadii.z;
     }
-    vec2 q = abs(centered) - size * 0.5 + vec2(radius);
-    return length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - radius;
+    float2 q = abs(centered) - size * 0.5 + float2(radius);
+    return length(max(q, float2(0.0))) + min(max(q.x, q.y), 0.0) - radius;
 }
 
-uint roundedEdge(vec2 point, vec2 size)
+uint roundedEdge(float2 point, float2 size)
 {
     float top = min(max(pc.radii.x, 0.0), size.y);
     float right = min(max(pc.radii.y, 0.0), size.x);
@@ -258,10 +258,10 @@ uint roundedEdge(vec2 point, vec2 size)
     return edge;
 }
 
-void main()
+void shade()
 {
-    vec2 size = pc.rect.zw;
-    vec2 point = uv * size;
+    float2 size = pc.rect.zw;
+    float2 point = uv * size;
     if (max(max(pc.stopPositions.x, pc.stopPositions.y), max(pc.stopPositions.z, pc.stopPositions.w)) <= 0.0)
     {
         renderRectangular(point, size);
@@ -269,31 +269,31 @@ void main()
         return;
     }
 
-    vec4 outerRadii = normalizeRadii(size, pc.stopPositions);
+    float4 outerRadii = normalizeRadii(size, pc.stopPositions);
     float top = min(max(pc.radii.x, 0.0), size.y);
     float right = min(max(pc.radii.y, 0.0), size.x);
     float bottom = min(max(pc.radii.z, 0.0), max(size.y - top, 0.0));
     float left = min(max(pc.radii.w, 0.0), max(size.x - right, 0.0));
     float outerDistance = roundedRectDistance(point, size, outerRadii);
-    float outerAa = max(fwidth(outerDistance), 0.0001);
-    float outerCoverage = 1.0 - smoothstep(0.0, outerAa, outerDistance);
-    vec2 innerSize = max(size - vec2(left + right, top + bottom), vec2(0.0));
+    float outerAa = max(length(float2(ddx(outerDistance), ddy(outerDistance))), 0.0001);
+    float outerCoverage = 1.0 - smoothstep(-0.5 * outerAa, 0.5 * outerAa, outerDistance);
+    float2 innerSize = max(size - float2(left + right, top + bottom), float2(0.0));
     float innerCoverage = 1.0;
     float borderWidth = max(edgeWidth(roundedEdge(point, size), size), 0.0001);
     if (innerSize.x > 0.0 && innerSize.y > 0.0)
     {
-        vec4 innerRadii = max(outerRadii - vec4(max(top, left), max(top, right),
-            max(bottom, right), max(bottom, left)), vec4(0.0));
+        float4 innerRadii = max(outerRadii - float4(max(top, left), max(top, right),
+            max(bottom, right), max(bottom, left)), float4(0.0));
         innerRadii = normalizeRadii(innerSize, innerRadii);
-        float innerDistance = roundedRectDistance(point - vec2(left, top), innerSize, innerRadii);
-        float innerAa = max(fwidth(innerDistance), 0.0001);
-        innerCoverage = smoothstep(0.0, innerAa, innerDistance);
+        float innerDistance = roundedRectDistance(point - float2(left, top), innerSize, innerRadii);
+        float innerAa = max(length(float2(ddx(innerDistance), ddy(innerDistance))), 0.0001);
+        innerCoverage = smoothstep(-0.5 * innerAa, 0.5 * innerAa, innerDistance);
     }
     float coverage = outerCoverage * innerCoverage;
     uint edge = roundedEdge(point, size);
     if (edge == 4u)
     {
-        outColor = vec4(0.0);
+        outColor = float4(0.0);
         outColor *= gooClipCoverage();
         return;
     }
@@ -303,7 +303,7 @@ void main()
         float patternWidth = max(borderWidth, 0.0001);
         float period = patternWidth * 6.0;
         float along = edgeAlong(edge, point, size);
-        float patternCoordinate = mod(along + edgePhase(edge), period);
+        float patternCoordinate = fmod(along + edgePhase(edge), period);
         float patternAa = max(fwidth(along), 0.0001);
         float dash = 1.0 - smoothstep(patternWidth * 3.0 - patternAa,
             patternWidth * 3.0 + patternAa, patternCoordinate);
@@ -315,14 +315,38 @@ void main()
         float patternWidth = max(borderWidth, 0.0001);
         float period = patternWidth * 3.0;
         float along = edgeAlong(edge, point, size);
-        float patternCoordinate = mod(along + edgePhase(edge), period);
+        float patternCoordinate = fmod(along + edgePhase(edge), period);
         float dotRadius = patternWidth * 0.5;
         float axial = abs(patternCoordinate - dotRadius);
         axial = min(axial, period - axial);
         float transverse = abs(outerDistance + patternWidth * 0.5);
-        float dotDistance = length(vec2(axial, transverse));
+        float dotDistance = length(float2(axial, transverse));
         float dotAa = max(max(fwidth(axial), fwidth(transverse)), 0.0001);
         patternCoverage = 1.0 - smoothstep(dotRadius - dotAa, dotRadius + dotAa, dotDistance);
     }
     outColor = edgeColor(edge) * coverage * patternCoverage * gooClipCoverage();
+}
+
+struct AnalyticFragmentInput
+{
+    [[vk::location(0)]] float2 uv;
+    [[vk::location(2)]] nointerpolation uint clipDrawOrdinal;
+    [[vk::location(3)]] nointerpolation uint primitiveRecordOrdinal;
+    float4 position : SV_Position;
+};
+struct AnalyticFragmentOutput
+{
+    [[vk::location(0)]] float4 color : SV_Target0;
+};
+[shader("fragment")]
+AnalyticFragmentOutput main(AnalyticFragmentInput input)
+{
+    uv = input.uv;
+    gooClipDrawOrdinal = input.clipDrawOrdinal;
+    gooPrimitiveRecordOrdinal = input.primitiveRecordOrdinal;
+    gooFragmentPosition = input.position;
+    shade();
+    AnalyticFragmentOutput output;
+    output.color = outColor;
+    return output;
 }
