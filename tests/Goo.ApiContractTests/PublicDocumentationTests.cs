@@ -210,6 +210,7 @@ public sealed class PublicDocumentationTests
         "M:Goo.Window.RequestClose",
         "M:Goo.Window.Run",
         "M:Goo.Window.SetClipboardText(System.String)",
+        "M:Goo.Window.TryPost(System.Action)",
     };
 
     private static readonly string[] ExpectedEqualityDocumentationIds =
@@ -400,6 +401,7 @@ public sealed class PublicDocumentationTests
             ["M:Goo.Window.Open"] = new([], [], true),
             ["M:Goo.Window.Pump(System.Double)"] = new(["dt"], [], false),
             ["M:Goo.Window.RequestClose"] = new([], [], false),
+            ["M:Goo.Window.TryPost(System.Action)"] = new(["action"], [], true),
             ["T:Goo.Anim`1"] = new([], ["T"], false),
             ["T:Goo.Cell`1"] = new([], ["TInput"], false),
             ["T:Goo.MotionConverter`1"] = new([], ["T"], false),

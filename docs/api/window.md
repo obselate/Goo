@@ -16,6 +16,8 @@ Equal snapshots do not notify. A listener added after another listener has alrea
 
 Call `Window.Post` from any thread. Accepted actions use FIFO order. Post accepts work before the first `Open`. A pending `RequestClose` still accepts work because `OnClosing` can veto the request.
 
+Use `TryPost` when teardown can race the producer. It returns `false` after posting closes instead of throwing. `true` means the action was atomically accepted into the queue, not that it is guaranteed to execute, because later teardown may still discard queued work.
+
 Each `Pump` drains one fixed accepted batch after close decisions and native metrics, and before input. Posts made while that batch runs wait for the next `Pump`. When native closing or teardown starts, Goo discards queued work. Teardown is terminal and later `Post` calls throw `InvalidOperationException`.
 
 Pump removes an action before it calls the action. If it throws, Pump throws the same exception and later queued actions remain for the next direct `Pump`. `Run` propagates the exception, then closes the window and discards queued work. Accessibility adapters can use `Post` before calling Window accessibility APIs.
@@ -107,6 +109,14 @@ Opens the window and processes frames until all open Goo windows close.
 ### `SetClipboardText(string)`
 
 Sets the native clipboard text on the window UI thread. Native set failures throw.
+
+### `TryPost(System.Action)`
+
+Attempts to queue an action for the UI thread. A successful enqueue can still be discarded if teardown begins before the action runs.
+
+- `action`: action to run during a later Pump
+
+Returns: True when the action was accepted into the queue.
 
 ### `AccessibilityAdapter`
 

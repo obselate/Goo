@@ -56,4 +56,10 @@ public sealed class CellSchedulingTests
     {
         Assert.True(new CellFixtures().RebuildRequestedDuringTransactionRunsOnNextUpdate());
     }
+
+    [Fact]
+    public void TryPostReportsQueueAcceptance()
+    {
+        Assert.True(new CellFixtures().TryPostReportsQueueAcceptance());
+    }
 }

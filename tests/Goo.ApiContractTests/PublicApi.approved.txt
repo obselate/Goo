@@ -835,6 +835,7 @@ method|Goo.Window|Pump|instance|public|generic:|(dt:System.Double)->System.Void
 method|Goo.Window|RequestClose|instance|public|generic:|()->System.Void
 method|Goo.Window|Run|instance|public|generic:|()->System.Void
 method|Goo.Window|SetClipboardText|instance|public|generic:|(value:System.String)->System.Void
+method|Goo.Window|TryPost|instance|public|generic:|(action:System.Action)->System.Boolean
 property|Goo.AccessibilityActionRequest|Action|Goo.AccessibilityAction|instance|get:public|index:()
 property|Goo.AccessibilityActionRequest|ScrollX|System.Double|instance|get:public|index:()
 property|Goo.AccessibilityActionRequest|ScrollY|System.Double|instance|get:public|index:()
