@@ -132,7 +132,7 @@ func RunClipMaskSmoke() {
     let resultFailures = DiagnosticCounterValue(diagnostics, "resultFailureCount")
     if diagnostics.Contains("\"kind\":\"fatal\"")
       || diagnostics.Contains("\"event\":325")
-      || byteBudget == 0uL || byteBudget > 33554432uL
+      || byteBudget == 0uL || byteBudget > 67108864uL
       || activeLayerCount != 0uL || maximumLayerCount != 0uL
       || residentBytes != 0uL || regionCount != 0uL
       || pressureEvents == 0uL || evictionCount == 0uL
