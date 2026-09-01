@@ -94,12 +94,9 @@ def release_text(version: str) -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     required = {
         f"dotnet new install Goo.Templates@{version}",
-        f"dotnet tool install --global Goo.DevTools --version {version}",
-        f"dotnet tool install --global Goo.DevTools.App --version {version}",
-        f"dotnet tool install --global Goo.SvgCompiler --version {version}",
-        "Windows has been tested on Windows 11",
-        "minimum supported Windows version has not yet been established",
-        "## Troubleshooting",
+        "Windows x64 is tested on Windows 11",
+        "minimum supported Windows version is not yet established",
+        "## Further reading",
     }
     missing = sorted(item for item in required if item not in readme)
     if missing:
