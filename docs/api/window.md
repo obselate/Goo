@@ -192,7 +192,7 @@ Gets or sets next-open per-pixel alpha. An open window is unchanged. Transparenc
 
 ### `VSync`
 
-Gets or sets per-window GPU presentation synchronization. True selects FIFO. False prefers Immediate, then Mailbox, then FIFO. Window.Run applies internal display-rate pacing for either value.
+Gets or sets per-window GPU presentation synchronization. True requests FIFO. Software Vulkan devices prefer Immediate, then Mailbox, then FIFO. False prefers Immediate, then Mailbox, then FIFO on every device. Window.Run applies internal display-rate pacing for either value.
 
 ### `Width`
 
