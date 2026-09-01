@@ -1,6 +1,10 @@
 package GooWindowsDemo
 
 import System
+import System.Diagnostics
+import System.Globalization
+import System.IO
+import System.Threading
 import Goo
 
 class DemoCell : Cell {
@@ -181,6 +185,8 @@ func DemoCard(label string, value string, detail string, accent Color) Container
 }
 
 func Main() {
+  let processStart = Process.GetCurrentProcess().StartTime.ToUniversalTime()
+  let mainEntered = DateTime.UtcNow
   Window.ConfigureApplication("Goo Windows Demo", "0.3.0", "io.github.obselate.goo.windows-demo")
   let window = Window{
     Title: "Goo Windows Demo",
@@ -191,5 +197,52 @@ func Main() {
     Background: Color.Rgb(8, 11, 18),
     Root: DemoCell{},
   }
+  let probePath = ArgumentValue("--startup-probe")
+  if probePath != "" {
+    RunStartupProbe(window, probePath, processStart, mainEntered)
+    return
+  }
   window.Run()
 }
+
+func ArgumentValue(name string) string {
+  let arguments = Environment.GetCommandLineArgs()
+  var index int32
+  while index < arguments.Length {
+    if arguments[index] == name && index + 1 < arguments.Length {
+      return arguments[index + 1]
+    }
+    index++
+  }
+  return ""
+}
+
+func RunStartupProbe(window Window, path string, processStart DateTime, mainEntered DateTime) {
+  let openStart = Stopwatch.GetTimestamp()
+  window.Open()
+  let opened = Stopwatch.GetTimestamp()
+  window.Pump(0.0)
+  let firstFrame = Stopwatch.GetTimestamp()
+  let firstFrameTime = DateTime.UtcNow
+  let result = "{\"pre_main_ms\":" + FormatMilliseconds((mainEntered - processStart).TotalMilliseconds)
+  +",\"open_ms\":" + FormatTicks(openStart, opened)
+  +",\"first_frame_ms\":" + FormatTicks(opened, firstFrame)
+  +",\"total_ms\":" + FormatMilliseconds((firstFrameTime - processStart).TotalMilliseconds)
+  +"}"
+  File.WriteAllText(path, result)
+  window.RequestClose()
+  var pumps int32
+  while window.IsOpen && pumps < 4096 {
+    window.Pump(0.0)
+    if window.IsOpen {
+      Thread.Sleep(1)
+    }
+    pumps++
+  }
+}
+
+func FormatTicks(start int64, finish int64) string ->
+FormatMilliseconds(float64(finish - start) * 1000.0 / float64(Stopwatch.Frequency))
+
+func FormatMilliseconds(value float64) string ->
+value.ToString("F3", CultureInfo.InvariantCulture)
