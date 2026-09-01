@@ -69,6 +69,36 @@ jobs:
             libxkbcommon-dev mesa-vulkan-drivers vulkan-tools \
             vulkan-validationlayers wayland-protocols weston
 
+      - name: Build pinned SPIR-V validator
+        run: |
+          source="$RUNNER_TEMP/SPIRV-Tools-1.4.357.0"
+          headers="$source/external/spirv-headers"
+          build="$RUNNER_TEMP/SPIRV-Tools-1.4.357.0-build"
+          sdk="$RUNNER_TEMP/vulkan-sdk-1.4.357.0"
+          git clone --depth 1 --branch vulkan-sdk-1.4.357.0 \
+            https://github.com/KhronosGroup/SPIRV-Tools.git "$source"
+          test "$(git -C "$source" rev-parse HEAD)" = \
+            "9a49b0883b9b635689a85b5647dbfcb223268151"
+          git init "$headers"
+          git -C "$headers" remote add origin \
+            https://github.com/KhronosGroup/SPIRV-Headers.git
+          git -C "$headers" fetch --depth 1 origin \
+            29981f65241605e08b0ede4cfeb999fe3b723c6a
+          git -C "$headers" checkout --detach FETCH_HEAD
+          test "$(git -C "$headers" rev-parse HEAD)" = \
+            "29981f65241605e08b0ede4cfeb999fe3b723c6a"
+          cmake -S "$source" -B "$build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DSPIRV_SKIP_TESTS=ON \
+            -DSPIRV_WERROR=OFF
+          cmake --build "$build" --target spirv-val --parallel 2
+          install -Dm755 "$build/tools/spirv-val" "$sdk/bin/spirv-val"
+          "$sdk/bin/spirv-val" --version 2>&1 \
+            | grep -F "SPIRV-Tools v2026.3 vulkan-sdk-1.4.357.0"
+          echo "VULKAN_SDK=$sdk" >> "$GITHUB_ENV"
+
       - name: Build glibc 2.27 native payloads
         run: |
           mkdir -p artifacts/native/text
