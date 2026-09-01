@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <SelfContained>false</SelfContained>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>goo</ToolCommandName>
+    <PackageId>Goo.DevTools</PackageId>
+    <Version>0.3.0</Version>
+    <Authors>Xaz</Authors>
+    <Description>Local developer tooling for Goo applications.</Description>
+    <PackageTags>goo;gsharp;devtools;hot-reload;inspector</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/obselate/goo</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/obselate/goo</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <IsPackable>true</IsPackable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Update="README.md" Pack="true" PackagePath="/" />
+    <None Include="$(MSBuildProjectDirectory)/../../LICENSE" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>

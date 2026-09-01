@@ -11,7 +11,7 @@ internal static class Program
     private const string GeneratedDirectory = "tests/Goo.VulkanProof/Generated/Shaders";
     private const string ProductionDirectory = "Goo/Shaders/Vulkan";
     private const string InputManifestName = "shader-manifest.json";
-    private const string CompilerVersionMarker = "1:";
+    private const string GlslcVersionMarker = "1:";
     private const string HarfBuzzTag = "14.3.1";
     private const string HarfBuzzCommit = "ab5ecbb83985034a76214ac0b2b833dcd590d774";
     private const string HarfBuzzAssemblyKind = "harfbuzz-hb-gpu-glsl";
@@ -39,6 +39,9 @@ internal static class Program
         [JsonPropertyName("compileFlags")]
         public List<string> CompileFlags { get; set; } = new();
 
+        [JsonPropertyName("compatibilityCompileFlags")]
+        public List<string> CompatibilityCompileFlags { get; set; } = new();
+
         [JsonPropertyName("primitiveRecord")]
         public PrimitiveRecord PrimitiveRecord { get; set; } = new();
 
@@ -62,6 +65,9 @@ internal static class Program
 
         [JsonPropertyName("compiler")]
         public Tool Compiler { get; set; } = new();
+
+        [JsonPropertyName("compatibilityCompiler")]
+        public Tool CompatibilityCompiler { get; set; } = new();
 
         [JsonPropertyName("validator")]
         public Tool Validator { get; set; } = new();
@@ -138,8 +144,8 @@ internal static class Program
         [JsonPropertyName("language")]
         public string Language { get; set; } = string.Empty;
 
-        [JsonPropertyName("glslVersion")]
-        public string GlslVersion { get; set; } = string.Empty;
+        [JsonPropertyName("slangVersion")]
+        public string SlangVersion { get; set; } = string.Empty;
 
         [JsonPropertyName("vulkan")]
         public string Vulkan { get; set; } = string.Empty;
@@ -505,15 +511,17 @@ internal static class Program
             throw new InvalidOperationException($"Manifest is not canonical: {inputManifestPath}");
         }
 
-        string compilerPath = FindTool(manifest.Toolchain.Compiler.Executable);
-        string validatorPath = FindTool(manifest.Toolchain.Validator.Executable);
+        string compilerPath = FindTool(manifest.Toolchain.Compiler.Executable, "SLANG_SDK");
+        string compatibilityCompilerPath = FindTool(manifest.Toolchain.CompatibilityCompiler.Executable, "VULKAN_SDK");
+        string validatorPath = FindTool(manifest.Toolchain.Validator.Executable, "VULKAN_SDK");
         RequireCompilerVersion(compilerPath, manifest);
+        RequireCompatibilityCompilerVersion(compatibilityCompilerPath, manifest);
         RequireValidatorVersion(validatorPath, manifest);
         string temporaryRoot = Path.Combine(Path.GetTempPath(), "goo-shader-gen-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(temporaryRoot);
         try
         {
-            List<BuiltShader> builtShaders = BuildShaders(manifest, repositoryRoot, shaderRoot, temporaryRoot, compilerPath, validatorPath);
+            List<BuiltShader> builtShaders = BuildShaders(manifest, repositoryRoot, shaderRoot, temporaryRoot, compilerPath, compatibilityCompilerPath, validatorPath);
             List<HostPackingArtifact> hostPackings = BuildHostPackings(manifest, builtShaders);
             string generatedManifest = BuildGeneratedManifest(manifest, builtShaders, hostPackings);
             byte[] generatedManifestBytes = Encoding.UTF8.GetBytes(generatedManifest);
@@ -568,29 +576,64 @@ internal static class Program
         return SerializeManifest(manifest);
     }
 
-    private static List<BuiltShader> BuildShaders(Manifest manifest, string repositoryRoot, string shaderRoot, string temporaryRoot, string compilerPath, string validatorPath)
+    private static List<BuiltShader> BuildShaders(
+        Manifest manifest,
+        string repositoryRoot,
+        string shaderRoot,
+        string temporaryRoot,
+        string compilerPath,
+        string compatibilityCompilerPath,
+        string validatorPath)
     {
         List<BuiltShader> builtShaders = new();
         foreach (Shader shader in manifest.Shaders)
         {
-            byte[] sourceBytes = shader.Assembly is null
-                ? ReadSourceFile(ResolveChildPath(shaderRoot, shader.Source, "source"))
-                : AssembleShaderSource(manifest, shader, repositoryRoot);
-            string temporarySource = Path.Combine(temporaryRoot, "sources", shader.Id + ".glsl");
+            bool isGlslAssembly = shader.Assembly is not null;
+            byte[] sourceBytes = isGlslAssembly
+                ? AssembleShaderSource(manifest, shader, repositoryRoot)
+                : ReadSourceFile(ResolveChildPath(shaderRoot, shader.Source, "source"));
+            string extension = isGlslAssembly ? ".glsl" : ".slang";
+            string temporarySource = Path.Combine(temporaryRoot, "sources", shader.Id + extension);
             Directory.CreateDirectory(Path.GetDirectoryName(temporarySource)!);
             File.WriteAllBytes(temporarySource, sourceBytes);
             string temporaryOutput = Path.Combine(temporaryRoot, shader.Output);
-            List<string> compilerArguments = new(manifest.CompileFlags)
+            List<string> compilerArguments;
+            string selectedCompilerPath;
+            if (isGlslAssembly)
             {
-                "-I",
-                shaderRoot,
-                $"-fshader-stage={shader.Stage}",
-                "-o",
-                temporaryOutput,
-                temporarySource
-            };
-            ToolResult compilerResult = RunTool(compilerPath, compilerArguments);
-            RequireSuccess(compilerPath, compilerResult);
+                selectedCompilerPath = compatibilityCompilerPath;
+                compilerArguments = new List<string>(manifest.CompatibilityCompileFlags)
+                {
+                    "-I",
+                    shaderRoot,
+                    $"-fshader-stage={shader.Stage}",
+                    "-o",
+                    temporaryOutput,
+                    temporarySource
+                };
+            }
+            else
+            {
+                selectedCompilerPath = compilerPath;
+                compilerArguments = new List<string>(manifest.CompileFlags)
+                {
+                    "-std",
+                    manifest.Target.SlangVersion,
+                    "-lang",
+                    "slang",
+                    temporarySource,
+                    "-I",
+                    shaderRoot,
+                    "-entry",
+                    shader.EntryPoint,
+                    "-stage",
+                    shader.Stage,
+                    "-o",
+                    temporaryOutput
+                };
+            }
+            ToolResult compilerResult = RunTool(selectedCompilerPath, compilerArguments);
+            RequireSuccess(selectedCompilerPath, compilerResult);
             if (!File.Exists(temporaryOutput))
             {
                 throw new InvalidOperationException($"Compiler produced no output: {shader.Id}");
@@ -924,15 +967,17 @@ internal static class Program
 
     private static void ValidateManifest(Manifest manifest)
     {
-        Require(manifest.Schema == 4, "schema", "4");
+        Require(manifest.Schema == 5, "schema", "5");
         Require(manifest.Toolchain.Sdk == "1.4.357.0", "toolchain.sdk", "1.4.357.0");
-        RequireTool(manifest.Toolchain.Compiler, "google/shaderc", "2026.3", "ef2c68b4871a3c399a0808321b51379847a54673", "glslc", "toolchain.compiler");
+        RequireTool(manifest.Toolchain.Compiler, "shader-slang/slang", "2026.16", "2c6ca521d2c38e7ab67c63293351bc88eb747340", "slangc", "toolchain.compiler");
+        RequireTool(manifest.Toolchain.CompatibilityCompiler, "google/shaderc", "2026.3", "ef2c68b4871a3c399a0808321b51379847a54673", "glslc", "toolchain.compatibilityCompiler");
         RequireTool(manifest.Toolchain.Validator, "KhronosGroup/SPIRV-Tools", "2026.3", "b707790a898e44038547df54580022fc1cf89c3d", "spirv-val", "toolchain.validator");
-        Require(manifest.Target.Language == "glsl", "target.language", "glsl");
-        Require(manifest.Target.GlslVersion == "450core", "target.glslVersion", "450core");
+        Require(manifest.Target.Language == "slang", "target.language", "slang");
+        Require(manifest.Target.SlangVersion == "2026", "target.slangVersion", "2026");
         Require(manifest.Target.Vulkan == "1.3", "target.vulkan", "1.3");
         Require(manifest.Target.Spirv == "1.6", "target.spirv", "1.6");
-        RequireSequence(manifest.CompileFlags, new[] { "--target-env=vulkan1.3", "--target-spv=spv1.6", "-std=450core", "-O", "-Werror" }, "compileFlags");
+        RequireSequence(manifest.CompileFlags, new[] { "-target", "spirv", "-capability", "SPIRV_1_6", "-matrix-layout-row-major", "-fp-mode", "precise", "-O2", "-Wall", "-Wpedantic", "-warnings-as-errors", "all", "-restrictive-capability-check", "-diagnostic-color", "never" }, "compileFlags");
+        RequireSequence(manifest.CompatibilityCompileFlags, new[] { "--target-env=vulkan1.3", "--target-spv=spv1.6", "-std=450core", "-O", "-Werror" }, "compatibilityCompileFlags");
         RequirePrimitiveRecord(manifest.PrimitiveRecord);
         RequireTextInstanceRecord(manifest.TextInstanceRecord);
         RequireDependency(manifest.Toolchain.Dependencies, "KhronosGroup/glslang", "16.4.0", "168d452a4f460d24b588fed08477a81c44ee27a1");
@@ -950,43 +995,45 @@ internal static class Program
         RequireAssembly(manifest.Assemblies[0], "hb_gpu_vertex", new[]
         {
             new AssemblyPart { Path = HarfBuzzVertexPath, Sha256 = HarfBuzzVertexSha256 },
-            new AssemblyPart { Path = "tests/Goo.VulkanProof/Shaders/hb_gpu.vert.wrapper.glsl", Sha256 = "fa6b174882dd8b5aea6bf956e8fbeed11ff9619517556e233c653acf0d9d79c8" }
+            new AssemblyPart { Path = "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/hb_gpu.vert.wrapper.glsl", Sha256 = "fa6b174882dd8b5aea6bf956e8fbeed11ff9619517556e233c653acf0d9d79c8" }
         });
         RequireAssembly(manifest.Assemblies[1], "hb_gpu_draw_fragment", new[]
         {
             new AssemblyPart { Path = HarfBuzzFragmentPath, Sha256 = HarfBuzzFragmentSha256 },
             new AssemblyPart { Path = HarfBuzzDrawFragmentPath, Sha256 = HarfBuzzDrawFragmentSha256 },
-            new AssemblyPart { Path = "tests/Goo.VulkanProof/Shaders/hb_gpu_draw.frag.wrapper.glsl", Sha256 = "bbe849dd5e152672391f6a33fabb141bf37475eb2ddd61812de7c8e7e27117d4" }
+            new AssemblyPart { Path = "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/clip_chain_text.glsl", Sha256 = "892f76421162819caae0db0d0a29aa6b50e3fbdacfa82926b79d423cb27e0274" },
+            new AssemblyPart { Path = "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/hb_gpu_draw.frag.wrapper.glsl", Sha256 = "9ea724a292a12b8bd12508581d99eb4a9a87936e06f05ee30f8036a565521be6" }
         });
         RequireAssembly(manifest.Assemblies[2], "hb_gpu_paint_fragment", new[]
         {
             new AssemblyPart { Path = HarfBuzzFragmentPath, Sha256 = HarfBuzzFragmentSha256 },
             new AssemblyPart { Path = HarfBuzzDrawFragmentPath, Sha256 = HarfBuzzDrawFragmentSha256 },
             new AssemblyPart { Path = HarfBuzzPaintFragmentPath, Sha256 = HarfBuzzPaintFragmentSha256 },
-            new AssemblyPart { Path = "tests/Goo.VulkanProof/Shaders/hb_gpu_paint.frag.wrapper.glsl", Sha256 = "86e84e0433951de4095f98cf057fb3819fa78270adb7b4a0efa57e668b8911f7" }
+            new AssemblyPart { Path = "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/clip_chain_text.glsl", Sha256 = "892f76421162819caae0db0d0a29aa6b50e3fbdacfa82926b79d423cb27e0274" },
+            new AssemblyPart { Path = "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/hb_gpu_paint.frag.wrapper.glsl", Sha256 = "7d492c19e2872bbac1a120ba17e6f2324ae3f02f02ff35dfd3cabe795c19bdd7" }
         });
         if (manifest.Shaders.Count != 18)
         {
             throw new InvalidOperationException("shaders must contain exactly eighteen entries");
         }
-        RequireShader(manifest.Shaders[0], "solid_quad_vertex", "vertex", "solid_quad.vert.glsl", "solid_quad.vert.spv");
-        RequireShader(manifest.Shaders[1], "solid_quad_fragment", "fragment", "solid_quad.frag.glsl", "solid_quad.frag.spv");
-        RequireShader(manifest.Shaders[2], "analytic_vertex", "vertex", "analytic.vert.glsl", "analytic.vert.spv");
-        RequireShader(manifest.Shaders[3], "analytic_solid_fragment", "fragment", "analytic_solid.frag.glsl", "analytic_solid.frag.spv");
-        RequireShader(manifest.Shaders[4], "analytic_shadow_fragment", "fragment", "analytic_shadow.frag.glsl", "analytic_shadow.frag.spv");
-        RequireShader(manifest.Shaders[5], "analytic_border_fragment", "fragment", "analytic_border.frag.glsl", "analytic_border.frag.spv");
-        RequireShader(manifest.Shaders[6], "analytic_linear4_fragment", "fragment", "analytic_linear4.frag.glsl", "analytic_linear4.frag.spv");
-        RequireShader(manifest.Shaders[7], "analytic_radial4_fragment", "fragment", "analytic_radial4.frag.glsl", "analytic_radial4.frag.spv");
-        RequireShader(manifest.Shaders[8], "analytic_sampled_image_fragment", "fragment", "analytic_sampled_image.frag.glsl", "analytic_sampled_image.frag.spv");
-        RequireShader(manifest.Shaders[9], "analytic_blend_fragment", "fragment", "analytic_blend.frag.glsl", "analytic_blend.frag.spv");
-        RequireShader(manifest.Shaders[10], "path_band_vertex", "vertex", "path_band.vert.glsl", "path_band.vert.spv");
-        RequireShader(manifest.Shaders[11], "path_band_fragment", "fragment", "path_band.frag.glsl", "path_band.frag.spv");
+        RequireShader(manifest.Shaders[0], "solid_quad_vertex", "vertex", "solid_quad.vert.slang", "solid_quad.vert.spv");
+        RequireShader(manifest.Shaders[1], "solid_quad_fragment", "fragment", "solid_quad.frag.slang", "solid_quad.frag.spv");
+        RequireShader(manifest.Shaders[2], "analytic_vertex", "vertex", "analytic.vert.slang", "analytic.vert.spv");
+        RequireShader(manifest.Shaders[3], "analytic_solid_fragment", "fragment", "analytic_solid.frag.slang", "analytic_solid.frag.spv");
+        RequireShader(manifest.Shaders[4], "analytic_shadow_fragment", "fragment", "analytic_shadow.frag.slang", "analytic_shadow.frag.spv");
+        RequireShader(manifest.Shaders[5], "analytic_border_fragment", "fragment", "analytic_border.frag.slang", "analytic_border.frag.spv");
+        RequireShader(manifest.Shaders[6], "analytic_linear4_fragment", "fragment", "analytic_linear4.frag.slang", "analytic_linear4.frag.spv");
+        RequireShader(manifest.Shaders[7], "analytic_radial4_fragment", "fragment", "analytic_radial4.frag.slang", "analytic_radial4.frag.spv");
+        RequireShader(manifest.Shaders[8], "analytic_sampled_image_fragment", "fragment", "analytic_sampled_image.frag.slang", "analytic_sampled_image.frag.spv");
+        RequireShader(manifest.Shaders[9], "analytic_blend_fragment", "fragment", "analytic_blend.frag.slang", "analytic_blend.frag.spv");
+        RequireShader(manifest.Shaders[10], "path_band_vertex", "vertex", "path_band.vert.slang", "path_band.vert.spv");
+        RequireShader(manifest.Shaders[11], "path_band_fragment", "fragment", "path_band.frag.slang", "path_band.frag.spv");
         RequireShader(manifest.Shaders[12], "hb_gpu_vertex", "vertex", "hb_gpu.vert.wrapper.glsl", "hb_gpu.vert.spv", "hb_gpu_vertex");
         RequireShader(manifest.Shaders[13], "hb_gpu_draw_fragment", "fragment", "hb_gpu_draw.frag.wrapper.glsl", "hb_gpu_draw.frag.spv", "hb_gpu_draw_fragment");
         RequireShader(manifest.Shaders[14], "hb_gpu_paint_fragment", "fragment", "hb_gpu_paint.frag.wrapper.glsl", "hb_gpu_paint.frag.spv", "hb_gpu_paint_fragment");
-        RequireShader(manifest.Shaders[15], "clip_mask_vertex", "vertex", "clip_mask.vert.glsl", "clip_mask.vert.spv");
-        RequireShader(manifest.Shaders[16], "clip_mask_fragment", "fragment", "clip_mask.frag.glsl", "clip_mask.frag.spv");
-        RequireShader(manifest.Shaders[17], "lava_fragment", "fragment", "lava.frag.glsl", "lava.frag.spv");
+        RequireShader(manifest.Shaders[15], "clip_mask_vertex", "vertex", "clip_mask.vert.slang", "clip_mask.vert.spv");
+        RequireShader(manifest.Shaders[16], "clip_mask_fragment", "fragment", "clip_mask.frag.slang", "clip_mask.frag.spv");
+        RequireShader(manifest.Shaders[17], "lava_fragment", "fragment", "lava.frag.slang", "lava.frag.spv");
         foreach (Shader shader in manifest.Shaders)
         {
             if (shader.SourceSha256 is not null || shader.OutputSha256 is not null || shader.OutputBytes is not null)
@@ -1645,10 +1692,10 @@ internal static class Program
         throw new InvalidOperationException("Could not find the goo-gsharp repository root");
     }
 
-    private static string FindTool(string executable)
+    private static string FindTool(string executable, string sdkEnvironmentVariable)
     {
         string[] names = OperatingSystem.IsWindows() ? new[] { executable, executable + ".exe" } : new[] { executable };
-        string? sdk = Environment.GetEnvironmentVariable("VULKAN_SDK");
+        string? sdk = Environment.GetEnvironmentVariable(sdkEnvironmentVariable);
         if (!string.IsNullOrWhiteSpace(sdk))
         {
             foreach (string bin in new[] { "bin", "Bin" })
@@ -1679,16 +1726,24 @@ internal static class Program
                 }
             }
         }
-        throw new InvalidOperationException($"Could not find {executable} in VULKAN_SDK or PATH");
+        throw new InvalidOperationException($"Could not find {executable} in {sdkEnvironmentVariable} or PATH");
     }
 
     private static void RequireCompilerVersion(string compilerPath, Manifest manifest)
     {
+        ToolResult result = RunTool(compilerPath, new[] { "-version" });
+        RequireSuccess(compilerPath, result);
+        string output = (result.StandardOutput + result.StandardError).Trim();
+        Require(output == manifest.Toolchain.Compiler.Version, "slangc.version", manifest.Toolchain.Compiler.Version);
+    }
+
+    private static void RequireCompatibilityCompilerVersion(string compilerPath, Manifest manifest)
+    {
         ToolResult result = RunTool(compilerPath, new[] { "--version" });
         RequireSuccess(compilerPath, result);
         string[] lines = result.StandardOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-        Require(lines.Length > 0 && lines[0].Trim() == manifest.Toolchain.Compiler.Version, "glslc.version", manifest.Toolchain.Compiler.Version);
-        Require(lines.Any(line => line.Trim() == CompilerVersionMarker + manifest.Toolchain.Sdk), "glslc.sdk", manifest.Toolchain.Sdk);
+        Require(lines.Length > 0 && lines[0].Trim() == manifest.Toolchain.CompatibilityCompiler.Version, "glslc.version", manifest.Toolchain.CompatibilityCompiler.Version);
+        Require(lines.Any(line => line.Trim() == GlslcVersionMarker + manifest.Toolchain.Sdk), "glslc.sdk", manifest.Toolchain.Sdk);
     }
 
     private static void RequireValidatorVersion(string validatorPath, Manifest manifest)

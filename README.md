@@ -17,12 +17,11 @@ Goo applications describe UI as ordinary G# objects. Goo retains mounted state, 
 Install [.NET 10](https://dotnet.microsoft.com/download/dotnet/10.0), then:
 
 ```sh
-dotnet new install Gsharp.Templates # once
+dotnet new install Goo.Templates # once
 
 mkdir hello-goo
 cd hello-goo
-dotnet new gsharp-console
-dotnet add package Goo --version 0.3.0
+dotnet new goo
 ```
 
 Replace `Program.gs` with the example below, then run:
@@ -170,6 +169,26 @@ not required.
 - [Tests and verification](tests/README.md)
 - [Release notes](CHANGELOG.md)
 - [Third-party notices](THIRD-PARTY-NOTICES.md)
+
+## Developer tooling
+
+Goo DevTools provides the local development loop for starting, attaching to,
+capturing, and diagnosing a Goo application:
+
+```sh
+dotnet tool install --global Goo.DevTools
+dotnet tool install --global Goo.DevTools.App
+goo dev --project path/to/App.gsproj
+goo attach --latest
+goo capture --latest --output frame.png
+```
+
+`Goo.DevTools` installs the `goo` CLI. `Goo.DevTools.App` installs the standalone `goo-devtools` inspector.
+
+The [DevTools guide](docs/devtools/) documents endpoint discovery and the
+local-only protocol. The [VS Code extension](integrations/vscode/) adds IDE
+commands and source navigation. Rider users can import the [External Tools
+profile](integrations/rider/GooDevTools.xml).
 
 ## Build from source
 

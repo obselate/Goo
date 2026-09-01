@@ -68,10 +68,10 @@ are recorded in the matching `HarfBuzz-cff-style-*.provenance.json` files.
 The hb-gpu GLSL inputs are the pinned HarfBuzz sources
 `src/hb-gpu-vertex.glsl`, `src/hb-gpu-fragment.glsl`,
 `src/hb-gpu-draw-fragment.glsl`, and `src/hb-gpu-paint-fragment.glsl`.
-Goo's Vulkan wrapper GLSL and checked-in SPIR-V under
-`tests/Goo.VulkanProof/Shaders/` and
-`tests/Goo.VulkanProof/Generated/Shaders/` are derivative inclusions of those
-sources and retain the same attribution and license terms.
+Goo's Vulkan GLSL compatibility adapters under
+`tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/` and checked-in SPIR-V
+under `tests/Goo.VulkanProof/Generated/Shaders/` are derivative inclusions of
+those sources and retain the same attribution and license terms.
 
 ## Yoga.Net 3.2.3, based on Meta Yoga v3.2.1
 
@@ -173,6 +173,42 @@ Project Developers and is offered under either the MIT or Apache-2.0 license.
 
 - [unicode-bidi v0.3.18 MIT license](https://github.com/servo/unicode-bidi/blob/v0.3.18/LICENSE-MIT)
 - [unicode-bidi v0.3.18 Apache-2.0 license](https://github.com/servo/unicode-bidi/blob/v0.3.18/LICENSE-APACHE)
+
+## Goo Gallery shader algorithm sources
+
+The Goo Gallery application under `apps/Goo.Gallery` ports only the required
+algorithms identified below into Slang fragment effects. No sample textures or
+unrelated source from these projects is included.
+
+- raycastergl: Copyright (c) 2020 Melchor Garau Madrigal. License: MIT.
+  Ported the grid DDA traversal and perpendicular wall distance calculation
+  into `apps/Goo.Gallery/Shaders/wolfenstein.frag.slang`.
+  [raycastergl license](https://github.com/melchor629/raycastergl/blob/8f21b5fc984681e01c1865fb44c8db6d79f58634/LICENSE)
+  at commit `8f21b5fc984681e01c1865fb44c8db6d79f58634`
+  (source file `raycastergl/res/shaders/raycaster.glsl`).
+- RayMarch: Copyright (c) 2025 Shaun Ramsey. License: MIT.
+  Ported the signed-distance primitives, sphere-tracing loop, and
+  finite-difference normal estimation into
+  `apps/Goo.Gallery/Shaders/chrome_sdf.frag.slang` and
+  `apps/Goo.Gallery/Shaders/corridor.frag.slang`.
+  [RayMarch license](https://github.com/shaunramsey/RayMarch/blob/34a9b32424b535b5993c9dd454af9f9cf802d318/LICENSE)
+  at commit `34a9b32424b535b5993c9dd454af9f9cf802d318`
+  (source file `fifthlighting.frag`).
+- webgl-noise: Copyright (c) 2011 Ashima Arts. All rights reserved.
+  Copyright (c) 2011-2016 Stefan Gustavson. License: MIT.
+  Ported the textureless 3D simplex noise function `snoise` and its
+  helper routines into `apps/Goo.Gallery/Shaders/volumetric.frag.slang`.
+  [webgl-noise license](https://github.com/ashima/webgl-noise/blob/6abed1e77ed1e18b181627c35f688eb30c9fe75e/LICENSE)
+  at commit `6abed1e77ed1e18b181627c35f688eb30c9fe75e`
+  (source file `src/noise3D.glsl`).
+- Return-of-the-One-Bit: Copyright (c) 2022 Yun Jay Kim. License: MIT.
+  Ported the 4x4 and 8x8 Bayer matrices, the halftone matrix, and the
+  ordered threshold comparison logic into
+  `apps/Goo.Gallery/Shaders/dither.frag.slang`.
+  [Return-of-the-One-Bit license](https://github.com/yunjay/Return-of-the-One-Bit/blob/5ba093eefd1761d12a9f8c54d612466e0cb71497/LICENSE)
+  at commit `5ba093eefd1761d12a9f8c54d612466e0cb71497`
+  (source files `shaders/bayer16.fs`, `shaders/bayer64.fs`, and
+  `shaders/halftone.fs`).
 
 ## MIT license text
 

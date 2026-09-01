@@ -76,6 +76,10 @@ internal partial class PointerInput {
     lastPressT = -10.0
   }
 
+  internal func SetDiagnosticsHook(value((Node?, PointerEventKind, float32, float32,
+    PointerButton) -> bool)?) ->
+  InputDiagnostics.SetPointer(this, value)
+
   private func storeCurrent() {
     current.PressChain = pressChain
     current.CapturePath = capturePath
@@ -314,7 +318,11 @@ internal partial class PointerInput {
               changed = true
             }
           } else if e.Kind == PointerEventKind.Cancel {
-            if cancelInteraction(resolver, text) {
+            var diagnosticsConsumed = false
+            if let hook = InputDiagnostics.PointerHook(this) {
+              diagnosticsConsumed = hook(root, PointerEventKind.Cancel, e.X, e.Y, e.Button)
+            }
+            if diagnosticsConsumed || cancelInteraction(resolver, text) {
               changed = true
             }
             if current != mouse { removeCurrentContact() }
@@ -696,6 +704,9 @@ internal partial class PointerInput {
 
   internal func HandlePointerMove(root Node?, resolver Resolver, x float32, y float32,
     modifiers KeyModifiers) bool{
+      if let hook = InputDiagnostics.PointerHook(this) {
+        if hook(root, PointerEventKind.Move, x, y, PointerButton.None) { return true }
+      }
       let delta = nextDelta(x, y)
       lastModifiers = modifiers
       if hasScrollDrag() {
@@ -890,6 +901,9 @@ internal partial class PointerInput {
   internal func HandlePointerPress(root Node?, resolver Resolver, text TextInput, timeS float64,
     x float32, y float32, button PointerButton, buttons PointerButtons, hasButtons bool,
     eventPressure float32, hasPressure bool, modifiers KeyModifiers) bool{
+      if let hook = InputDiagnostics.PointerHook(this) {
+        if hook(root, PointerEventKind.Press, x, y, button) { return true }
+      }
       nextDelta(x, y)
       lastModifiers = modifiers
       canceledButtons = removePointerButton(canceledButtons, button)
@@ -940,6 +954,9 @@ internal partial class PointerInput {
   internal func HandlePointerRelease(root Node?, resolver Resolver, x float32, y float32,
     button PointerButton, buttons PointerButtons, hasButtons bool, eventPressure float32,
     hasPressure bool, modifiers KeyModifiers) bool{
+      if let hook = InputDiagnostics.PointerHook(this) {
+        if hook(root, PointerEventKind.Release, x, y, button) { return true }
+      }
       if (int32(canceledButtons) & int32(pointerButtonMask(button))) != 0 {
         canceledButtons = removePointerButton(canceledButtons, button)
         if hasButtons {

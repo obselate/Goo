@@ -92,6 +92,8 @@ static string BuildPage(string directory, ApiType[] types, ApiMember[] members, 
     if (directory == "Tree")
         AppendVirtualizationGuide(text);
     if (directory == "Tree")
+        AppendLayoutTransitionGuide(text);
+    if (directory == "Tree")
         AppendOwnedImageSourceGuide(text);
     if (directory == "Tree")
         AppendElementMetricsGuide(text);
@@ -209,6 +211,16 @@ static void AppendOwnedImageSourceGuide(StringBuilder text)
     text.AppendLine("For streaming content, retain one provider identity and publish each frame as a new immutable source with a monotonically increasing `ContentVersion`. Superseded generations may remain alive until their callbacks return their buffers to a bounded producer pool; never mutate an in-flight generation.");
     text.AppendLine();
     text.AppendLine("Custom providers create one `ImageSourceLease` per mounted binding. Each lease completes once through `Complete(source)` or `Fail()`. Goo releases a replaced or unmounted lease synchronously and raises `Released` exactly once, so providers should cancel outstanding work from that event. Late completion returns `false`; callback exceptions cannot interrupt Goo cleanup. Stable source identity keeps its existing lease, so warm paints do not reacquire or lock provider state.");
+    text.AppendLine();
+    text.AppendLine("When one provider source advances versions, Vulkan keeps the last published version renderable until the replacement upload completes, then moves current references and fence-retires the old version. Stale older versions cannot supersede a newer registration. If the configured resident or logical-source budget cannot hold both versions, Goo keeps the last-good version rather than presenting an empty handoff.");
+}
+
+static void AppendLayoutTransitionGuide(StringBuilder text)
+{
+    text.AppendLine();
+    text.AppendLine("## Animate computed position changes");
+    text.AppendLine();
+    text.AppendLine("Set `Blob.LayoutTransition` to a `LayoutTransition(durationMs, easing)` value to glide a mounted element when its own computed layout slot changes. It is separate from style `TransitionProperties`. The visual rectangle used by painting, hit testing, metrics, descendants, and accessibility moves together. Ordinary scrolling and ancestor-only movement do not start another glide.");
 }
 
 static void AppendImageSourceProviderMembers(StringBuilder text)
@@ -250,6 +262,8 @@ static void AppendShaderEffectGuide(StringBuilder text)
     text.AppendLine();
     text.AppendLine("Reuse the same effect instance for controls that share program and parameters. `SetParameter` accepts slots 0 through 7, marks mounted users paint-dirty only when a value changes, and stays allocation-free after construction. Create separate effect instances when controls need independent parameter state.");
     text.AppendLine();
+    text.AppendLine("Set `Playing = true` to opt into continuous renderer-driven playback. `ElapsedSeconds` is supplied separately through `gooElapsedSeconds()`, so playback does not consume one of the eight parameter slots. Pausing preserves the current elapsed position, and assigning `ElapsedSeconds` seeks while paused or playing. Goo schedules continuous frames only while a playing effect is mounted.");
+    text.AppendLine();
     text.AppendLine("Author ShaderEffects in native Slang by including Goo's fixed module and implementing `float4 gooEffect(float2 uv, float4 source, float4 backdrop)`. GLSL compatibility sources instead include `goo_effect.glsl` and implement the equivalent `vec4` function. `gooDataByteLength(slot)` and `gooDataWord(slot, wordIndex)` read retained data slots zero through three; invalid slots and out-of-range words return zero.");
     text.AppendLine();
     text.AppendLine("```slang");
@@ -258,7 +272,8 @@ static void AppendShaderEffectGuide(StringBuilder text)
     text.AppendLine("float4 gooEffect(float2 uv, float4 source, float4 backdrop)");
     text.AppendLine("{");
     text.AppendLine("    float gain = gooDataByteLength(0) >= 4 ? asfloat(gooDataWord(0, 0)) : 1.0;");
-    text.AppendLine("    return lerp(source, backdrop, gooParameter(0).x) * gain;");
+    text.AppendLine("    float pulse = 0.5 + 0.5 * sin(gooElapsedSeconds());");
+    text.AppendLine("    return lerp(source, backdrop, gooParameter(0).x * pulse) * gain;");
     text.AppendLine("}");
     text.AppendLine("```");
     text.AppendLine();
@@ -309,6 +324,8 @@ static void AppendWindowDispatcherGuide(StringBuilder text)
     text.AppendLine("## Post UI work");
     text.AppendLine();
     text.AppendLine("Call `Window.Post` from any thread. Accepted actions use FIFO order. Post accepts work before the first `Open`. A pending `RequestClose` still accepts work because `OnClosing` can veto the request.");
+    text.AppendLine();
+    text.AppendLine("Use `TryPost` when teardown can race the producer. It returns `false` after posting closes instead of throwing. `true` means the action was atomically accepted into the queue, not that it is guaranteed to execute, because later teardown may still discard queued work.");
     text.AppendLine();
     text.AppendLine("Each `Pump` drains one fixed accepted batch after close decisions and native metrics, and before input. Posts made while that batch runs wait for the next `Pump`. When native closing or teardown starts, Goo discards queued work. Teardown is terminal and later `Post` calls throw `InvalidOperationException`.");
     text.AppendLine();

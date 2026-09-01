@@ -55,6 +55,7 @@ public sealed class PublicDocumentationTests
         "M:Goo.CompiledVectorAsset.Render",
         "M:Goo.CompiledVectorAsset.Render(System.String)",
         "M:Goo.CompiledVectorAsset.TryLoad(System.Byte[])",
+        "M:Goo.DevTools.Attach(Goo.Window)",
         "M:Goo.Container.#ctor",
         "M:Goo.DashPattern.#ctor(System.Double[],System.Double)",
         "M:Goo.ElementHandle.#ctor",
@@ -210,6 +211,7 @@ public sealed class PublicDocumentationTests
         "M:Goo.Window.RequestClose",
         "M:Goo.Window.Run",
         "M:Goo.Window.SetClipboardText(System.String)",
+        "M:Goo.Window.TryPost(System.Action)",
     };
 
     private static readonly string[] ExpectedEqualityDocumentationIds =
@@ -237,6 +239,7 @@ public sealed class PublicDocumentationTests
     private static readonly HashSet<Type> SynthesizedPrimaryDataTypes =
     [
         typeof(TextChange),
+        typeof(LayoutTransition),
         typeof(AccessibilityId),
         typeof(TextCommand),
         typeof(TextComposition),
@@ -282,6 +285,7 @@ public sealed class PublicDocumentationTests
             ["M:Goo.Color.WithAlpha(System.Double)"] = new(["alpha"], [], true),
             ["M:Goo.Color.op_Implicit(System.String)~Goo.Color"] = new(["value"], [], true),
             ["M:Goo.DashPattern.#ctor(System.Double[],System.Double)"] = new(["intervals", "offset"], [], false),
+            ["M:Goo.DevTools.Attach(Goo.Window)"] = new(["window"], [], true),
             ["M:Goo.ElementHandle.Blur"] = new([], [], true),
             ["M:Goo.ElementHandle.Focus"] = new([], [], true),
             ["M:Goo.ElementHandle.JumpTo(System.Double,System.Double)"] = new(["x", "y"], [], true),
@@ -399,6 +403,7 @@ public sealed class PublicDocumentationTests
             ["M:Goo.Window.Open"] = new([], [], true),
             ["M:Goo.Window.Pump(System.Double)"] = new(["dt"], [], false),
             ["M:Goo.Window.RequestClose"] = new([], [], false),
+            ["M:Goo.Window.TryPost(System.Action)"] = new(["action"], [], true),
             ["T:Goo.Anim`1"] = new([], ["T"], false),
             ["T:Goo.Cell`1"] = new([], ["TInput"], false),
             ["T:Goo.MotionConverter`1"] = new([], ["T"], false),

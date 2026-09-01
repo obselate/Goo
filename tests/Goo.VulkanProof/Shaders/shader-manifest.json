@@ -1,8 +1,14 @@
 {
-  "schema": 4,
+  "schema": 5,
   "toolchain": {
     "sdk": "1.4.357.0",
     "compiler": {
+      "project": "shader-slang/slang",
+      "version": "2026.16",
+      "commit": "2c6ca521d2c38e7ab67c63293351bc88eb747340",
+      "executable": "slangc"
+    },
+    "compatibilityCompiler": {
       "project": "google/shaderc",
       "version": "2026.3",
       "commit": "ef2c68b4871a3c399a0808321b51379847a54673",
@@ -48,12 +54,29 @@
     }
   },
   "target": {
-    "language": "glsl",
-    "glslVersion": "450core",
+    "language": "slang",
+    "slangVersion": "2026",
     "vulkan": "1.3",
     "spirv": "1.6"
   },
   "compileFlags": [
+    "-target",
+    "spirv",
+    "-capability",
+    "SPIRV_1_6",
+    "-matrix-layout-row-major",
+    "-fp-mode",
+    "precise",
+    "-O2",
+    "-Wall",
+    "-Wpedantic",
+    "-warnings-as-errors",
+    "all",
+    "-restrictive-capability-check",
+    "-diagnostic-color",
+    "never"
+  ],
+  "compatibilityCompileFlags": [
     "--target-env=vulkan1.3",
     "--target-spv=spv1.6",
     "-std=450core",
@@ -166,7 +189,7 @@
           "sha256": "a2d278b8fd6588f47e788f37f6add64e21f38a132a04f5c62e7092f4fe83a7a7"
         },
         {
-          "path": "tests/Goo.VulkanProof/Shaders/hb_gpu.vert.wrapper.glsl",
+          "path": "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/hb_gpu.vert.wrapper.glsl",
           "sha256": "fa6b174882dd8b5aea6bf956e8fbeed11ff9619517556e233c653acf0d9d79c8"
         }
       ]
@@ -190,8 +213,12 @@
           "sha256": "cb70fd3b4db78d02652d0e3a419fe859b7ec5d1f30ee97cba7eaa2cf8ed404eb"
         },
         {
-          "path": "tests/Goo.VulkanProof/Shaders/hb_gpu_draw.frag.wrapper.glsl",
-          "sha256": "bbe849dd5e152672391f6a33fabb141bf37475eb2ddd61812de7c8e7e27117d4"
+          "path": "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/clip_chain_text.glsl",
+          "sha256": "892f76421162819caae0db0d0a29aa6b50e3fbdacfa82926b79d423cb27e0274"
+        },
+        {
+          "path": "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/hb_gpu_draw.frag.wrapper.glsl",
+          "sha256": "9ea724a292a12b8bd12508581d99eb4a9a87936e06f05ee30f8036a565521be6"
         }
       ]
     },
@@ -218,8 +245,12 @@
           "sha256": "95e5868c3c1197962eb1976838b683fa2f7a7829375d170b3a59706e39538337"
         },
         {
-          "path": "tests/Goo.VulkanProof/Shaders/hb_gpu_paint.frag.wrapper.glsl",
-          "sha256": "86e84e0433951de4095f98cf057fb3819fa78270adb7b4a0efa57e668b8911f7"
+          "path": "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/clip_chain_text.glsl",
+          "sha256": "892f76421162819caae0db0d0a29aa6b50e3fbdacfa82926b79d423cb27e0274"
+        },
+        {
+          "path": "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/hb_gpu_paint.frag.wrapper.glsl",
+          "sha256": "7d492c19e2872bbac1a120ba17e6f2324ae3f02f02ff35dfd3cabe795c19bdd7"
         }
       ]
     }
@@ -228,7 +259,7 @@
     {
       "id": "solid_quad_vertex",
       "stage": "vertex",
-      "source": "solid_quad.vert.glsl",
+      "source": "solid_quad.vert.slang",
       "output": "solid_quad.vert.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -238,7 +269,7 @@
     {
       "id": "solid_quad_fragment",
       "stage": "fragment",
-      "source": "solid_quad.frag.glsl",
+      "source": "solid_quad.frag.slang",
       "output": "solid_quad.frag.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -248,7 +279,7 @@
     {
       "id": "analytic_vertex",
       "stage": "vertex",
-      "source": "analytic.vert.glsl",
+      "source": "analytic.vert.slang",
       "output": "analytic.vert.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -258,7 +289,7 @@
     {
       "id": "analytic_solid_fragment",
       "stage": "fragment",
-      "source": "analytic_solid.frag.glsl",
+      "source": "analytic_solid.frag.slang",
       "output": "analytic_solid.frag.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -268,7 +299,7 @@
     {
       "id": "analytic_shadow_fragment",
       "stage": "fragment",
-      "source": "analytic_shadow.frag.glsl",
+      "source": "analytic_shadow.frag.slang",
       "output": "analytic_shadow.frag.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -278,7 +309,7 @@
     {
       "id": "analytic_border_fragment",
       "stage": "fragment",
-      "source": "analytic_border.frag.glsl",
+      "source": "analytic_border.frag.slang",
       "output": "analytic_border.frag.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -288,7 +319,7 @@
     {
       "id": "analytic_linear4_fragment",
       "stage": "fragment",
-      "source": "analytic_linear4.frag.glsl",
+      "source": "analytic_linear4.frag.slang",
       "output": "analytic_linear4.frag.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -298,7 +329,7 @@
     {
       "id": "analytic_radial4_fragment",
       "stage": "fragment",
-      "source": "analytic_radial4.frag.glsl",
+      "source": "analytic_radial4.frag.slang",
       "output": "analytic_radial4.frag.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -308,7 +339,7 @@
     {
       "id": "analytic_sampled_image_fragment",
       "stage": "fragment",
-      "source": "analytic_sampled_image.frag.glsl",
+      "source": "analytic_sampled_image.frag.slang",
       "output": "analytic_sampled_image.frag.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -318,7 +349,7 @@
     {
       "id": "analytic_blend_fragment",
       "stage": "fragment",
-      "source": "analytic_blend.frag.glsl",
+      "source": "analytic_blend.frag.slang",
       "output": "analytic_blend.frag.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -328,7 +359,7 @@
     {
       "id": "path_band_vertex",
       "stage": "vertex",
-      "source": "path_band.vert.glsl",
+      "source": "path_band.vert.slang",
       "output": "path_band.vert.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -338,7 +369,7 @@
     {
       "id": "path_band_fragment",
       "stage": "fragment",
-      "source": "path_band.frag.glsl",
+      "source": "path_band.frag.slang",
       "output": "path_band.frag.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -383,7 +414,7 @@
     {
       "id": "clip_mask_vertex",
       "stage": "vertex",
-      "source": "clip_mask.vert.glsl",
+      "source": "clip_mask.vert.slang",
       "output": "clip_mask.vert.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -393,7 +424,7 @@
     {
       "id": "clip_mask_fragment",
       "stage": "fragment",
-      "source": "clip_mask.frag.glsl",
+      "source": "clip_mask.frag.slang",
       "output": "clip_mask.frag.spv",
       "entryPoint": "main",
       "capabilities": [
@@ -403,7 +434,7 @@
     {
       "id": "lava_fragment",
       "stage": "fragment",
-      "source": "lava.frag.glsl",
+      "source": "lava.frag.slang",
       "output": "lava.frag.spv",
       "entryPoint": "main",
       "capabilities": [

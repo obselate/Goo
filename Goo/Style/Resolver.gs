@@ -2,6 +2,7 @@ package Goo
 
 import System
 import System.Collections.Generic
+import System.Runtime.CompilerServices
 import System.Threading
 
 internal enum FieldKind { KLength; KColor; KScalar; KEnum; KString; KGradient; KBoxShadows; KPath; KImageSource; KShaderEffect }
@@ -25,6 +26,29 @@ internal data struct Transition {
   internal var Duration float64
 }
 
+internal class ResolverDiagnostics {
+  shared {
+    private var values ConditionalWeakTable[Resolver, DiagnosticOverrideStore]?
+
+    internal func Get(resolver Resolver) DiagnosticOverrideStore? {
+      if let existing = values {
+        if existing.TryGetValue(resolver, out var value) { return value }
+      }
+      return nil
+    }
+
+    internal func Set(resolver Resolver, value DiagnosticOverrideStore?) {
+      values?.Remove(resolver)
+      if let next = value {
+        if values == nil {
+          values = ConditionalWeakTable[Resolver, DiagnosticOverrideStore]()
+        }
+        values?.Add(resolver, next)
+      }
+    }
+  }
+}
+
 internal class Resolver {
   shared {
     private var nextStylePass int64
@@ -44,6 +68,10 @@ internal class Resolver {
   }
 
   internal prop Animating List[Node]{ get; init; }
+  internal prop DebugOverrides DiagnosticOverrideStore? {
+    get -> ResolverDiagnostics.Get(this)
+    set(v) -> ResolverDiagnostics.Set(this, v)
+  }
   internal prop PaintResourceInvalidated Action? { get; set; }
   internal prop ShaderEffectInvalidated Action? { get; set; }
   private let pending List[Node]
@@ -209,6 +237,7 @@ internal class Resolver {
       }
     }
     n.AppliedMask = mask
+    n.AppliedMask = styleMaskUnion(n.AppliedMask, applyDebugOverrides(this, n))
   }
 
   internal func applyInherited(n Node, localMask StyleMask, initial bool) StyleMask {
@@ -549,6 +578,11 @@ internal class Resolver {
       if styleMaskHas(child.LocalMask, f) {
         continue
       }
+      if let store = DebugOverrides {
+        if let state = store.State(child) {
+          if state.Values.ContainsKey(f) { continue }
+        }
+      }
       finishTransition(child, f)
       if writeDirectWithInvalidation(child, readField(parent, f), PaintResourceInvalidated) {
         recordResolvedChange(f)
@@ -560,6 +594,18 @@ internal class Resolver {
   private func recordResolvedChange(f StyleField) {
     pendingEffects = ReconcileEffects(int32(pendingEffects) | int32(styleEffects(f)))
     VisualDirty = true
+  }
+
+  internal func FinishDebugTransition(n Node, f StyleField) {
+    finishTransition(n, f)
+  }
+
+  internal func RecordDebugResolvedChange(f StyleField) {
+    recordResolvedChange(f)
+  }
+
+  internal func PropagateDebugInheritance(n Node, f StyleField) {
+    propagateInherited(n, f)
   }
 
   private func invalidationFor(f StyleField) Action ? -> if f == StyleField.ShaderEffect { ShaderEffectInvalidated }

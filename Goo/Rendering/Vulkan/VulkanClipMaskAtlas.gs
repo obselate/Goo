@@ -396,7 +396,7 @@ private unsafe sealed class VulkanClipMaskAtlasGeneration : IDisposable {
 }
 
 internal unsafe sealed partial class VulkanClipMaskAtlas : IDisposable {
-  private const DefaultByteBudget VkDeviceSize = 33554432uL
+  private const DefaultByteBudget VkDeviceSize = 67108864uL
   private const InitialRegionCapacity int32 = 64
   private const StaleSerialWindow uint64 = 2uL
 
@@ -580,25 +580,37 @@ internal unsafe sealed partial class VulkanClipMaskAtlas : IDisposable {
             AvailableSerial: existing.LastUseSerial,
           }
           var placement = VulkanClipMaskRegionPlacement{}
-          var repackedPlacement VulkanClipMaskFreePlacement{}
-          var hasRepackedPlacement bool = false
           EvictStaleRegions()
-          while !TryPlace(screenWidth, screenHeight, ref placement) {
+          if !TryPlace(screenWidth, screenHeight, ref placement) {
             IncrementPressureEventCount()
-            if activeLayerCount >= maximumLayerCount {
+            let priorContentWidth = existing.ContentWidth
+            let priorContentHeight = existing.ContentHeight
+            existing.ContentWidth = screenWidth
+            existing.ContentHeight = screenHeight
+            try {
+              let targetLayerCount = if activeLayerCount < maximumLayerCount {
+                maximumLayerCount
+              } else {
+                activeLayerCount
+              }
+              ReplaceGeneration(targetLayerCount, width, height)
+              placement = VulkanClipMaskRegionPlacement{
+                Layer: existing.Layer,
+                X: existing.PaddedX,
+                Y: existing.PaddedY,
+                Width: existing.PaddedWidth,
+                Height: existing.PaddedHeight,
+                ContentX: existing.ContentX,
+                ContentY: existing.ContentY,
+                ContentWidth: existing.ContentWidth,
+                ContentHeight: existing.ContentHeight,
+              }
+            } catch (error Exception) {
+              existing.ContentWidth = priorContentWidth
+              existing.ContentHeight = priorContentHeight
               IncrementPressureFailureCount()
-              throw InvalidOperationException("Vulkan clip mask atlas region budget is exhausted")
+              throw error
             }
-            ReplaceGeneration(activeLayerCount + 1u, width, height)
-            repackedPlacement = VulkanClipMaskFreePlacement{
-              Layer: existing.Layer,
-              X: existing.PaddedX,
-              Y: existing.PaddedY,
-              Width: existing.PaddedWidth,
-              Height: existing.PaddedHeight,
-              AvailableSerial: existing.LastUseSerial,
-            }
-            hasRepackedPlacement = true
           }
           existing.Generation = generation
           existing.Layer = placement.Layer
@@ -612,8 +624,6 @@ internal unsafe sealed partial class VulkanClipMaskAtlas : IDisposable {
           existing.ContentHeight = placement.ContentHeight
           if generation == oldGeneration {
             freePlacements.Add(oldPlacement)
-          } else if hasRepackedPlacement {
-            freePlacements.Add(repackedPlacement)
           }
           MarkDirty(existing)
         }
@@ -654,14 +664,15 @@ internal unsafe sealed partial class VulkanClipMaskAtlas : IDisposable {
           MarkDirty(record)
           return BuildRegion(record)
         }
-        if activeLayerCount >= maximumLayerCount {
-          IncrementPressureFailureCount()
-          throw InvalidOperationException("Vulkan clip mask atlas region budget is exhausted")
+        let targetLayerCount = if activeLayerCount < maximumLayerCount {
+          maximumLayerCount
+        } else {
+          activeLayerCount
         }
-        ReplaceGeneration(activeLayerCount + 1u, width, height)
+        ReplaceGeneration(targetLayerCount, width, height)
         if !TryPlace(screenWidth, screenHeight, ref placement) {
           IncrementPressureFailureCount()
-          throw InvalidOperationException("Vulkan clip mask atlas cannot place region")
+          throw InvalidOperationException("Vulkan clip mask atlas region budget is exhausted")
         }
       }
       let record = VulkanClipMaskRegionRecord(key)
@@ -793,7 +804,7 @@ internal unsafe sealed partial class VulkanClipMaskAtlas : IDisposable {
       throw InvalidOperationException("Vulkan clip mask atlas cannot resize an active generation")
     }
     Collect(completedSubmissionSerial)
-    MaximumLayers(nativeWidth, nativeHeight, bytesPerPixel, byteBudget)
+    maximumLayerCount = MaximumLayers(nativeWidth, nativeHeight, bytesPerPixel, byteBudget)
     regionMap.Clear()
     regionOrder.Clear()
     dirtyRegions.Clear()
@@ -1208,15 +1219,7 @@ internal unsafe sealed partial class VulkanClipMaskAtlas : IDisposable {
       }
     let newBytes = newTexels * uint64(bytesPerPixel) * uint64(newLayerCount)
     let old = CurrentGeneration()
-    let retiredBytes = RetiredBytesOnly()
-    if old.ResidentBytes > uint64.MaxValue - retiredBytes {
-      throw OverflowException("Vulkan clip mask atlas resident byte size overflow")
-    }
-    let occupiedBytes = retiredBytes + old.ResidentBytes
     if newBytes == 0uL || newBytes > byteBudget {
-      throw InvalidOperationException("Vulkan clip mask atlas byte budget is exhausted")
-    }
-    if occupiedBytes > byteBudget - newBytes {
       throw InvalidOperationException("Vulkan clip mask atlas byte budget is exhausted")
     }
     let requiredLayerCount = RequiredLayerCount(newWidth, newHeight, newLayerCount)
@@ -1236,19 +1239,6 @@ internal unsafe sealed partial class VulkanClipMaskAtlas : IDisposable {
     MarkAllDirty()
     retired.Add(old)
     CollectRetired()
-  }
-
-  private func RetiredBytesOnly() VkDeviceSize {
-    var total VkDeviceSize = 0uL
-    var index int32 = 0
-    while index < retired.Count {
-      if total > uint64.MaxValue - retired[index].ResidentBytes {
-        throw OverflowException("Vulkan clip mask atlas retired byte size overflow")
-      }
-      total = total + retired[index].ResidentBytes
-      index++
-    }
-    return total
   }
 
   private func EvictStaleRegions() bool {

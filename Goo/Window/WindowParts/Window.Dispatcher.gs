@@ -9,11 +9,21 @@ public partial class Window {
   /// Queues an action for the UI thread.
   /// @param action action to run during the next Pump
   public func Post(action Action) {
+    if !TryPost(action) {
+      throw InvalidOperationException("Window.Post is unavailable after teardown")
+    }
+  }
+
+  /// Attempts to queue an action for the UI thread.
+  /// A successful enqueue can still be discarded if teardown begins before the action runs.
+  /// @param action action to run during a later Pump
+  /// @returns True when the action was accepted into the queue.
+  public func TryPost(action Action) bool {
     if action == nil { throw ArgumentNullException("action") }
     var wake = false
     lock cellQueueGate {
       if !acceptingPosts {
-        throw InvalidOperationException("Window.Post is unavailable after teardown")
+        return false
       }
       if postedActions == nil { postedActions = Queue[Action]() }
       let queue = postedActions!!
@@ -24,6 +34,7 @@ public partial class Window {
     if wake {
       host?.Wake()
     }
+    return true
   }
 
   private func stopPosts() {

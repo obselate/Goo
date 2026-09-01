@@ -196,6 +196,18 @@ public open class Blob : Style {
     init{ transitionSelection = makeTransitionSelection(value) }
   }
   internal prop TransitionSelection StyleMask{ get { return transitionSelection } }
+  /// Gets the opt-in transition for computed layout position changes.
+  public prop LayoutTransition LayoutTransition? {
+    get { return LayoutTransitionBlobs.Get(this) }
+    init{
+      if let next = value {
+        if !validLayoutTransition(next) {
+          throw ArgumentOutOfRangeException("LayoutTransition")
+        }
+      }
+      LayoutTransitionBlobs.Set(this, value)
+    }
+  }
   /// Reports whether this element can receive keyboard focus.
   public prop Focusable bool{
     get { return (blobState & int32(4)) != 0 }

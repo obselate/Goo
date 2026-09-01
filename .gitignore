@@ -32,8 +32,10 @@
 
 !/apps/
 /apps/*
-!/apps/Goo.Showcase/
-!/apps/Goo.Showcase/**
+!/apps/Goo.Gallery/
+!/apps/Goo.Gallery/**
+!/apps/Goo.DevTools/
+!/apps/Goo.DevTools/**
 
 !/docs/
 /docs/*
@@ -41,6 +43,8 @@
 !/docs/assets/**
 !/docs/api/
 !/docs/api/**
+!/docs/devtools/
+!/docs/devtools/**
 !/docs/perf/
 /docs/perf/*
 !/docs/perf/performance-workloads.json
@@ -63,7 +67,13 @@
 !/tools/Goo.UnicodeGen/**
 !/tools/Goo.SvgCompiler/
 !/tools/Goo.SvgCompiler/**
+!/tools/Goo.DevTools.Cli/
+!/tools/Goo.DevTools.Cli/**
 
+!/integrations/
+!/integrations/**
+!/templates/
+!/templates/**
 
 
 !/vendor/

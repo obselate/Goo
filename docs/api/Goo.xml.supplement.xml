@@ -67,6 +67,14 @@
     <member name="P:Goo.CompiledVectorAsset.KeyframeCount">
       <summary>Gets the number of animation keyframes.</summary>
     </member>
+    <member name="T:Goo.DevTools">
+      <summary>Attaches Goo DevTools diagnostics to a window.</summary>
+    </member>
+    <member name="M:Goo.DevTools.Attach(Goo.Window)">
+      <summary>Attaches Goo DevTools diagnostics to the window.</summary>
+      <param name="window">The window to expose through Goo DevTools.</param>
+      <returns>An object that removes the diagnostics attachment when disposed.</returns>
+    </member>
     <member name="T:Goo.FontSource">
       <summary>Owns one font face and its registration state.</summary>
     </member>

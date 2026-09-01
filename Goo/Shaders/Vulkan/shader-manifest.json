@@ -1,8 +1,14 @@
 {
-  "schema": 4,
+  "schema": 5,
   "toolchain": {
     "sdk": "1.4.357.0",
     "compiler": {
+      "project": "shader-slang/slang",
+      "version": "2026.16",
+      "commit": "2c6ca521d2c38e7ab67c63293351bc88eb747340",
+      "executable": "slangc"
+    },
+    "compatibilityCompiler": {
       "project": "google/shaderc",
       "version": "2026.3",
       "commit": "ef2c68b4871a3c399a0808321b51379847a54673",
@@ -48,12 +54,29 @@
     }
   },
   "target": {
-    "language": "glsl",
-    "glslVersion": "450core",
+    "language": "slang",
+    "slangVersion": "2026",
     "vulkan": "1.3",
     "spirv": "1.6"
   },
   "compileFlags": [
+    "-target",
+    "spirv",
+    "-capability",
+    "SPIRV_1_6",
+    "-matrix-layout-row-major",
+    "-fp-mode",
+    "precise",
+    "-O2",
+    "-Wall",
+    "-Wpedantic",
+    "-warnings-as-errors",
+    "all",
+    "-restrictive-capability-check",
+    "-diagnostic-color",
+    "never"
+  ],
+  "compatibilityCompileFlags": [
     "--target-env=vulkan1.3",
     "--target-spv=spv1.6",
     "-std=450core",
@@ -168,7 +191,7 @@
           "sha256": "a2d278b8fd6588f47e788f37f6add64e21f38a132a04f5c62e7092f4fe83a7a7"
         },
         {
-          "path": "tests/Goo.VulkanProof/Shaders/hb_gpu.vert.wrapper.glsl",
+          "path": "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/hb_gpu.vert.wrapper.glsl",
           "sha256": "fa6b174882dd8b5aea6bf956e8fbeed11ff9619517556e233c653acf0d9d79c8"
         }
       ]
@@ -192,8 +215,12 @@
           "sha256": "cb70fd3b4db78d02652d0e3a419fe859b7ec5d1f30ee97cba7eaa2cf8ed404eb"
         },
         {
-          "path": "tests/Goo.VulkanProof/Shaders/hb_gpu_draw.frag.wrapper.glsl",
-          "sha256": "bbe849dd5e152672391f6a33fabb141bf37475eb2ddd61812de7c8e7e27117d4"
+          "path": "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/clip_chain_text.glsl",
+          "sha256": "892f76421162819caae0db0d0a29aa6b50e3fbdacfa82926b79d423cb27e0274"
+        },
+        {
+          "path": "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/hb_gpu_draw.frag.wrapper.glsl",
+          "sha256": "9ea724a292a12b8bd12508581d99eb4a9a87936e06f05ee30f8036a565521be6"
         }
       ]
     },
@@ -220,8 +247,12 @@
           "sha256": "95e5868c3c1197962eb1976838b683fa2f7a7829375d170b3a59706e39538337"
         },
         {
-          "path": "tests/Goo.VulkanProof/Shaders/hb_gpu_paint.frag.wrapper.glsl",
-          "sha256": "86e84e0433951de4095f98cf057fb3819fa78270adb7b4a0efa57e668b8911f7"
+          "path": "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/clip_chain_text.glsl",
+          "sha256": "892f76421162819caae0db0d0a29aa6b50e3fbdacfa82926b79d423cb27e0274"
+        },
+        {
+          "path": "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/hb_gpu_paint.frag.wrapper.glsl",
+          "sha256": "7d492c19e2872bbac1a120ba17e6f2324ae3f02f02ff35dfd3cabe795c19bdd7"
         }
       ]
     }
@@ -230,12 +261,12 @@
     {
       "id": "solid_quad_vertex",
       "stage": "vertex",
-      "source": "solid_quad.vert.glsl",
+      "source": "solid_quad.vert.slang",
       "output": "solid_quad.vert.spv",
       "entryPoint": "main",
-      "sourceSha256": "8036438d2d1ef522d23ef8f2121d2db8e7019546ed094841f98cbb073df95ddd",
-      "outputSha256": "1b06771f89e2a446dff2ad8cc26b5b4a1d3d2b7b6f658d07f32c3aeaae12dd66",
-      "outputBytes": 1232,
+      "sourceSha256": "c0542586c790766cba354cb851f921d608bea597918b1f673954aa85c318e8fd",
+      "outputSha256": "e0e912d13fba1dd63d03004703f504fadbf2cf5459e2ca58796ccf0a69194808",
+      "outputBytes": 1240,
       "capabilities": [
         1
       ]
@@ -243,12 +274,12 @@
     {
       "id": "solid_quad_fragment",
       "stage": "fragment",
-      "source": "solid_quad.frag.glsl",
+      "source": "solid_quad.frag.slang",
       "output": "solid_quad.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "e97231f17ab1e568bd56de7d9f0465097c618628ce4c728af096dd77e4c30c3a",
-      "outputSha256": "0a3563abcb74db08a7263045b7fa23462249ed069cd7289b80c96812ef1db500",
-      "outputBytes": 312,
+      "sourceSha256": "7887580842206d0f9edaf2914d77603a430a8908a29e680220bb511a7d7e4bc5",
+      "outputSha256": "c211387d97990e1b1f36ac27f87a99ea0cef30a75e6fa467e8cd72624b8dfde9",
+      "outputBytes": 372,
       "capabilities": [
         1
       ]
@@ -256,12 +287,12 @@
     {
       "id": "analytic_vertex",
       "stage": "vertex",
-      "source": "analytic.vert.glsl",
+      "source": "analytic.vert.slang",
       "output": "analytic.vert.spv",
       "entryPoint": "main",
-      "sourceSha256": "3bbada1b8577357e57096d764323d0abec802d7db27aff362f0137d8022ca219",
-      "outputSha256": "74940322bc1b53849e6a54b8c7c0de0ec92e3a94ea5383066bb3569307e44667",
-      "outputBytes": 2100,
+      "sourceSha256": "e6c4e9720be1e9ba3d74df8b77e5bb972b4b95fcffd66f9e41a910b8106d3049",
+      "outputSha256": "9fe2f0a44518be6cdab4bf76d2fea9d97c3a18a2a050ecead21b00dc851dfea3",
+      "outputBytes": 2472,
       "capabilities": [
         1
       ]
@@ -269,12 +300,12 @@
     {
       "id": "analytic_solid_fragment",
       "stage": "fragment",
-      "source": "analytic_solid.frag.glsl",
+      "source": "analytic_solid.frag.slang",
       "output": "analytic_solid.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "417dfd3a77a52c7b284128a570fc8c5a6262033272b3a6044501f3203210fe87",
-      "outputSha256": "69794ab920db355056979a5f795adc7d463df60ca2bf98b0283aa22b6ac2883c",
-      "outputBytes": 6616,
+      "sourceSha256": "a05d3c290dedb1dddde297f089eb8802e202a2746c24e048fa66f211232740d5",
+      "outputSha256": "eafdc811e7a70f77636768a7cd63b33e0fa70bcf6615f878a298f52279361a1b",
+      "outputBytes": 7444,
       "capabilities": [
         1
       ]
@@ -282,12 +313,12 @@
     {
       "id": "analytic_shadow_fragment",
       "stage": "fragment",
-      "source": "analytic_shadow.frag.glsl",
+      "source": "analytic_shadow.frag.slang",
       "output": "analytic_shadow.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "15002a1e1959351147c57b8cf42aac4892f1c9a4134b75d50c5bf8536c0432d7",
-      "outputSha256": "46ffb391f502f7a72b2cd8d28a11ddea605825dd6647648d05f23e5d8e869f68",
-      "outputBytes": 441228,
+      "sourceSha256": "7234a9872366a3591221b830e8fc5815b8513572e98f88eb670610b216625e0b",
+      "outputSha256": "793e355a36de72970986815d1906f16993d0c1b5b0559f798e4586c9d0fb3cc5",
+      "outputBytes": 400092,
       "capabilities": [
         1
       ]
@@ -295,12 +326,12 @@
     {
       "id": "analytic_border_fragment",
       "stage": "fragment",
-      "source": "analytic_border.frag.glsl",
+      "source": "analytic_border.frag.slang",
       "output": "analytic_border.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "3f48c77c55aad25468894a0a74ef6cc46053b52a96d1cea8e45c4d7901bc6f42",
-      "outputSha256": "e2852cc542dbd3ac2dd17e238d5e5833e6a3d00a0d50ba968a672ac05ca75e42",
-      "outputBytes": 29676,
+      "sourceSha256": "a6b354f9af315195de7a4d7897bd35d6c2113fab41260dd4fdb0d386f9c50441",
+      "outputSha256": "7a327649b68de30aef78c34ce4c5664c8563dcbaa48e1d2f2ac6f6d5a0ef49db",
+      "outputBytes": 33376,
       "capabilities": [
         1
       ]
@@ -308,12 +339,12 @@
     {
       "id": "analytic_linear4_fragment",
       "stage": "fragment",
-      "source": "analytic_linear4.frag.glsl",
+      "source": "analytic_linear4.frag.slang",
       "output": "analytic_linear4.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "b6c35a8fb359e8729012adc6d21b39118c46144df1aad65f88128adc424fdfad",
-      "outputSha256": "f4f873645a21130b02f1e8e1074a4cf3df342704a548820454aac477c54d2b9c",
-      "outputBytes": 14504,
+      "sourceSha256": "8a16d9e5d4f2e46736966a060c2311793646845654337c6ede1689f459adce01",
+      "outputSha256": "d541df687946d88cf87e86e18167aa233af8f2bcd6639bffc62333c7f03d522f",
+      "outputBytes": 15176,
       "capabilities": [
         1
       ]
@@ -321,12 +352,12 @@
     {
       "id": "analytic_radial4_fragment",
       "stage": "fragment",
-      "source": "analytic_radial4.frag.glsl",
+      "source": "analytic_radial4.frag.slang",
       "output": "analytic_radial4.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "6ffb1774c371456663e4893a1e28663b6556931b3b289f64a53f35a32afb345d",
-      "outputSha256": "254471bc50ff2c1086e76b3c0635ebfe5d96d4bca131c543acc45d83aa5513c9",
-      "outputBytes": 14488,
+      "sourceSha256": "15bb5e49fa380282ea3b799b77f0b5b38adc0af042c9d94a3e63eca65dbc1542",
+      "outputSha256": "f2351f99de7028cbd5c2958803a196f01e8089ccdff3fa8951f98854224a7059",
+      "outputBytes": 15148,
       "capabilities": [
         1
       ]
@@ -334,12 +365,12 @@
     {
       "id": "analytic_sampled_image_fragment",
       "stage": "fragment",
-      "source": "analytic_sampled_image.frag.glsl",
+      "source": "analytic_sampled_image.frag.slang",
       "output": "analytic_sampled_image.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "68f6b77573385f7307e7f1069dfc433b6b7a51a2da826ca163c06fb4cbf2a87b",
-      "outputSha256": "7a0813bc05f6e76e9b3ddab16f707438d77b10103d64d2cb67b6662a39f40c78",
-      "outputBytes": 5516,
+      "sourceSha256": "f56c096fe863905b609b74d051e6f02ac7163f9c43231de9b80532e043f67853",
+      "outputSha256": "d2cca91ab6b81d3ad525840394d29ae712838b46372f642dc3b28a81fd325518",
+      "outputBytes": 6092,
       "capabilities": [
         1
       ]
@@ -347,12 +378,12 @@
     {
       "id": "analytic_blend_fragment",
       "stage": "fragment",
-      "source": "analytic_blend.frag.glsl",
+      "source": "analytic_blend.frag.slang",
       "output": "analytic_blend.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "fd3d3337f150a9eb69ee81046451344d6b753614a997c0c59566f631f4c6f865",
-      "outputSha256": "62b06310f0758540a489700133356c33e963b966d9cfe98d6db2a95dd03c1b43",
-      "outputBytes": 14912,
+      "sourceSha256": "56fe5df14ca65372cc2e9bc1d168cc2ea6d88f050f95f0e218de72857df9fd57",
+      "outputSha256": "ff7709ed9ebb0ba1ac06da5c13fa76a9f2302f33b562903d17530dc131676b77",
+      "outputBytes": 17576,
       "capabilities": [
         1
       ]
@@ -360,12 +391,12 @@
     {
       "id": "path_band_vertex",
       "stage": "vertex",
-      "source": "path_band.vert.glsl",
+      "source": "path_band.vert.slang",
       "output": "path_band.vert.spv",
       "entryPoint": "main",
-      "sourceSha256": "feb18f3fb95c706675516c6e9e73e7856a33e630615e9c34eb37ebcd312496c3",
-      "outputSha256": "322bd70d74b8cfc44311bbe284ca985d663d6caedb0345ed5c6fab74f02d41aa",
-      "outputBytes": 2384,
+      "sourceSha256": "2fe10f4409fde0d139efd23822a5bf12f7e16a73447f851f81ea4992b30de9da",
+      "outputSha256": "8305a126ad0c144fd49648616da9299545992b2111f2381def8cee1452b202a9",
+      "outputBytes": 2768,
       "capabilities": [
         1
       ]
@@ -373,12 +404,12 @@
     {
       "id": "path_band_fragment",
       "stage": "fragment",
-      "source": "path_band.frag.glsl",
+      "source": "path_band.frag.slang",
       "output": "path_band.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "86c85970b857154735692dc4f15b221fc722cac5b7664f77f8566181317719b3",
-      "outputSha256": "3b123f41199ba7c8d643a2b39a6da88f4249ed7ec05245042286f9dc809ba741",
-      "outputBytes": 92120,
+      "sourceSha256": "c30b32a3f90e3bfcf339215e5af4697237cfaf091626a52e75477973a083f190",
+      "outputSha256": "ca3b833f4f4319617d4d4e7330f277dc1448178e50f99d679ac5c0fc74a1a4ef",
+      "outputBytes": 107244,
       "capabilities": [
         1
       ]
@@ -404,7 +435,7 @@
       "output": "hb_gpu_draw.frag.spv",
       "entryPoint": "main",
       "assembly": "hb_gpu_draw_fragment",
-      "sourceSha256": "c4803745de446fef3bbdbeaaca71fcac0f52f70ca19db4ba958817dd8ab85276",
+      "sourceSha256": "a4fc087ab1c588cf2683daea9dcc74514d6e17f40346542056efb356c502288b",
       "outputSha256": "22c12aaf49331acd1799227c4fe847b66f3434b3a7645d6a4a5c590fd08cd7eb",
       "outputBytes": 134172,
       "capabilities": [
@@ -419,7 +450,7 @@
       "output": "hb_gpu_paint.frag.spv",
       "entryPoint": "main",
       "assembly": "hb_gpu_paint_fragment",
-      "sourceSha256": "2798318f5b9b212ac5fb8d77ac4234f02aec7681b2f6da9a10722d98814a2201",
+      "sourceSha256": "553cda15767acdde24abd61c5285b4f5f61283688c4f0b6ea4e00b0618bb479a",
       "outputSha256": "040c5452f8df1c82ec0abf3e42d184cd2ef16613dc299cc84df993f402b1458d",
       "outputBytes": 284160,
       "capabilities": [
@@ -430,12 +461,12 @@
     {
       "id": "clip_mask_vertex",
       "stage": "vertex",
-      "source": "clip_mask.vert.glsl",
+      "source": "clip_mask.vert.slang",
       "output": "clip_mask.vert.spv",
       "entryPoint": "main",
-      "sourceSha256": "71034404544e829d233348c88ddffe25c01c9b25535c2461727b3191a569c941",
-      "outputSha256": "5838d03f343d3b0b6f1158f7cedc6973a27647e9f757339a97f65dec42b027fe",
-      "outputBytes": 2288,
+      "sourceSha256": "2082ae369bc202ae34daff36136ce16fb8ca539daee57912eed092178eb4b67a",
+      "outputSha256": "008df7a84cdec033fa9fd0eef3db92825a980444df343777b7c6a5ef1e2458af",
+      "outputBytes": 2676,
       "capabilities": [
         1
       ]
@@ -443,12 +474,12 @@
     {
       "id": "clip_mask_fragment",
       "stage": "fragment",
-      "source": "clip_mask.frag.glsl",
+      "source": "clip_mask.frag.slang",
       "output": "clip_mask.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "93aa1d0884c1092cbd76b67d4eb13c364ac6852b8168d49e18d3c014bc20edbc",
-      "outputSha256": "ce4f718bb2d8fdb585f05faf8970484a922b199dcf3b4c04a7a87d18e4809f74",
-      "outputBytes": 85792,
+      "sourceSha256": "21ef8bfa25dce6aa42fc885699535b2d5a55ed6339e72e62741ac99a64170cea",
+      "outputSha256": "fb65b1117679c5983834df167dba16692e6fea1b0d2cda19c51c3fa1ec3f6332",
+      "outputBytes": 101200,
       "capabilities": [
         1
       ]
@@ -456,12 +487,12 @@
     {
       "id": "lava_fragment",
       "stage": "fragment",
-      "source": "lava.frag.glsl",
+      "source": "lava.frag.slang",
       "output": "lava.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "6309f2fbff45234692231e247503ea1ca512635d896e57eb01c2562bdb73eaf6",
-      "outputSha256": "b2cfb8a570969966f855bd2676a23f6e6a9465580211f3cc4a185619bb766ee9",
-      "outputBytes": 18712,
+      "sourceSha256": "683c682ed754ba3e64f1f6239fa0fdffceed56fb842365687110f1f956755b5a",
+      "outputSha256": "d3ea285c940296504dc9bcb1eb92af99c18c31d92e60da0fff18c518b438f8d4",
+      "outputBytes": 21864,
       "capabilities": [
         1
       ]

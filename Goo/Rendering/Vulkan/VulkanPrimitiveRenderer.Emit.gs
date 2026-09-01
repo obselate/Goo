@@ -644,6 +644,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       primitive.params_w = value.Bounds.Height / targetHeight
       primitive.packedColorsExtra_w = primitiveFrameData.EffectDataWordOffset
       +effect.DataWordOffset
+      primitive.stopPositions_x = effect.ElapsedSeconds
       if !primitivePrepass {
         EnsureDescriptorLayout(blendPipelineLayout)
         var descriptorSets = stackalloc[2]VkDescriptorSet

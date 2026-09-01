@@ -16,6 +16,7 @@ ctor|Goo.FontVariation|public|(arg0:System.String,arg1:System.Single)
 ctor|Goo.ImageSourceLease|public|()
 ctor|Goo.ImageSource|public|(width:System.Int32,height:System.Int32,pixels:System.Byte[])
 ctor|Goo.Image|public|()
+ctor|Goo.LayoutTransition|public|(arg0:System.Double,arg1:Goo.Easing)
 ctor|Goo.LinearGradient|public|(angle:System.Double,params colors:Goo.Color[])
 ctor|Goo.LinearGradient|public|(angle:System.Double,stops:Goo.GradientStop[])
 ctor|Goo.LinearGradient|public|(params colors:Goo.Color[])
@@ -566,6 +567,7 @@ method|Goo.CompiledVectorAsset|PathForNode|instance|public|generic:|(index:Syste
 method|Goo.CompiledVectorAsset|Render|instance|public|generic:|()->Goo.Blob
 method|Goo.CompiledVectorAsset|Render|instance|public|generic:|(key:System.String)->Goo.Blob
 method|Goo.CompiledVectorAsset|TryLoad|static|public|generic:|(bytes:System.Byte[])->Goo.CompiledVectorAsset
+method|Goo.DevTools|Attach|static|public|generic:|(window:Goo.Window)->System.IDisposable
 method|Goo.ElementHandle|Blur|instance|public|generic:|()->System.Boolean
 method|Goo.ElementHandle|Focus|instance|public|generic:|()->System.Boolean
 method|Goo.ElementHandle|JumpTo|instance|public|generic:|(x:System.Double,y:System.Double)->System.Boolean
@@ -622,6 +624,13 @@ method|Goo.KeyModifiers|GetHashCode|instance|public|generic:|()->System.Int32
 method|Goo.KeyModifiers|ToString|instance|public|generic:|()->System.String
 method|Goo.KeyModifiers|op_Equality|static|public|generic:|(arg0:Goo.KeyModifiers,arg1:Goo.KeyModifiers)->System.Boolean
 method|Goo.KeyModifiers|op_Inequality|static|public|generic:|(arg0:Goo.KeyModifiers,arg1:Goo.KeyModifiers)->System.Boolean
+method|Goo.LayoutTransition|Deconstruct|instance|public|generic:|(out DurationMs:System.Double&,out Easing:Goo.Easing&)->System.Void
+method|Goo.LayoutTransition|Equals|instance|public|generic:|(arg0:Goo.LayoutTransition)->System.Boolean
+method|Goo.LayoutTransition|Equals|instance|public|generic:|(arg0:System.Object)->System.Boolean
+method|Goo.LayoutTransition|GetHashCode|instance|public|generic:|()->System.Int32
+method|Goo.LayoutTransition|ToString|instance|public|generic:|()->System.String
+method|Goo.LayoutTransition|op_Equality|static|public|generic:|(arg0:Goo.LayoutTransition,arg1:Goo.LayoutTransition)->System.Boolean
+method|Goo.LayoutTransition|op_Inequality|static|public|generic:|(arg0:Goo.LayoutTransition,arg1:Goo.LayoutTransition)->System.Boolean
 method|Goo.Length|Percent|static|public|generic:|(value:System.Double)->Goo.Length
 method|Goo.Length|op_Implicit|static|public|generic:|(value:System.Double)->Goo.Length
 method|Goo.Length|op_Implicit|static|public|generic:|(value:System.Int32)->Goo.Length
@@ -827,6 +836,7 @@ method|Goo.Window|Pump|instance|public|generic:|(dt:System.Double)->System.Void
 method|Goo.Window|RequestClose|instance|public|generic:|()->System.Void
 method|Goo.Window|Run|instance|public|generic:|()->System.Void
 method|Goo.Window|SetClipboardText|instance|public|generic:|(value:System.String)->System.Void
+method|Goo.Window|TryPost|instance|public|generic:|(action:System.Action)->System.Boolean
 property|Goo.AccessibilityActionRequest|Action|Goo.AccessibilityAction|instance|get:public|index:()
 property|Goo.AccessibilityActionRequest|ScrollX|System.Double|instance|get:public|index:()
 property|Goo.AccessibilityActionRequest|ScrollY|System.Double|instance|get:public|index:()
@@ -928,6 +938,7 @@ property|Goo.Blob|Focus|Goo.Style|instance|get:public,init:public|index:()
 property|Goo.Blob|Handle|Goo.ElementHandle|instance|get:public,init:public|index:()
 property|Goo.Blob|Hover|Goo.Style|instance|get:public,init:public|index:()
 property|Goo.Blob|Key|System.String|instance|get:public,init:public|index:()
+property|Goo.Blob|LayoutTransition|System.Nullable`1<Goo.LayoutTransition>|instance|get:public,init:public|index:()
 property|Goo.Blob|OnBlur|System.Action`1<Goo.FocusEvent>|instance|get:public,init:public|index:()
 property|Goo.Blob|OnClick|System.Action|instance|get:public,init:public|index:()
 property|Goo.Blob|OnFocus|System.Action`1<Goo.FocusEvent>|instance|get:public,init:public|index:()
@@ -1028,6 +1039,8 @@ property|Goo.KeyModifiers|Alt|System.Boolean|instance|get:public,init:public|ind
 property|Goo.KeyModifiers|Ctrl|System.Boolean|instance|get:public,init:public|index:()
 property|Goo.KeyModifiers|Shift|System.Boolean|instance|get:public,init:public|index:()
 property|Goo.KeyModifiers|Super|System.Boolean|instance|get:public,init:public|index:()
+property|Goo.LayoutTransition|DurationMs|System.Double|instance|get:public,init:public|index:()
+property|Goo.LayoutTransition|Easing|Goo.Easing|instance|get:public,init:public|index:()
 property|Goo.Length|Auto|Goo.Length|static|get:public|index:()
 property|Goo.Length|HasMagnitude|System.Boolean|instance|get:public|index:()
 property|Goo.Length|IsPercent|System.Boolean|instance|get:public|index:()
@@ -1063,6 +1076,8 @@ property|Goo.RadialGradient|Stops|System.Collections.Generic.IReadOnlyList`1<Goo
 property|Goo.ShaderEffectData|ByteLength|System.Int32|instance|get:public|index:()
 property|Goo.ShaderEffectData|ContentVersion|System.UInt64|instance|get:public|index:()
 property|Goo.ShaderEffectData|IsDisposed|System.Boolean|instance|get:public|index:()
+property|Goo.ShaderEffect|ElapsedSeconds|System.Double|instance|get:public,set:public|index:()
+property|Goo.ShaderEffect|Playing|System.Boolean|instance|get:public,set:public|index:()
 property|Goo.Shape|CornerRadius|System.Double|instance|get:public,init:public|index:()
 property|Goo.Shape|Dashes|Goo.DashPattern|instance|get:public,init:public|index:()
 property|Goo.Shape|FillRule|Goo.FillRule|instance|get:public,init:public|index:()
@@ -1323,6 +1338,7 @@ type|Goo.CompiledVectorAsset|class|public|base:System.Object|interfaces:|generic
 type|Goo.Container|sealed-class|public|base:Goo.Blob|interfaces:|generic:
 type|Goo.Cursor|enum|public|base:System.Enum|interfaces:|generic:
 type|Goo.DashPattern|class|public|base:System.Object|interfaces:|generic:
+type|Goo.DevTools|sealed-class|public|base:System.Object|interfaces:|generic:
 type|Goo.Direction|enum|public|base:System.Enum|interfaces:|generic:
 type|Goo.Display|enum|public|base:System.Enum|interfaces:|generic:
 type|Goo.Easing|enum|public|base:System.Enum|interfaces:|generic:
@@ -1347,6 +1363,7 @@ type|Goo.JustifyContent|enum|public|base:System.Enum|interfaces:|generic:
 type|Goo.KeyEvent|struct|public|base:System.ValueType|interfaces:|generic:
 type|Goo.KeyModifiers|struct|public|base:System.ValueType|interfaces:|generic:
 type|Goo.Key|enum|public|base:System.Enum|interfaces:|generic:
+type|Goo.LayoutTransition|struct|public|base:System.ValueType|interfaces:|generic:
 type|Goo.Length|struct|public|base:System.ValueType|interfaces:|generic:
 type|Goo.LinearGradient|sealed-class|public|base:System.Object|interfaces:Goo.Gradient|generic:
 type|Goo.MotionConverter`1|sealed-class|public|base:System.Object|interfaces:|generic:T[attrs:0,constraints:]

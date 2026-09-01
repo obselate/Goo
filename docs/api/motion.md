@@ -70,6 +70,14 @@ Gets the current value at the current motion clock time.
 
 Gets the current velocity in converter-coordinate units per second. A resting animation reports zero velocity in every dimension.
 
+## `LayoutTransition`
+
+Source:
+
+- [`LayoutTransition.gs`](../../Goo/Motion/LayoutTransition.gs)
+
+Describes an opt-in transition for computed layout position changes using DurationMs and Easing.
+
 ## `Motion`
 
 Source:

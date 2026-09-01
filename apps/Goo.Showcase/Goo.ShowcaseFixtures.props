@@ -1,6 +1,0 @@
-<Project>
-  <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)ShowcaseAssemblyInfo.gs"
-             Link="ShowcaseAssemblyInfo.gs" />
-  </ItemGroup>
-</Project>

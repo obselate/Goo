@@ -632,6 +632,7 @@ internal partial class SceneFrame {
       ProgramId: value.ProgramId,
       Version: value.Version,
       SamplesBackdrop: value.SamplesBackdrop,
+      ElapsedSeconds: value.ElapsedSeconds,
       Parameter0: value.Parameter0,
       Parameter1: value.Parameter1,
       Parameter2: value.Parameter2,
