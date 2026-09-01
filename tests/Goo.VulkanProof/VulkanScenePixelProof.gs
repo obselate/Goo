@@ -268,6 +268,9 @@ internal unsafe func VerifyPixelSceneReadbackWithClear(
     if !Dominant(readback, width, 12, 43, 0, 1, 2, 32) {
       return false
     }
+    if !RoundedBorderCornerAntialias(readback, width) {
+      return false
+    }
     if !Dominant(readback, width, 26, 43, 0, 1, 2, 32) {
       return false
     }
@@ -333,6 +336,22 @@ private unsafe func DimmedCorner(
     return readback[offset] <= 64u
       && readback[offset + 1] <= 64u
       && readback[offset + 2] <= 64u
+  }
+private unsafe func RoundedBorderCornerAntialias(
+  readback * uint8,
+  width uint32) bool{
+    let cornerOffset = PixelOffset(width, 5, 43)
+    let outerEdgeOffset = PixelOffset(width, 5, 46)
+    let innerEdgeOffset = PixelOffset(width, 6, 46)
+    return readback[cornerOffset] >= 64u && readback[cornerOffset] <= 160u
+      && readback[cornerOffset + 1] >= 64u && readback[cornerOffset + 1] <= 160u
+      && readback[cornerOffset + 2] >= 64u && readback[cornerOffset + 2] <= 160u
+      && readback[outerEdgeOffset] >= 240u
+      && readback[outerEdgeOffset + 1] >= 240u
+      && readback[outerEdgeOffset + 2] >= 240u
+      && readback[innerEdgeOffset] >= 240u
+      && readback[innerEdgeOffset + 1] >= 240u
+      && readback[innerEdgeOffset + 2] >= 240u
   }
 
 private unsafe func Dominant(
