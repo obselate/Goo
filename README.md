@@ -17,12 +17,11 @@ Goo applications describe UI as ordinary G# objects. Goo retains mounted state, 
 Install [.NET 10](https://dotnet.microsoft.com/download/dotnet/10.0), then:
 
 ```sh
-dotnet new install Gsharp.Templates # once
+dotnet new install Goo.Templates # once
 
 mkdir hello-goo
 cd hello-goo
-dotnet new gsharp-console
-dotnet add package Goo --version 0.3.0
+dotnet new goo
 ```
 
 Replace `Program.gs` with the example below, then run:

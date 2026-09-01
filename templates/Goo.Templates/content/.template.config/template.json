@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Goo",
+  "classifications": [
+    "Goo",
+    "G#",
+    "UI",
+    "Desktop"
+  ],
+  "identity": "Goo.Templates.Application",
+  "name": "Goo application",
+  "shortName": "goo",
+  "sourceName": "GooStarter",
+  "preferNameDirectory": true,
+  "description": "A minimal Goo retained UI application written in G#.",
+  "symbols": {
+    "goo-version": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "0.3.0",
+      "replaces": "0.3.0",
+      "description": "Goo package version."
+    }
+  },
+  "primaryOutputs": [
+    {
+      "path": "GooStarter.gsproj"
+    }
+  ],
+  "sources": [
+    {
+      "source": "./",
+      "target": "./",
+      "modifiers": [
+        {
+          "exclude": [
+            "**/[Bb]in/**",
+            "**/[Oo]bj/**",
+            "**/.template.config/**"
+          ]
+        }
+      ]
+    }
+  ]
+}
