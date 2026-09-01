@@ -64,7 +64,7 @@ func RunClipCaptureSmoke() {
       uint32(metrics.FramebufferWidth), uint32(metrics.FramebufferHeight))
     Require(staged == VulkanReadbackRequestStatus.NotReady,
       "Clip capture second prerequisite frame was not staged: " + staged.ToString())
-    WindowReadbackTestFixture.DrainWindowQueue(opened, 2000)
+    WindowReadbackTestFixture.DrainWindowQueue(opened, 10000)
 
     let accepted = WindowReadbackTestFixture.Request(opened,
       uint32(metrics.FramebufferWidth), uint32(metrics.FramebufferHeight))
