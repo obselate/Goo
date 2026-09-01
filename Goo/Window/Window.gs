@@ -54,7 +54,8 @@ public partial class Window {
   public prop IsOpen bool{ get; private set; }
   internal prop Tree Node? { get { return node } }
   /// Gets or sets per-window GPU presentation synchronization.
-  /// True selects FIFO. False prefers Immediate, then Mailbox, then FIFO.
+  /// True requests FIFO. Software Vulkan devices prefer Immediate, then Mailbox, then FIFO.
+  /// False prefers Immediate, then Mailbox, then FIFO on every device.
   /// Window.Run applies internal display-rate pacing for either value.
   public prop VSync bool{
     get { return vsync }

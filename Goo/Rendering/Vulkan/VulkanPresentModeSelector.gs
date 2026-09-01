@@ -4,12 +4,13 @@ internal class VulkanPresentModeSelector {
   shared {
     internal func TrySelect(
       vsync bool,
+      softwareDevice bool,
       hasImmediate bool,
       hasMailbox bool,
       hasFifo bool,
       out selected VkPresentModeKHR) bool{
         selected = VkPresentModeKHR(0)
-        if vsync {
+        if vsync && !softwareDevice {
           if !hasFifo {
             return false
           }

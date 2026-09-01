@@ -1202,21 +1202,30 @@ internal class WindowReadbackTestFixture {
 
     private func CheckPresentModes() {
       var selected VkPresentModeKHR
-      FramePacingRequire(VulkanPresentModeSelector.TrySelect(true, true, true, true, out selected)
+      FramePacingRequire(VulkanPresentModeSelector.TrySelect(true, false, true, true, true, out selected)
           && selected == VkConstants.VK_PRESENT_MODE_FIFO_KHR,
         "Runtime VSync-on did not select FIFO")
-      FramePacingRequire(VulkanPresentModeSelector.TrySelect(false, true, true, true, out selected)
+      FramePacingRequire(VulkanPresentModeSelector.TrySelect(true, true, true, true, true, out selected)
+          && selected == VkConstants.VK_PRESENT_MODE_IMMEDIATE_KHR,
+        "Runtime software VSync-on did not prefer immediate")
+      FramePacingRequire(VulkanPresentModeSelector.TrySelect(true, true, false, true, true, out selected)
+          && selected == VkConstants.VK_PRESENT_MODE_MAILBOX_KHR,
+        "Runtime software VSync-on did not fall back to mailbox")
+      FramePacingRequire(VulkanPresentModeSelector.TrySelect(true, true, false, false, true, out selected)
+          && selected == VkConstants.VK_PRESENT_MODE_FIFO_KHR,
+        "Runtime software VSync-on did not fall back to FIFO")
+      FramePacingRequire(VulkanPresentModeSelector.TrySelect(false, false, true, true, true, out selected)
           && selected == VkConstants.VK_PRESENT_MODE_IMMEDIATE_KHR,
         "Runtime VSync-off did not prefer immediate")
-      FramePacingRequire(VulkanPresentModeSelector.TrySelect(false, false, true, true, out selected)
+      FramePacingRequire(VulkanPresentModeSelector.TrySelect(false, false, false, true, true, out selected)
           && selected == VkConstants.VK_PRESENT_MODE_MAILBOX_KHR,
         "Runtime VSync-off did not fall back to mailbox")
-      FramePacingRequire(VulkanPresentModeSelector.TrySelect(false, false, false, true, out selected)
+      FramePacingRequire(VulkanPresentModeSelector.TrySelect(false, false, false, false, true, out selected)
           && selected == VkConstants.VK_PRESENT_MODE_FIFO_KHR,
         "Runtime VSync-off did not fall back to FIFO")
-      FramePacingRequire(!VulkanPresentModeSelector.TrySelect(true, true, true, false, out selected),
+      FramePacingRequire(!VulkanPresentModeSelector.TrySelect(true, false, true, true, false, out selected),
         "Runtime VSync-on accepted a surface without FIFO")
-      FramePacingRequire(!VulkanPresentModeSelector.TrySelect(false, false, false, false, out selected),
+      FramePacingRequire(!VulkanPresentModeSelector.TrySelect(false, false, false, false, false, out selected),
         "Runtime present mode selection accepted an empty mode set")
       FramePacingRequire(selected != VkConstants.VK_PRESENT_MODE_FIFO_RELAXED_KHR,
         "Runtime present mode selection returned FIFO relaxed")

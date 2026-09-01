@@ -72,6 +72,9 @@ jobs:
           vulkaninfo --summary 2>&1 | tee artifacts/reports/vulkaninfo-summary.txt
           grep -F 'VK_LAYER_KHRONOS_validation' artifacts/reports/vulkaninfo-summary.txt
 
+      - name: Fetch pinned Windows SDL runtime
+        run: .github/scripts/fetch-sdl-win-x64.sh artifacts/native/win-x64/SDL3.dll
+
       - name: Build library and Vulkan verification projects
         run: |
           dotnet build Goo/Goo.gsproj -c Release -p:TreatWarningsAsErrors=true
@@ -157,7 +160,8 @@ jobs:
             -p:TreatWarningsAsErrors=true \
             -p:ContinuousIntegrationBuild=true \
             -p:RepositoryCommit="$GITHUB_SHA" \
-            -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so"
+            -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so" \
+            -p:GooWindowsSdlPath="$PWD/artifacts/native/win-x64/SDL3.dll"
           dotnet pack tools/Goo.SvgCompiler/Goo.SvgCompiler.csproj \
             -c Release -o artifacts/packages \
             -p:TreatWarningsAsErrors=true \
