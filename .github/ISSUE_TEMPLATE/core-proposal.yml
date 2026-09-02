@@ -45,7 +45,6 @@ body:
     attributes:
       label: Current public surface
       description: List the Goo APIs you tried and show the smallest composition attempt.
-      render: gsharp
     validations:
       required: true
 

@@ -45,7 +45,6 @@ body:
     attributes:
       label: Minimal reproduction
       description: Provide the smallest code sample and exact steps that reproduce the defect.
-      render: gsharp
     validations:
       required: true
 
