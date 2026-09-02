@@ -1,6 +1,5 @@
 name: Owner dogfood gap
 description: Repository-owner self-report for a capability blocked while building with Goo
-title: ""
 labels:
   - proposal
 body:

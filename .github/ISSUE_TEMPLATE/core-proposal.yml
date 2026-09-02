@@ -1,6 +1,5 @@
 name: Core proposal
 description: Propose a missing primitive or public API for Goo core
-title: ""
 labels:
   - proposal
 body:
