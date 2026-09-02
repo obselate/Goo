@@ -1,6 +1,5 @@
 name: Question
 description: Ask about using or composing Goo primitives
-title: ""
 labels:
   - question
 body:

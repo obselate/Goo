@@ -1,6 +1,5 @@
 name: Bug report
 description: Report a reproducible defect in Goo
-title: ""
 labels:
   - bug
 body:
