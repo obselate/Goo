@@ -381,6 +381,7 @@ jobs:
         run: |
           .github/scripts/validate-release.py \
             --package "artifacts/packages/Goo.$GOO_VERSION.nupkg" \
+            --symbols "artifacts/packages/Goo.$GOO_VERSION.snupkg" \
             --bundle artifacts/linux-x64
           dotnet artifacts/linux-x64/Goo.PackageSmoke.dll
 

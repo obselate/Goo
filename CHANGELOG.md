@@ -21,6 +21,7 @@
 - Fixed best-effort cleanup ownership across reconciliation and the complete window close sequence.
 - Fixed routed keyboard and focus callback semantics and default-action cancellation.
 - Fixed Vulkan pipeline cache validation and retirement behavior.
+- Embedded Goo debug symbols in the assembly so NuGet no longer rejects the G# portable PDB checksum.
 
 ### Performance
 

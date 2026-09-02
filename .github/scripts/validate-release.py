@@ -3,6 +3,7 @@ import argparse
 import hashlib
 from pathlib import Path
 import re
+import struct
 import subprocess
 import tempfile
 import zipfile
@@ -106,6 +107,12 @@ BUNDLE_FILES = {
     "SHA256SUMS",
 }
 NATIVE_NAMES = {"libSDL3.so", "libgoo-harfbuzz-gpu.so", "libgoo-harfbuzz.so"}
+SYMBOL_FILES = {
+    "_rels/.rels",
+    "Goo.nuspec",
+    "[Content_Types].xml",
+    "lib/net10.0/Yoga.Net.pdb",
+}
 
 
 def digest(path: Path) -> str:
@@ -141,6 +148,117 @@ def pe_imports(path: Path) -> set[str]:
     return set(re.findall(r"DLL Name:\s+(\S+)", result.stdout))
 
 
+def pe_debug_entries(data: bytes) -> list[tuple[int, int, bytes]]:
+    if len(data) < 64 or data[:2] != b"MZ":
+        raise SystemExit("managed assembly is not a PE image")
+    pe = struct.unpack_from("<I", data, 60)[0]
+    if pe + 24 > len(data) or data[pe:pe + 4] != b"PE\0\0":
+        raise SystemExit("managed assembly has no PE header")
+    section_count = struct.unpack_from("<H", data, pe + 6)[0]
+    optional_size = struct.unpack_from("<H", data, pe + 20)[0]
+    optional = pe + 24
+    magic = struct.unpack_from("<H", data, optional)[0]
+    directory = optional + (96 if magic == 0x10B else 112 if magic == 0x20B else -1)
+    if directory < optional or directory + 56 > len(data):
+        raise SystemExit("managed assembly has an invalid optional header")
+    debug_rva, debug_size = struct.unpack_from("<II", data, directory + 48)
+    sections = optional + optional_size
+    debug_offset = None
+    for index in range(section_count):
+        section = sections + index * 40
+        if section + 40 > len(data):
+            raise SystemExit("managed assembly has an invalid section table")
+        virtual_size, virtual_address, raw_size, raw_offset = struct.unpack_from("<IIII", data, section + 8)
+        if virtual_address <= debug_rva < virtual_address + max(virtual_size, raw_size):
+            debug_offset = raw_offset + debug_rva - virtual_address
+            break
+    if debug_offset is None or debug_offset + debug_size > len(data) or debug_size % 28 != 0:
+        raise SystemExit("managed assembly has an invalid debug directory")
+    entries: list[tuple[int, int, bytes]] = []
+    for index in range(debug_size // 28):
+        entry = debug_offset + index * 28
+        timestamp = struct.unpack_from("<I", data, entry + 4)[0]
+        entry_type = struct.unpack_from("<I", data, entry + 12)[0]
+        size = struct.unpack_from("<I", data, entry + 16)[0]
+        raw_offset = struct.unpack_from("<I", data, entry + 24)[0]
+        if size > 0 and raw_offset + size > len(data):
+            raise SystemExit("managed assembly has invalid debug data")
+        entries.append((entry_type, timestamp, data[raw_offset:raw_offset + size]))
+    return entries
+
+
+def pe_debug_types(data: bytes) -> set[int]:
+    return {entry_type for entry_type, _, _ in pe_debug_entries(data)}
+
+
+def portable_pdb_identity(data: bytes) -> tuple[bytes, bytes]:
+    if len(data) < 24 or data[:4] != b"BSJB":
+        raise SystemExit("symbol file is not a portable PDB")
+    position = 16 + struct.unpack_from("<I", data, 12)[0]
+    position = (position + 3) & ~3
+    if position + 4 > len(data):
+        raise SystemExit("portable PDB has an invalid metadata header")
+    _, stream_count = struct.unpack_from("<HH", data, position)
+    position += 4
+    pdb_offset = None
+    for _ in range(stream_count):
+        if position + 8 > len(data):
+            raise SystemExit("portable PDB has an invalid stream table")
+        offset, size = struct.unpack_from("<II", data, position)
+        position += 8
+        try:
+            end = data.index(0, position)
+        except ValueError as error:
+            raise SystemExit("portable PDB has an unterminated stream name") from error
+        name = data[position:end].decode("utf-8")
+        position = (end + 4) & ~3
+        if offset + size > len(data):
+            raise SystemExit("portable PDB stream exceeds the file")
+        if name == "#Pdb":
+            pdb_offset = offset
+    if pdb_offset is None or pdb_offset + 20 > len(data):
+        raise SystemExit("portable PDB has no valid #Pdb stream")
+    identity = data[pdb_offset:pdb_offset + 20]
+    canonical = bytearray(data)
+    canonical[pdb_offset:pdb_offset + 20] = bytes(20)
+    return identity, hashlib.sha256(canonical).digest()
+
+
+def validate_symbols(package_path: Path, symbols_path: Path) -> None:
+    with zipfile.ZipFile(package_path) as package, zipfile.ZipFile(symbols_path) as symbols:
+        names = set(symbols.namelist())
+        variable = {
+            name for name in names
+            if name.startswith("package/services/metadata/core-properties/")
+            and name.endswith(".psmdcp")
+        }
+        unexpected = names - SYMBOL_FILES - variable
+        missing = SYMBOL_FILES - names
+        if unexpected or missing or len(variable) != 1:
+            raise SystemExit(
+                f"symbol package allowlist mismatch; missing={sorted(missing)}, "
+                f"unexpected={sorted(unexpected)}, metadata={sorted(variable)}")
+        for pdb_name in sorted(name for name in names if name.endswith(".pdb")):
+            dll_name = pdb_name[:-4] + ".dll"
+            if dll_name not in package.namelist():
+                raise SystemExit(f"symbol package has no matching assembly: {pdb_name}")
+            identity, checksum = portable_pdb_identity(symbols.read(pdb_name))
+            entries = pe_debug_entries(package.read(dll_name))
+            codeview = [(timestamp, raw) for entry_type, timestamp, raw in entries if entry_type == 2]
+            checksums = [raw for entry_type, _, raw in entries if entry_type == 19]
+            if len(codeview) != 1 or len(checksums) != 1:
+                raise SystemExit(f"assembly debug records are incomplete: {dll_name}")
+            timestamp, codeview_data = codeview[0]
+            if len(codeview_data) < 24 or codeview_data[:4] != b"RSDS":
+                raise SystemExit(f"assembly CodeView record is invalid: {dll_name}")
+            if identity != codeview_data[4:20] + struct.pack("<I", timestamp):
+                raise SystemExit(f"PDB identity does not match assembly: {pdb_name}")
+            algorithm, separator, recorded = checksums[0].partition(b"\0")
+            if separator != b"\0" or algorithm != b"SHA256" or recorded != checksum:
+                raise SystemExit(f"PDB checksum does not match assembly: {pdb_name}")
+    print(f"Symbols OK: {symbols_path.stat().st_size} bytes")
+
+
 def validate_package(path: Path) -> str:
     if path.stat().st_size > MAX_BYTES:
         raise SystemExit(f"NuGet package exceeds 20 MiB: {path.stat().st_size}")
@@ -166,6 +284,8 @@ def validate_package(path: Path) -> str:
         for name, source in package_sources.items():
             if archive.read(name) != source.read_bytes():
                 raise SystemExit(f"package {name} differs from the release tree")
+        if 17 not in pe_debug_types(archive.read("lib/net10.0/Goo.dll")):
+            raise SystemExit("packaged Goo.dll does not contain embedded debug symbols")
         if archive.read("buildTransitive/Goo.targets") != (ROOT / "Goo/Goo.targets").read_bytes():
             raise SystemExit("packaged Goo.targets differs from the release tree")
         nuspec = archive.read("Goo.nuspec").decode("utf-8-sig")
@@ -247,9 +367,16 @@ def validate_bundle(path: Path, package_sdl_digest: str) -> None:
     print(f"Bundle OK: {total} bytes; native={sorted(native)}")
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--package", required=True, type=Path)
-parser.add_argument("--bundle", required=True, type=Path)
-args = parser.parse_args()
-sdl_digest = validate_package(args.package)
-validate_bundle(args.bundle, sdl_digest)
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--package", required=True, type=Path)
+    parser.add_argument("--symbols", required=True, type=Path)
+    parser.add_argument("--bundle", required=True, type=Path)
+    args = parser.parse_args()
+    sdl_digest = validate_package(args.package)
+    validate_symbols(args.package, args.symbols)
+    validate_bundle(args.bundle, sdl_digest)
+
+
+if __name__ == "__main__":
+    main()
