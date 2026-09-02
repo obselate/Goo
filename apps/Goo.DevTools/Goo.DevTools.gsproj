@@ -26,10 +26,6 @@
     <ProjectReference Include="../../Goo/Goo.gsproj" />
     <None Update="README.md" Pack="true" PackagePath="/" />
     <None Include="$(MSBuildProjectDirectory)/../../LICENSE" Pack="true" PackagePath="/" />
-    <None Include="$(GooLinuxSdlPath)"
-          Pack="true"
-          PackagePath="tools/net10.0/any/libSDL3.so"
-          Condition="'$(GooLinuxSdlPath)' != '' and Exists('$(GooLinuxSdlPath)')" />
   </ItemGroup>
   <Import Project="../../Goo/Goo.targets" />
 </Project>
