@@ -45,10 +45,9 @@ if manifest["build"]["macos"] != {
         "gpu": "@rpath/libgoo-harfbuzz-gpu.dylib",
     },
     "requiredNeeded": {
-        "harfbuzz": ["/usr/lib/libSystem.B.dylib", "/usr/lib/libc++.1.dylib"],
+        "harfbuzz": ["/usr/lib/libSystem.B.dylib"],
         "gpu": [
             "/usr/lib/libSystem.B.dylib",
-            "/usr/lib/libc++.1.dylib",
             "@rpath/libgoo-harfbuzz.dylib",
         ],
     },
