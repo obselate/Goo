@@ -101,6 +101,8 @@ type VkPhysicalDeviceType = int32
 type VkPipeline = uint64
 type VkPipelineBindPoint = int32
 type VkPipelineCache = uint64
+type VkPipelineCacheCreateFlagBits = int32
+type VkPipelineCacheCreateFlags = VkFlags
 type VkPipelineColorBlendStateCreateFlagBits = int32
 type VkPipelineColorBlendStateCreateFlags = VkFlags
 type VkPipelineCreateFlagBits = int32
@@ -1831,6 +1833,15 @@ unsafe struct VkPhysicalDeviceVulkan13Features {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkPipelineCacheCreateInfo {
+  var sType VkStructureType
+  var pNext * void
+  var flags VkPipelineCacheCreateFlags
+  var initialDataSize nuint
+  var pInitialData * void
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkPipelineColorBlendAttachmentState {
   var blendEnable VkBool32
   var srcColorBlendFactor VkBlendFactor
@@ -2292,6 +2303,9 @@ unsafe struct VkDeviceDispatch {
   var vkDestroyShaderModule unmanaged[Cdecl](VkDevice, VkShaderModule, *VkAllocationCallbacks) -> void
   var vkCreatePipelineLayout unmanaged[Cdecl](VkDevice, *VkPipelineLayoutCreateInfo, *VkAllocationCallbacks, *VkPipelineLayout) -> VkResult
   var vkDestroyPipelineLayout unmanaged[Cdecl](VkDevice, VkPipelineLayout, *VkAllocationCallbacks) -> void
+  var vkCreatePipelineCache unmanaged[Cdecl](VkDevice, *VkPipelineCacheCreateInfo, *VkAllocationCallbacks, *VkPipelineCache) -> VkResult
+  var vkDestroyPipelineCache unmanaged[Cdecl](VkDevice, VkPipelineCache, *VkAllocationCallbacks) -> void
+  var vkGetPipelineCacheData unmanaged[Cdecl](VkDevice, VkPipelineCache, *nuint, *void) -> VkResult
   var vkCreateGraphicsPipelines unmanaged[Cdecl](VkDevice, VkPipelineCache, uint32, *VkGraphicsPipelineCreateInfo, *VkAllocationCallbacks, *VkPipeline) -> VkResult
   var vkDestroyPipeline unmanaged[Cdecl](VkDevice, VkPipeline, *VkAllocationCallbacks) -> void
   var vkCmdBeginRendering unmanaged[Cdecl](VkCommandBuffer, *VkRenderingInfo) -> void

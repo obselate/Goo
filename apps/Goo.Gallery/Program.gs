@@ -36,7 +36,7 @@ class GallerySmokeAccessibility : AccessibilityAdapter {
 }
 
 func Main() {
-  Window.ConfigureApplication("Goo Gallery", "0.4.0", "io.github.obselate.goo.gallery")
+  Window.ConfigureApplication("Goo Gallery", "0.4.1", "io.github.obselate.goo.gallery")
   let smoke = Environment.GetEnvironmentVariable("GOO_GALLERY_SMOKE") == "1"
   let bench = Environment.GetEnvironmentVariable("GOO_GALLERY_BENCH") == "1"
   if smoke {

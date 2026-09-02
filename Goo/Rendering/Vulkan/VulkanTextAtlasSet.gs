@@ -46,12 +46,12 @@ internal unsafe sealed partial class VulkanTextAtlasSet : IDisposable {
   private var retirementCount uint64
   private var disposed bool
 
-  internal prop AtlasSlotCapacity int32{ get { return atlases.Length } }
-  internal prop AtlasCount int32{ get { return atlasCount } }
-  internal prop CurrentAtlasIndex int32{ get { return currentAtlasIndex } }
-  internal prop ByteBudget VkDeviceSize{ get { return byteBudget } }
-  internal prop ResidentByteSize VkDeviceSize{ get { return residentByteSize } }
-  internal prop Generation uint64{ get { return generation } }
+  internal prop AtlasSlotCapacity int32{ get -> atlases.Length }
+  internal prop AtlasCount int32{ get -> atlasCount }
+  internal prop CurrentAtlasIndex int32{ get -> currentAtlasIndex }
+  internal prop ByteBudget VkDeviceSize{ get -> byteBudget }
+  internal prop ResidentByteSize VkDeviceSize{ get -> residentByteSize }
+  internal prop Generation uint64{ get -> generation }
   internal prop CanCreateAtlas bool{
     get {
       return atlasCount < atlases.Length
@@ -59,9 +59,9 @@ internal unsafe sealed partial class VulkanTextAtlasSet : IDisposable {
         && atlasByteSize <= byteBudget - residentByteSize
     }
   }
-  internal prop PublishedVersion uint64{ get { return publishedVersion } }
+  internal prop PublishedVersion uint64{ get -> publishedVersion }
   internal prop DescriptorSetLayout VkDescriptorSetLayout{
-    get { return descriptorSetLayout }
+    get -> descriptorSetLayout
   }
   internal prop Stats VulkanTextAtlasSetStats{
     get {

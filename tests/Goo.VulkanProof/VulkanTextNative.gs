@@ -230,7 +230,7 @@ data struct VulkanTextGlyph {
 internal sealed class VulkanTextRun {
   private let glyphs []VulkanTextGlyph
 
-  internal prop Count int32{ get { return glyphs.Length } }
+  internal prop Count int32{ get -> glyphs.Length }
 
   internal init(values []VulkanTextGlyph) {
     glyphs = values
@@ -259,9 +259,9 @@ internal unsafe sealed class VulkanTextFont : IDisposable {
   private var metrics VulkanHarfBuzzMetrics
   private var disposed bool
 
-  internal prop Metrics VulkanHarfBuzzMetrics{ get { return metrics } }
-  internal prop FaceIndex uint32{ get { return faceIndex } }
-  internal prop FaceCount uint32{ get { return faceCount } }
+  internal prop Metrics VulkanHarfBuzzMetrics{ get -> metrics }
+  internal prop FaceIndex uint32{ get -> faceIndex }
+  internal prop FaceCount uint32{ get -> faceCount }
 
   internal init(
     bytes []uint8,

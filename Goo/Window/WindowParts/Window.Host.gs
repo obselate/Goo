@@ -241,7 +241,7 @@ public partial class Window {
       WindowDiagnostics.AttachIfEnabled(this)
       return this
     } catch (e Exception) {
-      Close()
+      try { Close() } catch (cleanup Exception) { }
       throw e
     }
   }
@@ -254,9 +254,7 @@ public partial class Window {
     native.StateChanged += func(value SdlHostState) {
       state = fromSdlState(value)
       requestRender()
-      if let callback = OnStateChange {
-        callback(State)
-      }
+      notifications.RaiseStateChanged(State)
     }
     native.Moved += func(px int32, py int32) {
       x = px
@@ -282,9 +280,7 @@ public partial class Window {
       input.FocusLost(resolver)
       markDirtyAndRender()
     }
-    if let callback = OnFocusChange {
-      callback(hasFocus)
-    }
+    notifications.RaiseFocusChanged(hasFocus)
   }
 
   /// Queues an idempotent close request. This is safe from any thread.
@@ -406,7 +402,8 @@ public partial class Window {
 
       // Drain returns true only for visually relevant input; bare moves stay quiet.
       let inputProfile = profiling ? profiler.Start() : FrameProfilePoint{}
-      let inputChanged = input.Drain(node, resolver, timeS, OnKeyPress, repeatStartTicks)
+      let inputChanged = input.Drain(node, resolver, timeS,
+        notifications.KeyPressedCallbacks, repeatStartTicks)
       if profiling {
         profiler.Record(FrameProfileStage.Input, inputProfile)
       }
@@ -575,36 +572,52 @@ public partial class Window {
       }
     }
   }
+
+  private func captureCleanupError(firstError Exception?, action Action) Exception? {
+    try {
+      action()
+    } catch (error Exception) {
+      if firstError == nil {
+        return error
+      }
+    }
+    return firstError
+  }
+
   internal func teardownNative() {
     requireUiThread("Window teardown")
-    stopPosts()
-    try {
-      input.Reset(node, resolver)
-    } finally {
-      try {
-        input.Dispose()
-      } finally {
-        if let target = windowTarget {
-          profiler.Sink = nil
-          target.Dispose()
-        }
-        windowTarget = nil
-        host?.Dispose()
-        host = nil
-        schedulerLastTicks = 0.0
-        schedulerSimulationBank = 0.0
-        framebufferWidth = 0
-        framebufferHeight = 0
-        pendingMetrics = false
-        pendingLogicalWidth = 0
-        pendingLogicalHeight = 0
-        pendingFramebufferWidth = 0
-        pendingFramebufferHeight = 0
-        IsOpen = false
-        renderDirty = true
-        Interlocked.Exchange(&closeRequested, 0)
-        IsFocused = false
-      }
+    var firstError Exception?
+    firstError = captureCleanupError(firstError, () -> stopPosts())
+    firstError = captureCleanupError(firstError, () -> input.Reset(node, resolver))
+    firstError = captureCleanupError(firstError, () -> input.Dispose())
+
+    let target = windowTarget
+    let native = host
+    profiler.Sink = nil
+    windowTarget = nil
+    host = nil
+    schedulerLastTicks = 0.0
+    schedulerSimulationBank = 0.0
+    framebufferWidth = 0
+    framebufferHeight = 0
+    pendingMetrics = false
+    pendingLogicalWidth = 0
+    pendingLogicalHeight = 0
+    pendingFramebufferWidth = 0
+    pendingFramebufferHeight = 0
+    IsOpen = false
+    renderDirty = true
+    Interlocked.Exchange(&closeRequested, 0)
+    IsFocused = false
+
+    if let current = target {
+      firstError = captureCleanupError(firstError, () -> current.Dispose())
+    }
+    if let current = native {
+      firstError = captureCleanupError(firstError, () -> current.Dispose())
+    }
+    if let error = firstError {
+      throw error
     }
   }
 
@@ -615,43 +628,42 @@ public partial class Window {
       return
     }
     Window.UnregisterLiveWindow(this)
-    stopPosts()
-    stopImageCompletions()
-    stopRetainedInvalidations()
-    DiagnosticsSession?.WindowClosed()
-    try {
-      teardownNative()
-    } finally {
-      try {
-        if let tree = node {
-          node = nil
-          TextLayouts.DisposeTree(tree)
-        }
-      } finally {
-        try {
-          MetricSubscriptions.Flush(this)
-        } finally {
-          MetricSubscriptions.ClearWindow(this)
-        }
-      }
-      motionPump.Clear()
-      pendingRebuild = 0
-      pendingPaintResourceInvalidation = 0
-      lock cellQueueGate {
-        cellTransactionActive = false
-        pendingCells.Clear()
-        deferredCells.Clear()
-        cellBatch.Clear()
-        fiberBatch.Clear()
-      }
-      paintResourceHook = nil
-      shaderEffectInvalidatedHook = nil
-      imageCompletionHook = nil
-      retainedInvalidationHook = nil
-      resolver.PaintResourceInvalidated = nil
-      resolver.ShaderEffectInvalidated = nil
-      cellHook = nil
-      hookInstalled = false
+    var firstError Exception?
+    firstError = captureCleanupError(firstError, () -> stopPosts())
+    firstError = captureCleanupError(firstError, () -> stopImageCompletions())
+    firstError = captureCleanupError(firstError, () -> stopRetainedInvalidations())
+    if let session = DiagnosticsSession {
+      firstError = captureCleanupError(firstError, () -> session.WindowClosed())
+    }
+    firstError = captureCleanupError(firstError, () -> teardownNative())
+
+    let tree = node
+    node = nil
+    if let current = tree {
+      firstError = captureCleanupError(firstError, () -> TextLayouts.DisposeTree(current))
+    }
+    firstError = captureCleanupError(firstError, () -> MetricSubscriptions.Flush(this))
+    firstError = captureCleanupError(firstError, () -> MetricSubscriptions.ClearWindow(this))
+    firstError = captureCleanupError(firstError, () -> motionPump.Clear())
+    pendingRebuild = 0
+    pendingPaintResourceInvalidation = 0
+    lock cellQueueGate {
+      cellTransactionActive = false
+      pendingCells.Clear()
+      deferredCells.Clear()
+      cellBatch.Clear()
+      fiberBatch.Clear()
+    }
+    paintResourceHook = nil
+    shaderEffectInvalidatedHook = nil
+    imageCompletionHook = nil
+    retainedInvalidationHook = nil
+    resolver.PaintResourceInvalidated = nil
+    resolver.ShaderEffectInvalidated = nil
+    cellHook = nil
+    hookInstalled = false
+    if let error = firstError {
+      throw error
     }
   }
 

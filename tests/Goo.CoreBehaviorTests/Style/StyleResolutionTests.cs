@@ -19,6 +19,12 @@ public class StyleResolutionTests
     }
 
     [Fact]
+    public void ReusableStylesComposeInOrderAndCanClearGradients()
+    {
+        Assert.True(new StyleFixtures().OrderedCompositionAndGradientClearContract());
+    }
+
+    [Fact]
     public void EqualStateDeclarationsRetainTheirLogAndChangedOverlaysResolve()
     {
         Assert.True(new StyleFixtures().StateStyleRetentionAndEqualityContract());

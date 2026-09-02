@@ -30,14 +30,14 @@ class PerformanceTextEditingRoot : Cell {
   private var hasAdvanced bool
   private var lastOperationAccepted bool
 
-  prop LogicalCount int64 { get { return int64(TextByteCount) } }
-  prop LogicalEdges int32 { get { return 0 } }
-  prop VisibleCount int32 { get { return VisibleLines } }
-  prop MountedCount int32 { get { return 1 } }
-  prop MountedBound int32 { get { return VisibleLines } }
-  prop Width int32 { get { return ViewportWidth } }
-  prop Height int32 { get { return ViewportHeight } }
-  prop MutationCount int32 { get { return 1 } }
+  prop LogicalCount int64 { get -> int64(TextByteCount) }
+  prop LogicalEdges int32 { get -> 0 }
+  prop VisibleCount int32 { get -> VisibleLines }
+  prop MountedCount int32 { get -> 1 }
+  prop MountedBound int32 { get -> VisibleLines }
+  prop Width int32 { get -> ViewportWidth }
+  prop Height int32 { get -> ViewportHeight }
+  prop MutationCount int32 { get -> 1 }
 
   init(initialSeed uint64) {
     seed = initialSeed

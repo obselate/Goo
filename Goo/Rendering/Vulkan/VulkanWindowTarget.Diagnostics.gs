@@ -4,16 +4,15 @@ import System.Diagnostics
 
 internal unsafe partial class VulkanWindowTarget {
   internal prop LastClipMaskFrameStats VulkanClipMaskFrameStats{
-    get { return clipMaskFrameStats }
+    get -> clipMaskFrameStats
   }
 
   internal prop ClipMaskFrameTotals VulkanClipMaskFrameTotals{
-    get { return clipMaskFrameTotals }
+    get -> clipMaskFrameTotals
   }
 
-
   public prop Active bool{
-    get { return diagnostics != nil }
+    get -> diagnostics != nil
   }
 
   public func Record(stage FrameProfileStage, ticks int64, bytes int64) {
@@ -534,7 +533,7 @@ internal unsafe partial class VulkanWindowTarget {
       try {
         if let current = diagnostics {
           current.AddRecord(1uL)
-          current.AddDraw(uint64(frame.DrawRefCount))
+          current.AddDraw(recordResult.drawCallCount)
           current.AddPipelineChange(recordResult.pipelineChangeCount)
           current.AddDescriptorChange(recordResult.descriptorChangeCount)
           current.Record(
@@ -552,8 +551,8 @@ internal unsafe partial class VulkanWindowTarget {
             VulkanDiagnosticCategories.FramePlan,
             0uL,
             0,
-            uint64(frame.DrawRefCount),
-            uint64(frame.ChunkCount))
+            recordResult.drawCallCount,
+            uint64(frame.DrawRefCount))
           RecordDiagnosticTiming(VulkanDiagnosticEventIds.CommandRecord,
             VulkanDiagnosticCategories.Timing, start)
           CaptureDiagnosticResources()

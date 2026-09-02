@@ -20,7 +20,7 @@ internal unsafe partial class VulkanWindowTarget {
   private var readbackPrerequisiteSceneVersion uint64 = 0uL
 
   internal prop ReadbackPending bool{
-    get { return readbackRequest?.IsPending == true }
+    get -> readbackRequest?.IsPending == true
   }
 
   internal prop ReadbackSubmissionReadyForReconcile bool{
@@ -53,7 +53,7 @@ internal unsafe partial class VulkanWindowTarget {
   }
 
   internal prop ReadbackResourceByteBudget VkDeviceSize{
-    get { return ReadbackBudgetBytes }
+    get -> ReadbackBudgetBytes
   }
 
   internal prop ReadbackResidentResourceBytes VkDeviceSize{
@@ -65,16 +65,16 @@ internal unsafe partial class VulkanWindowTarget {
     }
   }
 
-  internal prop ReadbackRequestCount uint64{ get { return readbackRequestCount } }
-  internal prop ReadbackCompletionCount uint64{ get { return readbackCompletionCount } }
-  internal prop ReadbackAbandonCount uint64{ get { return readbackAbandonCount } }
-  internal prop ReadbackBudgetExceededCount uint64{ get { return readbackBudgetExceededCount } }
-  internal prop ReadbackTiming VulkanReadbackTimingSnapshot{ get { return readbackTiming } }
+  internal prop ReadbackRequestCount uint64{ get -> readbackRequestCount }
+  internal prop ReadbackCompletionCount uint64{ get -> readbackCompletionCount }
+  internal prop ReadbackAbandonCount uint64{ get -> readbackAbandonCount }
+  internal prop ReadbackBudgetExceededCount uint64{ get -> readbackBudgetExceededCount }
+  internal prop ReadbackTiming VulkanReadbackTimingSnapshot{ get -> readbackTiming }
   internal prop ReadbackRequestedByteSize VkDeviceSize{
-    get { return readbackTiming.RequestedByteSize }
+    get -> readbackTiming.RequestedByteSize
   }
   internal prop ReadbackResidentByteSize VkDeviceSize{
-    get { return readbackTiming.ResidentResourceBytes }
+    get -> readbackTiming.ResidentResourceBytes
   }
 
   internal func RequestReadback(root Node?, background Color, dpi Vector2,

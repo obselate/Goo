@@ -22,7 +22,7 @@ internal struct ResourceId {
   internal var Version uint64
 
   internal prop IsValid bool{
-    get { return Kind != SceneResourceKind.None && LogicalId != 0uL && Version != 0uL }
+    get -> Kind != SceneResourceKind.None && LogicalId != 0uL && Version != 0uL
   }
 }
 
@@ -33,15 +33,15 @@ internal struct ConservativeBounds {
   internal var Height float32
 
   internal prop Right float32{
-    get { return X + Width }
+    get -> X + Width
   }
 
   internal prop Bottom float32{
-    get { return Y + Height }
+    get -> Y + Height
   }
 
   internal prop IsEmpty bool{
-    get { return Width <= 0.0F || Height <= 0.0F }
+    get -> Width <= 0.0F || Height <= 0.0F
   }
 
   internal func Inflate(amount float32) ConservativeBounds -> ConservativeBounds {
@@ -351,45 +351,45 @@ internal class SceneFrame {
     activeChunk = -1
   }
 
-  internal prop Chunks []SceneChunk{ get { return chunks } }
-  internal prop ChunkCount int32{ get { return chunkCount } }
-  internal prop DrawRefs []DrawRef{ get { return drawRefs } }
-  internal prop DrawRefCount int32{ get { return drawRefCount } }
-  internal prop ResourceRefs []ResourceId{ get { return resourceRefs } }
-  internal prop ResourceRefCount int32{ get { return resourceRefCount } }
-  internal prop SolidBoxes []SolidBoxRecord{ get { return solidBoxes } }
-  internal prop SolidBoxCount int32{ get { return solidBoxCount } }
-  internal prop RoundedBoxes []RoundedBoxRecord{ get { return roundedBoxes } }
-  internal prop RoundedBoxCount int32{ get { return roundedBoxCount } }
-  internal prop PerEdgeBorders []PerEdgeBorderRecord{ get { return perEdgeBorders } }
-  internal prop PerEdgeBorderCount int32{ get { return perEdgeBorderCount } }
-  internal prop GradientStops []GradientStopRecord{ get { return gradientStops } }
-  internal prop GradientStopCount int32{ get { return gradientStopCount } }
-  internal prop LinearGradients []LinearGradientRecord{ get { return linearGradients } }
-  internal prop LinearGradientCount int32{ get { return linearGradientCount } }
-  internal prop RadialGradients []RadialGradientRecord{ get { return radialGradients } }
-  internal prop RadialGradientCount int32{ get { return radialGradientCount } }
-  internal prop CachedImages []CachedImageRefRecord{ get { return cachedImages } }
-  internal prop CachedImageCount int32{ get { return cachedImageCount } }
-  internal prop CachedGlyphRuns []CachedGlyphRunRefRecord{ get { return cachedGlyphRuns } }
-  internal prop CachedGlyphRunCount int32{ get { return cachedGlyphRunCount } }
-  internal prop PathMeshes []PrebuiltPathMeshRefRecord{ get { return pathMeshes } }
-  internal prop PathMeshCount int32{ get { return pathMeshCount } }
-  internal prop Transforms []TransformRecord{ get { return transforms } }
-  internal prop TransformCount int32{ get { return transformCount } }
-  internal prop RectClips []RectClipRecord{ get { return rectClips } }
-  internal prop RectClipCount int32{ get { return rectClipCount } }
-  internal prop Shadows []ShadowRecord{ get { return shadows } }
-  internal prop ShadowCount int32{ get { return shadowCount } }
-  internal prop Underlines []UnderlineRecord{ get { return underlines } }
-  internal prop UnderlineCount int32{ get { return underlineCount } }
-  internal prop CustomMeshes []CustomMeshRecord{ get { return customMeshes } }
-  internal prop CustomMeshCount int32{ get { return customMeshCount } }
-  internal prop Layers []LayerRecord{ get { return layers } }
-  internal prop LayerCount int32{ get { return layerCount } }
-  internal prop ActiveChunk int32{ get { return activeChunk } }
-  internal prop GrowthOperations uint64{ get { return growthOperations } }
-  internal prop RecordOperations uint64{ get { return recordOperations } }
+  internal prop Chunks []SceneChunk{ get -> chunks }
+  internal prop ChunkCount int32{ get -> chunkCount }
+  internal prop DrawRefs []DrawRef{ get -> drawRefs }
+  internal prop DrawRefCount int32{ get -> drawRefCount }
+  internal prop ResourceRefs []ResourceId{ get -> resourceRefs }
+  internal prop ResourceRefCount int32{ get -> resourceRefCount }
+  internal prop SolidBoxes []SolidBoxRecord{ get -> solidBoxes }
+  internal prop SolidBoxCount int32{ get -> solidBoxCount }
+  internal prop RoundedBoxes []RoundedBoxRecord{ get -> roundedBoxes }
+  internal prop RoundedBoxCount int32{ get -> roundedBoxCount }
+  internal prop PerEdgeBorders []PerEdgeBorderRecord{ get -> perEdgeBorders }
+  internal prop PerEdgeBorderCount int32{ get -> perEdgeBorderCount }
+  internal prop GradientStops []GradientStopRecord{ get -> gradientStops }
+  internal prop GradientStopCount int32{ get -> gradientStopCount }
+  internal prop LinearGradients []LinearGradientRecord{ get -> linearGradients }
+  internal prop LinearGradientCount int32{ get -> linearGradientCount }
+  internal prop RadialGradients []RadialGradientRecord{ get -> radialGradients }
+  internal prop RadialGradientCount int32{ get -> radialGradientCount }
+  internal prop CachedImages []CachedImageRefRecord{ get -> cachedImages }
+  internal prop CachedImageCount int32{ get -> cachedImageCount }
+  internal prop CachedGlyphRuns []CachedGlyphRunRefRecord{ get -> cachedGlyphRuns }
+  internal prop CachedGlyphRunCount int32{ get -> cachedGlyphRunCount }
+  internal prop PathMeshes []PrebuiltPathMeshRefRecord{ get -> pathMeshes }
+  internal prop PathMeshCount int32{ get -> pathMeshCount }
+  internal prop Transforms []TransformRecord{ get -> transforms }
+  internal prop TransformCount int32{ get -> transformCount }
+  internal prop RectClips []RectClipRecord{ get -> rectClips }
+  internal prop RectClipCount int32{ get -> rectClipCount }
+  internal prop Shadows []ShadowRecord{ get -> shadows }
+  internal prop ShadowCount int32{ get -> shadowCount }
+  internal prop Underlines []UnderlineRecord{ get -> underlines }
+  internal prop UnderlineCount int32{ get -> underlineCount }
+  internal prop CustomMeshes []CustomMeshRecord{ get -> customMeshes }
+  internal prop CustomMeshCount int32{ get -> customMeshCount }
+  internal prop Layers []LayerRecord{ get -> layers }
+  internal prop LayerCount int32{ get -> layerCount }
+  internal prop ActiveChunk int32{ get -> activeChunk }
+  internal prop GrowthOperations uint64{ get -> growthOperations }
+  internal prop RecordOperations uint64{ get -> recordOperations }
   internal prop Counters ScenePlanCounters{
     get {
       return ScenePlanCounters{

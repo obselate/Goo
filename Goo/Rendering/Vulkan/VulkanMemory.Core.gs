@@ -33,17 +33,17 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
   private var lastResult VkResult = VkConstants.VK_SUCCESS
   private var disposed bool
 
-  internal prop LiveBytes VkDeviceSize{ get { return liveBytes } }
-  internal prop LiveAllocationCount uint64{ get { return liveAllocations } }
-  internal prop RetiredBytes VkDeviceSize{ get { return retiredBytes } }
-  internal prop RetiredAllocationCount uint64{ get { return retiredAllocations } }
-  internal prop ResidentBytes VkDeviceSize{ get { return residentBytes } }
-  internal prop ResidentAllocationCount uint64{ get { return residentAllocations } }
-  internal prop BudgetSampleAvailable bool{ get { return budget.Available } }
-  internal prop BudgetSampleCurrent bool{ get { return !disposed && budget.Available } }
-  internal prop DriverHeapBudget VkDeviceSize{ get { return budget.TotalBudget() } }
-  internal prop DriverHeapUsage VkDeviceSize{ get { return budget.TotalUsage() } }
-  internal prop LastResult VkResult{ get { return lastResult } }
+  internal prop LiveBytes VkDeviceSize{ get -> liveBytes }
+  internal prop LiveAllocationCount uint64{ get -> liveAllocations }
+  internal prop RetiredBytes VkDeviceSize{ get -> retiredBytes }
+  internal prop RetiredAllocationCount uint64{ get -> retiredAllocations }
+  internal prop ResidentBytes VkDeviceSize{ get -> residentBytes }
+  internal prop ResidentAllocationCount uint64{ get -> residentAllocations }
+  internal prop BudgetSampleAvailable bool{ get -> budget.Available }
+  internal prop BudgetSampleCurrent bool{ get -> !disposed && budget.Available }
+  internal prop DriverHeapBudget VkDeviceSize{ get -> budget.TotalBudget() }
+  internal prop DriverHeapUsage VkDeviceSize{ get -> budget.TotalUsage() }
+  internal prop LastResult VkResult{ get -> lastResult }
 
   internal func RefreshBudget() {
     if !disposed {

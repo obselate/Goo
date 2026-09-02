@@ -40,6 +40,18 @@ public sealed class CellSchedulingTests
     }
 
     [Fact]
+    public void DirectChildQueuesCanonicalParentOnce()
+    {
+        Assert.True(new CellFixtures().DirectChildQueuesCanonicalParentOnce());
+    }
+
+    [Fact]
+    public void FailedDirectChildRebuildResubmitsCanonicalParent()
+    {
+        Assert.True(new CellFixtures().FailedDirectChildRebuildResubmitsCanonicalParent());
+    }
+
+    [Fact]
     public void DirtyParentRunsBeforeAndSubsumesDirtyChild()
     {
         Assert.True(new CellFixtures().DirtyParentRunsBeforeAndSubsumesDirtyChild());

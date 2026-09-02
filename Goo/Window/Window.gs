@@ -17,17 +17,38 @@ public data struct WindowMetrics {
   private var displayScaleY float64
 
   /// Gets the reported logical width.
-  public prop LogicalWidth int32{ get { return logicalWidth } init{ logicalWidth = value } }
+  public prop LogicalWidth int32{ get -> logicalWidth init -> logicalWidth = value }
   /// Gets the reported logical height.
-  public prop LogicalHeight int32{ get { return logicalHeight } init{ logicalHeight = value } }
+  public prop LogicalHeight int32{ get -> logicalHeight init -> logicalHeight = value }
   /// Gets the reported framebuffer width.
-  public prop FramebufferWidth int32{ get { return framebufferWidth } init{ framebufferWidth = value } }
+  public prop FramebufferWidth int32{ get -> framebufferWidth init -> framebufferWidth = value }
   /// Gets the reported framebuffer height.
-  public prop FramebufferHeight int32{ get { return framebufferHeight } init{ framebufferHeight = value } }
+  public prop FramebufferHeight int32{ get -> framebufferHeight init -> framebufferHeight = value }
   /// Gets the horizontal framebuffer-to-logical scale.
-  public prop DisplayScaleX float64{ get { return displayScaleX } init{ displayScaleX = value } }
+  public prop DisplayScaleX float64{ get -> displayScaleX init -> displayScaleX = value }
   /// Gets the vertical framebuffer-to-logical scale.
-  public prop DisplayScaleY float64{ get { return displayScaleY } init{ displayScaleY = value } }
+  public prop DisplayScaleY float64{ get -> displayScaleY init -> displayScaleY = value }
+}
+
+internal struct WindowNotifications {
+  private event stateChanged Action[WindowState]
+  private event keyPressed Action[Key, KeyModifiers]
+  private event focusChanged Action[bool]
+
+  internal func AddStateChanged(callback Action[WindowState]) { stateChanged += callback }
+  internal func RemoveStateChanged(callback Action[WindowState]) { stateChanged -= callback }
+  internal func RaiseStateChanged(value WindowState) { stateChanged?.Invoke(value) }
+
+  internal func AddKeyPressed(callback Action[Key, KeyModifiers]) { keyPressed += callback }
+  internal func RemoveKeyPressed(callback Action[Key, KeyModifiers]) { keyPressed -= callback }
+  internal prop KeyPressedCallbacks Action[Key, KeyModifiers]? { get -> keyPressed }
+  internal func RaiseKeyPressed(key Key, modifiers KeyModifiers) {
+    keyPressed?.Invoke(key, modifiers)
+  }
+
+  internal func AddFocusChanged(callback Action[bool]) { focusChanged += callback }
+  internal func RemoveFocusChanged(callback Action[bool]) { focusChanged -= callback }
+  internal func RaiseFocusChanged(value bool) { focusChanged?.Invoke(value) }
 }
 
 /// Hosts a Goo tree on one process-wide UI thread.
@@ -35,7 +56,7 @@ public data struct WindowMetrics {
 public partial class Window {
   /// Gets or sets the window clear color.
   public prop Background Color{
-    get { return background }
+    get -> background
     set(v) {
       requireUiThread("Window.Background")
       if background == v {
@@ -47,19 +68,19 @@ public partial class Window {
   }
   /// Gets the root cell.
   public prop Root Cell? {
-    get { return root }
-    init{ root = value }
+    get -> root
+    init -> root = value
   }
   /// Reports whether the window is open.
   public prop IsOpen bool{ get; private set; }
-  internal prop Tree Node? { get { return node } }
-  internal prop DiagnosticsSession DevToolsSession? { get { return WindowDiagnostics.Session(this) } }
+  internal prop Tree Node? { get -> node }
+  internal prop DiagnosticsSession DevToolsSession? { get -> WindowDiagnostics.Session(this) }
   /// Gets or sets per-window GPU presentation synchronization.
   /// True requests FIFO. Software Vulkan devices prefer Immediate, then Mailbox, then FIFO.
   /// False prefers Immediate, then Mailbox, then FIFO on every device.
   /// Window.Run applies internal display-rate pacing for either value.
   public prop VSync bool{
-    get { return vsync }
+    get -> vsync
     set(v) {
       requireUiThread("Window.VSync")
       if vsync == v {
@@ -75,7 +96,7 @@ public partial class Window {
 
   /// Gets or sets the window title.
   public prop Title string{
-    get { return title }
+    get -> title
     set(v) {
       requireUiThread("Window.Title")
       if title == v {
@@ -90,7 +111,7 @@ public partial class Window {
 
   /// Gets or sets the window width.
   public prop Width int32{
-    get { return width }
+    get -> width
     set(v) {
       requireUiThread("Window.Width")
       if width == v {
@@ -105,7 +126,7 @@ public partial class Window {
 
   /// Gets or sets the window height.
   public prop Height int32{
-    get { return height }
+    get -> height
     set(v) {
       requireUiThread("Window.Height")
       if height == v {
@@ -121,7 +142,7 @@ public partial class Window {
   // positionSet distinguishes an explicit (0,0) request.
   /// Gets or sets the requested horizontal position.
   public prop X int32{
-    get { return x }
+    get -> x
     set(v) {
       requireUiThread("Window.X")
       positionSet = true
@@ -135,7 +156,7 @@ public partial class Window {
 
   /// Gets or sets the requested vertical position.
   public prop Y int32{
-    get { return y }
+    get -> y
     set(v) {
       requireUiThread("Window.Y")
       positionSet = true
@@ -149,7 +170,7 @@ public partial class Window {
 
   /// Gets or sets the window state.
   public prop State WindowState{
-    get { return state }
+    get -> state
     set(v) {
       requireUiThread("Window.State")
       if state == v {
@@ -165,7 +186,7 @@ public partial class Window {
   /// Gets or sets next-open per-pixel alpha. An open window is unchanged.
   /// Transparency requires the GPU renderer.
   public prop Transparent bool{
-    get { return transparent }
+    get -> transparent
     set(v) {
       requireUiThread("Window.Transparent")
       transparent = v
@@ -174,7 +195,7 @@ public partial class Window {
 
   /// Gets or sets whether the system draws window decorations.
   public prop Decorated bool{
-    get { return decorated }
+    get -> decorated
     set(v) {
       requireUiThread("Window.Decorated")
       if decorated == v {
@@ -189,7 +210,7 @@ public partial class Window {
 
   /// Gets or sets whether the user can resize the window.
   public prop Resizable bool{
-    get { return resizable }
+    get -> resizable
     set(v) {
       requireUiThread("Window.Resizable")
       if resizable == v {
@@ -204,7 +225,7 @@ public partial class Window {
 
   /// Gets or sets the undecorated edge resize band in logical pixels.
   public prop ResizeBand float32{
-    get { return resizeBand }
+    get -> resizeBand
     set(v) {
       requireUiThread("Window.ResizeBand")
       if !Single.IsFinite(v) || v < 0.0F {
@@ -217,36 +238,45 @@ public partial class Window {
   /// Reports whether the window currently holds native input focus.
   public prop IsFocused bool{ get; private set; }
 
-  /// Gets or sets the callback that receives each window state change.
-  public prop OnStateChange Action[WindowState]? {
-    get { return onStateChange }
-    set(v) {
-      requireUiThread("Window.OnStateChange")
-      onStateChange = v
+  /// Occurs after the native window reports a new window state.
+  public event StateChanged Action[WindowState]{
+    add{
+      requireUiThread("Window.StateChanged")
+      notifications.AddStateChanged(value)
+    }
+    remove{
+      requireUiThread("Window.StateChanged")
+      notifications.RemoveStateChanged(value)
     }
   }
-  /// Gets or sets the callback that receives each physical key press.
-  public prop OnKeyPress((Key, KeyModifiers) -> void)? {
-    get { return onKeyPress }
-    set(v) {
-      requireUiThread("Window.OnKeyPress")
-      onKeyPress = v
+  /// Occurs for each physical key press before focused-element routing.
+  public event KeyPressed Action[Key, KeyModifiers]{
+    add{
+      requireUiThread("Window.KeyPressed")
+      notifications.AddKeyPressed(value)
+    }
+    remove{
+      requireUiThread("Window.KeyPressed")
+      notifications.RemoveKeyPressed(value)
     }
   }
   /// Gets or sets the close-request handler; return false to veto closure.
   public prop OnClosing(() -> bool)? {
-    get { return onClosing }
+    get -> onClosing
     set(v) {
       requireUiThread("Window.OnClosing")
       onClosing = v
     }
   }
-  /// Gets or sets the callback that receives native focus changes.
-  public prop OnFocusChange Action[bool]? {
-    get { return onFocusChange }
-    set(v) {
-      requireUiThread("Window.OnFocusChange")
-      onFocusChange = v
+  /// Occurs after the native window focus state changes.
+  public event FocusChanged Action[bool]{
+    add{
+      requireUiThread("Window.FocusChanged")
+      notifications.AddFocusChanged(value)
+    }
+    remove{
+      requireUiThread("Window.FocusChanged")
+      notifications.RemoveFocusChanged(value)
     }
   }
 
@@ -357,10 +387,8 @@ public partial class Window {
   private var pendingPostedActions int32
   private var acceptingPosts bool
   private var uiThreadBound bool
-  private var onStateChange Action[WindowState]?
-  private var onKeyPress((Key, KeyModifiers) -> void)?
+  private var notifications WindowNotifications
   private var onClosing(() -> bool)?
-  private var onFocusChange Action[bool]?
 
   /// Creates a window with default configuration.
   public init() {

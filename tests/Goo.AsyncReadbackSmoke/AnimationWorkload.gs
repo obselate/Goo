@@ -49,20 +49,20 @@ class PerformanceSmallAnimationRoot : Cell {
   private var animatedInitialBuildCount int32
   private var advanceCount int32
 
-  prop LogicalCount int64 { get { return int64(StaticCardCount + AnimatedCardCount) } }
-  prop LogicalEdges int32 { get { return 0 } }
-  prop VisibleCount int32 { get { return StaticCardCount + AnimatedCardCount } }
-  prop MountedCount int32 { get { return StaticCardCount + AnimatedCardCount } }
-  prop MountedBound int32 { get { return StaticCardCount + AnimatedCardCount } }
-  prop Width int32 { get { return ViewportWidth } }
-  prop Height int32 { get { return ViewportHeight } }
-  prop MutationCount int32 { get { return AnimatedCardCount } }
-  internal prop StaticBuildCount int32{ get { return staticBuildCount } }
-  internal prop AnimatedBuildCount int32{ get { return animatedBuildCount } }
-  internal prop StaticMountedCount int32{ get { return staticMountedCount } }
-  internal prop CurrentLeft float64{ get { return animatedInput.Left } }
-  internal prop CurrentTop float64{ get { return animatedInput.Top } }
-  internal prop CurrentOpacity float64{ get { return animatedInput.Opacity } }
+  prop LogicalCount int64 { get -> int64(StaticCardCount + AnimatedCardCount) }
+  prop LogicalEdges int32 { get -> 0 }
+  prop VisibleCount int32 { get -> StaticCardCount + AnimatedCardCount }
+  prop MountedCount int32 { get -> StaticCardCount + AnimatedCardCount }
+  prop MountedBound int32 { get -> StaticCardCount + AnimatedCardCount }
+  prop Width int32 { get -> ViewportWidth }
+  prop Height int32 { get -> ViewportHeight }
+  prop MutationCount int32 { get -> AnimatedCardCount }
+  internal prop StaticBuildCount int32{ get -> staticBuildCount }
+  internal prop AnimatedBuildCount int32{ get -> animatedBuildCount }
+  internal prop StaticMountedCount int32{ get -> staticMountedCount }
+  internal prop CurrentLeft float64{ get -> animatedInput.Left }
+  internal prop CurrentTop float64{ get -> animatedInput.Top }
+  internal prop CurrentOpacity float64{ get -> animatedInput.Opacity }
 
   init(initialSeed uint64) {
     seed = initialSeed

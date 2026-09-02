@@ -32,6 +32,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
   private let resourcePolicy VulkanResourcePolicy
   private let memoryAllocator VulkanMemoryAllocator
   private let imageResources VulkanImageResources
+  private let pipelineCache VulkanPipelineCache
   private let primitiveState VulkanSharedPrimitiveState
   private let imageIdentityRegistry VulkanImageIdentityRegistry
   private let pathResources VulkanPathResources
@@ -65,7 +66,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     private var testDeviceIdleCallCount int64
 
     internal prop DeviceIdleCallCountForTest int64{
-      get { return Interlocked.Read(ref testDeviceIdleCallCount) }
+      get -> Interlocked.Read(ref testDeviceIdleCallCount)
     }
 
     internal func FailNextDeviceIdleForTest() {
@@ -114,7 +115,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     }
 
     internal prop QueueEnqueueDeferralCountForTest int64{
-      get { return VulkanQueueWorker.EnqueueDeferralCountForTest }
+      get -> VulkanQueueWorker.EnqueueDeferralCountForTest
     }
 
     internal func TryAcquire() VulkanSharedLease? {
@@ -143,6 +144,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
       nativeInstanceMaintenanceVariant VulkanSwapchainMaintenanceVariant,
       nativeSwapchainMaintenanceVariant VulkanSwapchainMaintenanceVariant,
       nativeFacts VulkanSharedDeviceFacts,
+      nativePipelineCacheUuid * uint8,
       nativeMemoryProperties VkPhysicalDeviceMemoryProperties,
       nativeMaxMemoryAllocationCount uint32,
       nativeMaxStorageBufferRange uint32,
@@ -175,6 +177,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
         generationSeed = generationSeed + 1uL
         var allocator VulkanMemoryAllocator? = nil
         var imageResources VulkanImageResources? = nil
+        var pipelineCache VulkanPipelineCache? = nil
         var primitiveState VulkanSharedPrimitiveState? = nil
         var imageIdentityRegistry VulkanImageIdentityRegistry? = nil
         var pathResources VulkanPathResources? = nil
@@ -216,9 +219,19 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
             generationSeed,
             nativeSharedObjectAccounting)
           imageResources = createdImageResources
+          let createdPipelineCache = VulkanPipelineCache(
+            nativeDevice,
+            nativeDispatch,
+            nativeFacts.VendorId,
+            nativeFacts.DeviceId,
+            nativeFacts.DriverVersion,
+            nativePipelineCacheUuid,
+            nativeSharedObjectAccounting)
+          pipelineCache = createdPipelineCache
           let createdPrimitiveState = VulkanSharedPrimitiveState(
             nativeDevice,
             nativeDispatch,
+            createdPipelineCache,
             createdImageResources,
             generationSeed,
             nativeFacts.DeviceType == int32(VkConstants.VK_PHYSICAL_DEVICE_TYPE_CPU),
@@ -234,11 +247,11 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
           }
           pathIdentityRegistry = retainedPathIdentities
           let pathAtlasByteSize = if createdResourcePolicy.PathAtlasHardBytes
-            < createdResourcePolicy.PathAtlasInitialBytes{
-              createdResourcePolicy.PathAtlasHardBytes
-            } else {
-              createdResourcePolicy.PathAtlasInitialBytes
-            }
+          < createdResourcePolicy.PathAtlasInitialBytes{
+            createdResourcePolicy.PathAtlasHardBytes
+          } else {
+            createdResourcePolicy.PathAtlasInitialBytes
+          }
           if pathAtlasByteSize < 4096uL {
             throw InvalidOperationException("Vulkan path atlas capacity is too small")
           }
@@ -279,6 +292,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
             createdResourcePolicy,
             createdAllocator,
             createdImageResources,
+            createdPipelineCache,
             createdPrimitiveState,
             identityRegistry,
             createdPathResources,
@@ -314,6 +328,9 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
           }
           if let createdPrimitiveState = primitiveState {
             try { createdPrimitiveState.Dispose() } catch (cleanup Exception) { }
+          }
+          if let createdPipelineCache = pipelineCache {
+            try { createdPipelineCache.Dispose() } catch (cleanup Exception) { }
           }
           if let createdImageResources = imageResources {
             try { createdImageResources.Dispose() } catch (cleanup Exception) { }
@@ -369,6 +386,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     nativeResourcePolicy VulkanResourcePolicy,
     nativeAllocator VulkanMemoryAllocator,
     nativeImageResources VulkanImageResources,
+    nativePipelineCache VulkanPipelineCache,
     nativePrimitiveState VulkanSharedPrimitiveState,
     nativeImageIdentityRegistry VulkanImageIdentityRegistry,
     nativePathResources VulkanPathResources,
@@ -396,6 +414,9 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
       }
       if nativePrimitiveState == nil {
         throw ArgumentNullException("nativePrimitiveState")
+      }
+      if nativePipelineCache == nil {
+        throw ArgumentNullException("nativePipelineCache")
       }
       if nativePrimitiveState.Generation != nativeImageResources.Generation
         || nativePrimitiveState.Generation == 0uL {
@@ -431,6 +452,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
       resourcePolicy = nativeResourcePolicy
       memoryAllocator = nativeAllocator
       imageResources = nativeImageResources
+      pipelineCache = nativePipelineCache
       primitiveState = nativePrimitiveState
       imageIdentityRegistry = nativeImageIdentityRegistry
       pathResources = nativePathResources
@@ -449,43 +471,44 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
       references = 1
     }
 
-  internal prop Instance VkInstance{ get { return instance } }
-  internal prop ResourcePolicy VulkanResourcePolicy{ get { return resourcePolicy } }
-  internal prop InstanceDispatch VkInstanceDispatch{ get { return instanceDispatch } }
-  internal prop PhysicalDevice VkPhysicalDevice{ get { return physicalDevice } }
-  internal prop Device VkDevice{ get { return device } }
-  internal prop Dispatch VkDeviceDispatch{ get { return dispatch } }
-  internal prop GraphicsQueue VkQueue{ get { return graphicsQueue } }
-  internal prop PresentQueue VkQueue{ get { return presentQueue } }
-  internal prop QueueWorker VulkanQueueWorker{ get { return queueWorker } }
-  internal prop GraphicsFamilyIndex uint32{ get { return graphicsFamilyIndex } }
-  internal prop PresentFamilyIndex uint32{ get { return presentFamilyIndex } }
-  internal prop DeviceWaitIdleAddress nint{ get { return deviceWaitIdleAddress } }
+  internal prop Instance VkInstance{ get -> instance }
+  internal prop ResourcePolicy VulkanResourcePolicy{ get -> resourcePolicy }
+  internal prop InstanceDispatch VkInstanceDispatch{ get -> instanceDispatch }
+  internal prop PhysicalDevice VkPhysicalDevice{ get -> physicalDevice }
+  internal prop Device VkDevice{ get -> device }
+  internal prop Dispatch VkDeviceDispatch{ get -> dispatch }
+  internal prop GraphicsQueue VkQueue{ get -> graphicsQueue }
+  internal prop PresentQueue VkQueue{ get -> presentQueue }
+  internal prop QueueWorker VulkanQueueWorker{ get -> queueWorker }
+  internal prop GraphicsFamilyIndex uint32{ get -> graphicsFamilyIndex }
+  internal prop PresentFamilyIndex uint32{ get -> presentFamilyIndex }
+  internal prop DeviceWaitIdleAddress nint{ get -> deviceWaitIdleAddress }
   internal prop InstanceMaintenanceVariant VulkanSwapchainMaintenanceVariant{
-    get { return instanceMaintenanceVariant }
+    get -> instanceMaintenanceVariant
   }
   internal prop SwapchainMaintenanceVariant VulkanSwapchainMaintenanceVariant{
-    get { return swapchainMaintenanceVariant }
+    get -> swapchainMaintenanceVariant
   }
-  internal prop Facts VulkanSharedDeviceFacts{ get { return facts } }
-  internal prop MaxStorageBufferRange VkDeviceSize{ get { return maxStorageBufferRange } }
-  internal prop MemoryAllocator VulkanMemoryAllocator{ get { return memoryAllocator } }
-  internal prop ImageResources VulkanImageResources{ get { return imageResources } }
-  internal prop PrimitiveState VulkanSharedPrimitiveState{ get { return primitiveState } }
+  internal prop Facts VulkanSharedDeviceFacts{ get -> facts }
+  internal prop MaxStorageBufferRange VkDeviceSize{ get -> maxStorageBufferRange }
+  internal prop MemoryAllocator VulkanMemoryAllocator{ get -> memoryAllocator }
+  internal prop ImageResources VulkanImageResources{ get -> imageResources }
+  internal prop PipelineCache VulkanPipelineCache{ get -> pipelineCache }
+  internal prop PrimitiveState VulkanSharedPrimitiveState{ get -> primitiveState }
   internal prop ImageIdentityRegistry VulkanImageIdentityRegistry{
-    get { return imageIdentityRegistry }
+    get -> imageIdentityRegistry
   }
-  internal prop PathResources VulkanPathResources{ get { return pathResources } }
+  internal prop PathResources VulkanPathResources{ get -> pathResources }
   internal prop PathIdentityRegistry VulkanPathIdentityRegistry{
-    get { return pathIdentityRegistry }
+    get -> pathIdentityRegistry
   }
-  internal prop ObjectAccounting VulkanObjectAccounting? { get { return objectAccounting } }
-  internal prop Diagnostics VulkanDiagnostics? { get { return diagnostics } }
-  internal prop DebugUtilsEnabled bool{ get { return debugUtilsEnabled } }
-  internal prop DeviceLost bool{ get { return deviceLost } }
-  internal prop Terminal bool{ get { return terminal } }
-  internal prop TerminalIdleResult VkResult{ get { return terminalIdleResult } }
-  internal prop Generation uint64{ get { return generation } }
+  internal prop ObjectAccounting VulkanObjectAccounting? { get -> objectAccounting }
+  internal prop Diagnostics VulkanDiagnostics? { get -> diagnostics }
+  internal prop DebugUtilsEnabled bool{ get -> debugUtilsEnabled }
+  internal prop DeviceLost bool{ get -> deviceLost }
+  internal prop Terminal bool{ get -> terminal }
+  internal prop TerminalIdleResult VkResult{ get -> terminalIdleResult }
+  internal prop Generation uint64{ get -> generation }
 
   internal prop HasUnsubmittedRecordedSharedUpload bool{
     get {
@@ -637,6 +660,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
       currentDiagnostics.ClearPathAtlasCurrentState()
     }
     try { primitiveState.Dispose() } catch (cleanup Exception) { }
+    try { pipelineCache.Dispose() } catch (cleanup Exception) { }
     try { imageResources.Collect(uint64.MaxValue) } catch (cleanup Exception) { }
     try { imageResources.Dispose() } catch (cleanup Exception) { }
     try { imageIdentityRegistry.Dispose() } catch (cleanup Exception) { }
@@ -687,6 +711,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
       currentDiagnostics.ClearPathAtlasCurrentState()
     }
     try { primitiveState.Dispose() } catch (cleanup Exception) { }
+    try { pipelineCache.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
     try { imageResources.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
     try { memoryAllocator.Dispose() } catch (cleanup Exception) { }
     if device != nint(0) && deviceDestroyAvailable {
@@ -730,45 +755,46 @@ internal unsafe sealed class VulkanSharedLease : IDisposable {
     owner = nativeOwner
   }
 
-  internal prop Instance VkInstance{ get { return owner.Instance } }
-  internal prop InstanceDispatch VkInstanceDispatch{ get { return owner.InstanceDispatch } }
-  internal prop PhysicalDevice VkPhysicalDevice{ get { return owner.PhysicalDevice } }
-  internal prop Device VkDevice{ get { return owner.Device } }
-  internal prop Dispatch VkDeviceDispatch{ get { return owner.Dispatch } }
-  internal prop GraphicsQueue VkQueue{ get { return owner.GraphicsQueue } }
-  internal prop PresentQueue VkQueue{ get { return owner.PresentQueue } }
-  internal prop QueueWorker VulkanQueueWorker{ get { return owner.QueueWorker } }
-  internal prop GraphicsFamilyIndex uint32{ get { return owner.GraphicsFamilyIndex } }
-  internal prop PresentFamilyIndex uint32{ get { return owner.PresentFamilyIndex } }
-  internal prop DeviceWaitIdleAddress nint{ get { return owner.DeviceWaitIdleAddress } }
+  internal prop Instance VkInstance{ get -> owner.Instance }
+  internal prop InstanceDispatch VkInstanceDispatch{ get -> owner.InstanceDispatch }
+  internal prop PhysicalDevice VkPhysicalDevice{ get -> owner.PhysicalDevice }
+  internal prop Device VkDevice{ get -> owner.Device }
+  internal prop Dispatch VkDeviceDispatch{ get -> owner.Dispatch }
+  internal prop GraphicsQueue VkQueue{ get -> owner.GraphicsQueue }
+  internal prop PresentQueue VkQueue{ get -> owner.PresentQueue }
+  internal prop QueueWorker VulkanQueueWorker{ get -> owner.QueueWorker }
+  internal prop GraphicsFamilyIndex uint32{ get -> owner.GraphicsFamilyIndex }
+  internal prop PresentFamilyIndex uint32{ get -> owner.PresentFamilyIndex }
+  internal prop DeviceWaitIdleAddress nint{ get -> owner.DeviceWaitIdleAddress }
   internal prop InstanceMaintenanceVariant VulkanSwapchainMaintenanceVariant{
-    get { return owner.InstanceMaintenanceVariant }
+    get -> owner.InstanceMaintenanceVariant
   }
   internal prop SwapchainMaintenanceVariant VulkanSwapchainMaintenanceVariant{
-    get { return owner.SwapchainMaintenanceVariant }
+    get -> owner.SwapchainMaintenanceVariant
   }
-  internal prop Facts VulkanSharedDeviceFacts{ get { return owner.Facts } }
-  internal prop MaxStorageBufferRange VkDeviceSize{ get { return owner.MaxStorageBufferRange } }
-  internal prop ResourcePolicy VulkanResourcePolicy{ get { return owner.ResourcePolicy } }
-  internal prop MemoryAllocator VulkanMemoryAllocator{ get { return owner.MemoryAllocator } }
-  internal prop ImageResources VulkanImageResources{ get { return owner.ImageResources } }
-  internal prop PrimitiveState VulkanSharedPrimitiveState{ get { return owner.PrimitiveState } }
+  internal prop Facts VulkanSharedDeviceFacts{ get -> owner.Facts }
+  internal prop MaxStorageBufferRange VkDeviceSize{ get -> owner.MaxStorageBufferRange }
+  internal prop ResourcePolicy VulkanResourcePolicy{ get -> owner.ResourcePolicy }
+  internal prop MemoryAllocator VulkanMemoryAllocator{ get -> owner.MemoryAllocator }
+  internal prop ImageResources VulkanImageResources{ get -> owner.ImageResources }
+  internal prop PipelineCache VulkanPipelineCache{ get -> owner.PipelineCache }
+  internal prop PrimitiveState VulkanSharedPrimitiveState{ get -> owner.PrimitiveState }
   internal prop ImageIdentityRegistry VulkanImageIdentityRegistry{
-    get { return owner.ImageIdentityRegistry }
+    get -> owner.ImageIdentityRegistry
   }
-  internal prop PathResources VulkanPathResources{ get { return owner.PathResources } }
+  internal prop PathResources VulkanPathResources{ get -> owner.PathResources }
   internal prop PathIdentityRegistry VulkanPathIdentityRegistry{
-    get { return owner.PathIdentityRegistry }
+    get -> owner.PathIdentityRegistry
   }
-  internal prop ObjectAccounting VulkanObjectAccounting? { get { return owner.ObjectAccounting } }
-  internal prop Diagnostics VulkanDiagnostics? { get { return owner.Diagnostics } }
-  internal prop DebugUtilsEnabled bool{ get { return owner.DebugUtilsEnabled } }
-  internal prop DeviceLost bool{ get { return owner.DeviceLost } }
-  internal prop Terminal bool{ get { return owner.Terminal } }
-  internal prop TerminalIdleResult VkResult{ get { return owner.TerminalIdleResult } }
-  internal prop Generation uint64{ get { return owner.Generation } }
+  internal prop ObjectAccounting VulkanObjectAccounting? { get -> owner.ObjectAccounting }
+  internal prop Diagnostics VulkanDiagnostics? { get -> owner.Diagnostics }
+  internal prop DebugUtilsEnabled bool{ get -> owner.DebugUtilsEnabled }
+  internal prop DeviceLost bool{ get -> owner.DeviceLost }
+  internal prop Terminal bool{ get -> owner.Terminal }
+  internal prop TerminalIdleResult VkResult{ get -> owner.TerminalIdleResult }
+  internal prop Generation uint64{ get -> owner.Generation }
   internal prop HasUnsubmittedRecordedSharedUpload bool{
-    get { return owner.HasUnsubmittedRecordedSharedUpload }
+    get -> owner.HasUnsubmittedRecordedSharedUpload
   }
 
   internal func ReserveGraphicsSubmissionSerial() uint64 -> owner.ReserveGraphicsSubmissionSerial()

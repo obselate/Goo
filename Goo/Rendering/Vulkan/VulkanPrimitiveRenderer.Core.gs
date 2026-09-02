@@ -7,6 +7,7 @@ import System.IO
 import System.Runtime.InteropServices
 
 internal data struct VulkanPrimitiveRecordResult {
+  var drawCallCount uint64
   var pipelineChangeCount uint64
   var descriptorChangeCount uint64
 }
@@ -100,7 +101,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
   private var recordDescriptorChangeCount uint64
   private var disposed bool
 
-  internal prop ClipCapacity int32{ get { return clipStack.Length } }
+  internal prop ClipCapacity int32{ get -> clipStack.Length }
   internal prop LiveObjectCount uint32{
     get {
       var count uint64 = primitiveFrameData.LiveObjectCount
@@ -113,10 +114,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
   }
 
   internal prop PrimitiveFrameStats VulkanPrimitiveFrameStats{
-    get { return primitiveFrameData.LastStats }
+    get -> primitiveFrameData.LastStats
   }
   internal prop TextFrameStats VulkanTextFrameStats{
-    get { return textFrameData.LastStats }
+    get -> textFrameData.LastStats
   }
 
   internal func SetPathAtlas(value VulkanPathAtlas) {
@@ -646,6 +647,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       textInstanceDescriptorSlot = -1
       recordPipelineChangeCount = 0uL
       recordDescriptorChangeCount = 0uL
+      ResetPrimitiveBatching()
       guard let clipData = clipMaskFrameData else {
         throw NotSupportedException("Vulkan primitive renderer has no clip mask frame data")
       }
@@ -806,7 +808,9 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       if layerDepth != 0 || currentTarget != nil {
         throw InvalidOperationException("Vulkan layer stack is not balanced")
       }
+      FlushPendingPrimitiveDraw(commandBuffer)
       return VulkanPrimitiveRecordResult{
+        drawCallCount: recordDrawCallCount,
         pipelineChangeCount: recordPipelineChangeCount,
         descriptorChangeCount: recordDescriptorChangeCount,
       }
@@ -924,6 +928,9 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     commandBuffer VkCommandBuffer,
     record LayerRecord) {
       let borrowedBackdrop = ValidateBorrowedBackdrop(record)
+      if !primitivePrepass {
+        FlushPendingPrimitiveDraw(commandBuffer)
+      }
       if primitivePrepass {
         if layerDepth >= layerStates.Length {
           throw InvalidOperationException("Vulkan layer depth exceeded")
@@ -1056,6 +1063,9 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         || state.Record.OffscreenTargetId.Version != record.OffscreenTargetId.Version{
           throw InvalidOperationException("Vulkan layer record does not match layer stack")
         }
+      if !primitivePrepass {
+        FlushPendingPrimitiveDraw(commandBuffer)
+      }
       if primitivePrepass {
         layerDepth = layerDepth - 1
         currentTarget = state.ParentTarget
@@ -1117,6 +1127,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         VulkanDiagnosticTimestampStage.Effects,
         VkConstants.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)
       EmitLayer(commandBuffer, activeExtent, state.Record, target, state.BackdropTarget, frame)
+      FlushPendingPrimitiveDraw(commandBuffer)
       EndLayerTimestamp(
         effectHandle,
         VkConstants.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)

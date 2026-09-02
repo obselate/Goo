@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Goo</RootNamespace>
     <PackageId>Goo</PackageId>
-    <Version>0.4.0</Version>
+    <Version>$(GooReleaseVersion)</Version>
     <Authors>Xaz</Authors>
     <Description>A retained, declarative UI framework for G#.</Description>
     <PackageTags>gsharp;ui;gui;declarative;retained</PackageTags>

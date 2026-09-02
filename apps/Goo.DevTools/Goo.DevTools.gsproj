@@ -8,7 +8,7 @@
     <RootNamespace>GooDevTools</RootNamespace>
     <AssemblyName>Goo.DevTools</AssemblyName>
     <PackageId>Goo.DevTools.App</PackageId>
-    <Version>0.4.0</Version>
+    <Version>$(GooReleaseVersion)</Version>
     <Authors>Xaz</Authors>
     <Description>Standalone local inspector for Goo applications.</Description>
     <PackageTags>goo;gsharp;devtools;inspector;diagnostics</PackageTags>

@@ -78,7 +78,7 @@ internal unsafe sealed class VulkanQueueWorker : IDisposable {
     }
 
     internal prop EnqueueDeferralCountForTest int64{
-      get { return Interlocked.Read(ref enqueueDeferralCount) }
+      get -> Interlocked.Read(ref enqueueDeferralCount)
     }
 
     private func TakeHold(kind int32, mailbox VulkanQueueMailbox) bool {

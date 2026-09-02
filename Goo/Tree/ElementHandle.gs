@@ -15,7 +15,7 @@ public class ElementHandle {
 
   /// Reports whether this handle is currently attached to an element.
   public prop IsMounted bool{
-    get { return mountedNode() != nil }
+    get -> mountedNode() != nil
   }
 
   /// Gets the transformed border box in window logical coordinates.
@@ -213,15 +213,15 @@ public data struct ElementMetrics {
   private var scrollRange Point
 
   /// Reports whether the element is mounted.
-  public prop IsMounted bool{ get { return isMounted } init{ isMounted = value } }
+  public prop IsMounted bool{ get -> isMounted init -> isMounted = value }
   /// Gets the transformed border box in window logical coordinates.
-  public prop BorderBox ElementRect{ get { return borderBox } init{ borderBox = value } }
+  public prop BorderBox ElementRect{ get -> borderBox init -> borderBox = value }
   /// Gets the transformed content box in window logical coordinates.
-  public prop ContentBox ElementRect{ get { return contentBox } init{ contentBox = value } }
+  public prop ContentBox ElementRect{ get -> contentBox init -> contentBox = value }
   /// Gets the current logical scroll offset.
-  public prop ScrollOffset Point{ get { return scrollOffset } init{ scrollOffset = value } }
+  public prop ScrollOffset Point{ get -> scrollOffset init -> scrollOffset = value }
   /// Gets the maximum legal logical scroll offset.
-  public prop ScrollRange Point{ get { return scrollRange } init{ scrollRange = value } }
+  public prop ScrollRange Point{ get -> scrollRange init -> scrollRange = value }
 }
 
 /// Specifies the coordinate space used by mounted text geometry queries.
@@ -236,26 +236,26 @@ public data struct ElementRect {
 
   /// Gets the horizontal origin.
   public prop X float64{
-    get { return x }
-    init{ x = value }
+    get -> x
+    init -> x = value
   }
 
   /// Gets the vertical origin.
   public prop Y float64{
-    get { return y }
-    init{ y = value }
+    get -> y
+    init -> y = value
   }
 
   /// Gets the width.
   public prop Width float64{
-    get { return width }
-    init{ width = value }
+    get -> width
+    init -> width = value
   }
 
   /// Gets the height.
   public prop Height float64{
-    get { return height }
-    init{ height = value }
+    get -> height
+    init -> height = value
   }
 }
 
@@ -421,7 +421,7 @@ internal class ElementMetricSubscription {
   internal var HasLast bool
   internal var Registration ElementMetricRegistration?
 
-  internal prop HasCallbacks bool{ get { return Callbacks != nil } }
+  internal prop HasCallbacks bool{ get -> Callbacks != nil }
 
   internal func AddCallback(callback Action[ElementMetrics]) {
     Callbacks += callback
@@ -458,7 +458,7 @@ internal class WindowMetricSubscription {
   internal var ElementsDelivering bool
   internal var ElementsNeedCompaction bool
 
-  internal prop HasCallbacks bool{ get { return Callbacks != nil } }
+  internal prop HasCallbacks bool{ get -> Callbacks != nil }
 
   internal func AddCallback(callback Action[WindowMetrics]) {
     Callbacks += callback

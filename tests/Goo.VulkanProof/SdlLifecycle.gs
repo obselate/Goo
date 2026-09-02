@@ -126,24 +126,24 @@ internal unsafe class SdlLifecycle {
   private var restored bool
   private var lastDrainResult int32
 
-  internal prop WindowId uint32{ get { return windowId } }
-  internal prop State SdlLifecycleState{ get { return state } }
-  internal prop LogicalWidth int32{ get { return logicalWidth } }
-  internal prop LogicalHeight int32{ get { return logicalHeight } }
-  internal prop PixelWidth int32{ get { return pixelWidth } }
-  internal prop PixelHeight int32{ get { return pixelHeight } }
-  internal prop PixelDensity float32{ get { return pixelDensity } }
-  internal prop DisplayScale float32{ get { return displayScale } }
-  internal prop LogicalDirty bool{ get { return logicalDirty } }
-  internal prop PixelDirty bool{ get { return pixelDirty } }
-  internal prop ScaleDirty bool{ get { return scaleDirty } }
-  internal prop RenderDirty bool{ get { return renderDirty } }
-  internal prop CloseRequested bool{ get { return closeRequested } }
-  internal prop Destroyed bool{ get { return destroyed } }
-  internal prop Exposed bool{ get { return exposed } }
-  internal prop Minimized bool{ get { return minimized } }
-  internal prop Restored bool{ get { return restored } }
-  internal prop LastDrainResult int32{ get { return lastDrainResult } }
+  internal prop WindowId uint32{ get -> windowId }
+  internal prop State SdlLifecycleState{ get -> state }
+  internal prop LogicalWidth int32{ get -> logicalWidth }
+  internal prop LogicalHeight int32{ get -> logicalHeight }
+  internal prop PixelWidth int32{ get -> pixelWidth }
+  internal prop PixelHeight int32{ get -> pixelHeight }
+  internal prop PixelDensity float32{ get -> pixelDensity }
+  internal prop DisplayScale float32{ get -> displayScale }
+  internal prop LogicalDirty bool{ get -> logicalDirty }
+  internal prop PixelDirty bool{ get -> pixelDirty }
+  internal prop ScaleDirty bool{ get -> scaleDirty }
+  internal prop RenderDirty bool{ get -> renderDirty }
+  internal prop CloseRequested bool{ get -> closeRequested }
+  internal prop Destroyed bool{ get -> destroyed }
+  internal prop Exposed bool{ get -> exposed }
+  internal prop Minimized bool{ get -> minimized }
+  internal prop Restored bool{ get -> restored }
+  internal prop LastDrainResult int32{ get -> lastDrainResult }
 
   internal init() {
     state = SdlLifecycleState.Closed

@@ -60,7 +60,7 @@ internal unsafe sealed class VulkanImageIdentityRegistry : IDisposable {
   private var providerRecordCount int32
   private var disposed bool
 
-  internal prop LinearSamplerId ResourceId{ get { return linearSamplerId } }
+  internal prop LinearSamplerId ResourceId{ get -> linearSamplerId }
   internal prop Stats VulkanImageIdentityRegistryStats{
     get {
       return VulkanImageIdentityRegistryStats{

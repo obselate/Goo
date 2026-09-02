@@ -19,9 +19,9 @@ internal data struct VulkanPathRenderable {
   internal let UploadRecorded bool
   internal let UploadSubmitted bool
 
-  internal prop AtlasWordOffset uint32{ get { return BaseWord } }
-  internal prop AtlasWordCount uint32{ get { return WordCount } }
-  internal prop IsReady bool{ get { return Renderable } }
+  internal prop AtlasWordOffset uint32{ get -> BaseWord }
+  internal prop AtlasWordCount uint32{ get -> WordCount }
+  internal prop IsReady bool{ get -> Renderable }
 }
 
 internal data struct VulkanPathResourcesStats {
@@ -143,22 +143,22 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
   private var completedSubmissionFence uint64
   private var disposed bool
 
-  internal prop Atlas VulkanPathAtlas{ get { return atlas } }
-  internal prop IdentityRegistry VulkanPathIdentityRegistry{ get { return identities } }
-  internal prop AtlasId ResourceId{ get { return atlasId } }
-  internal prop CpuWords []uint32{ get { return cpuWords } }
-  internal prop WordCapacity VkDeviceSize{ get { return atlas.WordCapacity } }
-  internal prop WordCount uint32{ get { return nextWordOffset } }
-  internal prop LiveWordCount uint32{ get { return liveWordCount } }
-  internal prop FreeWordCount uint32{ get { return freeWordCount } }
-  internal prop PublishedWordPrefix uint32{ get { return publishedWordPrefix } }
-  internal prop QueuedWordPrefix uint32{ get { return queuedWordPrefix } }
+  internal prop Atlas VulkanPathAtlas{ get -> atlas }
+  internal prop IdentityRegistry VulkanPathIdentityRegistry{ get -> identities }
+  internal prop AtlasId ResourceId{ get -> atlasId }
+  internal prop CpuWords []uint32{ get -> cpuWords }
+  internal prop WordCapacity VkDeviceSize{ get -> atlas.WordCapacity }
+  internal prop WordCount uint32{ get -> nextWordOffset }
+  internal prop LiveWordCount uint32{ get -> liveWordCount }
+  internal prop FreeWordCount uint32{ get -> freeWordCount }
+  internal prop PublishedWordPrefix uint32{ get -> publishedWordPrefix }
+  internal prop QueuedWordPrefix uint32{ get -> queuedWordPrefix }
   internal prop UploadPending bool{
-    get { return uploadQueued || dirtyWordsPending || nextWordOffset > publishedWordPrefix }
+    get -> uploadQueued || dirtyWordsPending || nextWordOffset > publishedWordPrefix
   }
-  internal prop UploadRecorded bool{ get { return atlas.UploadRecorded } }
-  internal prop UploadSubmitted bool{ get { return atlas.UploadSubmitted } }
-  internal prop RedrawRequired bool{ get { return redrawRequired || dirtyWordsPending || uploadQueued } }
+  internal prop UploadRecorded bool{ get -> atlas.UploadRecorded }
+  internal prop UploadSubmitted bool{ get -> atlas.UploadSubmitted }
+  internal prop RedrawRequired bool{ get -> redrawRequired || dirtyWordsPending || uploadQueued }
   internal prop Stats VulkanPathResourcesStats{
     get {
       return VulkanPathResourcesStats{
@@ -238,7 +238,7 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
       cpuWords = [capacity]uint32
     }
 
-  internal prop RedrawSequence uint64{ get { return redrawSequence } }
+  internal prop RedrawSequence uint64{ get -> redrawSequence }
 
   internal func RegisterScene() uint64 {
     EnsureOpen()
@@ -767,16 +767,16 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
   private func TryGrowAtlas(required uint32) bool {
     let requiredCapacity = uint64(nextWordOffset) + uint64(required)
     if requiredCapacity > atlas.MaximumWordCapacity
-      || requiredCapacity > uint64(Int32.MaxValue){
+      || requiredCapacity > uint64(Int32.MaxValue) {
         capacityExhausted = true
         if pressureFailureCount == uint64.MaxValue {
           throw OverflowException("Vulkan path pressure failure count overflow")
         }
         pressureFailureCount++
         throw InvalidOperationException(
-          "Vulkan path atlas hard limit exceeded: requestWords=" +required.ToString()
-          +" currentWords=" +nextWordOffset.ToString()
-          +" hardWords=" +atlas.MaximumWordCapacity.ToString())
+          "Vulkan path atlas hard limit exceeded: requestWords=" + required.ToString()
+          +" currentWords=" + nextWordOffset.ToString()
+          +" hardWords=" + atlas.MaximumWordCapacity.ToString())
       }
     if atlas.UploadPending || uploadQueued {
       if deferredRequestCount == uint64.MaxValue {

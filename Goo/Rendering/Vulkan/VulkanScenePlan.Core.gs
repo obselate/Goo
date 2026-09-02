@@ -60,6 +60,8 @@ internal partial class SceneFrame {
   private var resourceReferenceOperations uint64
   private var chunkOperations uint64
   private var resetOperations uint64
+  private var reusableChunkCount int32
+  private var recordsLogical bool
 
   internal convenience init() {
     init(DefaultCapacity)
@@ -96,54 +98,54 @@ internal partial class SceneFrame {
     activeClipChainId = 0
   }
 
-  internal prop Chunks []SceneChunk{ get { return chunks } }
-  internal prop ChunkCount int32{ get { return chunkCount } }
-  internal prop DrawRefs []DrawRef{ get { return drawRefs } }
-  internal prop DrawRefCount int32{ get { return drawRefCount } }
-  internal prop ResourceRefs []ResourceId{ get { return resourceRefs } }
-  internal prop ResourceRefCount int32{ get { return resourceRefCount } }
-  internal prop SolidBoxes []SolidBoxRecord{ get { return solidBoxes } }
-  internal prop SolidBoxCount int32{ get { return solidBoxCount } }
-  internal prop RoundedBoxes []RoundedBoxRecord{ get { return roundedBoxes } }
-  internal prop RoundedBoxCount int32{ get { return roundedBoxCount } }
-  internal prop PerEdgeBorders []PerEdgeBorderRecord{ get { return perEdgeBorders } }
-  internal prop PerEdgeBorderCount int32{ get { return perEdgeBorderCount } }
-  internal prop GradientStops []GradientStopRecord{ get { return gradientStops } }
-  internal prop GradientStopCount int32{ get { return gradientStopCount } }
-  internal prop LinearGradients []LinearGradientRecord{ get { return linearGradients } }
-  internal prop LinearGradientCount int32{ get { return linearGradientCount } }
-  internal prop RadialGradients []RadialGradientRecord{ get { return radialGradients } }
-  internal prop RadialGradientCount int32{ get { return radialGradientCount } }
-  internal prop CachedImages []CachedImageRefRecord{ get { return cachedImages } }
-  internal prop CachedImageCount int32{ get { return cachedImageCount } }
-  internal prop CachedTextSegments []CachedTextSegmentRefRecord{ get { return cachedTextSegments } }
-  internal prop CachedTextSegmentCount int32{ get { return cachedTextSegmentCount } }
-  internal prop AnalyticPathBands []AnalyticPathBandRecord{ get { return analyticPathBands } }
-  internal prop AnalyticPathBandCount int32{ get { return analyticPathBandCount } }
-  internal prop Transforms []TransformRecord{ get { return transforms } }
-  internal prop TransformCount int32{ get { return transformCount } }
-  internal prop RectClips []RectClipRecord{ get { return rectClips } }
-  internal prop RectClipCount int32{ get { return rectClipCount } }
-  internal prop ClipMasks []ClipMaskRecord{ get { return clipMasks } }
-  internal prop ClipMaskCount int32{ get { return clipMaskCount } }
-  internal prop ClipChains []ClipChainRecord{ get { return clipChains } }
-  internal prop ClipChainCount int32{ get { return clipChainCount } }
-  internal prop Shadows []ShadowRecord{ get { return shadows } }
-  internal prop ShadowCount int32{ get { return shadowCount } }
-  internal prop Underlines []UnderlineRecord{ get { return underlines } }
-  internal prop UnderlineCount int32{ get { return underlineCount } }
-  internal prop Lavas []LavaRecord{ get { return lavas } }
-  internal prop LavaCount int32{ get { return lavaCount } }
-  internal prop CustomMeshes []CustomMeshRecord{ get { return customMeshes } }
-  internal prop CustomMeshCount int32{ get { return customMeshCount } }
-  internal prop Layers []LayerRecord{ get { return layers } }
-  internal prop LayerCount int32{ get { return layerCount } }
-  internal prop ShaderEffects []ShaderEffectRecord{ get { return shaderEffects } }
-  internal prop ShaderEffectCount int32{ get { return shaderEffectCount } }
-  internal prop ActiveChunk int32{ get { return activeChunk } }
-  internal prop ActiveClipChainId int32{ get { return activeClipChainId } }
-  internal prop GrowthOperations uint64{ get { return growthOperations } }
-  internal prop RecordOperations uint64{ get { return recordOperations } }
+  internal prop Chunks []SceneChunk{ get -> chunks }
+  internal prop ChunkCount int32{ get -> chunkCount }
+  internal prop DrawRefs []DrawRef{ get -> drawRefs }
+  internal prop DrawRefCount int32{ get -> drawRefCount }
+  internal prop ResourceRefs []ResourceId{ get -> resourceRefs }
+  internal prop ResourceRefCount int32{ get -> resourceRefCount }
+  internal prop SolidBoxes []SolidBoxRecord{ get -> solidBoxes }
+  internal prop SolidBoxCount int32{ get -> solidBoxCount }
+  internal prop RoundedBoxes []RoundedBoxRecord{ get -> roundedBoxes }
+  internal prop RoundedBoxCount int32{ get -> roundedBoxCount }
+  internal prop PerEdgeBorders []PerEdgeBorderRecord{ get -> perEdgeBorders }
+  internal prop PerEdgeBorderCount int32{ get -> perEdgeBorderCount }
+  internal prop GradientStops []GradientStopRecord{ get -> gradientStops }
+  internal prop GradientStopCount int32{ get -> gradientStopCount }
+  internal prop LinearGradients []LinearGradientRecord{ get -> linearGradients }
+  internal prop LinearGradientCount int32{ get -> linearGradientCount }
+  internal prop RadialGradients []RadialGradientRecord{ get -> radialGradients }
+  internal prop RadialGradientCount int32{ get -> radialGradientCount }
+  internal prop CachedImages []CachedImageRefRecord{ get -> cachedImages }
+  internal prop CachedImageCount int32{ get -> cachedImageCount }
+  internal prop CachedTextSegments []CachedTextSegmentRefRecord{ get -> cachedTextSegments }
+  internal prop CachedTextSegmentCount int32{ get -> cachedTextSegmentCount }
+  internal prop AnalyticPathBands []AnalyticPathBandRecord{ get -> analyticPathBands }
+  internal prop AnalyticPathBandCount int32{ get -> analyticPathBandCount }
+  internal prop Transforms []TransformRecord{ get -> transforms }
+  internal prop TransformCount int32{ get -> transformCount }
+  internal prop RectClips []RectClipRecord{ get -> rectClips }
+  internal prop RectClipCount int32{ get -> rectClipCount }
+  internal prop ClipMasks []ClipMaskRecord{ get -> clipMasks }
+  internal prop ClipMaskCount int32{ get -> clipMaskCount }
+  internal prop ClipChains []ClipChainRecord{ get -> clipChains }
+  internal prop ClipChainCount int32{ get -> clipChainCount }
+  internal prop Shadows []ShadowRecord{ get -> shadows }
+  internal prop ShadowCount int32{ get -> shadowCount }
+  internal prop Underlines []UnderlineRecord{ get -> underlines }
+  internal prop UnderlineCount int32{ get -> underlineCount }
+  internal prop Lavas []LavaRecord{ get -> lavas }
+  internal prop LavaCount int32{ get -> lavaCount }
+  internal prop CustomMeshes []CustomMeshRecord{ get -> customMeshes }
+  internal prop CustomMeshCount int32{ get -> customMeshCount }
+  internal prop Layers []LayerRecord{ get -> layers }
+  internal prop LayerCount int32{ get -> layerCount }
+  internal prop ShaderEffects []ShaderEffectRecord{ get -> shaderEffects }
+  internal prop ShaderEffectCount int32{ get -> shaderEffectCount }
+  internal prop ActiveChunk int32{ get -> activeChunk }
+  internal prop ActiveClipChainId int32{ get -> activeClipChainId }
+  internal prop GrowthOperations uint64{ get -> growthOperations }
+  internal prop RecordOperations uint64{ get -> recordOperations }
   internal prop Counters ScenePlanCounters{
     get {
       return ScenePlanCounters{
@@ -159,6 +161,8 @@ internal partial class SceneFrame {
 
   internal func Reset() {
     RequireClosedChunk()
+    reusableChunkCount = recordsLogical ? chunkCount : 0
+    recordsLogical = true
     var shaderIndex int32 = 0
     while shaderIndex < shaderEffectCount {
       shaderEffects[shaderIndex] = ShaderEffectRecord{}
@@ -203,6 +207,53 @@ internal partial class SceneFrame {
   internal func ResetForReuse() {
     Reset()
   }
+
+  internal func InvalidateRetainedPrimitiveSpans() {
+    recordsLogical = false
+  }
+
+  private func TryAppendRetainedPrimitiveSpan(
+    ownerId uint64,
+    version uint64,
+    bounds ConservativeBounds,
+    kind SceneDrawKind,
+    recordIndex int32) int32{
+      if activeChunk >= 0 || activeClipChainId != 0
+        || chunkCount >= reusableChunkCount{
+          return -1
+        }
+      let previous = chunks[chunkCount]
+      if previous.OwnerId != ownerId
+        || previous.FirstDraw != drawRefCount
+        || previous.DrawCount != 1
+        || previous.FirstResource != resourceRefCount
+        || previous.ResourceCount != 0 {
+          return -1
+        }
+      let draw = drawRefs[drawRefCount]
+      if draw.Kind != kind || draw.Index != recordIndex
+        || draw.Flags != 0u || draw.ClipChainId != 0 {
+          return -1
+        }
+      let chunk = chunkCount
+      chunks[chunk] = SceneChunk{
+        OwnerId: ownerId,
+        Version: version,
+        Bounds: bounds,
+        FirstDraw: drawRefCount,
+        DrawCount: 1,
+        FirstResource: resourceRefCount,
+        ResourceCount: 0,
+        ContentKey: 0uL,
+        TopologyKey: 0uL,
+        Dirty: true,
+        RetentionState: SceneChunkRetentionState.ExactLeafHit,
+      }
+      chunkCount = NextCount(chunkCount)
+      drawRefCount = NextCount(drawRefCount)
+      chunkOperations = chunkOperations + 1uL
+      return chunk
+    }
 
   internal func BeginChunk(ownerId uint64, version uint64, bounds ConservativeBounds, dirty bool) int32 {
     if activeChunk >= 0 {
@@ -304,29 +355,53 @@ internal partial class SceneFrame {
   }
 
   internal func AppendRetainedSolidLeaf(ownerId uint64, version uint64,
-    bounds ConservativeBounds, value SolidBoxRecord) int32{
+    bounds ConservativeBounds, value SolidBoxRecord, exactHit bool) int32{
+      if exactHit {
+        let retained = TryAppendRetainedPrimitiveSpan(ownerId, version, bounds,
+          SceneDrawKind.SolidBox, solidBoxCount)
+        if retained >= 0 {
+          solidBoxCount = NextCount(solidBoxCount)
+          return retained
+        }
+      }
       let chunk = BeginChunk(ownerId, version, bounds, true)
       AddSolidBox(value)
+      chunks[chunk].RetentionState = exactHit ? SceneChunkRetentionState.ExactLeafHit : SceneChunkRetentionState.ExactLeafRebuild
       EndChunk()
-      chunks[chunk].RetentionState = SceneChunkRetentionState.ExactLeafHit
       return chunk
     }
 
   internal func AppendRetainedRoundedLeaf(ownerId uint64, version uint64,
-    bounds ConservativeBounds, value RoundedBoxRecord) int32{
+    bounds ConservativeBounds, value RoundedBoxRecord, exactHit bool) int32{
+      if exactHit {
+        let retained = TryAppendRetainedPrimitiveSpan(ownerId, version, bounds,
+          SceneDrawKind.RoundedBox, roundedBoxCount)
+        if retained >= 0 {
+          roundedBoxCount = NextCount(roundedBoxCount)
+          return retained
+        }
+      }
       let chunk = BeginChunk(ownerId, version, bounds, true)
       AddRoundedBox(value)
+      chunks[chunk].RetentionState = exactHit ? SceneChunkRetentionState.ExactLeafHit : SceneChunkRetentionState.ExactLeafRebuild
       EndChunk()
-      chunks[chunk].RetentionState = SceneChunkRetentionState.ExactLeafHit
       return chunk
     }
 
   internal func AppendRetainedBorderLeaf(ownerId uint64, version uint64,
-    bounds ConservativeBounds, value PerEdgeBorderRecord) int32{
+    bounds ConservativeBounds, value PerEdgeBorderRecord, exactHit bool) int32{
+      if exactHit {
+        let retained = TryAppendRetainedPrimitiveSpan(ownerId, version, bounds,
+          SceneDrawKind.PerEdgeBorder, perEdgeBorderCount)
+        if retained >= 0 {
+          perEdgeBorderCount = NextCount(perEdgeBorderCount)
+          return retained
+        }
+      }
       let chunk = BeginChunk(ownerId, version, bounds, true)
       AddPerEdgeBorder(value)
+      chunks[chunk].RetentionState = exactHit ? SceneChunkRetentionState.ExactLeafHit : SceneChunkRetentionState.ExactLeafRebuild
       EndChunk()
-      chunks[chunk].RetentionState = SceneChunkRetentionState.ExactLeafHit
       return chunk
     }
 

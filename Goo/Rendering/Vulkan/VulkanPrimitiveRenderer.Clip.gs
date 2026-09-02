@@ -439,6 +439,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
   private func EmitClipMask(commandBuffer VkCommandBuffer, extent VkExtent2D,
     value ClipMaskRecord, region VulkanClipMaskRegion, frame SceneFrame,
     pipeline VkPipeline) {
+      FlushPendingPrimitiveDraw(commandBuffer)
       let transform = ResolveTransform(frame, value.TransformIndex)
       let width = float32(clipMaskAtlas!!.Width)
       let height = float32(clipMaskAtlas!!.Height)

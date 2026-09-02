@@ -7,6 +7,7 @@ internal partial class VulkanWindowTarget {
     if scaleX == 1.0F && scaleY == 1.0F {
       return
     }
+    frame.InvalidateRetainedPrimitiveSpans()
     var index int32 = 0
     while index < frame.ChunkCount {
       let value = frame.Chunks[index]

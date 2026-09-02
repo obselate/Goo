@@ -13,6 +13,16 @@ Gsharp.NET.Sdk 0.4.1.
 - Release commit: `d670ac98c03e0b0f7c9ac965f5fa3914712f09de`.
 - [G# license](https://github.com/DavidObando/gsharp/blob/d670ac98c03e0b0f7c9ac965f5fa3914712f09de/LICENSE)
 
+## G# formatting engine
+
+`tools/Goo.Gslint/FormattingEngine.cs` is derived from G#'s MIT-licensed
+formatting engine at commit `41d5ccbafcc40b8babdbdc0ab9add728a4b1eb02`.
+Goo changes the namespace, removes source comments, and fixes canonical line
+endings to LF. Copyright (C) GSharp Authors. All rights reserved.
+
+- [G# formatting engine source](https://github.com/DavidObando/gsharp/blob/41d5ccbafcc40b8babdbdc0ab9add728a4b1eb02/src/LanguageServer/FormattingEngine.cs)
+- [G# license](https://github.com/DavidObando/gsharp/blob/41d5ccbafcc40b8babdbdc0ab9add728a4b1eb02/LICENSE)
+
 ## HarfBuzz and hb-gpu text runtime
 
 Goo ships private Linux and Windows native payloads built from the pinned

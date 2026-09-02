@@ -51,11 +51,11 @@ internal class InputCoordinator {
   }
 
   internal func Drain(root Node?, resolver Resolver, timeS float64,
-    onKeyPress((Key, KeyModifiers) -> void)?) bool ->
+    onKeyPress Action[Key, KeyModifiers]?) bool ->
   Drain(root, resolver, timeS, onKeyPress, 0)
 
   internal func Drain(root Node?, resolver Resolver, timeS float64,
-    onKeyPress((Key, KeyModifiers) -> void)?, repeatStartTicks int64) bool{
+    onKeyPress Action[Key, KeyModifiers]?, repeatStartTicks int64) bool{
       let pointerChanged = pointer.Drain(root, resolver, timeS, text)
       return keyboard.Drain(root, resolver, text, onKeyPress, repeatStartTicks) || pointerChanged
     }
@@ -312,16 +312,17 @@ internal class InputCoordinator {
     pointer.QueueCancel(pointerId, device)
   }
 
-  internal func DispatchKeyPress(root Node?, resolver Resolver, key Key, modifiers KeyModifiers, onKeyPress((Key, KeyModifiers) -> void)?) bool {
-    try {
-      if let callback = onKeyPress {
-        callback(key, modifiers)
+  internal func DispatchKeyPress(root Node?, resolver Resolver, key Key, modifiers KeyModifiers,
+    onKeyPress Action[Key, KeyModifiers]?) bool{
+      try {
+        if let callback = onKeyPress {
+          callback(key, modifiers)
+        }
+        return keyboard.HandleKey(root, resolver, text, key, modifiers)
+      } finally {
+        resolver.Flush()
       }
-      return keyboard.HandleKey(root, resolver, text, key, modifiers)
-    } finally {
-      resolver.Flush()
     }
-  }
 
   internal func StartKeyRepeat(key Key, modifiers KeyModifiers) {
     keyboard.StartKeyRepeat(key, modifiers)

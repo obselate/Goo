@@ -95,11 +95,11 @@ internal unsafe class VulkanDiagnostics {
   private var fatalLastResultEvent uint64
   private var fatalLastResult int32
 
-  internal prop TraceCapacityValue int32{ get { return TraceCapacity } }
-  internal prop ValidationCapacityValue int32{ get { return ValidationCapacity } }
-  internal prop ValidationErrorCount int32{ get { return validationErrors } }
-  internal prop TraceDroppedCount int32{ get { return traceDropped } }
-  internal prop ValidationDroppedCount int32{ get { return validationDropped } }
+  internal prop TraceCapacityValue int32{ get -> TraceCapacity }
+  internal prop ValidationCapacityValue int32{ get -> ValidationCapacity }
+  internal prop ValidationErrorCount int32{ get -> validationErrors }
+  internal prop TraceDroppedCount int32{ get -> traceDropped }
+  internal prop ValidationDroppedCount int32{ get -> validationDropped }
 
   internal init() {
     trace = [TraceCapacity]VulkanTraceRecord

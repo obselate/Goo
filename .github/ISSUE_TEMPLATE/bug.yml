@@ -75,7 +75,7 @@ body:
     attributes:
       label: Environment
       description: Include the OS, architecture, display backend, and G# SDK version when relevant.
-      placeholder: Ubuntu 22.04, x64, Wayland, Gsharp.NET.Sdk 0.3.x
+      placeholder: Ubuntu 24.04, x64, Wayland, Gsharp.NET.Sdk 0.4.1
     validations:
       required: true
 

@@ -199,7 +199,7 @@ internal struct ResourceId {
   internal var Version uint64
 
   internal prop IsValid bool{
-    get { return Kind != SceneResourceKind.None && LogicalId != 0uL && Version != 0uL }
+    get -> Kind != SceneResourceKind.None && LogicalId != 0uL && Version != 0uL
   }
 }
 
@@ -210,15 +210,15 @@ internal struct ConservativeBounds {
   internal var Height float32
 
   internal prop Right float32{
-    get { return X + Width }
+    get -> X + Width
   }
 
   internal prop Bottom float32{
-    get { return Y + Height }
+    get -> Y + Height
   }
 
   internal prop IsEmpty bool{
-    get { return Width <= 0.0F || Height <= 0.0F }
+    get -> Width <= 0.0F || Height <= 0.0F
   }
 
   internal func Inflate(amount float32) ConservativeBounds -> ConservativeBounds {
@@ -283,15 +283,15 @@ internal struct VulkanDamageRegion {
   internal var Height int32
 
   internal prop IsEmpty bool{
-    get { return Width <= 0 || Height <= 0 }
+    get -> Width <= 0 || Height <= 0
   }
 
   internal prop Right int32{
-    get { return X + Width }
+    get -> X + Width
   }
 
   internal prop Bottom int32{
-    get { return Y + Height }
+    get -> Y + Height
   }
 }
 

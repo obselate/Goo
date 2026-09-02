@@ -378,6 +378,52 @@ internal class StyleFixtures {
     return n.Width.Value == 50.0F && n.Height.Value == 20.0F && n.Gap.Value == 4.0F
   }
 
+  func OrderedCompositionAndGradientClearContract() bool {
+    let red = Color.Rgb(255, 0, 0)
+    let gradient = LinearGradient(Color.Black, Color.White)
+    let baseStyle = Style{
+      Padding: 4,
+      PaddingLeft: 6,
+      BackgroundColor: red,
+      BackgroundGradient: gradient,
+    }
+    let baseLater = Container{ PaddingLeft: 9, BasedOn: baseStyle }
+    let derivedStyle = Style{
+      BasedOn: baseStyle,
+      PaddingLeft: 9,
+      BackgroundGradient: nil,
+    }
+    let localLater = Container{ BasedOn: derivedStyle, PaddingTop: 8 }
+    baseStyle.pushLength(StyleField.PaddingLeft,
+      Length{ Unit: LengthUnit.Px, Value: 99 })
+
+    let reconciler = Reconciler{ Res: Resolver{} }
+    let baseLaterNode = reconciler.Mount(baseLater)
+    let localLaterNode = reconciler.Mount(localLater)
+    if baseLaterNode.PaddingLeft.Value != 6.0F
+      || localLaterNode.PaddingLeft.Value != 9.0F
+      || localLaterNode.PaddingTop.Value != 8.0F
+      || !sameColor(localLaterNode.BackgroundColor, red)
+      || localLaterNode.BackgroundGradient != nil {
+        return false
+      }
+
+    let resolver = Resolver{}
+    let stateNode = Reconciler{ Res: resolver }.Mount(Container{
+      BasedOn: baseStyle,
+      Hover: Style{ BackgroundGradient: nil },
+    })
+    if stateNode.BackgroundGradient == nil { return false }
+    stateNode.Hovered = true
+    resolver.Invalidate(stateNode, false)
+    resolver.Flush()
+    if stateNode.BackgroundGradient != nil { return false }
+    stateNode.Hovered = false
+    resolver.Invalidate(stateNode, false)
+    resolver.Flush()
+    return stateNode.BackgroundGradient != nil
+  }
+
   func StateStyleRetentionAndEqualityContract() bool {
     let resolver = Resolver{}
     let reconciler = Reconciler{ Res: resolver }

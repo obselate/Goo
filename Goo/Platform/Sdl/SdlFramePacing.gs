@@ -11,7 +11,7 @@ internal class SdlFramePacing {
       uncappedBenchmark = value
     }
 
-    internal prop UncappedBenchmark bool{ get { return uncappedBenchmark } }
+    internal prop UncappedBenchmark bool{ get -> uncappedBenchmark }
   }
 
   private var displayId uint32
@@ -21,9 +21,9 @@ internal class SdlFramePacing {
   private var retryDeadlineTicks float64
   private var hasValidSample bool
 
-  internal prop DisplayId uint32{ get { return displayId } }
-  internal prop RefreshRate float64{ get { return refreshRate } }
-  internal prop HasValidSample bool{ get { return hasValidSample } }
+  internal prop DisplayId uint32{ get -> displayId }
+  internal prop RefreshRate float64{ get -> refreshRate }
+  internal prop HasValidSample bool{ get -> hasValidSample }
 
   internal init() {
     refreshRate = 60.0

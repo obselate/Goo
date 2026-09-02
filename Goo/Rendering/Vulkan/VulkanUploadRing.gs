@@ -54,7 +54,7 @@ internal unsafe class VulkanUploadRing {
   private var nextSequence uint64
   private var disposed bool
 
-  internal prop Generation uint64{ get { return generation } }
+  internal prop Generation uint64{ get -> generation }
   internal prop Stats VulkanUploadRingStats{
     get {
       return VulkanUploadRingStats{

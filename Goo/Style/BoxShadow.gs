@@ -14,45 +14,45 @@ public data struct BoxShadow {
 
   /// Gets the horizontal offset in pixels.
   public prop OffsetX Length{
-    get { return normalizedDefault(offsetX) }
-    init{ offsetX = validateShadowGeometry("BoxShadow", value, "OffsetX") }
+    get -> normalizedDefault(offsetX)
+    init -> offsetX = validateShadowGeometry("BoxShadow", value, "OffsetX")
   }
 
   /// Gets the vertical offset in pixels.
   public prop OffsetY Length{
-    get { return normalizedDefault(offsetY) }
-    init{ offsetY = validateShadowGeometry("BoxShadow", value, "OffsetY") }
+    get -> normalizedDefault(offsetY)
+    init -> offsetY = validateShadowGeometry("BoxShadow", value, "OffsetY")
   }
 
   /// Gets the non-negative blur radius in pixels.
   public prop Blur Length{
-    get { return normalizedDefault(blur) }
-    init{ blur = normalizeShadowBlur("BoxShadow", value) }
+    get -> normalizedDefault(blur)
+    init -> blur = normalizeShadowBlur("BoxShadow", value)
   }
 
   /// Gets the spread radius in pixels.
   public prop Spread Length{
-    get { return normalizedDefault(spread) }
-    init{ spread = validateShadowGeometry("BoxShadow", value, "Spread") }
+    get -> normalizedDefault(spread)
+    init -> spread = validateShadowGeometry("BoxShadow", value, "Spread")
   }
 
   /// Gets the shadow color.
   public prop Color Color{
-    get { return color }
-    init{ color = value }
+    get -> color
+    init -> color = value
   }
 
   /// Gets whether the shadow is clipped inside the painted box or Shape silhouette.
   public prop Inset bool{
-    get { return inset }
-    init{ inset = value }
+    get -> inset
+    init -> inset = value
   }
 }
 
 internal class BoxShadowStack {
   internal let Items []BoxShadow
 
-  internal prop Count int32{ get { return Items.Length } }
+  internal prop Count int32{ get -> Items.Length }
 
   internal init(items []BoxShadow) {
     Items = items

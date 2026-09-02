@@ -343,6 +343,10 @@ internal class TextInputPrimitivesFixtures {
 }
 
 public partial class Window {
+  internal prop KeyPressedCallbacksForTest Action[Key, KeyModifiers]? {
+    get -> notifications.KeyPressedCallbacks
+  }
+
   internal func QueueTextInputForTest(value string) {
     input.QueueText(value)
   }

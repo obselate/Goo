@@ -7,8 +7,8 @@ Goo DevTools is local and opt-in. The `goo` .NET tool starts a Goo application w
 For a released tool:
 
 ```sh
-dotnet tool install --global Goo.DevTools --version 0.4.0
-dotnet tool install --global Goo.DevTools.App --version 0.4.0
+dotnet tool install --global Goo.DevTools --version 0.4.1
+dotnet tool install --global Goo.DevTools.App --version 0.4.1
 ```
 
 `Goo.DevTools` installs the `goo` CLI. `Goo.DevTools.App` installs the standalone `goo-devtools` inspector used by `--inspector`.
@@ -17,13 +17,13 @@ For a checkout build:
 
 ```sh
 dotnet pack tools/Goo.DevTools.Cli/Goo.DevTools.Cli.csproj -c Release -o artifacts/devtools
-dotnet tool install --global Goo.DevTools --add-source artifacts/devtools --version 0.4.0
+dotnet tool install --global Goo.DevTools --add-source artifacts/devtools --version 0.4.1
 ```
 
 Create a project from the template:
 
 ```sh
-dotnet new install Goo.Templates@0.4.0
+dotnet new install Goo.Templates@0.4.1
 dotnet new goo --name HelloGoo
 ```
 

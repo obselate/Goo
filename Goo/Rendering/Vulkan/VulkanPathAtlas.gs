@@ -57,23 +57,23 @@ internal unsafe partial class VulkanPathAtlas : IDisposable {
   private var disposed bool
   private let testMode bool
 
-  internal prop WordCapacity VkDeviceSize{ get { return wordCapacity } }
-  internal prop ByteCapacity VkDeviceSize{ get { return byteCapacity } }
-  internal prop MaximumWordCapacity VkDeviceSize{ get { return maximumWordCapacity } }
-  internal prop Buffer VkBuffer{ get { return atlasBuffer } }
-  internal prop StagingBuffer VkBuffer{ get { return stagingBuffer } }
-  internal prop DescriptorSetLayout VkDescriptorSetLayout{ get { return descriptorSetLayout } }
-  internal prop DescriptorSet VkDescriptorSet{ get { return descriptorSet } }
-  internal prop UploadPending bool{ get { return uploadPending } }
-  internal prop UploadRecorded bool{ get { return uploadRecorded } }
-  internal prop UploadSubmitted bool{ get { return uploadSubmitted } }
-  internal prop IsUploaded bool{ get { return uploaded } }
-  internal prop UploadWordOffset VkDeviceSize{ get { return uploadWordOffset } }
-  internal prop UploadWordCount VkDeviceSize{ get { return uploadWordCount } }
-  internal prop UploadByteOffset VkDeviceSize{ get { return uploadByteOffset } }
-  internal prop UploadByteCount VkDeviceSize{ get { return uploadByteCount } }
-  internal prop UploadSequence uint64{ get { return uploadSequence } }
-  internal prop CompletedUploadSequence uint64{ get { return completedUploadSequence } }
+  internal prop WordCapacity VkDeviceSize{ get -> wordCapacity }
+  internal prop ByteCapacity VkDeviceSize{ get -> byteCapacity }
+  internal prop MaximumWordCapacity VkDeviceSize{ get -> maximumWordCapacity }
+  internal prop Buffer VkBuffer{ get -> atlasBuffer }
+  internal prop StagingBuffer VkBuffer{ get -> stagingBuffer }
+  internal prop DescriptorSetLayout VkDescriptorSetLayout{ get -> descriptorSetLayout }
+  internal prop DescriptorSet VkDescriptorSet{ get -> descriptorSet }
+  internal prop UploadPending bool{ get -> uploadPending }
+  internal prop UploadRecorded bool{ get -> uploadRecorded }
+  internal prop UploadSubmitted bool{ get -> uploadSubmitted }
+  internal prop IsUploaded bool{ get -> uploaded }
+  internal prop UploadWordOffset VkDeviceSize{ get -> uploadWordOffset }
+  internal prop UploadWordCount VkDeviceSize{ get -> uploadWordCount }
+  internal prop UploadByteOffset VkDeviceSize{ get -> uploadByteOffset }
+  internal prop UploadByteCount VkDeviceSize{ get -> uploadByteCount }
+  internal prop UploadSequence uint64{ get -> uploadSequence }
+  internal prop CompletedUploadSequence uint64{ get -> completedUploadSequence }
   internal prop Stats VulkanPathAtlasStats{
     get {
       return VulkanPathAtlasStats{

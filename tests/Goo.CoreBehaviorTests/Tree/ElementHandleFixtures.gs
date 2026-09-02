@@ -318,6 +318,32 @@ internal class ElementHandleFixtures {
     return gridBounded && Virtualization.State(gridRoot) == nil
   }
 
+  func VirtualExtentValidationContract() bool {
+    let items = List[int32]()
+    var zeroRejected = false
+    var nonFiniteRejected = false
+    var overflowRejected = false
+    try {
+      Virtual(items, 0.0, 20.0,
+        (item int32) -> item.ToString(), (item int32) -> Container{})
+    } catch (error ArgumentOutOfRangeException) {
+      zeroRejected = error.ParamName == "itemWidth"
+    }
+    try {
+      Virtual(items, 20.0, Double.NaN,
+        (item int32) -> item.ToString(), (item int32) -> Container{})
+    } catch (error ArgumentOutOfRangeException) {
+      nonFiniteRejected = error.ParamName == "itemHeight"
+    }
+    try {
+      Virtual(items, Double.MaxValue, 20.0,
+        (item int32) -> item.ToString(), (item int32) -> Container{})
+    } catch (error ArgumentOutOfRangeException) {
+      overflowRejected = error.ParamName == "itemWidth"
+    }
+    return zeroRejected && nonFiniteRejected && overflowRejected
+  }
+
   func HandleNoSubscriptionDiffBytes() int64 {
     let handle = ElementHandle{}
     let rec = Reconciler{ Res: Resolver{} }
@@ -530,6 +556,8 @@ internal class VirtualFixtureCell : Cell {
     if grid {
       return Virtual(
         Items,
+        20.0,
+        20.0,
         (item VirtualFixtureItem) -> "row-${item.Id}",
         (item VirtualFixtureItem) -> buildItem(item)) {
           Handle = Handle,
@@ -541,6 +569,8 @@ internal class VirtualFixtureCell : Cell {
     }
     return Virtual(
       Items,
+      100.0,
+      20.0,
       (item VirtualFixtureItem) -> "row-${item.Id}",
       (item VirtualFixtureItem) -> buildItem(item)) {
         Handle = Handle,
@@ -553,8 +583,8 @@ internal class VirtualFixtureCell : Cell {
     Builds.Add(item.Id)
     return Container{
       Handle: Handles[item.Id],
-      Width: grid ? 20 : 100,
-      Height: 20,
+      Width: grid ? 17 : 75,
+      Height: 13,
       Children: { Text{ Content: "row ${item.Id}:${item.Revision}" } },
     }
   }

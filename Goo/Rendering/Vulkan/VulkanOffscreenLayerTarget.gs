@@ -24,13 +24,13 @@ internal unsafe sealed class VulkanOffscreenLayerTarget : IDisposable {
   private var imageViewAccounted bool
   private var disposed bool
 
-  internal prop Image VkImage{ get { return image } }
-  internal prop ImageView VkImageView{ get { return imageView } }
-  internal prop DescriptorSet VkDescriptorSet{ get { return descriptorSet } }
-  internal prop Extent VkExtent2D{ get { return extent } }
-  internal prop Bytes VkDeviceSize{ get { return bytes } }
-  internal prop LastUseSerial uint64{ get { return lastUseSerial } }
-  internal prop ImageLayout VkImageLayout{ get { return imageLayout } }
+  internal prop Image VkImage{ get -> image }
+  internal prop ImageView VkImageView{ get -> imageView }
+  internal prop DescriptorSet VkDescriptorSet{ get -> descriptorSet }
+  internal prop Extent VkExtent2D{ get -> extent }
+  internal prop Bytes VkDeviceSize{ get -> bytes }
+  internal prop LastUseSerial uint64{ get -> lastUseSerial }
+  internal prop ImageLayout VkImageLayout{ get -> imageLayout }
 
   internal init(
     nativeDevice VkDevice,
@@ -373,8 +373,8 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
   private var lastCollectedSerial uint64
   private var disposed bool
 
-  internal prop ResidentBytes VkDeviceSize{ get { return residentBytes } }
-  internal prop ByteBudget VkDeviceSize{ get { return byteBudget } }
+  internal prop ResidentBytes VkDeviceSize{ get -> residentBytes }
+  internal prop ByteBudget VkDeviceSize{ get -> byteBudget }
   internal prop LiveTargetCount int32{
     get {
       var result int32 = 0
@@ -989,7 +989,6 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
     }
     return required > byteBudget - residentBytes
   }
-
 
   private func EnsureOpen() {
     if disposed {

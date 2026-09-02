@@ -31,8 +31,8 @@ internal unsafe sealed class VulkanTextPaintReadbackFixture : IDisposable {
   private var secondGlyphId uint32
   private var disposed bool
 
-  internal prop Atlas VulkanTextAtlas{ get { return atlas!! } }
-  internal prop Frame SceneFrame{ get { return frame!! } }
+  internal prop Atlas VulkanTextAtlas{ get -> atlas!! }
+  internal prop Frame SceneFrame{ get -> frame!! }
 
   internal init(
     nativeDevice VkDevice,

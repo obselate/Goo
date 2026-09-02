@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-import argparse
 import json
 from pathlib import Path
 import re
 import subprocess
 import xml.etree.ElementTree as element_tree
+
+from release_version import check as check_release_version
+from release_version import read_release_version
 
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_PACKAGE_IDS = {
@@ -13,21 +15,6 @@ EXPECTED_PACKAGE_IDS = {
     "Goo.DevTools.App",
     "Goo.SvgCompiler",
     "Goo.Templates",
-}
-VERSION_TEXT_FILES = {
-    "apps/Goo.DevTools/DiagnosticWire.gs",
-    "apps/Goo.DevTools/Program.gs",
-    "apps/Goo.DevTools/README.md",
-    "apps/Goo.Gallery/Program.gs",
-    "apps/Goo.WindowsDemo/Program.gs",
-    "docs/devtools/README.md",
-    "docs/devtools/protocol.md",
-    "integrations/rider/README.md",
-    "integrations/vscode/README.md",
-    "templates/Goo.Templates/README.md",
-    "tools/Goo.DevTools.Cli/CliApplication.cs",
-    "tools/Goo.DevTools.Cli/ProtocolConnection.cs",
-    "tools/Goo.SvgCompiler/README.md",
 }
 
 
@@ -67,11 +54,14 @@ def project_versions(version: str, files: list[str]) -> None:
         project_version = root.findtext(".//Version")
         if package_id and package_id.startswith("Goo"):
             package_ids.add(package_id)
-            if project_version != version:
-                fail(f"{relative}: package version is {project_version}, expected {version}")
+            if project_version != "$(GooReleaseVersion)":
+                fail(f"{relative}: package version must use $(GooReleaseVersion)")
         for reference in root.findall(".//PackageReference"):
-            if reference.get("Include") == "Goo" and reference.get("Version") != version:
-                fail(f"{relative}: Goo reference is {reference.get('Version')}, expected {version}")
+            if reference.get("Include") != "Goo":
+                continue
+            expected = version if relative.startswith("templates/Goo.Templates/content/") else "$(GooReleaseVersion)"
+            if reference.get("Version") != expected:
+                fail(f"{relative}: Goo reference is {reference.get('Version')}, expected {expected}")
     if package_ids != EXPECTED_PACKAGE_IDS:
         fail(f"Goo package IDs differ: found={sorted(package_ids)} expected={sorted(EXPECTED_PACKAGE_IDS)}")
 
@@ -85,9 +75,7 @@ def template_version(version: str) -> None:
 
 
 def release_text(version: str) -> None:
-    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    if f"  GOO_VERSION: {version}\n" not in workflow:
-        fail(".github/workflows/ci.yml: GOO_VERSION differs")
+    check_release_version(version)
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     if not re.search(rf"^## {re.escape(version)} - \d{{4}}-\d{{2}}-\d{{2}}$", changelog, re.MULTILINE):
         fail(f"CHANGELOG.md: release heading for {version} is missing")
@@ -114,13 +102,6 @@ def release_text(version: str) -> None:
     ]
     if relative_links or relative_html:
         fail(f"README.md: NuGet cannot resolve relative links: {relative_links + relative_html}")
-    for relative in VERSION_TEXT_FILES:
-        text = (ROOT / relative).read_text(encoding="utf-8")
-        if version not in text:
-            fail(f"{relative}: current release version {version} is missing")
-        unexpected = sorted(set(re.findall(r"\b0\.\d+\.\d+\b", text)) - {version})
-        if unexpected:
-            fail(f"{relative}: stale Goo versions remain: {unexpected}")
 
 
 def markdown_links(files: list[str]) -> None:
@@ -143,12 +124,10 @@ def markdown_links(files: list[str]) -> None:
         fail("broken local Markdown links:\n" + "\n".join(failures))
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--version", required=True)
-args = parser.parse_args()
+version = read_release_version()
 tracked = tracked_files()
-project_versions(args.version, tracked)
-template_version(args.version)
-release_text(args.version)
+project_versions(version, tracked)
+template_version(version)
+release_text(version)
 markdown_links(tracked)
-print(f"Onboarding metadata OK: Goo {args.version}, {len(EXPECTED_PACKAGE_IDS)} packages")
+print(f"Onboarding metadata OK: Goo {version}, {len(EXPECTED_PACKAGE_IDS)} packages")

@@ -14,11 +14,11 @@ internal class SdlVulkanInstanceSnapshot {
   }
 
   internal prop GetInstanceProcAddress nint{
-    get { return getInstanceProcAddress }
+    get -> getInstanceProcAddress
   }
 
   internal prop Extensions []string{
-    get { return extensions }
+    get -> extensions
   }
 }
 

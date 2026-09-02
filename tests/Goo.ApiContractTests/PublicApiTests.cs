@@ -164,7 +164,13 @@ public class PublicApiTests
             yield return $"ctor|{owner}|{Visibility(constructor)}|({DescribeParameters(constructor.GetParameters())})";
         }
 
-        foreach (var property in type.GetProperties(PublicDeclared))
+        var properties = type.GetProperties(PublicDeclared).AsEnumerable();
+        if (type == typeof(Cell<>))
+        {
+            properties = properties.Concat(type.GetProperties(ProtectedDeclared)
+                .Where(property => property.Name == "Input"));
+        }
+        foreach (var property in properties)
         {
             var accessor = property.GetMethod ?? property.SetMethod!;
             yield return $"property|{owner}|{property.Name}|{TypeIdentity(property.PropertyType)}|{Scope(accessor)}|{PropertyAccess(property)}|index:({DescribeParameters(property.GetIndexParameters())})";
@@ -186,7 +192,7 @@ public class PublicApiTests
             yield return $"event|{owner}|{@event.Name}|{TypeIdentity(@event.EventHandlerType!)}|{Scope(accessor)}|{EventAccess(@event)}";
         }
 
-        var accessors = type.GetProperties(PublicDeclared)
+        var accessors = properties
             .SelectMany(property => new[] { property.GetMethod, property.SetMethod })
             .Concat(type.GetEvents(PublicDeclared)
                 .SelectMany(@event => new[] { @event.AddMethod, @event.RemoveMethod }))
@@ -199,7 +205,7 @@ public class PublicApiTests
         if (type == typeof(Cell<>))
         {
             methods = methods.Concat(type.GetMethods(ProtectedDeclared)
-                .Where(method => method.Name == "ShouldRebuild"));
+                .Where(method => method.Name is "Build" or "ShouldRebuild"));
         }
         foreach (var method in methods)
         {

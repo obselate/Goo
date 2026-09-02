@@ -8,7 +8,7 @@ internal sealed class DecodedImage {
   shared {
     private let failed DecodedImage = DecodedImage()
 
-    internal prop Failed DecodedImage{ get { return failed } }
+    internal prop Failed DecodedImage{ get -> failed }
 
     internal func FromRgba(width int32, height int32, source []uint8) DecodedImage {
       if width <= 0 || height <= 0 {
@@ -60,7 +60,7 @@ internal sealed class DecodedImage {
 
   internal prop Width int32{ get; private set; }
   internal prop Height int32{ get; private set; }
-  internal prop IsValid bool{ get { return pixels != nil && !disposed } }
+  internal prop IsValid bool{ get -> pixels != nil && !disposed }
 
   internal func Retain() {
     lock gate {
@@ -140,8 +140,8 @@ internal sealed class ImageRequest {
   }
 
   internal prop Path string{ get; private set; }
-  internal prop IsComplete bool{ get { return true } }
-  internal prop Result DecodedImage{ get { return result } }
+  internal prop IsComplete bool{ get -> true }
+  internal prop Result DecodedImage{ get -> result }
 
   internal func Wait() DecodedImage -> result
 
@@ -182,7 +182,6 @@ internal class ImageDecoding {
       if request == nil { return path.Length == 0 }
       return StringComparerForPlatform().Equals(request?.Path, Canonicalize(path))
     }
-
 
     private func Canonicalize(path string) string {
       if String.IsNullOrWhiteSpace(path) { return "<empty>" }

@@ -51,8 +51,8 @@ internal class TextLayout {
   internal prop LineHeight float64{ get; init; }
   internal prop MaxWidth float32{ get; init; }
   internal prop Rich TextRichLayout? {
-    get { return TextRichLayouts.Get(this) }
-    set { TextRichLayouts.Set(this, value) }
+    get -> TextRichLayouts.Get(this)
+    set -> TextRichLayouts.Set(this, value)
   }
   internal prop Lines List[TextLine]{ get; init; }
   internal prop Ascent float32{ get; set; }

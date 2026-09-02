@@ -21,6 +21,7 @@
 !/.github/scripts/stage-linux-x64.sh
 !/.github/scripts/validate-release.py
 !/.github/scripts/validate-onboarding.py
+!/.github/scripts/release_version.py
 !/.github/scripts/with-headless-wayland.sh
 !/.github/scripts/qualify-linux-runtime.sh
 !/.github/scripts/with-kwin-scale-one.sh
@@ -71,6 +72,8 @@
 !/tools/Goo.SvgCompiler/**
 !/tools/Goo.DevTools.Cli/
 !/tools/Goo.DevTools.Cli/**
+!/tools/Goo.Gslint/
+!/tools/Goo.Gslint/**
 
 !/integrations/
 !/integrations/**

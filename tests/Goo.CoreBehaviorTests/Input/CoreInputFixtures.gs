@@ -137,6 +137,48 @@ internal class InputFixtures {
     return entry.Caret == 1
   }
 
+  func ShapeStrokeHitChangesInvalidateInputContract() bool {
+    let path = PathBuilder().MoveTo(0.0, 0.0).LineTo(1.0, 1.0).Build()
+    let red = Color.Rgb(255, 0, 0)
+    let solid = inputShape(path, StrokeCap.Butt, StrokeJoin.Miter, 4.0, nil, red)
+    if shapeDiffHasInput(solid,
+      inputShape(path, StrokeCap.Butt, StrokeJoin.Miter, 4.0, nil, red)) {
+        return false
+      }
+    if !shapeDiffHasInput(solid,
+      inputShape(path, StrokeCap.Round, StrokeJoin.Miter, 4.0, nil, red)) {
+        return false
+      }
+    if !shapeDiffHasInput(solid,
+      inputShape(path, StrokeCap.Butt, StrokeJoin.Bevel, 4.0, nil, red)) {
+        return false
+      }
+    if !shapeDiffHasInput(solid,
+      inputShape(path, StrokeCap.Butt, StrokeJoin.Miter, 2.0, nil, red)) {
+        return false
+      }
+    if !shapeDiffHasInput(solid,
+      inputShape(path, StrokeCap.Butt, StrokeJoin.Miter, 4.0,
+        DashPattern([]float64{ 4.0, 2.0 }, 0.0), red)) {
+          return false
+        }
+    return shapeDiffHasInput(solid,
+      inputShape(path, StrokeCap.Butt, StrokeJoin.Miter, 4.0, nil, Color.Transparent))
+  }
+
+  private func inputShape(path VectorPath, cap StrokeCap, join StrokeJoin,
+    miterLimit float64, dashes DashPattern?, color Color) Shape -> Shape{
+      Width: 100, Height: 100, Path: path, BorderWidth: 8, BorderColor: color,
+      StrokeCap: cap, StrokeJoin: join, MiterLimit: miterLimit, Dashes: dashes,
+    }
+
+  private func shapeDiffHasInput(before Shape, after Shape) bool {
+    let node = Reconciler{ Res: Resolver{} }.Mount(before)
+    let reconciler = Reconciler{ Res: Resolver{} }
+    reconciler.Diff(node, after)
+    return (int32(reconciler.Effects) & int32(ReconcileEffects.Input)) != 0
+  }
+
   func EntryBufferShapeIsRetainedAcrossReads() bool {
     let entry = Reconciler{ Res: Resolver{} }.Mount(TextEntry{
       Value: "abc", Width: 200, Height: 30, FontSize: 20,
@@ -1152,13 +1194,21 @@ internal class InputFixtures {
     let callback = entryDriver(callbackCell)
     callback.Key(Key.End, false, false)
     var calls = 0
-    callback.Window.OnKeyPress = (key Key, modifiers KeyModifiers) -> { calls++ }
+    var secondCalls = 0
+    let first Action[Key, KeyModifiers] = (key Key, modifiers KeyModifiers) -> { calls++ }
+    let second Action[Key, KeyModifiers] = (key Key, modifiers KeyModifiers) -> { secondCalls++ }
+    callback.Window.KeyPressed += first
+    callback.Window.KeyPressed += second
     callback.Input.QueueKeyPress(Key.Backspace, KeyModifiers{})
     callback.Drain()
     callback.Step(0.4)
-    if calls != 1 || entry(callback).Buffer.Length != 0 {
+    if calls != 1 || secondCalls != 1 || entry(callback).Buffer.Length != 0 {
       return false
     }
+    callback.Window.KeyPressed -= second
+    callback.Input.QueueKeyPress(Key.A, KeyModifiers{})
+    callback.Drain()
+    if calls != 2 || secondCalls != 1 { return false }
 
     let releasedCell = InputEntryCell{ value: "aa" }
     let released = entryDriver(releasedCell)
@@ -2228,7 +2278,7 @@ internal class InputFixtureDriver {
   }
 
   internal func Drain() {
-    Input.Drain(Window.Tree, Resolver, Time, Window.OnKeyPress)
+    Input.Drain(Window.Tree, Resolver, Time, Window.KeyPressedCallbacksForTest)
     Update()
   }
 

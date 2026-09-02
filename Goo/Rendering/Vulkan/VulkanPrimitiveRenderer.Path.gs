@@ -41,6 +41,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       if value.Bounds.IsEmpty {
         return
       }
+      FlushPendingPrimitiveDraw(commandBuffer)
       let transform = LocalizeTransform(ResolveTransform(frame, value.TransformIndex))
       let width = float32(extent.width)
       let height = float32(extent.height)
@@ -107,6 +108,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       EnsureClipDescriptor(commandBuffer, pathPipelineLayout)
       let draw = dispatch.vkCmdDraw
       draw(commandBuffer, 6u, 1u, 0u, currentDrawOrdinal)
+      RecordImmediateDraw()
     }
 
   private func EnsurePathDescriptorLayout() {

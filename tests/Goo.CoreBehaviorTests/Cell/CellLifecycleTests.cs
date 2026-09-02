@@ -14,4 +14,22 @@ public sealed class CellLifecycleTests
     {
         Assert.True(new CellFixtures().DisposesEachUnmountedCellExactlyOnce());
     }
+
+    [Fact]
+    public void KeyedRetirementContinuesAfterDisposeFailures()
+    {
+        Assert.True(new CellFixtures().KeyedRetirementContinuesAfterDisposeFailures());
+    }
+
+    [Fact]
+    public void PositionalRetirementContinuesAfterDisposeFailures()
+    {
+        Assert.True(new CellFixtures().PositionalRetirementContinuesAfterDisposeFailures());
+    }
+
+    [Fact]
+    public void WindowCloseCompletesAfterCleanupFailures()
+    {
+        Assert.True(new CellFixtures().WindowCloseCompletesAfterCleanupFailures());
+    }
 }

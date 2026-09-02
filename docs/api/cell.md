@@ -8,7 +8,7 @@ Source: [`Goo/Cell`](../../Goo/Cell)
 
 Store local Cell state in ordinary fields. Goo rebuilds the owning Cell after its input callbacks. Call `Rebuild()` after mutations outside Goo input dispatch.
 
-A packaged G# component derived from `Cell<TInput>` should override `protected Build(input TInput) Blob`. Goo passes the stored immutable snapshot through this typed dispatch path. Existing same-assembly components that override parameterless `Build()` remain valid. If a component overrides both overloads, the typed overload takes precedence. Override `ShouldRebuild(previous, next)` only when default structural equality does not match the component's rebuild policy.
+A packaged G# component derived from `Cell<TInput>` should be an `open class` and override `protected Build(input TInput) Blob`. G# requires the inheritable class declaration because the override is protected. Goo passes the stored immutable snapshot through this typed dispatch path. Existing same-assembly components that override parameterless `Build()` remain valid. If a component overrides both overloads, the typed overload takes precedence. Override `ShouldRebuild(previous, next)` only when default structural equality does not match the component's rebuild policy.
 
 ## `Cell`
 
@@ -122,6 +122,14 @@ Source:
 - [`InputCell.gs`](../../Goo/Cell/InputCell.gs)
 
 Defines a stateful Goo component with an immutable input snapshot.
+
+### `Build(TInput any)`
+
+Builds the component tree from the current immutable input snapshot.
+
+- `input`: current input snapshot
+
+Returns: the root blob for this component
 
 ### `ShouldRebuild(TInput any,TInput any)`
 

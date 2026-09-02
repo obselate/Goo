@@ -11,12 +11,12 @@ internal sealed class CompiledVectorLinearGradient : Gradient {
   private let y1 float64
   private let contentHash int32
 
-  public prop Stops IReadOnlyList[GradientStop]{ get { return stops } }
-  internal prop X0 float64{ get { return x0 } }
-  internal prop Y0 float64{ get { return y0 } }
-  internal prop X1 float64{ get { return x1 } }
-  internal prop Y1 float64{ get { return y1 } }
-  internal prop ContentHashForCache int32{ get { return contentHash } }
+  public prop Stops IReadOnlyList[GradientStop]{ get -> stops }
+  internal prop X0 float64{ get -> x0 }
+  internal prop Y0 float64{ get -> y0 }
+  internal prop X1 float64{ get -> x1 }
+  internal prop Y1 float64{ get -> y1 }
+  internal prop ContentHashForCache int32{ get -> contentHash }
 
   internal init(x0 float64, y0 float64, x1 float64, y1 float64,
     stops []GradientStop) {
@@ -37,12 +37,12 @@ internal sealed class CompiledVectorRadialGradient : Gradient {
   private let radiusY float64
   private let contentHash int32
 
-  public prop Stops IReadOnlyList[GradientStop]{ get { return stops } }
-  internal prop CenterX float64{ get { return centerX } }
-  internal prop CenterY float64{ get { return centerY } }
-  internal prop RadiusX float64{ get { return radiusX } }
-  internal prop RadiusY float64{ get { return radiusY } }
-  internal prop ContentHashForCache int32{ get { return contentHash } }
+  public prop Stops IReadOnlyList[GradientStop]{ get -> stops }
+  internal prop CenterX float64{ get -> centerX }
+  internal prop CenterY float64{ get -> centerY }
+  internal prop RadiusX float64{ get -> radiusX }
+  internal prop RadiusY float64{ get -> radiusY }
+  internal prop ContentHashForCache int32{ get -> contentHash }
 
   internal init(centerX float64, centerY float64, radiusX float64,
     radiusY float64, stops []GradientStop) {
@@ -103,22 +103,22 @@ public sealed class CompiledVectorAsset {
     cachedPathLock = Object()
   }
 
-  public prop Version uint16{ get { return value.Version } }
-  public prop Flags uint32{ get { return value.Flags } }
-  public prop ByteCount int32{ get { return value.ByteCount } }
-  public prop ViewBoxX float32{ get { return value.ViewBoxX } }
-  public prop ViewBoxY float32{ get { return value.ViewBoxY } }
-  public prop ViewBoxWidth float32{ get { return value.ViewBoxWidth } }
-  public prop ViewBoxHeight float32{ get { return value.ViewBoxHeight } }
-  public prop NodeCount int32{ get { return value.NodeCount } }
-  public prop ContourCount int32{ get { return value.ContourCount } }
-  public prop CurveCount int32{ get { return value.CurveCount } }
-  public prop MorphCurveCount int32{ get { return value.MorphCurveCount } }
-  public prop PaintCount int32{ get { return value.PaintCount } }
-  public prop StrokeCount int32{ get { return value.StrokeCount } }
-  public prop ClipCount int32{ get { return value.ClipCount } }
-  public prop TrackCount int32{ get { return value.TrackCount } }
-  public prop KeyframeCount int32{ get { return value.KeyframeCount } }
+  public prop Version uint16{ get -> value.Version }
+  public prop Flags uint32{ get -> value.Flags }
+  public prop ByteCount int32{ get -> value.ByteCount }
+  public prop ViewBoxX float32{ get -> value.ViewBoxX }
+  public prop ViewBoxY float32{ get -> value.ViewBoxY }
+  public prop ViewBoxWidth float32{ get -> value.ViewBoxWidth }
+  public prop ViewBoxHeight float32{ get -> value.ViewBoxHeight }
+  public prop NodeCount int32{ get -> value.NodeCount }
+  public prop ContourCount int32{ get -> value.ContourCount }
+  public prop CurveCount int32{ get -> value.CurveCount }
+  public prop MorphCurveCount int32{ get -> value.MorphCurveCount }
+  public prop PaintCount int32{ get -> value.PaintCount }
+  public prop StrokeCount int32{ get -> value.StrokeCount }
+  public prop ClipCount int32{ get -> value.ClipCount }
+  public prop TrackCount int32{ get -> value.TrackCount }
+  public prop KeyframeCount int32{ get -> value.KeyframeCount }
 
   public func PathForNode(index int32) VectorPath -> CachedPathForNode(index)
 

@@ -87,7 +87,7 @@ internal unsafe struct VulkanImageSourceLease {
     }
   }
 
-  internal prop IsDisposed bool{ get { return !IsValid } }
+  internal prop IsDisposed bool{ get -> !IsValid }
 
   internal prop State VulkanImageSourceState{
     get {
@@ -99,11 +99,11 @@ internal unsafe struct VulkanImageSourceLease {
   }
 
   internal prop IsReady bool{
-    get { return State == VulkanImageSourceState.Ready }
+    get -> State == VulkanImageSourceState.Ready
   }
 
   internal prop IsFailed bool{
-    get { return State == VulkanImageSourceState.Failed }
+    get -> State == VulkanImageSourceState.Failed
   }
 
   internal prop Key VulkanImageSourceKey{

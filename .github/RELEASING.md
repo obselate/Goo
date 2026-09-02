@@ -19,12 +19,12 @@ Goo uses Semantic Versioning.
 
 ## Release
 
-1. Update the versions in `Goo`, `Goo.SvgCompiler`, `Goo.DevTools`,
-   `Goo.DevTools.App`, and `Goo.Templates`.
-2. Update the Goo version embedded in the application template, every README
-   install command, `CHANGELOG.md`, and `GOO_VERSION` in
-   `.github/workflows/ci.yml`.
-3. Run `.github/scripts/validate-onboarding.py --version X.Y.Z`.
+1. Update `GooReleaseVersion` once in `Directory.Build.props`.
+2. Run `python3 .github/scripts/release_version.py --write` to synchronize the
+   application template, app identities, protocol strings, install commands,
+   and integration metadata.
+3. Add the dated release entry to `CHANGELOG.md`, then run
+   `.github/scripts/validate-onboarding.py`.
 4. Push the release commit to `main` and require a green CI run.
 5. Confirm that the release-candidates artifact contains all five packages and
    that the clean template and DevTools installation steps passed.

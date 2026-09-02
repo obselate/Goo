@@ -38,7 +38,7 @@ internal sealed class VulkanPathIdentityRegistry {
   private var count int32
   private var disposed bool
 
-  internal prop Count int32{ get { return count } }
+  internal prop Count int32{ get -> count }
 
   internal init() {
     identities = Dictionary[uint64, List[VulkanPathIdentityRecord]]()

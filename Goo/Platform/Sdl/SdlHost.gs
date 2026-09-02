@@ -99,17 +99,17 @@ internal unsafe partial class SdlHost : IDisposable {
   public prop X int32{ get; private set }
   public prop Y int32{ get; private set }
   public prop IsClosing bool{ get; private set }
-  internal prop IsTextInputActive bool{ get { return textInputActive } }
-  internal prop NativeWindow SDLWindowPtr{ get { return window } }
+  internal prop IsTextInputActive bool{ get -> textInputActive }
+  internal prop NativeWindow SDLWindowPtr{ get -> window }
   internal prop Transparent bool{
     get {
       ThrowIfDisposed()
       return (SDL.GetWindowFlags(window) & uint64(SDLWindowFlags.Transparent)) != 0uL
     }
   }
-  internal prop VSync bool{ get { return vsync } }
-  internal prop FramePacing SdlFramePacing{ get { return pacing } }
-  internal prop HasPendingEvents bool{ get { return pendingEvents } }
+  internal prop VSync bool{ get -> vsync }
+  internal prop FramePacing SdlFramePacing{ get -> pacing }
+  internal prop HasPendingEvents bool{ get -> pendingEvents }
   internal prop SchedulerPacingAvailable bool{
     get {
       if disposed || IsClosing || FramebufferWidth <= 0 || FramebufferHeight <= 0 {

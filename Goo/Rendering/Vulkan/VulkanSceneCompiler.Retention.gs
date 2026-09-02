@@ -22,29 +22,29 @@ internal partial class VulkanSceneCompiler {
   private var retainedParentBoxInvalidationCount uint64
   private var retainedParentBoxTotalCount uint64
 
-  internal prop RetainedLeafHitCount uint64{ get { return retainedLeafHitCount } }
-  internal prop RetainedLeafRebuildCount uint64{ get { return retainedLeafRebuildCount } }
-  internal prop RetainedLeafFallbackCount uint64{ get { return retainedLeafFallbackCount } }
-  internal prop RetainedLeafInvalidationCount uint64{ get { return retainedLeafInvalidationCount } }
-  internal prop RetainedLeafTotalCount uint64{ get { return retainedLeafTotalCount } }
-  internal prop RetainedBorderHitCount uint64{ get { return retainedBorderHitCount } }
-  internal prop RetainedBorderRebuildCount uint64{ get { return retainedBorderRebuildCount } }
-  internal prop RetainedBorderFallbackCount uint64{ get { return retainedBorderFallbackCount } }
+  internal prop RetainedLeafHitCount uint64{ get -> retainedLeafHitCount }
+  internal prop RetainedLeafRebuildCount uint64{ get -> retainedLeafRebuildCount }
+  internal prop RetainedLeafFallbackCount uint64{ get -> retainedLeafFallbackCount }
+  internal prop RetainedLeafInvalidationCount uint64{ get -> retainedLeafInvalidationCount }
+  internal prop RetainedLeafTotalCount uint64{ get -> retainedLeafTotalCount }
+  internal prop RetainedBorderHitCount uint64{ get -> retainedBorderHitCount }
+  internal prop RetainedBorderRebuildCount uint64{ get -> retainedBorderRebuildCount }
+  internal prop RetainedBorderFallbackCount uint64{ get -> retainedBorderFallbackCount }
   internal prop RetainedBorderInvalidationCount uint64{
-    get { return retainedBorderInvalidationCount }
+    get -> retainedBorderInvalidationCount
   }
-  internal prop RetainedBorderTotalCount uint64{ get { return retainedBorderTotalCount } }
-  internal prop RetainedParentBoxHitCount uint64{ get { return retainedParentBoxHitCount } }
+  internal prop RetainedBorderTotalCount uint64{ get -> retainedBorderTotalCount }
+  internal prop RetainedParentBoxHitCount uint64{ get -> retainedParentBoxHitCount }
   internal prop RetainedParentBoxRebuildCount uint64{
-    get { return retainedParentBoxRebuildCount }
+    get -> retainedParentBoxRebuildCount
   }
   internal prop RetainedParentBoxFallbackCount uint64{
-    get { return retainedParentBoxFallbackCount }
+    get -> retainedParentBoxFallbackCount
   }
   internal prop RetainedParentBoxInvalidationCount uint64{
-    get { return retainedParentBoxInvalidationCount }
+    get -> retainedParentBoxInvalidationCount
   }
-  internal prop RetainedParentBoxTotalCount uint64{ get { return retainedParentBoxTotalCount } }
+  internal prop RetainedParentBoxTotalCount uint64{ get -> retainedParentBoxTotalCount }
 
   private func IncrementRetainedLeafHit() {
     if retainedLeafHitCount != uint64.MaxValue {
@@ -370,7 +370,7 @@ internal partial class VulkanSceneCompiler {
           || record.TransformIndex != -1 {
             return false
           }
-        frame.AppendRetainedSolidLeaf(ownerId, frameVersion, bounds, record)
+        frame.AppendRetainedSolidLeaf(ownerId, frameVersion, bounds, record, true)
         owner.RetainedBoxIsLeaf = isLeaf
         if isLeaf {
           IncrementRetainedLeafHit()
@@ -398,7 +398,7 @@ internal partial class VulkanSceneCompiler {
           || record.TransformIndex != -1 {
             return false
           }
-        frame.AppendRetainedRoundedLeaf(ownerId, frameVersion, bounds, record)
+        frame.AppendRetainedRoundedLeaf(ownerId, frameVersion, bounds, record, true)
         owner.RetainedBoxIsLeaf = isLeaf
         if isLeaf {
           IncrementRetainedLeafHit()
@@ -450,7 +450,7 @@ internal partial class VulkanSceneCompiler {
       if !ExactBorder(owner.RetainedLeafBorder, record) {
         return false
       }
-      frame.AppendRetainedBorderLeaf(ownerId, frameVersion, bounds, record)
+      frame.AppendRetainedBorderLeaf(ownerId, frameVersion, bounds, record, true)
       owner.RetainedBoxIsLeaf = true
       IncrementRetainedBorderHit()
       return true
@@ -480,8 +480,7 @@ internal partial class VulkanSceneCompiler {
             Opacity: opacity,
             TransformIndex: -1,
           }
-          let chunk = frame.AppendRetainedRoundedLeaf(ownerId, frameVersion, bounds, record)
-          frame.Chunks[chunk].RetentionState = SceneChunkRetentionState.ExactLeafRebuild
+          frame.AppendRetainedRoundedLeaf(ownerId, frameVersion, bounds, record, false)
           owner.RetainedLeafKind = SceneDrawKind.RoundedBox
           owner.RetainedLeafNodeKind = node.Kind
           owner.RetainedLeafPaintVersion = node.ScenePaintVersion
@@ -494,8 +493,7 @@ internal partial class VulkanSceneCompiler {
             Opacity: opacity,
             TransformIndex: -1,
           }
-          let chunk = frame.AppendRetainedSolidLeaf(ownerId, frameVersion, bounds, record)
-          frame.Chunks[chunk].RetentionState = SceneChunkRetentionState.ExactLeafRebuild
+          frame.AppendRetainedSolidLeaf(ownerId, frameVersion, bounds, record, false)
           owner.RetainedLeafKind = SceneDrawKind.SolidBox
           owner.RetainedLeafNodeKind = node.Kind
           owner.RetainedLeafPaintVersion = node.ScenePaintVersion
@@ -518,8 +516,7 @@ internal partial class VulkanSceneCompiler {
     ownerId uint64,
     bounds ConservativeBounds,
     record PerEdgeBorderRecord) {
-      let chunk = frame.AppendRetainedBorderLeaf(ownerId, frameVersion, bounds, record)
-      frame.Chunks[chunk].RetentionState = SceneChunkRetentionState.ExactLeafRebuild
+      frame.AppendRetainedBorderLeaf(ownerId, frameVersion, bounds, record, false)
       owner.RetainedLeafKind = SceneDrawKind.PerEdgeBorder
       owner.RetainedLeafNodeKind = node.Kind
       owner.RetainedLeafPaintVersion = node.ScenePaintVersion
@@ -564,11 +561,11 @@ internal partial class VulkanSceneCompiler {
     }
 
   internal prop PartialRedrawSafe bool{
-    get { return partialRedrawSafe }
+    get -> partialRedrawSafe
   }
 
   internal prop DamageJournal VulkanSceneDamageJournal? {
-    get { return damageJournal }
+    get -> damageJournal
   }
 
   internal func InitializeRetention(capacity int32) {

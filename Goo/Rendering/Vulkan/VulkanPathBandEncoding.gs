@@ -108,35 +108,35 @@ internal sealed class PathBandEncoding {
         fillRuleMask, revision)
     }
 
-  internal prop Format uint32{ get { return FormatVersion } }
-  internal prop MinimumX float32{ get { return minimumX } }
-  internal prop MinimumY float32{ get { return minimumY } }
-  internal prop MaximumX float32{ get { return maximumX } }
-  internal prop MaximumY float32{ get { return maximumY } }
-  internal prop HorizontalBands IReadOnlyList[PathAnalyticBand]{ get { return horizontalBands } }
-  internal prop VerticalBands IReadOnlyList[PathAnalyticBand]{ get { return verticalBands } }
-  internal prop HorizontalCurveIndices IReadOnlyList[uint32]{ get { return horizontalCurveIndices } }
-  internal prop VerticalCurveIndices IReadOnlyList[uint32]{ get { return verticalCurveIndices } }
-  internal prop Curves IReadOnlyList[PathAnalyticCurve]{ get { return curves } }
-  internal prop Header PathAnalyticHeader{ get { return header } }
-  internal prop Words []uint32{ get { return words } }
-  internal prop WordCount int32{ get { return wordCount } }
-  internal prop FillRuleMask uint32{ get { return fillRuleMask } }
-  internal prop GeometryRevision uint64{ get { return geometryRevision } }
-  internal prop HorizontalBandCount int32{ get { return horizontalBands.Count } }
-  internal prop VerticalBandCount int32{ get { return verticalBands.Count } }
-  internal prop HorizontalCurveIndexCount int32{ get { return horizontalCurveIndices.Count } }
-  internal prop VerticalCurveIndexCount int32{ get { return verticalCurveIndices.Count } }
-  internal prop CurveCount int32{ get { return curves.Count } }
-  internal prop ByteCount int64{ get { return byteCount } }
-  internal prop HeaderByteCount int64{ get { return HeaderByteStride } }
+  internal prop Format uint32{ get -> FormatVersion }
+  internal prop MinimumX float32{ get -> minimumX }
+  internal prop MinimumY float32{ get -> minimumY }
+  internal prop MaximumX float32{ get -> maximumX }
+  internal prop MaximumY float32{ get -> maximumY }
+  internal prop HorizontalBands IReadOnlyList[PathAnalyticBand]{ get -> horizontalBands }
+  internal prop VerticalBands IReadOnlyList[PathAnalyticBand]{ get -> verticalBands }
+  internal prop HorizontalCurveIndices IReadOnlyList[uint32]{ get -> horizontalCurveIndices }
+  internal prop VerticalCurveIndices IReadOnlyList[uint32]{ get -> verticalCurveIndices }
+  internal prop Curves IReadOnlyList[PathAnalyticCurve]{ get -> curves }
+  internal prop Header PathAnalyticHeader{ get -> header }
+  internal prop Words []uint32{ get -> words }
+  internal prop WordCount int32{ get -> wordCount }
+  internal prop FillRuleMask uint32{ get -> fillRuleMask }
+  internal prop GeometryRevision uint64{ get -> geometryRevision }
+  internal prop HorizontalBandCount int32{ get -> horizontalBands.Count }
+  internal prop VerticalBandCount int32{ get -> verticalBands.Count }
+  internal prop HorizontalCurveIndexCount int32{ get -> horizontalCurveIndices.Count }
+  internal prop VerticalCurveIndexCount int32{ get -> verticalCurveIndices.Count }
+  internal prop CurveCount int32{ get -> curves.Count }
+  internal prop ByteCount int64{ get -> byteCount }
+  internal prop HeaderByteCount int64{ get -> HeaderByteStride }
   internal prop BandByteCount int64{
-    get { return int64(horizontalBands.Count + verticalBands.Count) * BandByteStride }
+    get -> int64(horizontalBands.Count + verticalBands.Count) * BandByteStride
   }
   internal prop IndexByteCount int64{
-    get { return int64(horizontalCurveIndices.Count + verticalCurveIndices.Count) * IndexByteStride }
+    get -> int64(horizontalCurveIndices.Count + verticalCurveIndices.Count) * IndexByteStride
   }
-  internal prop CurveByteCount int64{ get { return int64(curves.Count) * CurveByteStride } }
+  internal prop CurveByteCount int64{ get -> int64(curves.Count) * CurveByteStride }
 
   internal func Rebuild(minimumX float32, minimumY float32, maximumX float32, maximumY float32,
     nextHorizontalBands IReadOnlyList[PathAnalyticBand],

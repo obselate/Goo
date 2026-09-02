@@ -96,6 +96,24 @@ public open class Cell {
     }
   }
 
+  internal func TryQueueCanonical(owner object, out queued Cell) int64 {
+    lock rebuildGate {
+      guard let mounted = disposed ? nil : mountedNode else {
+        queued = this
+        return 0
+      }
+      queued = mounted.Fiber ?? this
+      if queued == this {
+        if queuedBy == owner {
+          return 0
+        }
+        queuedBy = owner
+        return mountGeneration
+      }
+    }
+    return queued.TryQueue(owner)
+  }
+
   internal func ClearQueue(owner object) {
     lock rebuildGate {
       if queuedBy == owner {

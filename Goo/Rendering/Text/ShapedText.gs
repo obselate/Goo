@@ -16,7 +16,7 @@ internal sealed class ShapedText : IDisposable {
   internal prop HasRightToLeftRun bool{ get; set; }
   internal prop InkTop float32{ get; set; }
   internal prop InkBottom float32{ get; set; }
-  internal prop Runs IReadOnlyList[ShapedRun]{ get { return runs } }
+  internal prop Runs IReadOnlyList[ShapedRun]{ get -> runs }
   internal prop Families []string{
     get {
       let result = [runs.Count]string

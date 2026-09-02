@@ -80,13 +80,19 @@ static string BuildPage(string directory, ApiType[] types, ApiMember[] members, 
     if (directory == "Window")
         AppendWindowMetricsGuide(text);
     if (directory == "Window")
+        AppendWindowNotificationGuide(text);
+    if (directory == "Window")
         AppendWindowDispatcherGuide(text);
     if (directory == "Window")
         AppendClipboardGuide(text);
     if (directory == "Input")
+        AppendKeyboardFocusGuide(text);
+    if (directory == "Input")
         AppendTextInputGuide(text);
     if (directory == "Input")
         AppendPointerLifecycleGuide(text);
+    if (directory == "Style")
+        AppendStyleCompositionGuide(text);
     if (directory == "Cell")
         AppendCellInputGuide(text);
     if (directory == "Tree")
@@ -184,7 +190,17 @@ static void AppendCellInputGuide(StringBuilder text)
     text.AppendLine();
     text.AppendLine("Store local Cell state in ordinary fields. Goo rebuilds the owning Cell after its input callbacks. Call `Rebuild()` after mutations outside Goo input dispatch.");
     text.AppendLine();
-    text.AppendLine("A packaged G# component derived from `Cell<TInput>` should override `protected Build(input TInput) Blob`. Goo passes the stored immutable snapshot through this typed dispatch path. Existing same-assembly components that override parameterless `Build()` remain valid. If a component overrides both overloads, the typed overload takes precedence. Override `ShouldRebuild(previous, next)` only when default structural equality does not match the component's rebuild policy.");
+    text.AppendLine("A packaged G# component derived from `Cell<TInput>` should be an `open class` and override `protected Build(input TInput) Blob`. G# requires the inheritable class declaration because the override is protected. Goo passes the stored immutable snapshot through this typed dispatch path. Existing same-assembly components that override parameterless `Build()` remain valid. If a component overrides both overloads, the typed overload takes precedence. Override `ShouldRebuild(previous, next)` only when default structural equality does not match the component's rebuild policy.");
+}
+
+static void AppendStyleCompositionGuide(StringBuilder text)
+{
+    text.AppendLine();
+    text.AppendLine("## Compose reusable styles");
+    text.AppendLine();
+    text.AppendLine("`Style.BasedOn` copies another style's ordered declarations at its exact declaration position. Declarations written afterward win, as in `Container{ BasedOn: CardStyle, BackgroundColor: selectedColor }`. The destination does not retain the source Style or share its declaration log.");
+    text.AppendLine();
+    text.AppendLine("`BackgroundGradient: nil` is an explicit clear declaration. It removes an earlier composed or lower-state gradient while preserving `BackgroundColor`. Omitting `BackgroundGradient` leaves the earlier declaration in effect.");
 }
 
 static void AppendVirtualizationGuide(StringBuilder text)
@@ -192,7 +208,9 @@ static void AppendVirtualizationGuide(StringBuilder text)
     text.AppendLine();
     text.AppendLine("## Virtualize complete data sources");
     text.AppendLine();
-    text.AppendLine("`Virtual(items, itemKey, itemBuilder)` accepts the complete `IReadOnlyList<T>` source. Goo reads its count, measures one realized item, derives list or wrapped-grid placement from `FlexDirection` and `FlexWrap`, and mounts only the viewport window plus one overscan line. The caller does not calculate a range, supply an item count, choose a list or grid primitive, or pass item dimensions.");
+    text.AppendLine("`Virtual(items, itemWidth, itemHeight, itemKey, itemBuilder)` accepts the complete `IReadOnlyList<T>` source and one positive, finite logical width and height shared by every item. Goo derives list or wrapped-grid placement from `FlexDirection` and `FlexWrap`, then mounts only the viewport window plus one overscan line. The caller does not calculate a range, supply an item count, or choose a list or grid primitive.");
+    text.AppendLine();
+    text.AppendLine("The shared item extent is the sole source for placement and scroll range. Builder content is mounted inside that fixed extent and cannot resize the virtual layout. Variable-extent sources are unsupported.");
     text.AppendLine();
     text.AppendLine("Source order controls logical order, and `itemKey` supplies stable identity. Goo uses the item type's equality semantics to retain unchanged visible nodes without calling `itemBuilder`. Newly visible and changed items invoke the builder. Items leaving the viewport unmount through the ordinary Goo lifecycle, including focus, pointer capture, handles, and accessibility state. Keys must be unique and non-empty. Rebuild the owning Cell after same-count content changes. A live source count change is detected directly.");
 }
@@ -344,6 +362,16 @@ static void AppendWindowMetricsGuide(StringBuilder text)
     text.AppendLine("Equal snapshots do not notify. A listener added after another listener has already received the current snapshot waits for a real change. Removing the final listener resets that listener stream, so a later first listener receives a new initial snapshot.");
 }
 
+static void AppendWindowNotificationGuide(StringBuilder text)
+{
+    text.AppendLine();
+    text.AppendLine("## Observe window notifications");
+    text.AppendLine();
+    text.AppendLine("Subscribe to `StateChanged`, `FocusChanged`, and `KeyPressed` with `+=` on the window UI thread. Each event supports independent listeners. Remove listeners with `-=` when their ownership ends.");
+    text.AppendLine();
+    text.AppendLine("`OnClosing` is different: it is the single close-policy callback, and returning `false` vetoes the pending close request.");
+}
+
 static void AppendClipboardGuide(StringBuilder text)
 {
     text.AppendLine();
@@ -360,6 +388,20 @@ static void AppendTextInputGuide(StringBuilder text)
     text.AppendLine("A focusable `Blob` can opt into `OnTextInput`, `OnTextComposition`, `OnTextCompositionCancel`, and `OnTextCandidates`. Committed text and composition offsets use UTF-16. Invalid or surrogate-splitting composition selections are delivered as the empty range. Candidate snapshots are read-only and use `SelectedCandidate = -1` when native selection is invalid.");
     text.AppendLine();
     text.AppendLine("Callbacks run only for the currently focused, enabled, visible client. Queued text is bound to the focus generation that received it, so it is discarded after a focus transfer, including a transfer back to the original element. `TextEntry` and `TextEditor` retain their existing default behavior before these observers run. Goo provides no candidate UI; applications own candidate presentation.");
+}
+
+static void AppendKeyboardFocusGuide(StringBuilder text)
+{
+    text.AppendLine();
+    text.AppendLine("## Route keyboard and focus callbacks");
+    text.AppendLine();
+    text.AppendLine("`OnKeyDown` and `OnKeyUp` start at the currently focused element and bubble through its parents, so an ancestor can own shortcuts for a subtree. `KeyEvent.StopPropagation()` ends that route before the next ancestor without canceling Goo's default action. `KeyEvent.PreventDefault()` cancels the default action without stopping the remaining callbacks. Both controls are active only during that route; retaining the event value cannot affect a later dispatch.");
+    text.AppendLine();
+    text.AppendLine("Key-down defaults run after the route and include text editing, `Tab` or `Shift+Tab` traversal, and `Button` Enter or Space press behavior. Preventing the matching Space key-up cancels release activation. Repeated key downs use the same route with `Repeat: true` and resolve the current focus target again for each repeat.");
+    text.AppendLine();
+    text.AppendLine("A focus transfer updates the old and new `Focused` states first, then routes `OnBlur` from the old element to its parents and `OnFocus` from the new element to its parents. These lifecycle callbacks cannot cancel the transfer. `FocusEvent.StopPropagation()` only skips the remaining ancestors. A reentrant focus request from `OnBlur` or `OnFocus` wins over the superseded transfer.");
+    text.AppendLine();
+    text.AppendLine("Set `Focusable: true` on a generic Blob. `Button`, `TextEntry`, and `TextEditor` are focusable by default. During a rebuilt tree update, `AutoFocus` selects the first eligible element only when nothing else holds focus. `Tab` and `Shift+Tab` visit enabled, visible focusables in depth-first tree order and wrap at the ends. An unprevented primary pointer press focuses the deepest focusable element in its hit route. `ElementHandle.Focus()` and `ElementHandle.Blur()` use the same mounted, visible, enabled eligibility rules.");
 }
 
 static void AppendPointerLifecycleGuide(StringBuilder text)

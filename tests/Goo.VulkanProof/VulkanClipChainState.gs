@@ -23,8 +23,8 @@ internal unsafe sealed class VulkanClipChainState : IDisposable {
   private var prepared bool
   private var disposed bool
 
-  internal prop EmptySetLayout VkDescriptorSetLayout{ get { return emptySetLayout } }
-  internal prop DescriptorSetLayout VkDescriptorSetLayout{ get { return descriptorSetLayout } }
+  internal prop EmptySetLayout VkDescriptorSetLayout{ get -> emptySetLayout }
+  internal prop DescriptorSetLayout VkDescriptorSetLayout{ get -> descriptorSetLayout }
   internal prop LiveObjectCount uint32{
     get {
       var count uint32 = 0u

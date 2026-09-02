@@ -25,11 +25,11 @@ class VirtualTableDataSource {
   private let totalItems int32
   private let changesPerFrame int32
 
-  prop Items []VirtualTableItem { get { return items } }
-  prop Columns int32 { get { return columns } }
-  prop Rows int32 { get { return rows } }
-  prop TotalItems int32 { get { return totalItems } }
-  prop ChangesPerFrame int32 { get { return changesPerFrame } }
+  prop Items []VirtualTableItem { get -> items }
+  prop Columns int32 { get -> columns }
+  prop Rows int32 { get -> rows }
+  prop TotalItems int32 { get -> totalItems }
+  prop ChangesPerFrame int32 { get -> changesPerFrame }
 
   init(totalItems int32) {
     random = Random(42)
@@ -148,30 +148,30 @@ class VirtualTableRootCell : Cell {
   private var slotKeys []string
   private var slotCells []VirtualTableCell?
 
-  prop MountedCellCount int32 { get { return mountedCellCount } }
-  prop PeakMountedCellCount int32 { get { return peakMountedCellCount } }
-  prop Columns int32 { get { return columns } }
-  prop Rows int32 { get { return rows } }
-  prop TreeMode string { get { return treeMode } }
-  prop Overscan int32 { get { return overscan } }
-  prop ViewportWidth float64 { get { return viewportWidth } }
-  prop ViewportHeight float64 { get { return viewportHeight } }
-  prop ScrollX float64 { get { return scrollX } }
-  prop ScrollY float64 { get { return scrollY } }
-  prop VisibleItemCount int32 { get { return visibleItemCount } }
-  prop ActiveFirstRow int32 { get { return activeFirstRow } }
-  prop ActiveLastRow int32 { get { return activeLastRow } }
-  prop ActiveFirstColumn int32 { get { return activeFirstColumn } }
-  prop ActiveLastColumn int32 { get { return activeLastColumn } }
-  prop PoolRows int32 { get { return poolRows } }
-  prop PoolColumns int32 { get { return poolColumns } }
-  prop PoolCapacity int32 { get { return poolCapacity } }
-  prop PoolCapacityGrowthCount int32 { get { return poolCapacityGrowthCount } }
-  prop SlotReassignmentCount int64 { get { return slotReassignmentCount } }
-  prop VisibleMutationCount int64 { get { return visibleMutationCount } }
-  prop OffscreenMutationSuppressionCount int64 { get { return offscreenMutationSuppressionCount } }
-  prop StaleSlotRejectionCount int64 { get { return staleSlotRejectionCount } }
-  prop CellBuildCount int64 { get { return cellBuildCount } }
+  prop MountedCellCount int32 { get -> mountedCellCount }
+  prop PeakMountedCellCount int32 { get -> peakMountedCellCount }
+  prop Columns int32 { get -> columns }
+  prop Rows int32 { get -> rows }
+  prop TreeMode string { get -> treeMode }
+  prop Overscan int32 { get -> overscan }
+  prop ViewportWidth float64 { get -> viewportWidth }
+  prop ViewportHeight float64 { get -> viewportHeight }
+  prop ScrollX float64 { get -> scrollX }
+  prop ScrollY float64 { get -> scrollY }
+  prop VisibleItemCount int32 { get -> visibleItemCount }
+  prop ActiveFirstRow int32 { get -> activeFirstRow }
+  prop ActiveLastRow int32 { get -> activeLastRow }
+  prop ActiveFirstColumn int32 { get -> activeFirstColumn }
+  prop ActiveLastColumn int32 { get -> activeLastColumn }
+  prop PoolRows int32 { get -> poolRows }
+  prop PoolColumns int32 { get -> poolColumns }
+  prop PoolCapacity int32 { get -> poolCapacity }
+  prop PoolCapacityGrowthCount int32 { get -> poolCapacityGrowthCount }
+  prop SlotReassignmentCount int64 { get -> slotReassignmentCount }
+  prop VisibleMutationCount int64 { get -> visibleMutationCount }
+  prop OffscreenMutationSuppressionCount int64 { get -> offscreenMutationSuppressionCount }
+  prop StaleSlotRejectionCount int64 { get -> staleSlotRejectionCount }
+  prop CellBuildCount int64 { get -> cellBuildCount }
 
   init(initialItems []VirtualTableItem, columns int32, rows int32,
     treeMode string, viewportWidth float64, viewportHeight float64,

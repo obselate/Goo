@@ -28,11 +28,11 @@ internal unsafe sealed class VulkanTextFont : IDisposable, VulkanTextProvider {
   private var hasColorLayers bool
   private var disposed bool
 
-  public prop Metrics VulkanHarfBuzzMetrics{ get { return metrics } }
-  internal prop ByteSize int64{ get { return int64(fontBytes.Length) } }
-  internal prop FaceIndex uint32{ get { return faceIndex } }
-  internal prop FaceCount uint32{ get { return faceCount } }
-  public prop AbiVersion uint32{ get { return VulkanTextProviderAbi.Version } }
+  public prop Metrics VulkanHarfBuzzMetrics{ get -> metrics }
+  internal prop ByteSize int64{ get -> int64(fontBytes.Length) }
+  internal prop FaceIndex uint32{ get -> faceIndex }
+  internal prop FaceCount uint32{ get -> faceCount }
+  public prop AbiVersion uint32{ get -> VulkanTextProviderAbi.Version }
 
   shared {
     internal func ValidateFace(bytes []uint8, selectedFaceIndex uint32) uint32 {

@@ -39,9 +39,9 @@ internal unsafe class VulkanDescriptorTable {
   private var retiringCount int32
   private var disposed bool
 
-  internal prop Generation uint64{ get { return generation } }
-  internal prop BoundCount int32{ get { return boundCount } }
-  internal prop RetiringCount int32{ get { return retiringCount } }
+  internal prop Generation uint64{ get -> generation }
+  internal prop BoundCount int32{ get -> boundCount }
+  internal prop RetiringCount int32{ get -> retiringCount }
 
   internal init(capacity int32, initialGeneration uint64) {
     if capacity <= 0 || capacity > MaxCapacity {

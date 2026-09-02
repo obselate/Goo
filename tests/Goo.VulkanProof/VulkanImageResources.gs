@@ -121,8 +121,8 @@ internal unsafe class VulkanImageResources : IDisposable {
   private var flushPrepared bool
   private var disposed bool
 
-  internal prop Generation uint64{ get { return generation } }
-  internal prop DescriptorSetLayout VkDescriptorSetLayout{ get { return descriptorSetLayout } }
+  internal prop Generation uint64{ get -> generation }
+  internal prop DescriptorSetLayout VkDescriptorSetLayout{ get -> descriptorSetLayout }
   internal prop Stats VulkanImageResourceStats{
     get {
       return VulkanImageResourceStats{

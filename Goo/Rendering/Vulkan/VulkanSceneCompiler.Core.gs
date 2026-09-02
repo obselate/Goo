@@ -199,11 +199,11 @@ internal partial class VulkanSceneCompiler {
   }
 
   internal prop Frame SceneFrame{
-    get { return frame }
+    get -> frame
   }
 
   internal prop LastResult VulkanSceneCompileResult{
-    get { return lastResult }
+    get -> lastResult
   }
 
   internal func SetTextScene(value VulkanTextScene?) {

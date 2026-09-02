@@ -41,14 +41,14 @@ class PerformanceTableRoot : Cell {
   private let mutationColumns []int32
 
   prop LogicalCount int64 {
-    get { return int64(PerformanceTableRows) * int64(PerformanceTableColumns) }
+    get -> int64(PerformanceTableRows) * int64(PerformanceTableColumns)
   }
-  prop VisibleCount int32 { get { return viewportRows } }
-  prop MountedCount int32 { get { return poolRows } }
-  prop MountedBound int32 { get { return poolRows } }
-  prop Width int32 { get { return PerformanceTableWidth } }
-  prop Height int32 { get { return PerformanceTableHeight } }
-  prop MutationCount int32 { get { return 10 } }
+  prop VisibleCount int32 { get -> viewportRows }
+  prop MountedCount int32 { get -> poolRows }
+  prop MountedBound int32 { get -> poolRows }
+  prop Width int32 { get -> PerformanceTableWidth }
+  prop Height int32 { get -> PerformanceTableHeight }
+  prop MutationCount int32 { get -> 10 }
 
   init(initialSeed uint64) {
     seed = initialSeed
@@ -221,15 +221,15 @@ class PerformanceTopologyRoot : Cell {
   private var panY float64
   private var zoom float64
 
-  prop LogicalCount int64 { get { return int64(PerformanceTopologyNodes) } }
-  prop LogicalEdges int32 { get { return PerformanceTopologyEdges } }
-  prop VisibleCount int32 { get { return visibleCount } }
-  prop VisibleEdgeCount int32 { get { return visibleEdgeCount } }
-  prop MountedCount int32 { get { return visibleCount } }
-  prop MountedBound int32 { get { return PerformanceTopologyVisibleTarget } }
-  prop Width int32 { get { return PerformanceTopologyWidth } }
-  prop Height int32 { get { return PerformanceTopologyHeight } }
-  prop MutationCount int32 { get { return 16 } }
+  prop LogicalCount int64 { get -> int64(PerformanceTopologyNodes) }
+  prop LogicalEdges int32 { get -> PerformanceTopologyEdges }
+  prop VisibleCount int32 { get -> visibleCount }
+  prop VisibleEdgeCount int32 { get -> visibleEdgeCount }
+  prop MountedCount int32 { get -> visibleCount }
+  prop MountedBound int32 { get -> PerformanceTopologyVisibleTarget }
+  prop Width int32 { get -> PerformanceTopologyWidth }
+  prop Height int32 { get -> PerformanceTopologyHeight }
+  prop MutationCount int32 { get -> 16 }
 
   init(initialSeed uint64) {
     seed = initialSeed
@@ -450,14 +450,14 @@ class PerformanceBoxesRoot : Cell {
   private var generation int32
   private var changedIndex int32
 
-  prop LogicalCount int64 { get { return int64(PerformanceBoxes) } }
-  prop LogicalEdges int32 { get { return 0 } }
-  prop VisibleCount int32 { get { return PerformanceBoxes } }
-  prop MountedCount int32 { get { return PerformanceBoxes } }
-  prop MountedBound int32 { get { return PerformanceBoxes } }
-  prop Width int32 { get { return 1000 } }
-  prop Height int32 { get { return 640 } }
-  prop MutationCount int32 { get { return if full { PerformanceBoxes } else { 1 } } }
+  prop LogicalCount int64 { get -> int64(PerformanceBoxes) }
+  prop LogicalEdges int32 { get -> 0 }
+  prop VisibleCount int32 { get -> PerformanceBoxes }
+  prop MountedCount int32 { get -> PerformanceBoxes }
+  prop MountedBound int32 { get -> PerformanceBoxes }
+  prop Width int32 { get -> 1000 }
+  prop Height int32 { get -> 640 }
+  prop MutationCount int32 { get -> if full { PerformanceBoxes } else { 1 } }
 
   init(initialSeed uint64, mutateAll bool) {
     seed = initialSeed
@@ -532,14 +532,14 @@ class PerformanceScenario : Cell {
 
   private var revision int32
 
-  prop Workload string { get { return workload } }
+  prop Workload string { get -> workload }
   prop InitialSettlementFrames int32 {
     get {
       return if workload == "image-effects" { 2 } else { 0 }
     }
   }
-  prop Seed uint64 { get { return seed } }
-  prop Root Cell { get { return this } }
+  prop Seed uint64 { get -> seed }
+  prop Root Cell { get -> this }
   prop LogicalCount int64 {
     get {
       if let current = table { return current.LogicalCount }
@@ -1110,6 +1110,7 @@ func RunPerformanceBenchmark() {
   let allocationWorst = PerformanceMaxCount(frameAllocations, samples)
   let planDelta = PerformanceDelta(finalCounters.planCompileCount, beforeCounters.planCompileCount)
   let recordDelta = PerformanceDelta(finalCounters.recordCount, beforeCounters.recordCount)
+  let drawDelta = PerformanceDelta(finalCounters.drawCount, beforeCounters.drawCount)
   let submitDelta = PerformanceDelta(finalCounters.submitCount, beforeCounters.submitCount)
   let presentDelta = PerformanceDelta(finalCounters.presentCount, beforeCounters.presentCount)
   let damageDelta = PerformanceDelta(finalCounters.damageCount, beforeCounters.damageCount)
@@ -1170,6 +1171,7 @@ func RunPerformanceBenchmark() {
       beforeCounters.vulkanDeviceMemoryAllocationCount).ToString()
     +" plan_delta=" + planDelta.ToString()
     +" record_delta=" + recordDelta.ToString()
+    +" draw_delta=" + drawDelta.ToString()
     +" submit_delta=" + submitDelta.ToString()
     +" present_delta=" + presentDelta.ToString()
     +" damage_delta=" + damageDelta.ToString()

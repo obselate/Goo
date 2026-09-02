@@ -10,13 +10,13 @@ public data struct Color {
   private var a float32
 
   /// Gets the normalized red channel.
-  public prop R float32{ get { return r } }
+  public prop R float32{ get -> r }
   /// Gets the normalized green channel.
-  public prop G float32{ get { return g } }
+  public prop G float32{ get -> g }
   /// Gets the normalized blue channel.
-  public prop B float32{ get { return b } }
+  public prop B float32{ get -> b }
   /// Gets the normalized alpha channel.
-  public prop A float32{ get { return a } }
+  public prop A float32{ get -> a }
 
   /// Returns this color with a normalized alpha channel.
   /// @param alpha The alpha channel from 0 through 1.
@@ -91,11 +91,11 @@ public data struct Color {
     }
 
     /// Gets opaque white.
-    public prop White Color{ get { return Rgb(255, 255, 255) } }
+    public prop White Color{ get -> Rgb(255, 255, 255) }
     /// Gets opaque black.
-    public prop Black Color{ get { return Rgb(0, 0, 0) } }
+    public prop Black Color{ get -> Rgb(0, 0, 0) }
     /// Gets transparent black.
-    public prop Transparent Color{ get { return Rgba(0, 0, 0, 0) } }
+    public prop Transparent Color{ get -> Rgba(0, 0, 0, 0) }
   }
 }
 

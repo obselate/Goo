@@ -12,6 +12,12 @@ The snapshot reports the dimensions from the latest native metrics event. A zero
 
 Equal snapshots do not notify. A listener added after another listener has already received the current snapshot waits for a real change. Removing the final listener resets that listener stream, so a later first listener receives a new initial snapshot.
 
+## Observe window notifications
+
+Subscribe to `StateChanged`, `FocusChanged`, and `KeyPressed` with `+=` on the window UI thread. Each event supports independent listeners. Remove listeners with `-=` when their ownership ends.
+
+`OnClosing` is different: it is the single close-policy callback, and returning `false` vetoes the pending close request.
+
 ## Post UI work
 
 Call `Window.Post` from any thread. Accepted actions use FIFO order. Post accepts work before the first `Open`. A pending `RequestClose` still accepts work because `OnClosing` can veto the request.
@@ -43,9 +49,21 @@ Sources:
 
 Hosts a Goo tree on one process-wide UI thread. After Open, only Post and RequestClose are safe from another thread.
 
+### `FocusChanged`
+
+Occurs after the native window focus state changes.
+
+### `KeyPressed`
+
+Occurs for each physical key press before focused-element routing.
+
 ### `MetricsChanged`
 
 Occurs after the native window reports a new stable size or display scale. Callbacks run on the window UI thread after native metrics and layout settle.
+
+### `StateChanged`
+
+Occurs after the native window reports a new window state.
 
 ### `new`
 
@@ -153,18 +171,6 @@ Gets the most recent adapter exception. Failed delivery retries on the next UI-t
 ### `OnClosing`
 
 Gets or sets the close-request handler; return false to veto closure.
-
-### `OnFocusChange`
-
-Gets or sets the callback that receives native focus changes.
-
-### `OnKeyPress`
-
-Gets or sets the callback that receives each physical key press.
-
-### `OnStateChange`
-
-Gets or sets the callback that receives each window state change.
 
 ### `Resizable`
 

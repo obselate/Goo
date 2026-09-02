@@ -82,39 +82,39 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
   private var primitiveRenderer VulkanPrimitiveRenderer? = nil
   private var layerPool VulkanOffscreenLayerPool? = nil
 
-  internal prop Image VkImage{ get { return image } }
-  internal prop ImageView VkImageView{ get { return imageView } }
-  internal prop StagingBuffer VkBuffer{ get { return stagingBuffer } }
-  internal prop CommandBuffer VkCommandBuffer{ get { return commandBuffer } }
-  internal prop CommandPool VkCommandPool{ get { return commandPool } }
-  internal prop CompletionFence VkFence{ get { return completionFence } }
-  internal prop Extent VkExtent2D{ get { return extent } }
-  internal prop ImageByteSize VkDeviceSize{ get { return imageByteSize } }
-  internal prop StagingByteSize VkDeviceSize{ get { return stagingByteSize } }
-  internal prop ResourceByteSize VkDeviceSize{ get { return resourceByteSize } }
-  internal prop ReadbackByteSize VkDeviceSize{ get { return readbackByteSize } }
-  internal prop ReadbackRegion VulkanReadbackRegion{ get { return readbackRegion } }
-  internal prop TargetFormat VkFormat{ get { return targetFormat } }
-  internal prop ResourceGeneration uint64{ get { return resourceGeneration } }
-  internal prop ClipMaskAtlas VulkanClipMaskAtlas{ get { return clipMaskAtlas } }
-  internal prop State VulkanOffscreenState{ get { return state } }
+  internal prop Image VkImage{ get -> image }
+  internal prop ImageView VkImageView{ get -> imageView }
+  internal prop StagingBuffer VkBuffer{ get -> stagingBuffer }
+  internal prop CommandBuffer VkCommandBuffer{ get -> commandBuffer }
+  internal prop CommandPool VkCommandPool{ get -> commandPool }
+  internal prop CompletionFence VkFence{ get -> completionFence }
+  internal prop Extent VkExtent2D{ get -> extent }
+  internal prop ImageByteSize VkDeviceSize{ get -> imageByteSize }
+  internal prop StagingByteSize VkDeviceSize{ get -> stagingByteSize }
+  internal prop ResourceByteSize VkDeviceSize{ get -> resourceByteSize }
+  internal prop ReadbackByteSize VkDeviceSize{ get -> readbackByteSize }
+  internal prop ReadbackRegion VulkanReadbackRegion{ get -> readbackRegion }
+  internal prop TargetFormat VkFormat{ get -> targetFormat }
+  internal prop ResourceGeneration uint64{ get -> resourceGeneration }
+  internal prop ClipMaskAtlas VulkanClipMaskAtlas{ get -> clipMaskAtlas }
+  internal prop State VulkanOffscreenState{ get -> state }
   internal prop SubmissionPendingReconcile bool{ get -> queuePending }
   internal prop SubmissionReadyForReconcile bool{
     get -> queuePending
       && queueMailbox.Phase == VulkanQueueMailboxPhase.SubmitComplete
   }
-  internal prop LastResult VkResult{ get { return lastResult } }
+  internal prop LastResult VkResult{ get -> lastResult }
   internal prop DeviceLossDetected bool{
     get {
       return lastResult == VkConstants.VK_ERROR_DEVICE_LOST
         || allocator.LastResult == VkConstants.VK_ERROR_DEVICE_LOST
     }
   }
-  internal prop UnsafeTeardown bool{ get { return unsafeTeardown } }
-  internal prop ReadbackReady bool{ get { return state == VulkanOffscreenState.Complete } }
-  internal prop GpuTimingAvailable bool{ get { return gpuTimingAvailable } }
-  internal prop GpuSceneReplayNanoseconds uint64{ get { return gpuSceneReplayNanoseconds } }
-  internal prop GpuCopyNanoseconds uint64{ get { return gpuCopyNanoseconds } }
+  internal prop UnsafeTeardown bool{ get -> unsafeTeardown }
+  internal prop ReadbackReady bool{ get -> state == VulkanOffscreenState.Complete }
+  internal prop GpuTimingAvailable bool{ get -> gpuTimingAvailable }
+  internal prop GpuSceneReplayNanoseconds uint64{ get -> gpuSceneReplayNanoseconds }
+  internal prop GpuCopyNanoseconds uint64{ get -> gpuCopyNanoseconds }
 
   internal func BindSharedLeaseForDeviceLoss(lease VulkanSharedLease) {
     if lease == nil {

@@ -24,7 +24,7 @@ internal class VulkanSceneDamageJournal {
     physicalKeyValid = [capacity]bool
   }
 
-  internal prop Count int32{ get { return entryCount } }
+  internal prop Count int32{ get -> entryCount }
 
   internal prop LatestVersion uint64{
     get {

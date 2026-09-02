@@ -326,7 +326,7 @@ class InputAccessibilityCell : Cell {
     motion.To(64.0)
   }
 
-  internal prop MotionRunning bool{ get { return motion.Running } }
+  internal prop MotionRunning bool{ get -> motion.Running }
 
   override func Build() Blob -> Container {
     Width: 320,
@@ -3198,6 +3198,10 @@ func RunProtectedTextSmoke() {
 
 let managedEntryTimestamp = Stopwatch.GetTimestamp()
 Window.ConfigureApplication("Goo Readback async readback smoke", "0.1.0", "io.github.obselate.goo.readback.readback")
+if Environment.GetEnvironmentVariable("GOO_PIPELINE_CACHE_BENCHMARK") == "1" {
+  RunPipelineCacheBenchmark()
+  return
+}
 if Environment.GetEnvironmentVariable("GOO_INPUT_LATENCY_SMOKE") == "1" {
   RunPerformanceLatencyBenchmark(managedEntryTimestamp)
   return

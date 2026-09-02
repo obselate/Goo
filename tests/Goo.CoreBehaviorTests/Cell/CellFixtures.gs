@@ -153,6 +153,48 @@ internal class CellFixtures {
     return false
   }
 
+  func DirectChildQueuesCanonicalParentOnce() bool {
+    CellSchedulingDirectChild.Last = nil
+    let parent = CellSchedulingDirectParent{}
+    let window = Window{ Root: parent, Width: 100, Height: 100 }
+    window.UpdateTree()
+    guard let child = CellSchedulingDirectChild.Last else { return false }
+    let owner = Object()
+    let generation = child.TryQueueCanonical(owner, out var childRoot)
+    let duplicate = parent.TryQueueCanonical(owner, out var parentRoot)
+    childRoot.ClearQueue(owner)
+    return generation != 0
+      && duplicate == 0
+      && childRoot == parent
+      && parentRoot == parent
+  }
+
+  func FailedDirectChildRebuildResubmitsCanonicalParent() bool {
+    CellSchedulingDirectChild.Last = nil
+    let parent = CellSchedulingDirectParent{}
+    let window = Window{ Root: parent, Width: 100, Height: 100 }
+    window.UpdateTree()
+    guard let child = CellSchedulingDirectChild.Last else { return false }
+    let parentBefore = parent.Builds
+    let childBefore = child.Builds
+    child.RequestFailure()
+    var threw = false
+    try {
+      window.UpdateTree()
+    } catch (error InvalidOperationException) {
+      threw = error.Message == "direct failure"
+    }
+    if !threw || parent.Builds != parentBefore || child.Builds != childBefore + 1 {
+      return false
+    }
+    window.UpdateTree()
+    window.UpdateTree()
+    guard let node = window.Tree else { return false }
+    return parent.Builds == parentBefore
+      && child.Builds == childBefore + 2
+      && node.Content == "direct"
+  }
+
   func DirtyParentRunsBeforeAndSubsumesDirtyChild() bool {
     CellSchedulingOrderParent.Trace = ""
     let parent = CellSchedulingOrderParent{}
@@ -301,6 +343,91 @@ internal class CellFixtures {
       && ReplacementDisposableCell.Disposals == 1
       && WindowDisposableCell.Disposals == 1
   }
+
+  func KeyedRetirementContinuesAfterDisposeFailures() bool {
+    RetirementDisposableCell.Reset()
+    let rec = Reconciler{ Res: Resolver{} }
+    let root = rec.Mount(Container{ Children: {
+      Cell.Mount[string, RetirementDisposableCell]("first", "first"),
+      Cell.Mount[string, RetirementDisposableCell]("later", "later"),
+      Text{ Key: "kept", Content: "kept" },
+    } })
+    var message = ""
+    try {
+      rec.Diff(root, Container{ Children: {
+        Text{ Key: "kept", Content: "kept" },
+      } })
+    } catch (error Exception) {
+      message = error.Message
+    }
+    return message == "retire-first"
+      && root.Children.Count == 1
+      && root.Children[0].Key == "kept"
+      && RetirementDisposableCell.FirstDisposals == 1
+      && RetirementDisposableCell.LaterDisposals == 1
+  }
+
+  func PositionalRetirementContinuesAfterDisposeFailures() bool {
+    RetirementDisposableCell.Reset()
+    let rec = Reconciler{ Res: Resolver{} }
+    let root = rec.Mount(Container{ Children: {
+      Text{ Content: "kept" },
+      Cell.Mount[string, RetirementDisposableCell](nil, "first"),
+      Cell.Mount[string, RetirementDisposableCell](nil, "later"),
+    } })
+    var message = ""
+    try {
+      rec.Diff(root, Container{ Children: {
+        Text{ Content: "kept" },
+      } })
+    } catch (error Exception) {
+      message = error.Message
+    }
+    return message == "retire-first"
+      && root.Children.Count == 1
+      && root.Children[0].Content == "kept"
+      && RetirementDisposableCell.FirstDisposals == 1
+      && RetirementDisposableCell.LaterDisposals == 1
+  }
+
+  func WindowCloseCompletesAfterCleanupFailures() bool {
+    RetirementDisposableCell.Reset()
+    let window = Window{ Root: WindowCleanupParent{}, Width: 100, Height: 100 }
+    window.UpdateTree()
+    var metricCalls int32
+    window.MetricsChanged += func(metrics WindowMetrics) {
+      metricCalls++
+      throw InvalidOperationException("metrics-later")
+    }
+    MetricSubscriptions.MarkWindowDirty(window)
+    var message = ""
+    try {
+      window.Close()
+    } catch (error Exception) {
+      message = error.Message
+    }
+    MetricSubscriptions.MarkWindowDirty(window)
+    var flushThrew = false
+    try {
+      MetricSubscriptions.Flush(window)
+    } catch (error Exception) {
+      flushThrew = true
+    }
+    var secondCloseThrew = false
+    try {
+      window.Close()
+    } catch (error Exception) {
+      secondCloseThrew = true
+    }
+    return message == "retire-first"
+      && window.Tree == nil
+      && !window.IsOpen
+      && RetirementDisposableCell.FirstDisposals == 1
+      && RetirementDisposableCell.LaterDisposals == 1
+      && metricCalls == 1
+      && !flushThrew
+      && !secondCloseThrew
+  }
 }
 
 internal data struct CellInputFixtureValue {
@@ -406,6 +533,38 @@ internal class CellSchedulingRight : Cell {
     return Text{ Content: "right" }
   }
 }
+
+internal class CellSchedulingDirectParent : Cell {
+  internal var Builds int32
+
+  override func Build() Blob {
+    Builds++
+    return Cell.Mount[CellSchedulingDirectChild](nil)
+  }
+}
+
+internal class CellSchedulingDirectChild : Cell {
+  shared { internal var Last CellSchedulingDirectChild? }
+  internal var Builds int32
+  private var fail bool
+
+  init() { Last = this }
+
+  internal func RequestFailure() {
+    fail = true
+    Rebuild()
+  }
+
+  override func Build() Blob {
+    Builds++
+    if fail {
+      fail = false
+      throw InvalidOperationException("direct failure")
+    }
+    return Text{ Content: "direct" }
+  }
+}
+
 internal class CellSchedulingRecoveryParent : Cell {
   override func Build() Blob -> Container { Children: {
     Cell.Mount[CellSchedulingRecoveryFirst]("first", nil),
@@ -605,4 +764,34 @@ internal class WindowDisposableCell : Cell, IDisposable {
   shared { internal var Disposals int32 }
   func Dispose() { Disposals = Disposals + 1 }
   override func Build() Blob -> Text { Content: "window" }
+}
+
+internal class RetirementDisposableCell : Cell[string], IDisposable {
+  shared {
+    internal var FirstDisposals int32
+    internal var LaterDisposals int32
+
+    internal func Reset() {
+      FirstDisposals = 0
+      LaterDisposals = 0
+    }
+  }
+
+  func Dispose() {
+    if Input == "first" {
+      FirstDisposals++
+    } else {
+      LaterDisposals++
+    }
+    throw InvalidOperationException("retire-$Input")
+  }
+
+  override func Build() Blob -> Text { Content: Input }
+}
+
+internal class WindowCleanupParent : Cell {
+  override func Build() Blob -> Container { Children: {
+    Cell.Mount[string, RetirementDisposableCell]("first", "first"),
+    Cell.Mount[string, RetirementDisposableCell]("later", "later"),
+  } }
 }

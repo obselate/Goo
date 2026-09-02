@@ -82,10 +82,12 @@ internal class KeyboardInput {
       TextFocusGeneration: focusGeneration })
   }
 
-  internal func Drain(root Node?, resolver Resolver, text TextInput, onKeyPress((Key, KeyModifiers) -> void)?) bool -> Drain(root, resolver, text, onKeyPress, 0)
+  internal func Drain(root Node?, resolver Resolver, text TextInput,
+    onKeyPress Action[Key, KeyModifiers]?) bool ->
+  Drain(root, resolver, text, onKeyPress, 0)
 
   internal func Drain(root Node?, resolver Resolver, text TextInput,
-    onKeyPress((Key, KeyModifiers) -> void)?, repeatStartTicks int64) bool{
+    onKeyPress Action[Key, KeyModifiers]?, repeatStartTicks int64) bool{
       var changed = clearButtonPressAfterFocusMove(resolver, text)
       queueHead = 0
       try {

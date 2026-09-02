@@ -35,7 +35,7 @@ public class Shape : Blob {
   public prop StrokeJoin StrokeJoin{ get; init; }
   /// Gets or sets the non-negative finite miter limit. The default is 4.
   public prop MiterLimit float64{
-    get { return miterLimit }
+    get -> miterLimit
     init{
       if !motionFiniteFloat32(value) || value < 0.0 {
         throw ArgumentOutOfRangeException("MiterLimit")
@@ -45,7 +45,7 @@ public class Shape : Blob {
   }
   /// Gets or sets the non-negative finite corner radius in logical pixels.
   public prop CornerRadius float64{
-    get { return cornerRadius }
+    get -> cornerRadius
     init{
       if !motionFiniteFloat32(value) || value < 0.0 {
         throw ArgumentOutOfRangeException("CornerRadius")

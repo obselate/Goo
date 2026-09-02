@@ -4,6 +4,16 @@ Generated from `Goo.xml`. Source declarations supply type ownership and XML-emit
 
 Source: [`Goo/Input`](../../Goo/Input)
 
+## Route keyboard and focus callbacks
+
+`OnKeyDown` and `OnKeyUp` start at the currently focused element and bubble through its parents, so an ancestor can own shortcuts for a subtree. `KeyEvent.StopPropagation()` ends that route before the next ancestor without canceling Goo's default action. `KeyEvent.PreventDefault()` cancels the default action without stopping the remaining callbacks. Both controls are active only during that route; retaining the event value cannot affect a later dispatch.
+
+Key-down defaults run after the route and include text editing, `Tab` or `Shift+Tab` traversal, and `Button` Enter or Space press behavior. Preventing the matching Space key-up cancels release activation. Repeated key downs use the same route with `Repeat: true` and resolve the current focus target again for each repeat.
+
+A focus transfer updates the old and new `Focused` states first, then routes `OnBlur` from the old element to its parents and `OnFocus` from the new element to its parents. These lifecycle callbacks cannot cancel the transfer. `FocusEvent.StopPropagation()` only skips the remaining ancestors. A reentrant focus request from `OnBlur` or `OnFocus` wins over the superseded transfer.
+
+Set `Focusable: true` on a generic Blob. `Button`, `TextEntry`, and `TextEditor` are focusable by default. During a rebuilt tree update, `AutoFocus` selects the first eligible element only when nothing else holds focus. `Tab` and `Shift+Tab` visit enabled, visible focusables in depth-first tree order and wrap at the ends. An unprevented primary pointer press focuses the deepest focusable element in its hit route. `ElementHandle.Focus()` and `ElementHandle.Blur()` use the same mounted, visible, enabled eligibility rules.
+
 ## Receive generic text and IME input
 
 A focusable `Blob` can opt into `OnTextInput`, `OnTextComposition`, `OnTextCompositionCancel`, and `OnTextCandidates`. Committed text and composition offsets use UTF-16. Invalid or surrogate-splitting composition selections are delivered as the empty range. Candidate snapshots are read-only and use `SelectedCandidate = -1` when native selection is invalid.
@@ -28,7 +38,7 @@ Describes a non-cancelable focus lifecycle callback.
 
 ### `StopPropagation`
 
-Stops further callback propagation for this event.
+Stops this lifecycle event before the next ancestor callback. Focus has already changed.
 
 ## `Key`
 
@@ -173,11 +183,11 @@ Describes a keyboard callback.
 
 ### `PreventDefault`
 
-Prevents the default keyboard behavior for this event.
+Prevents the default keyboard behavior without stopping ancestor callbacks.
 
 ### `StopPropagation`
 
-Stops further callback propagation for this event.
+Stops this event before the next ancestor callback without preventing its default behavior.
 
 ### `Key`
 

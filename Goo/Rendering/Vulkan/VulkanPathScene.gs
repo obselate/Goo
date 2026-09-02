@@ -20,9 +20,9 @@ internal unsafe sealed class VulkanPathScene : IDisposable {
   private var observedRedrawSequence uint64
   private var disposed bool
 
-  internal prop Resources VulkanPathResources{ get { return resources } }
-  internal prop Atlas VulkanPathAtlas{ get { return resources.Atlas } }
-  internal prop AtlasId ResourceId{ get { return resources.AtlasId } }
+  internal prop Resources VulkanPathResources{ get -> resources }
+  internal prop Atlas VulkanPathAtlas{ get -> resources.Atlas }
+  internal prop AtlasId ResourceId{ get -> resources.AtlasId }
   internal prop CurrentPathCount int32{
     get {
       CommitCurrentReferences()

@@ -4,12 +4,14 @@ import System
 import System.Collections.Generic
 import System.Runtime.CompilerServices
 
-public func Virtual[T](items IReadOnlyList[T], itemKey((T) -> string),
-  itemBuilder((T) -> Blob)) Blob{
+public func Virtual[T](items IReadOnlyList[T], itemWidth float64, itemHeight float64,
+  itemKey((T) -> string), itemBuilder((T) -> Blob)) Blob{
     if items == nil { throw ArgumentNullException("items") }
+    let width = virtualItemExtent(itemWidth, "itemWidth")
+    let height = virtualItemExtent(itemHeight, "itemHeight")
     if itemKey == nil { throw ArgumentNullException("itemKey") }
     if itemBuilder == nil { throw ArgumentNullException("itemBuilder") }
-    return VirtualBlob[T](items, itemKey, itemBuilder) {
+    return VirtualBlob[T](items, width, height, itemKey, itemBuilder) {
       Position = PositionType.Relative,
       OverflowX = Overflow.Scroll,
       OverflowY = Overflow.Scroll,
@@ -25,17 +27,22 @@ internal open class VirtualBlobBase : Blob {
 
 internal sealed class VirtualBlob[T] : VirtualBlobBase {
   private let items IReadOnlyList[T]
+  private let itemWidth float32
+  private let itemHeight float32
   private let itemKey((T) -> string)
   private let itemBuilder((T) -> Blob)
 
-  internal init(source IReadOnlyList[T], key((T) -> string), builder((T) -> Blob)) {
-    items = source
-    itemKey = key
-    itemBuilder = builder
-  }
+  internal init(source IReadOnlyList[T], width float32, height float32,
+    key((T) -> string), builder((T) -> Blob)) {
+      items = source
+      itemWidth = width
+      itemHeight = height
+      itemKey = key
+      itemBuilder = builder
+    }
 
   internal override func Prepare(state VirtualNodeState, n Node) IList[Blob] ->
-  state.Prepare(n, items, itemKey, itemBuilder)
+  state.Prepare(n, items, itemWidth, itemHeight, itemKey, itemBuilder)
 }
 
 internal sealed class VirtualRetainedBlob : Blob {
@@ -53,7 +60,6 @@ internal data struct VirtualPlacement {
   internal var Y float32
   internal var W float32
   internal var H float32
-  internal var Positioned bool
 }
 
 internal data struct VirtualWindow {
@@ -71,7 +77,6 @@ internal data struct VirtualWindow {
   internal var ColumnGap float32
   internal var Direction FlexDirection
   internal var Wrap FlexWrap
-  internal var Positioned bool
 }
 
 internal data struct VirtualExtent {
@@ -99,23 +104,20 @@ internal sealed class VirtualStorage[T] : VirtualStorage {
   private var next Dictionary[string, VirtualEntry[T]]
   private let output List[Blob]
   private var source IReadOnlyList[T]?
+  private var itemW float32
+  private var itemH float32
   private var keySelector((T) -> string)?
   private var builder((T) -> Blob)?
   private let itemEquality EqualityComparer[T]
   private var pendingSource IReadOnlyList[T]?
+  private var pendingItemW float32
+  private var pendingItemH float32
   private var pendingKeySelector((T) -> string)?
   private var pendingBuilder((T) -> Blob)?
   private var currentWindow VirtualWindow
   private var pendingWindow VirtualWindow
   private var hasCurrentWindow bool
   private var hasPending bool
-  private var measured bool
-  private var itemW float32
-  private var itemH float32
-  private var originX float32
-  private var originY float32
-  private var measureDirection FlexDirection
-  private var measureWrap FlexWrap
 
   internal init() {
     current = Dictionary[string, VirtualEntry[T]]()
@@ -124,13 +126,13 @@ internal sealed class VirtualStorage[T] : VirtualStorage {
     itemEquality = EqualityComparer[T].Default
   }
 
-  internal func Prepare(n Node, items IReadOnlyList[T], itemKey((T) -> string),
-    itemBuilder((T) -> Blob)) IList[Blob] -> prepare(n, items, itemKey, itemBuilder)
+  internal func Prepare(n Node, items IReadOnlyList[T], width float32, height float32,
+    itemKey((T) -> string), itemBuilder((T) -> Blob)) IList[Blob] ->
+  prepare(n, items, width, height, itemKey, itemBuilder)
 
   internal override func NeedsRefresh(n Node) bool {
     guard let items = source else { return false }
-    measure(n)
-    let target = window(n, items.Count)
+    let target = window(n, items.Count, itemW, itemH)
     return !hasCurrentWindow || !sameVirtualWindow(currentWindow, target)
   }
 
@@ -138,19 +140,18 @@ internal sealed class VirtualStorage[T] : VirtualStorage {
     guard let items = source, let itemKey = keySelector, let itemBuilder = builder else {
       throw InvalidOperationException("Virtual source is unavailable")
     }
-    return prepare(n, items, itemKey, itemBuilder)
+    return prepare(n, items, itemW, itemH, itemKey, itemBuilder)
   }
 
   internal override func Extent() VirtualExtent? {
-    if !hasCurrentWindow || !currentWindow.Positioned { return nil }
+    if !hasCurrentWindow { return nil }
     return VirtualExtent{ Width: currentWindow.ContentW, Height: currentWindow.ContentH }
   }
 
-  private func prepare(n Node, items IReadOnlyList[T], itemKey((T) -> string),
-    itemBuilder((T) -> Blob)) IList[Blob]{
+  private func prepare(n Node, items IReadOnlyList[T], width float32, height float32,
+    itemKey((T) -> string), itemBuilder((T) -> Blob)) IList[Blob]{
       Cancel()
-      measure(n)
-      let target = window(n, items.Count)
+      let target = window(n, items.Count, width, height)
       try {
         var offset int32
         while offset < target.Count {
@@ -190,6 +191,8 @@ internal sealed class VirtualStorage[T] : VirtualStorage {
           offset++
         }
         pendingSource = items
+        pendingItemW = width
+        pendingItemH = height
         pendingKeySelector = itemKey
         pendingBuilder = itemBuilder
         pendingWindow = target
@@ -201,43 +204,15 @@ internal sealed class VirtualStorage[T] : VirtualStorage {
       }
     }
 
-  private func measure(n Node) {
-    if measured {
-      if measureDirection == n.FlexDirection && measureWrap == n.FlexWrap { return }
-      measured = false
-      return
-    }
-    if !hasCurrentWindow || currentWindow.Positioned { return }
-    if n.Children.Count == 0 { return }
-    let child = n.Children[0]
-    guard let yoga = child.Yoga else { return }
-    let width = Facebook.Yoga.YGNodeLayoutAPI.YGNodeLayoutGetWidth(yoga)
-    let height = Facebook.Yoga.YGNodeLayoutAPI.YGNodeLayoutGetHeight(yoga)
-    if !virtualMeasurable(n, width, height) { return }
-    itemW = width
-    itemH = height
-    originX = Facebook.Yoga.YGNodeLayoutAPI.YGNodeLayoutGetLeft(yoga)
-    originY = Facebook.Yoga.YGNodeLayoutAPI.YGNodeLayoutGetTop(yoga)
-    measureDirection = n.FlexDirection
-    measureWrap = n.FlexWrap
-    measured = true
-  }
-
-  private func window(n Node, count int32) VirtualWindow {
+  private func window(n Node, count int32, width float32, height float32) VirtualWindow {
     if count <= 0 {
       return VirtualWindow{ Direction: n.FlexDirection, Wrap: n.FlexWrap }
-    }
-    if !measured {
-      return VirtualWindow{
-        Start: 0,
-        Count: 1,
-        Direction: n.FlexDirection,
-        Wrap: n.FlexWrap,
-      }
     }
 
     let viewportW = TextLayouts.ContentWidth(n)
     let viewportH = TextLayouts.ContentHeight(n)
+    let originX = TextLayouts.ContentLeft(n) - n.Rect.X
+    let originY = TextLayouts.ContentTop(n) - n.Rect.Y
     let rowGap = virtualGap(n.RowGap, n.Gap, viewportW)
     let columnGap = virtualGap(n.ColumnGap, n.Gap, viewportW)
     let rowFlow = n.FlexDirection == FlexDirection.Row
@@ -246,10 +221,10 @@ internal sealed class VirtualStorage[T] : VirtualStorage {
     var columns = 1
     var rows = 1
     if wrapped && rowFlow {
-      columns = virtualLineCapacity(viewportW, itemW, columnGap)
+      columns = virtualLineCapacity(viewportW, width, columnGap)
       rows = virtualCeiling(count, columns)
     } else if wrapped {
-      rows = virtualLineCapacity(viewportH, itemH, rowGap)
+      rows = virtualLineCapacity(viewportH, height, rowGap)
       columns = virtualCeiling(count, rows)
     } else if rowFlow {
       columns = count
@@ -260,7 +235,7 @@ internal sealed class VirtualStorage[T] : VirtualStorage {
     let lineCount = wrapped ? (rowFlow ? rows : columns) : count
     let scroll = rowFlow && !wrapped ? n.ScrollX : !rowFlow && !wrapped ? n.ScrollY : rowFlow ? n.ScrollY : n.ScrollX
     let viewport = rowFlow && !wrapped ? viewportW : !rowFlow && !wrapped ? viewportH : rowFlow ? viewportH : viewportW
-    let lineSize = rowFlow && !wrapped ? itemW : !rowFlow && !wrapped ? itemH : rowFlow ? itemH : itemW
+    let lineSize = rowFlow && !wrapped ? width : !rowFlow && !wrapped ? height : rowFlow ? height : width
     let lineGap = rowFlow && !wrapped ? columnGap : !rowFlow && !wrapped ? rowGap : rowFlow ? rowGap : columnGap
     let lineOrigin = rowFlow && !wrapped ? originX : !rowFlow && !wrapped ? originY : rowFlow ? originY : originX
     let lineWindow = virtualLineWindow(lineCount, scroll, viewport, lineOrigin,
@@ -278,8 +253,8 @@ internal sealed class VirtualStorage[T] : VirtualStorage {
 
     let usedColumns = Math.Min(count, columns)
     let usedRows = Math.Min(count, rows)
-    let contentW = originX + virtualSpan(usedColumns, itemW, columnGap)
-    let contentH = originY + virtualSpan(usedRows, itemH, rowGap)
+    let contentW = originX + virtualSpan(usedColumns, width, columnGap)
+    let contentH = originY + virtualSpan(usedRows, height, rowGap)
     return VirtualWindow{
       Start: start,
       Count: visibleCount,
@@ -289,13 +264,12 @@ internal sealed class VirtualStorage[T] : VirtualStorage {
       Rows: rows,
       OriginX: originX,
       OriginY: originY,
-      ItemW: itemW,
-      ItemH: itemH,
+      ItemW: width,
+      ItemH: height,
       RowGap: rowGap,
       ColumnGap: columnGap,
       Direction: n.FlexDirection,
       Wrap: n.FlexWrap,
-      Positioned: true,
     }
   }
 
@@ -309,6 +283,8 @@ internal sealed class VirtualStorage[T] : VirtualStorage {
     next.Clear()
     output.Clear()
     source = pendingSource
+    itemW = pendingItemW
+    itemH = pendingItemH
     keySelector = pendingKeySelector
     builder = pendingBuilder
     currentWindow = pendingWindow
@@ -344,8 +320,8 @@ internal sealed class VirtualNodeState {
   private var current VirtualStorage?
   private var pending VirtualStorage?
 
-  internal func Prepare[T](n Node, items IReadOnlyList[T], itemKey((T) -> string),
-    itemBuilder((T) -> Blob)) IList[Blob]{
+  internal func Prepare[T](n Node, items IReadOnlyList[T], itemWidth float32,
+    itemHeight float32, itemKey((T) -> string), itemBuilder((T) -> Blob)) IList[Blob]{
       var storage VirtualStorage[T]
       if let existing = current as VirtualStorage[T] {
         storage = existing
@@ -353,7 +329,7 @@ internal sealed class VirtualNodeState {
         storage = VirtualStorage[T]()
       }
       try {
-        let result = storage.Prepare(n, items, itemKey, itemBuilder)
+        let result = storage.Prepare(n, items, itemWidth, itemHeight, itemKey, itemBuilder)
         pending = storage
         return result
       } catch (error Exception) {
@@ -407,30 +383,18 @@ internal sealed class VirtualNodeState {
   }
 }
 
-internal func virtualWrapper(key string, child Blob, placement VirtualPlacement) Blob {
-  if !placement.Positioned {
-    return Container{
-      Key: key,
-      FlexShrink: 0.0,
-      Children: { child },
-    }
-  }
-  return Container{
-    Key: key,
-    Position: PositionType.Absolute,
-    Left: float64(placement.X),
-    Top: float64(placement.Y),
-    Width: float64(placement.W),
-    Height: float64(placement.H),
-    FlexShrink: 0.0,
-    Children: { child },
-  }
+internal func virtualWrapper(key string, child Blob, placement VirtualPlacement) Blob -> Container {
+  Key: key,
+  Position: PositionType.Absolute,
+  Left: float64(placement.X),
+  Top: float64(placement.Y),
+  Width: float64(placement.W),
+  Height: float64(placement.H),
+  FlexShrink: 0.0,
+  Children: { child },
 }
 
 internal func virtualPlacement(window VirtualWindow, index int32) VirtualPlacement {
-  if !window.Positioned {
-    return VirtualPlacement{ Index: index }
-  }
   let rowFlow = window.Direction == FlexDirection.Row
     || window.Direction == FlexDirection.RowReverse
   let wrapped = window.Wrap != FlexWrap.NoWrap
@@ -467,15 +431,7 @@ internal func virtualPlacement(window VirtualWindow, index int32) VirtualPlaceme
     Y: window.OriginY + float32(row) * (window.ItemH + window.RowGap),
     W: window.ItemW,
     H: window.ItemH,
-    Positioned: true,
   }
-}
-
-internal func virtualMeasurable(n Node, width float32, height float32) bool {
-  let rowFlow = n.FlexDirection == FlexDirection.Row
-    || n.FlexDirection == FlexDirection.RowReverse
-  if n.FlexWrap != FlexWrap.NoWrap { return width > 0.0F && height > 0.0F }
-  return rowFlow ? width > 0.0F : height > 0.0F
 }
 
 internal func virtualGap(specific Length, fallback Length, basis float32) float32 {
@@ -526,7 +482,7 @@ internal func virtualLineWindow(count int32, scroll float32, viewport float32,
 
 internal func sameVirtualPlacement(left VirtualPlacement, right VirtualPlacement) bool ->
 left.Index == right.Index && left.X == right.X && left.Y == right.Y
-  && left.W == right.W && left.H == right.H && left.Positioned == right.Positioned
+  && left.W == right.W && left.H == right.H
 
 internal func sameVirtualWindow(left VirtualWindow, right VirtualWindow) bool ->
 left.Start == right.Start && left.Count == right.Count
@@ -536,7 +492,15 @@ left.Start == right.Start && left.Count == right.Count
   && left.ItemW == right.ItemW && left.ItemH == right.ItemH
   && left.RowGap == right.RowGap && left.ColumnGap == right.ColumnGap
   && left.Direction == right.Direction && left.Wrap == right.Wrap
-  && left.Positioned == right.Positioned
+
+internal func virtualItemExtent(value float64, name string) float32 {
+  if Double.IsNaN(value) || Double.IsInfinity(value) || value <= 0.0 {
+    throw ArgumentOutOfRangeException(name)
+  }
+  let extent = float32(value)
+  if Single.IsInfinity(extent) { throw ArgumentOutOfRangeException(name) }
+  return extent
+}
 
 internal func virtualItem(item Blob, key string) Blob {
   if item == nil {

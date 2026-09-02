@@ -530,6 +530,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
           && sampledSamplerMode == samplerMode
           && sampledGeneration == resourceGeneration
         if !sameDescriptor {
+          FlushPendingPrimitiveDraw(commandBuffer)
           imageResources!!.BindDescriptor(commandBuffer, pipelineLayout, value.ImageId,
             value.SamplerId, samplerMode, resourceGeneration)
           recordDescriptorChangeCount++
@@ -586,6 +587,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       push.params_z = value.Bounds.Width / targetWidth
       push.params_w = value.Bounds.Height / targetHeight
       if !primitivePrepass {
+        FlushPendingPrimitiveDraw(commandBuffer)
         EnsureDescriptorLayout(pipelineLayout)
         var descriptorSet = target!!.DescriptorSet
         let bindDescriptors = dispatch.vkCmdBindDescriptorSets
@@ -646,6 +648,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       +effect.DataWordOffset
       primitive.stopPositions_x = effect.ElapsedSeconds
       if !primitivePrepass {
+        FlushPendingPrimitiveDraw(commandBuffer)
         EnsureDescriptorLayout(blendPipelineLayout)
         var descriptorSets = stackalloc[2]VkDescriptorSet
         descriptorSets[0] = target!!.DescriptorSet
@@ -712,6 +715,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       push.params_w = value.Bounds.Height / targetHeight
       push.packedColorsExtra_w = value.BlendMode
       if !primitivePrepass {
+        FlushPendingPrimitiveDraw(commandBuffer)
         EnsureDescriptorLayout(blendPipelineLayout)
         var descriptorSets = stackalloc[2]VkDescriptorSet
         descriptorSets[0] = target!!.DescriptorSet
@@ -747,6 +751,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       if primitivePrepass {
         return
       }
+      FlushPendingPrimitiveDraw(commandBuffer)
       EnsureDescriptorLayout(textPipelineLayout)
       EnsureClipDescriptorAt(commandBuffer, textPipelineLayout, 1u)
       EnsureTextInstanceDescriptor(commandBuffer, textPipelineLayout)
@@ -794,6 +799,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         }
         let draw = dispatch.vkCmdDraw
         draw(commandBuffer, 6u, uint32(run.InstanceCount), 0u, uint32(globalFirst))
+        RecordImmediateDraw()
         runIndex = runIndex + 1
       }
     }
@@ -1128,26 +1134,13 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         throw ArgumentNullException("pushData")
       }
       if primitivePrepass {
+        let primitiveWords = *uint32(nint(pushData))
+        primitiveWords[PrimitiveClipDrawOrdinalWord] = currentDrawOrdinal
         primitiveFrameData.WriteRecord(primitiveRecordCount, pushData)
         primitiveRecordCount = primitiveRecordCount + 1
         return
       }
-      EnsureDescriptorLayout(layout)
-      if activePipeline != pipeline {
-        let bindPipeline = dispatch.vkCmdBindPipeline
-        bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline)
-        recordPipelineChangeCount++
-        activePipeline = pipeline
-      }
-      EnsurePrimitiveDescriptor(commandBuffer, layout)
-      EnsureClipDescriptorAt(commandBuffer, layout, clipSetIndex)
-      if uint64(primitiveRecordOrdinal) > uint64(uint32.MaxValue) / 4uL {
-        throw ArgumentOutOfRangeException("primitiveRecordOrdinal")
-      }
-      let firstVertex = primitiveRecordOrdinal * 4u
-      let draw = dispatch.vkCmdDraw
-      draw(commandBuffer, 4u, 1u, firstVertex, currentDrawOrdinal)
-      primitiveRecordOrdinal = primitiveRecordOrdinal + 1u
+      QueuePrimitiveDraw(commandBuffer, pipeline, layout, clipSetIndex)
     }
 
   private func EnsurePrimitiveDescriptor(commandBuffer VkCommandBuffer, layout VkPipelineLayout) {
@@ -1278,6 +1271,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
   }
 
   private func SetScissor(commandBuffer VkCommandBuffer, value PrimitiveClip) {
+    FlushPendingPrimitiveDraw(commandBuffer)
     var scissor = VkRect2D{}
     scissor.offset = VkOffset2D{}
     scissor.offset.x = value.Left

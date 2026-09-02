@@ -772,24 +772,24 @@ internal sealed class CompiledVector {
     viewBoxHeight = parsed.ViewBoxHeight
   }
 
-  internal prop Version uint16{ get { return CompiledVectorLimits.Version } }
-  internal prop Flags uint32{ get { return flags } }
-  internal prop ByteCount int32{ get { return reader.Length } }
-  internal prop ViewBoxX float32{ get { return viewBoxX } }
-  internal prop ViewBoxY float32{ get { return viewBoxY } }
-  internal prop ViewBoxWidth float32{ get { return viewBoxWidth } }
-  internal prop ViewBoxHeight float32{ get { return viewBoxHeight } }
-  internal prop NodeCount int32{ get { return sections[0].Count } }
-  internal prop ContourCount int32{ get { return sections[1].Count } }
-  internal prop CurveCount int32{ get { return sections[2].Count } }
-  internal prop MorphCurveCount int32{ get { return sections[10].Count } }
-  internal prop PaintCount int32{ get { return sections[3].Count } }
-  internal prop PaintStopCount int32{ get { return sections[4].Count } }
-  internal prop StrokeCount int32{ get { return sections[5].Count } }
-  internal prop DashValueCount int32{ get { return sections[6].Count } }
-  internal prop ClipCount int32{ get { return sections[7].Count } }
-  internal prop TrackCount int32{ get { return sections[8].Count } }
-  internal prop KeyframeCount int32{ get { return sections[9].Count } }
+  internal prop Version uint16{ get -> CompiledVectorLimits.Version }
+  internal prop Flags uint32{ get -> flags }
+  internal prop ByteCount int32{ get -> reader.Length }
+  internal prop ViewBoxX float32{ get -> viewBoxX }
+  internal prop ViewBoxY float32{ get -> viewBoxY }
+  internal prop ViewBoxWidth float32{ get -> viewBoxWidth }
+  internal prop ViewBoxHeight float32{ get -> viewBoxHeight }
+  internal prop NodeCount int32{ get -> sections[0].Count }
+  internal prop ContourCount int32{ get -> sections[1].Count }
+  internal prop CurveCount int32{ get -> sections[2].Count }
+  internal prop MorphCurveCount int32{ get -> sections[10].Count }
+  internal prop PaintCount int32{ get -> sections[3].Count }
+  internal prop PaintStopCount int32{ get -> sections[4].Count }
+  internal prop StrokeCount int32{ get -> sections[5].Count }
+  internal prop DashValueCount int32{ get -> sections[6].Count }
+  internal prop ClipCount int32{ get -> sections[7].Count }
+  internal prop TrackCount int32{ get -> sections[8].Count }
+  internal prop KeyframeCount int32{ get -> sections[9].Count }
 
   internal func NodeAt(index int32) CompiledVectorNodeView -> CompiledVectorNodeView(reader, elementOffset(0, index))
 

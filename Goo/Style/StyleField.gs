@@ -132,7 +132,7 @@ internal class StyleEntries {
   private var spillLast StyleEntryBlock?
   private var count int32
 
-  internal prop Count int32{ get { return count } }
+  internal prop Count int32{ get -> count }
 
   internal func Add(value StyleEntry) {
     switch count {
@@ -158,6 +158,13 @@ internal class StyleEntries {
       }
     }
     count++
+  }
+
+  internal func AddRange(values StyleEntries) {
+    let sourceCount = values.Count
+    for i in 0 ... sourceCount {
+      Add(values.At(i))
+    }
   }
 
   internal func At(index int32) StyleEntry {

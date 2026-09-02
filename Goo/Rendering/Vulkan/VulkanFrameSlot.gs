@@ -20,19 +20,19 @@ internal unsafe partial class VulkanFrameSlot : IDisposable {
   private var lastCompletedGlobalSubmissionSerial uint64
   private var disposed bool
 
-  internal prop CommandBuffer VkCommandBuffer{ get { return commandBuffer } }
-  internal prop AcquireSemaphore VkSemaphore{ get { return acquireSemaphore } }
-  internal prop SubmissionFence VkFence{ get { return submissionFence } }
-  internal prop InFlight bool{ get { return inFlight } }
-  internal prop SubmissionSerial uint64{ get { return submissionSerial } }
-  internal prop NextSubmissionSerial uint64{ get { return submissionSerial + 1uL } }
-  internal prop LastCompletedSerial uint64{ get { return lastCompletedSerial } }
-  internal prop GlobalSubmissionSerial uint64{ get { return globalSubmissionSerial } }
+  internal prop CommandBuffer VkCommandBuffer{ get -> commandBuffer }
+  internal prop AcquireSemaphore VkSemaphore{ get -> acquireSemaphore }
+  internal prop SubmissionFence VkFence{ get -> submissionFence }
+  internal prop InFlight bool{ get -> inFlight }
+  internal prop SubmissionSerial uint64{ get -> submissionSerial }
+  internal prop NextSubmissionSerial uint64{ get -> submissionSerial + 1uL }
+  internal prop LastCompletedSerial uint64{ get -> lastCompletedSerial }
+  internal prop GlobalSubmissionSerial uint64{ get -> globalSubmissionSerial }
   internal prop HasAbandonableAcquiredWork bool{
-    get { return acquired && !inFlight && !submissionFailed }
+    get -> acquired && !inFlight && !submissionFailed
   }
   internal prop LastCompletedGlobalSubmissionSerial uint64{
-    get { return lastCompletedGlobalSubmissionSerial }
+    get -> lastCompletedGlobalSubmissionSerial
   }
 
   internal init(nativeDevice VkDevice, nativeDispatch VkDeviceDispatch,

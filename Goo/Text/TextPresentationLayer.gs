@@ -33,15 +33,15 @@ public class TextPresentationProjection {
   }
 
   /// Gets the stable projection key within its presentation layer.
-  public prop Key string{ get { return key } }
+  public prop Key string{ get -> key }
   /// Gets the projection behavior.
-  public prop Kind TextProjectionKind{ get { return kind } }
+  public prop Kind TextProjectionKind{ get -> kind }
   /// Gets the source range replaced or hidden by this projection.
-  public prop Range TextRange{ get { return textRange } }
+  public prop Range TextRange{ get -> textRange }
   /// Gets replacement text, or an empty string for non-text projections.
-  public prop Text string{ get { return text } }
+  public prop Text string{ get -> text }
   /// Gets the retained Goo slot content, or nil for text projections.
-  public prop Content Blob? { get { return content } }
+  public prop Content Blob? { get -> content }
 
   internal func Update(nextKind TextProjectionKind, nextRange TextRange, nextText string, nextContent Blob?) {
     kind = nextKind
@@ -138,14 +138,14 @@ public class TextPresentationLayer : IDisposable {
   }
 
   /// Gets the document whose source ranges this layer references.
-  public prop Document TextDocument{ get { return document } }
-  internal prop Identity int64{ get { return identity } }
+  public prop Document TextDocument{ get -> document }
+  internal prop Identity int64{ get -> identity }
   /// Gets the monotonic revision of presentation-layer mutations.
-  public prop Revision int64{ get { return revision } }
+  public prop Revision int64{ get -> revision }
   /// Gets a snapshot of keyed style spans in layer order.
-  public prop StyleSpans []TextStyleSpan{ get { return copyStyleSpans(ReadStyleSpans()) } }
+  public prop StyleSpans []TextStyleSpan{ get -> copyStyleSpans(ReadStyleSpans()) }
   /// Gets a snapshot of atomic projections in layer order.
-  public prop Projections []TextPresentationProjection{ get { return copyProjections(ReadProjections()) } }
+  public prop Projections []TextPresentationProjection{ get -> copyProjections(ReadProjections()) }
 
   /// Adds or updates a keyed style span.
   /// @param key The stable style-span key.

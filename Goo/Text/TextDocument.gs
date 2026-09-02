@@ -22,11 +22,11 @@ public class TextSnapshot {
   }
 
   /// Gets the version represented by this snapshot.
-  public prop Version int64{ get { return version } }
+  public prop Version int64{ get -> version }
   /// Gets the document length in UTF-16 code units.
-  public prop Length int32{ get { return textLength(root) } }
+  public prop Length int32{ get -> textLength(root) }
   /// Gets the number of logical lines.
-  public prop LineCount int32{ get { return textLineCount(root) } }
+  public prop LineCount int32{ get -> textLineCount(root) }
 
   /// Gets all text in this snapshot.
   /// @returns The complete snapshot text.
@@ -85,23 +85,23 @@ public class TextDocument {
   }
 
   /// Gets the document length in UTF-16 code units.
-  public prop Length int32{ get { return textLength(root) } }
+  public prop Length int32{ get -> textLength(root) }
   /// Gets the number of logical lines.
-  public prop LineCount int32{ get { return textLineCount(root) } }
+  public prop LineCount int32{ get -> textLineCount(root) }
   /// Gets the monotonically increasing document version.
-  public prop Version int64{ get { return version } }
+  public prop Version int64{ get -> version }
   /// Gets whether an undo operation is available.
-  public prop CanUndo bool{ get { return undoHistory.Count != 0 || groupHistory.Count != 0 } }
+  public prop CanUndo bool{ get -> undoHistory.Count != 0 || groupHistory.Count != 0 }
   /// Gets whether a redo operation is available.
-  public prop CanRedo bool{ get { return redoHistory.Count != 0 } }
+  public prop CanRedo bool{ get -> redoHistory.Count != 0 }
 
   /// Creates an immutable snapshot of the current document version.
   /// @returns The immutable snapshot.
   public func Snapshot() TextSnapshot -> TextSnapshot(this)
 
   internal func SnapshotRoot() TextPieceNode ? -> root
-  internal prop PieceCount int32{ get { return countTextPieces(root) } }
-  internal prop CurrentMutation TextDocumentMutation? { get { return currentMutation } }
+  internal prop PieceCount int32{ get -> countTextPieces(root) }
+  internal prop CurrentMutation TextDocumentMutation? { get -> currentMutation }
 
   /// Gets all document text.
   /// @returns The complete document text.

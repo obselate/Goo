@@ -37,31 +37,31 @@ class PerformanceThreeWindowRoot : Cell {
   private var textOrder int32
   private var latencyMutations bool
 
-  internal prop Seed uint64{ get { return seed } }
-  internal prop WindowIndex int32{ get { return windowIndex } }
-  internal prop LogicalCount int64{ get { return LogicalNodeCount } }
-  internal prop LogicalEdges int32{ get { return 0 } }
-  internal prop VisibleEdges int32{ get { return 0 } }
-  internal prop VisibleCount int32{ get { return int32(LogicalNodeCount) } }
-  internal prop MountedCount int32{ get { return int32(LogicalNodeCount) } }
-  internal prop MountedBound int32{ get { return int32(LogicalNodeCount) } }
-  internal prop Width int32{ get { return width } }
-  internal prop Height int32{ get { return height } }
-  internal prop MutationCount int32{ get { return MutationTotal } }
-  internal prop Generation int32{ get { return generation } }
-  internal prop CallbackOrder int32{ get { return callbackOrder } }
-  internal prop PointerCallbackCount int32{ get { return pointerCount } }
-  internal prop KeyCallbackCount int32{ get { return keyCount } }
-  internal prop TextCallbackCount int32{ get { return textCount } }
-  internal prop PointerCallbackOrder int32{ get { return pointerOrder } }
-  internal prop KeyCallbackOrder int32{ get { return keyOrder } }
-  internal prop TextCallbackOrder int32{ get { return textOrder } }
-  internal prop PointerCount int32{ get { return pointerCount } }
-  internal prop KeyCount int32{ get { return keyCount } }
-  internal prop TextCount int32{ get { return textCount } }
-  internal prop PointerOrder int32{ get { return pointerOrder } }
-  internal prop KeyOrder int32{ get { return keyOrder } }
-  internal prop TextOrder int32{ get { return textOrder } }
+  internal prop Seed uint64{ get -> seed }
+  internal prop WindowIndex int32{ get -> windowIndex }
+  internal prop LogicalCount int64{ get -> LogicalNodeCount }
+  internal prop LogicalEdges int32{ get -> 0 }
+  internal prop VisibleEdges int32{ get -> 0 }
+  internal prop VisibleCount int32{ get -> int32(LogicalNodeCount) }
+  internal prop MountedCount int32{ get -> int32(LogicalNodeCount) }
+  internal prop MountedBound int32{ get -> int32(LogicalNodeCount) }
+  internal prop Width int32{ get -> width }
+  internal prop Height int32{ get -> height }
+  internal prop MutationCount int32{ get -> MutationTotal }
+  internal prop Generation int32{ get -> generation }
+  internal prop CallbackOrder int32{ get -> callbackOrder }
+  internal prop PointerCallbackCount int32{ get -> pointerCount }
+  internal prop KeyCallbackCount int32{ get -> keyCount }
+  internal prop TextCallbackCount int32{ get -> textCount }
+  internal prop PointerCallbackOrder int32{ get -> pointerOrder }
+  internal prop KeyCallbackOrder int32{ get -> keyOrder }
+  internal prop TextCallbackOrder int32{ get -> textOrder }
+  internal prop PointerCount int32{ get -> pointerCount }
+  internal prop KeyCount int32{ get -> keyCount }
+  internal prop TextCount int32{ get -> textCount }
+  internal prop PointerOrder int32{ get -> pointerOrder }
+  internal prop KeyOrder int32{ get -> keyOrder }
+  internal prop TextOrder int32{ get -> textOrder }
 
   init(initialSeed uint64, initialWindowIndex int32, exactWidth int32, exactHeight int32) {
     seed = initialSeed

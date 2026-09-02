@@ -333,6 +333,6 @@ internal unsafe partial class VulkanWindowTarget {
   }
 
   internal prop RecoveryInProgress bool{
-    get { return VulkanDeviceRecoveryCoordinator.InProgress }
+    get -> VulkanDeviceRecoveryCoordinator.InProgress
   }
 }

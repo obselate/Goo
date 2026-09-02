@@ -264,7 +264,6 @@ func BuildLayerTree(depth int32) Blob {
   }
 }
 
-
 class CompiledVectorSmokeCell : Cell {
   shared {
     let Root ElementHandle = ElementHandle{}
@@ -1613,10 +1612,10 @@ class PressureImageProvider : ImageSourceProvider, IDisposable {
     source = nativeSource
   }
 
-  public prop ContentVersion uint64{ get { return 1uL } }
+  public prop ContentVersion uint64{ get -> 1uL }
   public event ContentChanged Action
-  public prop AcquireCount int32{ get { return Interlocked.CompareExchange(&acquireCount, 0, 0) } }
-  public prop ReleasedCount int32{ get { return Interlocked.CompareExchange(&releasedCount, 0, 0) } }
+  public prop AcquireCount int32{ get -> Interlocked.CompareExchange(&acquireCount, 0, 0) }
+  public prop ReleasedCount int32{ get -> Interlocked.CompareExchange(&releasedCount, 0, 0) }
 
   public func Acquire() ImageSourceLease {
     let lease = source.Acquire()
@@ -1926,15 +1925,15 @@ func RunLayerCapacitySmoke() {
     if diagnostics.Contains("\"kind\":\"fatal\"")
       || diagnostics.Contains("\"event\":325")
       || createCount < 17uL || passCount < 17uL || compositeCount < 17uL
-      || failureCount != 0uL || pressureFailureCount != 0uL{
+      || failureCount != 0uL || pressureFailureCount != 0uL {
         throw InvalidOperationException("Layer capacity smoke did not exceed the former target ceiling: created="
-          +createCount.ToString() + " passes=" +passCount.ToString()
-          +" composites=" +compositeCount.ToString() + " failures="
-          +failureCount.ToString() + " pressureFailures=" +pressureFailureCount.ToString())
+          +createCount.ToString() + " passes=" + passCount.ToString()
+          +" composites=" + compositeCount.ToString() + " failures="
+          +failureCount.ToString() + " pressureFailures=" + pressureFailureCount.ToString())
       }
     Console.SetError(originalError)
     Console.WriteLine("layer-capacity: created=" + createCount.ToString()
-      +" passes=" +passCount.ToString() + " composites=" +compositeCount.ToString()
+      +" passes=" + passCount.ToString() + " composites=" + compositeCount.ToString()
       +" failures=0 close=1")
   } finally {
     Console.SetError(originalError)
@@ -2123,7 +2122,7 @@ func Main() {
     latestMetrics = value
     windowMetricEvents = windowMetricEvents + 1
   }
-  window.OnStateChange = func(value WindowState) {
+  window.StateChanged += func(value WindowState) {
     if value == WindowState.Minimized {
       minimizedStateEvents = minimizedStateEvents + 1
     }
@@ -2170,24 +2169,24 @@ func Main() {
       if chunkSmoke {
         if imageBudget < 67108864uL || imagePeakResident < 67108864uL
           || imageUploadChunkCount <= imageUploadCompletedCount || imageUploadCompletedCount < 2uL
-          || imageResident != 0uL || imageLiveObjects != 0uL{
+          || imageResident != 0uL || imageLiveObjects != 0uL {
             throw InvalidOperationException("Native chunked image upload did not qualify: budget="
-              +imageBudget.ToString() + " peakResident=" +imagePeakResident.ToString()
-              +" uploadCount=" +uploadCount.ToString()
-              +" imageUploadChunkCount=" +imageUploadChunkCount.ToString()
-              +" imageUploadCompletedCount=" +imageUploadCompletedCount.ToString()
-              +" resident=" +imageResident.ToString() +" liveObjects=" +imageLiveObjects.ToString())
+              +imageBudget.ToString() + " peakResident=" + imagePeakResident.ToString()
+              +" uploadCount=" + uploadCount.ToString()
+              +" imageUploadChunkCount=" + imageUploadChunkCount.ToString()
+              +" imageUploadCompletedCount=" + imageUploadCompletedCount.ToString()
+              +" resident=" + imageResident.ToString() + " liveObjects=" + imageLiveObjects.ToString())
           }
       } else if imageBudget < 67108864uL || imagePeakResident == 0uL
         || imagePeakResident > imageBudget
         || imagePeakLiveObjects == 0uL || imageEvictionCount == 0uL
         || imageRetirementCount == 0uL || imageResident != 0uL
-        || imageLiveObjects != 0uL{
+        || imageLiveObjects != 0uL {
           throw InvalidOperationException("Native image pressure smoke did not qualify GPU image pressure: budget="
-            +imageBudget.ToString() + " resident=" +imageResident.ToString()
-            +" liveObjects=" +imageLiveObjects.ToString() + " peakResident="
-            +imagePeakResident.ToString() + " peakLiveObjects=" +imagePeakLiveObjects.ToString()
-            +" evictionCount=" +imageEvictionCount.ToString() + " retirementCount="
+            +imageBudget.ToString() + " resident=" + imageResident.ToString()
+            +" liveObjects=" + imageLiveObjects.ToString() + " peakResident="
+            +imagePeakResident.ToString() + " peakLiveObjects=" + imagePeakLiveObjects.ToString()
+            +" evictionCount=" + imageEvictionCount.ToString() + " retirementCount="
             +imageRetirementCount.ToString())
         }
       Console.SetError(originalError)

@@ -37,9 +37,18 @@ NativeAOT publishing must run on the target operating system.
 Run the focused managed checks for ordinary API or behavior changes:
 
 ```sh
+dotnet build tools/Goo.Gslint/Goo.Gslint.csproj -c Release
+dotnet tools/Goo.Gslint/bin/Release/net10.0/Goo.Gslint.dll \
+  --strict --severity GL0005=none --severity GL0006=none .
 dotnet test tests/Goo.ApiContractTests/Goo.ApiContractTests.csproj -c Release
 dotnet test tests/Goo.CoreBehaviorTests/Goo.CoreBehaviorTests.csproj -c Release
 ```
+
+Run the linter with `--fix` to apply canonical formatting and other safe
+mechanical rewrites. GL0005 remains a manual review advisory because syntax
+cannot distinguish intentional fail-fast assertions. Public API documentation
+is enforced by `Goo.ApiContractTests`, which covers supplemented documentation
+and avoids treating public test fixtures as product API.
 
 Vulkan, package, native payload, template, DevTools, and NativeAOT checks are
 environment-specific. The CI workflow provisions the pinned shader tools,

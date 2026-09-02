@@ -237,12 +237,12 @@ internal sealed class TextEditorRenderState : IDisposable {
       TextEditorLayerBindings.Register(this)
     }
 
-  internal prop Document TextDocument{ get { return document } }
-  internal prop Controller TextEditorController{ get { return controller } }
-  internal prop LayerCount int32{ get { return layers.Length } }
+  internal prop Document TextDocument{ get -> document }
+  internal prop Controller TextEditorController{ get -> controller }
+  internal prop LayerCount int32{ get -> layers.Length }
   internal func Layer(index int32) TextPresentationLayer -> layers[index]
   internal func MatchesLayers(values []TextPresentationLayer) bool -> sameArray(layers, values)
-  internal prop ParagraphCacheCount int32{ get { return paragraphs.Count } }
+  internal prop ParagraphCacheCount int32{ get -> paragraphs.Count }
 
   internal func BaseStyle(n Node, fingerprint int32) TextResolvedStyle {
     if let current = baseStyle {

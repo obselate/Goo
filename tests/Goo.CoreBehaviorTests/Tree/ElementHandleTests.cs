@@ -65,6 +65,10 @@ public sealed class ElementHandleTests
         => Assert.True(new ElementHandleFixtures().VirtualContract());
 
     [Fact]
+    public void VirtualRejectsInvalidUniformItemExtents()
+        => Assert.True(new ElementHandleFixtures().VirtualExtentValidationContract());
+
+    [Fact]
     public void UnsubscribedHandlesDoNotAllocateDuringAStableDiff()
         => Assert.Equal(0, new ElementHandleFixtures().HandleNoSubscriptionDiffBytes());
 

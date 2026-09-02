@@ -37,13 +37,13 @@ public class AccessibilityValue {
   private var text string
 
   /// Gets the current numeric value, when one exists.
-  public prop Now float64? { get { return now } init{ now = validateOptionalNumber(value, "Now") } }
+  public prop Now float64? { get -> now init -> now = validateOptionalNumber(value, "Now") }
   /// Gets the minimum numeric value, when one exists.
-  public prop Minimum float64? { get { return minimum } init{ minimum = validateOptionalNumber(value, "Minimum") } }
+  public prop Minimum float64? { get -> minimum init -> minimum = validateOptionalNumber(value, "Minimum") }
   /// Gets the maximum numeric value, when one exists.
-  public prop Maximum float64? { get { return maximum } init{ maximum = validateOptionalNumber(value, "Maximum") } }
+  public prop Maximum float64? { get -> maximum init -> maximum = validateOptionalNumber(value, "Maximum") }
   /// Gets the localized value text, when one exists.
-  public prop Text string{ get { return text } init{ text = requireString(value, "Text") } }
+  public prop Text string{ get -> text init -> text = requireString(value, "Text") }
 
   /// Initializes an empty range value.
   public init() { text = "" }
@@ -77,43 +77,43 @@ public class AccessibilityRelationships {
 
   /// Gets or sets the elements that label this element.
   public prop LabelledBy []ElementHandle{
-    get { return copyValues(labelledBy) }
-    init{ labelledBy = cloneHandles(value, "LabelledBy") }
+    get -> copyValues(labelledBy)
+    init -> labelledBy = cloneHandles(value, "LabelledBy")
   }
   /// Gets or sets the elements that describe this element.
   public prop DescribedBy []ElementHandle{
-    get { return copyValues(describedBy) }
-    init{ describedBy = cloneHandles(value, "DescribedBy") }
+    get -> copyValues(describedBy)
+    init -> describedBy = cloneHandles(value, "DescribedBy")
   }
   /// Gets or sets the elements controlled by this element.
   public prop Controls []ElementHandle{
-    get { return copyValues(controls) }
-    init{ controls = cloneHandles(value, "Controls") }
+    get -> copyValues(controls)
+    init -> controls = cloneHandles(value, "Controls")
   }
   /// Gets or sets the elements owned by this element.
   public prop Owns []ElementHandle{
-    get { return copyValues(owns) }
-    init{ owns = cloneHandles(value, "Owns") }
+    get -> copyValues(owns)
+    init -> owns = cloneHandles(value, "Owns")
   }
   /// Gets or sets the next logical reading targets for this element.
   public prop FlowTo []ElementHandle{
-    get { return copyValues(flowTo) }
-    init{ flowTo = cloneHandles(value, "FlowTo") }
+    get -> copyValues(flowTo)
+    init -> flowTo = cloneHandles(value, "FlowTo")
   }
   /// Gets or sets the elements that describe a current error.
   public prop ErrorMessage []ElementHandle{
-    get { return copyValues(errorMessage) }
-    init{ errorMessage = cloneHandles(value, "ErrorMessage") }
+    get -> copyValues(errorMessage)
+    init -> errorMessage = cloneHandles(value, "ErrorMessage")
   }
   /// Gets or sets the active descendant, when one is mounted.
-  public prop ActiveDescendant ElementHandle? { get { return activeDescendant } init{ activeDescendant = value } }
+  public prop ActiveDescendant ElementHandle? { get -> activeDescendant init -> activeDescendant = value }
 
-  internal prop RawLabelledBy []ElementHandle{ get { return labelledBy } }
-  internal prop RawDescribedBy []ElementHandle{ get { return describedBy } }
-  internal prop RawControls []ElementHandle{ get { return controls } }
-  internal prop RawOwns []ElementHandle{ get { return owns } }
-  internal prop RawFlowTo []ElementHandle{ get { return flowTo } }
-  internal prop RawErrorMessage []ElementHandle{ get { return errorMessage } }
+  internal prop RawLabelledBy []ElementHandle{ get -> labelledBy }
+  internal prop RawDescribedBy []ElementHandle{ get -> describedBy }
+  internal prop RawControls []ElementHandle{ get -> controls }
+  internal prop RawOwns []ElementHandle{ get -> owns }
+  internal prop RawFlowTo []ElementHandle{ get -> flowTo }
+  internal prop RawErrorMessage []ElementHandle{ get -> errorMessage }
 
   internal func Validate() {
     validateHandles(labelledBy, "LabelledBy")
@@ -146,13 +146,13 @@ public class Accessibility {
   /// Gets the role. Auto selects a neutral primitive default when one exists.
   public prop Role AccessibilityRole{ get; init; }
   /// Gets the platform-specific custom role name for AccessibilityRole.Custom.
-  public prop CustomRole string{ get { return customRole } init{ customRole = requireString(value, "CustomRole") } }
+  public prop CustomRole string{ get -> customRole init -> customRole = requireString(value, "CustomRole") }
   /// Gets the accessible name.
-  public prop Name string{ get { return name } init{ name = requireString(value, "Name") } }
+  public prop Name string{ get -> name init -> name = requireString(value, "Name") }
   /// Gets the accessible description.
-  public prop Description string{ get { return description } init{ description = requireString(value, "Description") } }
+  public prop Description string{ get -> description init -> description = requireString(value, "Description") }
   /// Gets the string value.
-  public prop Value string{ get { return value } init{ this.value = requireString(value, "Value") } }
+  public prop Value string{ get -> value init -> this.value = requireString(value, "Value") }
   /// Gets the optional numeric value metadata.
   public prop Range AccessibilityValue? { get; init; }
   /// Gets the check state.
@@ -191,13 +191,13 @@ public class Accessibility {
   public prop Hidden bool{ get; init; }
   /// Gets or sets actions advertised by a composed control.
   public prop Actions []AccessibilityAction{
-    get { return copyValues(actions) }
-    init{ actions = cloneActions(value) }
+    get -> copyValues(actions)
+    init -> actions = cloneActions(value)
   }
   /// Gets the handler for advertised composed-control actions.
   public prop OnAction((AccessibilityActionRequest) -> bool)? { get; init; }
 
-  internal prop RawActions []AccessibilityAction{ get { return actions } }
+  internal prop RawActions []AccessibilityAction{ get -> actions }
 
   /// Initializes a neutral semantic declaration.
   public init() {
@@ -244,21 +244,21 @@ public class AccessibilityActionRequest {
   private var scrollY float64
 
   /// Gets the requested operation.
-  public prop Action AccessibilityAction{ get { return action } }
+  public prop Action AccessibilityAction{ get -> action }
   /// Gets text supplied for SetValue.
-  public prop Value string{ get { return value } }
+  public prop Value string{ get -> value }
   /// Gets the UTF-16 selection start in the exposed semantic value supplied for SetSelection.
   public prop SelectionStart int32{
-    get { return selectionStart }
+    get -> selectionStart
   }
   /// Gets the UTF-16 selection length in the exposed semantic value supplied for SetSelection.
   public prop SelectionLength int32{
-    get { return selectionLength }
+    get -> selectionLength
   }
   /// Gets the horizontal logical target supplied for Scroll.
-  public prop ScrollX float64{ get { return scrollX } }
+  public prop ScrollX float64{ get -> scrollX }
   /// Gets the vertical logical target supplied for Scroll.
-  public prop ScrollY float64{ get { return scrollY } }
+  public prop ScrollY float64{ get -> scrollY }
 
   /// Initializes an action request with neutral optional data.
   /// @param action The requested operation.
@@ -338,13 +338,13 @@ internal class RetainedAccessibilityRelationshipIds : AccessibilityRelationshipI
   private var errorMessage []AccessibilityId
   private var activeDescendant AccessibilityId?
 
-  public prop LabelledBy IReadOnlyList[AccessibilityId]{ get { return labelledBy } }
-  public prop DescribedBy IReadOnlyList[AccessibilityId]{ get { return describedBy } }
-  public prop Controls IReadOnlyList[AccessibilityId]{ get { return controls } }
-  public prop Owns IReadOnlyList[AccessibilityId]{ get { return owns } }
-  public prop FlowTo IReadOnlyList[AccessibilityId]{ get { return flowTo } }
-  public prop ErrorMessage IReadOnlyList[AccessibilityId]{ get { return errorMessage } }
-  public prop ActiveDescendant AccessibilityId? { get { return activeDescendant } }
+  public prop LabelledBy IReadOnlyList[AccessibilityId]{ get -> labelledBy }
+  public prop DescribedBy IReadOnlyList[AccessibilityId]{ get -> describedBy }
+  public prop Controls IReadOnlyList[AccessibilityId]{ get -> controls }
+  public prop Owns IReadOnlyList[AccessibilityId]{ get -> owns }
+  public prop FlowTo IReadOnlyList[AccessibilityId]{ get -> flowTo }
+  public prop ErrorMessage IReadOnlyList[AccessibilityId]{ get -> errorMessage }
+  public prop ActiveDescendant AccessibilityId? { get -> activeDescendant }
 
   internal init() {
     labelledBy = AccessibilityEmpty.Ids
@@ -505,46 +505,46 @@ internal class RetainedAccessibilityNode : AccessibilityNode {
   private var children List[AccessibilityNode]?
   private var relationships RetainedAccessibilityRelationshipIds?
 
-  public prop Id AccessibilityId{ get { return id } }
-  public prop Role AccessibilityRole{ get { return role } }
-  public prop CustomRole string{ get { return customRole } }
-  public prop Name string{ get { return name } }
-  public prop Description string{ get { return description } }
-  public prop Value string{ get { return value } }
-  public prop ValueText string{ get { return valueText } }
-  public prop ValueNow float64? { get { return valueNow } }
-  public prop ValueMinimum float64? { get { return valueMinimum } }
-  public prop ValueMaximum float64? { get { return valueMaximum } }
-  public prop Checked AccessibilityChecked{ get { return checked } }
-  public prop Selected bool? { get { return selected } }
-  public prop Expanded bool? { get { return expanded } }
-  public prop Disabled bool{ get { return disabled } }
-  public prop ReadOnly bool? { get { return readOnly } }
-  public prop Required bool? { get { return required } }
-  public prop Invalid bool? { get { return invalid } }
-  public prop Busy bool? { get { return busy } }
-  public prop Level int32? { get { return level } }
-  public prop Orientation AccessibilityOrientation{ get { return orientation } }
-  public prop Modal bool? { get { return modal } }
-  public prop Multiline bool? { get { return multiline } }
-  public prop MultiSelectable bool? { get { return multiSelectable } }
-  public prop HasPopup bool? { get { return hasPopup } }
-  public prop Live AccessibilityLive{ get { return live } }
-  public prop Atomic bool? { get { return atomic } }
-  public prop Focused bool{ get { return focused } }
-  public prop Bounds ElementRect{ get { return bounds } }
-  public prop TextSnapshot TextSnapshot? { get { return textSnapshot } }
-  public prop SelectionStart int32? { get { return selectionStart } }
-  public prop SelectionLength int32? { get { return selectionLength } }
-  public prop Caret int32? { get { return caret } }
+  public prop Id AccessibilityId{ get -> id }
+  public prop Role AccessibilityRole{ get -> role }
+  public prop CustomRole string{ get -> customRole }
+  public prop Name string{ get -> name }
+  public prop Description string{ get -> description }
+  public prop Value string{ get -> value }
+  public prop ValueText string{ get -> valueText }
+  public prop ValueNow float64? { get -> valueNow }
+  public prop ValueMinimum float64? { get -> valueMinimum }
+  public prop ValueMaximum float64? { get -> valueMaximum }
+  public prop Checked AccessibilityChecked{ get -> checked }
+  public prop Selected bool? { get -> selected }
+  public prop Expanded bool? { get -> expanded }
+  public prop Disabled bool{ get -> disabled }
+  public prop ReadOnly bool? { get -> readOnly }
+  public prop Required bool? { get -> required }
+  public prop Invalid bool? { get -> invalid }
+  public prop Busy bool? { get -> busy }
+  public prop Level int32? { get -> level }
+  public prop Orientation AccessibilityOrientation{ get -> orientation }
+  public prop Modal bool? { get -> modal }
+  public prop Multiline bool? { get -> multiline }
+  public prop MultiSelectable bool? { get -> multiSelectable }
+  public prop HasPopup bool? { get -> hasPopup }
+  public prop Live AccessibilityLive{ get -> live }
+  public prop Atomic bool? { get -> atomic }
+  public prop Focused bool{ get -> focused }
+  public prop Bounds ElementRect{ get -> bounds }
+  public prop TextSnapshot TextSnapshot? { get -> textSnapshot }
+  public prop SelectionStart int32? { get -> selectionStart }
+  public prop SelectionLength int32? { get -> selectionLength }
+  public prop Caret int32? { get -> caret }
   public prop Actions IReadOnlyList[AccessibilityAction]{
-    get { return if let values = actions { values } else { AccessibilityEmpty.Actions } }
+    get -> if let values = actions { values } else { AccessibilityEmpty.Actions }
   }
   public prop Children IReadOnlyList[AccessibilityNode]{
-    get { return if let values = children { values } else { AccessibilityEmpty.Nodes } }
+    get -> if let values = children { values } else { AccessibilityEmpty.Nodes }
   }
   public prop Relationships AccessibilityRelationshipIds{
-    get { return if let value = relationships { value } else { AccessibilityEmpty.RelationshipIds } }
+    get -> if let value = relationships { value } else { AccessibilityEmpty.RelationshipIds }
   }
 
   internal init(id AccessibilityId) {
@@ -712,8 +712,8 @@ internal class RetainedAccessibilityTree : AccessibilityTree {
   private var root AccessibilityNode?
   private var version int64
 
-  public prop Root AccessibilityNode? { get { return root } }
-  public prop Version int64{ get { return version } }
+  public prop Root AccessibilityNode? { get -> root }
+  public prop Version int64{ get -> version }
 
   internal init() {
   }

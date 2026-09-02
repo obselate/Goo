@@ -16,14 +16,14 @@ internal unsafe sealed class VulkanAsyncReadback : IDisposable {
   private var cpuCopyEndTicks int64
   private var disposed bool
 
-  internal prop State VulkanReadbackState{ get { return state } }
-  internal prop Generation uint64{ get { return generation } }
-  internal prop SubmissionSerial uint64{ get { return submissionSerial } }
-  internal prop StagingByteSize VkDeviceSize{ get { return target.StagingByteSize } }
-  internal prop TargetResourceByteSize VkDeviceSize{ get { return target.ResourceByteSize } }
-  internal prop Extent VkExtent2D{ get { return target.Extent } }
-  internal prop Region VulkanReadbackRegion{ get { return region } }
-  internal prop IsPending bool{ get { return state == VulkanReadbackState.Pending } }
+  internal prop State VulkanReadbackState{ get -> state }
+  internal prop Generation uint64{ get -> generation }
+  internal prop SubmissionSerial uint64{ get -> submissionSerial }
+  internal prop StagingByteSize VkDeviceSize{ get -> target.StagingByteSize }
+  internal prop TargetResourceByteSize VkDeviceSize{ get -> target.ResourceByteSize }
+  internal prop Extent VkExtent2D{ get -> target.Extent }
+  internal prop Region VulkanReadbackRegion{ get -> region }
+  internal prop IsPending bool{ get -> state == VulkanReadbackState.Pending }
   internal prop SubmissionPendingReconcile bool{
     get -> state == VulkanReadbackState.Pending
       && target.SubmissionPendingReconcile
@@ -33,12 +33,12 @@ internal unsafe sealed class VulkanAsyncReadback : IDisposable {
       && target.SubmissionReadyForReconcile
   }
   internal prop TargetPending bool{
-    get { return state == VulkanReadbackState.Pending || target.State == VulkanOffscreenState.Pending }
+    get -> state == VulkanReadbackState.Pending || target.State == VulkanOffscreenState.Pending
   }
-  internal prop DeviceLossDetected bool{ get { return target.DeviceLossDetected } }
-  internal prop GpuTimingAvailable bool{ get { return target.GpuTimingAvailable } }
-  internal prop GpuSceneReplayNanoseconds uint64{ get { return target.GpuSceneReplayNanoseconds } }
-  internal prop GpuCopyNanoseconds uint64{ get { return target.GpuCopyNanoseconds } }
+  internal prop DeviceLossDetected bool{ get -> target.DeviceLossDetected }
+  internal prop GpuTimingAvailable bool{ get -> target.GpuTimingAvailable }
+  internal prop GpuSceneReplayNanoseconds uint64{ get -> target.GpuSceneReplayNanoseconds }
+  internal prop GpuCopyNanoseconds uint64{ get -> target.GpuCopyNanoseconds }
   internal prop Result VulkanReadbackResult? {
     get {
       if state != VulkanReadbackState.Complete {
@@ -270,8 +270,8 @@ internal unsafe sealed class VulkanAsyncReadback : IDisposable {
     cpuCopyEndTicks = 0L
   }
 
-  internal prop CpuCopyStartTicks int64{ get { return cpuCopyStartTicks } }
-  internal prop CpuCopyEndTicks int64{ get { return cpuCopyEndTicks } }
+  internal prop CpuCopyStartTicks int64{ get -> cpuCopyStartTicks }
+  internal prop CpuCopyEndTicks int64{ get -> cpuCopyEndTicks }
 
   private func MarkDeviceLossIfDetected() {
     if target.DeviceLossDetected {

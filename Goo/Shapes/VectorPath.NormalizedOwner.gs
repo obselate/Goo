@@ -16,13 +16,13 @@ internal sealed class VectorPathNormalizedOwner {
   private var geometryRevision uint64
   private var hasClosedContour bool
 
-  internal prop Quadratics []PathQuadratic{ get { return quadratics } }
-  internal prop Contours []PathContour{ get { return contours } }
-  internal prop QuadraticCount int32{ get { return quadraticCount } }
-  internal prop ContourCount int32{ get { return contourCount } }
-  internal prop ContentHash uint64{ get { return contentHash } }
-  internal prop GeometryRevision uint64{ get { return geometryRevision } }
-  internal prop HasClosedContour bool{ get { return hasClosedContour } }
+  internal prop Quadratics []PathQuadratic{ get -> quadratics }
+  internal prop Contours []PathContour{ get -> contours }
+  internal prop QuadraticCount int32{ get -> quadraticCount }
+  internal prop ContourCount int32{ get -> contourCount }
+  internal prop ContentHash uint64{ get -> contentHash }
+  internal prop GeometryRevision uint64{ get -> geometryRevision }
+  internal prop HasClosedContour bool{ get -> hasClosedContour }
 
   internal init(quadraticCapacity int32, contourCapacity int32,
     viewBoxX float64, viewBoxY float64, viewBoxWidth float64, viewBoxHeight float64) {

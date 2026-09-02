@@ -79,7 +79,7 @@ internal unsafe sealed class VulkanMemoryBudgetState {
   private let heapUsages []VkDeviceSize
   private var available bool
 
-  internal prop Available bool{ get { return available } }
+  internal prop Available bool{ get -> available }
 
   internal init(nativePhysicalDevice VkPhysicalDevice, nativeInstanceDispatch VkInstanceDispatch,
     nativeHeapCount uint32, nativeExtensionAvailable bool) {
@@ -175,12 +175,12 @@ internal unsafe class VulkanMemoryAllocator : IDisposable {
   private var residentAllocations uint64
   private var disposed bool
 
-  internal prop LiveBytes VkDeviceSize{ get { return liveBytes } }
-  internal prop LiveAllocationCount uint64{ get { return liveAllocations } }
-  internal prop RetiredBytes VkDeviceSize{ get { return retiredBytes } }
-  internal prop RetiredAllocationCount uint64{ get { return retiredAllocations } }
-  internal prop ResidentBytes VkDeviceSize{ get { return residentBytes } }
-  internal prop ResidentAllocationCount uint64{ get { return residentAllocations } }
+  internal prop LiveBytes VkDeviceSize{ get -> liveBytes }
+  internal prop LiveAllocationCount uint64{ get -> liveAllocations }
+  internal prop RetiredBytes VkDeviceSize{ get -> retiredBytes }
+  internal prop RetiredAllocationCount uint64{ get -> retiredAllocations }
+  internal prop ResidentBytes VkDeviceSize{ get -> residentBytes }
+  internal prop ResidentAllocationCount uint64{ get -> residentAllocations }
 
   internal init(nativeDevice VkDevice, nativeDispatch VkDeviceDispatch,
     physicalProperties VkPhysicalDeviceMemoryProperties, allocationLimit uint32,

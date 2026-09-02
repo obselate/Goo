@@ -57,6 +57,7 @@ internal unsafe partial class VulkanWindowTarget {
         instanceMaintenanceVariant,
         swapchainMaintenanceVariant,
         deviceFacts,
+        &sharedPhysicalProperties.pipelineCacheUUID[0],
         sharedMemoryProperties,
         sharedPhysicalProperties.limits.maxMemoryAllocationCount,
         sharedPhysicalProperties.limits.maxStorageBufferRange,

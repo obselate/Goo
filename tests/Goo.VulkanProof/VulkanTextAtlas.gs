@@ -42,14 +42,14 @@ internal unsafe class VulkanTextAtlas : IDisposable {
   private var flushPrepared bool
   private var disposed bool
 
-  internal prop ByteSize VkDeviceSize{ get { return byteSize } }
-  internal prop TexelCount VkDeviceSize{ get { return byteSize / AtlasTexelBytes } }
-  internal prop Buffer VkBuffer{ get { return atlasBuffer } }
-  internal prop BufferView VkBufferView{ get { return atlasBufferView } }
-  internal prop DescriptorSetLayout VkDescriptorSetLayout{ get { return descriptorSetLayout } }
-  internal prop DescriptorSet VkDescriptorSet{ get { return descriptorSet } }
-  internal prop UploadPending bool{ get { return uploadPending } }
-  internal prop IsUploaded bool{ get { return uploaded } }
+  internal prop ByteSize VkDeviceSize{ get -> byteSize }
+  internal prop TexelCount VkDeviceSize{ get -> byteSize / AtlasTexelBytes }
+  internal prop Buffer VkBuffer{ get -> atlasBuffer }
+  internal prop BufferView VkBufferView{ get -> atlasBufferView }
+  internal prop DescriptorSetLayout VkDescriptorSetLayout{ get -> descriptorSetLayout }
+  internal prop DescriptorSet VkDescriptorSet{ get -> descriptorSet }
+  internal prop UploadPending bool{ get -> uploadPending }
+  internal prop IsUploaded bool{ get -> uploaded }
   internal prop Stats VulkanTextAtlasStats{
     get {
       return VulkanTextAtlasStats{

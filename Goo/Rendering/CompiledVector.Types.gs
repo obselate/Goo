@@ -41,7 +41,7 @@ internal sealed class CompiledVectorReader {
     this.bytes = bytes
   }
 
-  internal prop Length int32{ get { return bytes.Length } }
+  internal prop Length int32{ get -> bytes.Length }
 
   internal func ReadU16(offset int32) uint16 -> uint16(uint32(bytes[offset]) | (uint32(bytes[offset + 1]) << 8))
 
@@ -73,42 +73,42 @@ internal struct CompiledVectorNodeView {
     this.offset = offset
   }
 
-  internal prop ParentIndex uint32{ get { return reader.ReadU32(offset) } }
-  internal prop FirstChildIndex uint32{ get { return reader.ReadU32(offset + 4) } }
-  internal prop ChildCount uint32{ get { return reader.ReadU32(offset + 8) } }
-  internal prop Flags uint32{ get { return reader.ReadU32(offset + 12) } }
-  internal prop ContourStart uint32{ get { return reader.ReadU32(offset + 16) } }
-  internal prop ContourCount uint32{ get { return reader.ReadU32(offset + 20) } }
-  internal prop PaintIndex uint32{ get { return reader.ReadU32(offset + 24) } }
-  internal prop StrokeIndex uint32{ get { return reader.ReadU32(offset + 28) } }
-  internal prop ClipIndex uint32{ get { return reader.ReadU32(offset + 32) } }
-  internal prop TransformTrackIndex uint32{ get { return reader.ReadU32(offset + 36) } }
-  internal prop OpacityTrackIndex uint32{ get { return reader.ReadU32(offset + 40) } }
+  internal prop ParentIndex uint32{ get -> reader.ReadU32(offset) }
+  internal prop FirstChildIndex uint32{ get -> reader.ReadU32(offset + 4) }
+  internal prop ChildCount uint32{ get -> reader.ReadU32(offset + 8) }
+  internal prop Flags uint32{ get -> reader.ReadU32(offset + 12) }
+  internal prop ContourStart uint32{ get -> reader.ReadU32(offset + 16) }
+  internal prop ContourCount uint32{ get -> reader.ReadU32(offset + 20) }
+  internal prop PaintIndex uint32{ get -> reader.ReadU32(offset + 24) }
+  internal prop StrokeIndex uint32{ get -> reader.ReadU32(offset + 28) }
+  internal prop ClipIndex uint32{ get -> reader.ReadU32(offset + 32) }
+  internal prop TransformTrackIndex uint32{ get -> reader.ReadU32(offset + 36) }
+  internal prop OpacityTrackIndex uint32{ get -> reader.ReadU32(offset + 40) }
   internal prop MorphTrackIndex uint32{
-    get { return reader.ReadU32(offset + 44) }
+    get -> reader.ReadU32(offset + 44)
   }
-  internal prop M11 float32{ get { return reader.ReadF32(offset + 48) } }
-  internal prop M12 float32{ get { return reader.ReadF32(offset + 52) } }
-  internal prop M21 float32{ get { return reader.ReadF32(offset + 56) } }
-  internal prop M22 float32{ get { return reader.ReadF32(offset + 60) } }
-  internal prop TranslateX float32{ get { return reader.ReadF32(offset + 64) } }
-  internal prop TranslateY float32{ get { return reader.ReadF32(offset + 68) } }
-  internal prop Opacity float32{ get { return reader.ReadF32(offset + 72) } }
-  internal prop TransformReserved uint32{ get { return reader.ReadU32(offset + 76) } }
+  internal prop M11 float32{ get -> reader.ReadF32(offset + 48) }
+  internal prop M12 float32{ get -> reader.ReadF32(offset + 52) }
+  internal prop M21 float32{ get -> reader.ReadF32(offset + 56) }
+  internal prop M22 float32{ get -> reader.ReadF32(offset + 60) }
+  internal prop TranslateX float32{ get -> reader.ReadF32(offset + 64) }
+  internal prop TranslateY float32{ get -> reader.ReadF32(offset + 68) }
+  internal prop Opacity float32{ get -> reader.ReadF32(offset + 72) }
+  internal prop TransformReserved uint32{ get -> reader.ReadU32(offset + 76) }
 
-  internal prop HasParent bool{ get { return ParentIndex != CompiledVectorLimits.MissingIndex } }
-  internal prop HasChildren bool{ get { return ChildCount != 0u } }
-  internal prop HasPaint bool{ get { return PaintIndex != CompiledVectorLimits.MissingIndex } }
-  internal prop HasStroke bool{ get { return StrokeIndex != CompiledVectorLimits.MissingIndex } }
-  internal prop HasClip bool{ get { return ClipIndex != CompiledVectorLimits.MissingIndex } }
+  internal prop HasParent bool{ get -> ParentIndex != CompiledVectorLimits.MissingIndex }
+  internal prop HasChildren bool{ get -> ChildCount != 0u }
+  internal prop HasPaint bool{ get -> PaintIndex != CompiledVectorLimits.MissingIndex }
+  internal prop HasStroke bool{ get -> StrokeIndex != CompiledVectorLimits.MissingIndex }
+  internal prop HasClip bool{ get -> ClipIndex != CompiledVectorLimits.MissingIndex }
   internal prop HasTransformTrack bool{
-    get { return TransformTrackIndex != CompiledVectorLimits.MissingIndex }
+    get -> TransformTrackIndex != CompiledVectorLimits.MissingIndex
   }
   internal prop HasOpacityTrack bool{
-    get { return OpacityTrackIndex != CompiledVectorLimits.MissingIndex }
+    get -> OpacityTrackIndex != CompiledVectorLimits.MissingIndex
   }
   internal prop HasMorphTrack bool{
-    get { return MorphTrackIndex != CompiledVectorLimits.MissingIndex }
+    get -> MorphTrackIndex != CompiledVectorLimits.MissingIndex
   }
 }
 
@@ -121,11 +121,11 @@ internal struct CompiledVectorContourView {
     this.offset = offset
   }
 
-  internal prop CurveStart uint32{ get { return reader.ReadU32(offset) } }
-  internal prop CurveCount uint32{ get { return reader.ReadU32(offset + 4) } }
-  internal prop Flags uint32{ get { return reader.ReadU32(offset + 8) } }
-  internal prop Reserved uint32{ get { return reader.ReadU32(offset + 12) } }
-  internal prop Closed bool{ get { return (Flags & CompiledVectorLimits.ContourClosed) != 0u } }
+  internal prop CurveStart uint32{ get -> reader.ReadU32(offset) }
+  internal prop CurveCount uint32{ get -> reader.ReadU32(offset + 4) }
+  internal prop Flags uint32{ get -> reader.ReadU32(offset + 8) }
+  internal prop Reserved uint32{ get -> reader.ReadU32(offset + 12) }
+  internal prop Closed bool{ get -> (Flags & CompiledVectorLimits.ContourClosed) != 0u }
 }
 
 internal struct CompiledVectorCurveView {
@@ -137,12 +137,12 @@ internal struct CompiledVectorCurveView {
     this.offset = offset
   }
 
-  internal prop X0 float32{ get { return reader.ReadF32(offset) } }
-  internal prop Y0 float32{ get { return reader.ReadF32(offset + 4) } }
-  internal prop CX float32{ get { return reader.ReadF32(offset + 8) } }
-  internal prop CY float32{ get { return reader.ReadF32(offset + 12) } }
-  internal prop X1 float32{ get { return reader.ReadF32(offset + 16) } }
-  internal prop Y1 float32{ get { return reader.ReadF32(offset + 20) } }
+  internal prop X0 float32{ get -> reader.ReadF32(offset) }
+  internal prop Y0 float32{ get -> reader.ReadF32(offset + 4) }
+  internal prop CX float32{ get -> reader.ReadF32(offset + 8) }
+  internal prop CY float32{ get -> reader.ReadF32(offset + 12) }
+  internal prop X1 float32{ get -> reader.ReadF32(offset + 16) }
+  internal prop Y1 float32{ get -> reader.ReadF32(offset + 20) }
 }
 
 internal struct CompiledVectorMorphCurveView {
@@ -154,12 +154,12 @@ internal struct CompiledVectorMorphCurveView {
     this.offset = offset
   }
 
-  internal prop X0 float32{ get { return reader.ReadF32(offset) } }
-  internal prop Y0 float32{ get { return reader.ReadF32(offset + 4) } }
-  internal prop CX float32{ get { return reader.ReadF32(offset + 8) } }
-  internal prop CY float32{ get { return reader.ReadF32(offset + 12) } }
-  internal prop X1 float32{ get { return reader.ReadF32(offset + 16) } }
-  internal prop Y1 float32{ get { return reader.ReadF32(offset + 20) } }
+  internal prop X0 float32{ get -> reader.ReadF32(offset) }
+  internal prop Y0 float32{ get -> reader.ReadF32(offset + 4) }
+  internal prop CX float32{ get -> reader.ReadF32(offset + 8) }
+  internal prop CY float32{ get -> reader.ReadF32(offset + 12) }
+  internal prop X1 float32{ get -> reader.ReadF32(offset + 16) }
+  internal prop Y1 float32{ get -> reader.ReadF32(offset + 20) }
 }
 
 internal struct CompiledVectorPaintView {
@@ -172,20 +172,20 @@ internal struct CompiledVectorPaintView {
   }
 
   internal prop Kind CompiledVectorPaintKind{
-    get { return CompiledVectorPaintKind(reader.ReadU16(offset)) }
+    get -> CompiledVectorPaintKind(reader.ReadU16(offset))
   }
-  internal prop Flags uint32{ get { return uint32(reader.ReadU16(offset + 2)) } }
-  internal prop Color Color{ get { return reader.ReadColor(offset + 4) } }
-  internal prop Opacity float32{ get { return reader.ReadF32(offset + 8) } }
-  internal prop X0 float32{ get { return reader.ReadF32(offset + 12) } }
-  internal prop Y0 float32{ get { return reader.ReadF32(offset + 16) } }
-  internal prop X1 float32{ get { return reader.ReadF32(offset + 20) } }
-  internal prop Y1 float32{ get { return reader.ReadF32(offset + 24) } }
-  internal prop TrackIndex uint32{ get { return reader.ReadU32(offset + 28) } }
-  internal prop StopStart uint32{ get { return reader.ReadU32(offset + 32) } }
-  internal prop StopCount uint32{ get { return reader.ReadU32(offset + 36) } }
-  internal prop HasTrack bool{ get { return TrackIndex != CompiledVectorLimits.MissingIndex } }
-  internal prop HasStops bool{ get { return StopCount != 0u } }
+  internal prop Flags uint32{ get -> uint32(reader.ReadU16(offset + 2)) }
+  internal prop Color Color{ get -> reader.ReadColor(offset + 4) }
+  internal prop Opacity float32{ get -> reader.ReadF32(offset + 8) }
+  internal prop X0 float32{ get -> reader.ReadF32(offset + 12) }
+  internal prop Y0 float32{ get -> reader.ReadF32(offset + 16) }
+  internal prop X1 float32{ get -> reader.ReadF32(offset + 20) }
+  internal prop Y1 float32{ get -> reader.ReadF32(offset + 24) }
+  internal prop TrackIndex uint32{ get -> reader.ReadU32(offset + 28) }
+  internal prop StopStart uint32{ get -> reader.ReadU32(offset + 32) }
+  internal prop StopCount uint32{ get -> reader.ReadU32(offset + 36) }
+  internal prop HasTrack bool{ get -> TrackIndex != CompiledVectorLimits.MissingIndex }
+  internal prop HasStops bool{ get -> StopCount != 0u }
 }
 
 internal struct CompiledVectorPaintStopView {
@@ -197,9 +197,9 @@ internal struct CompiledVectorPaintStopView {
     this.offset = offset
   }
 
-  internal prop Offset float32{ get { return reader.ReadF32(offset) } }
-  internal prop Color Color{ get { return reader.ReadColor(offset + 4) } }
-  internal prop Reserved uint32{ get { return reader.ReadU32(offset + 8) } }
+  internal prop Offset float32{ get -> reader.ReadF32(offset) }
+  internal prop Color Color{ get -> reader.ReadColor(offset + 4) }
+  internal prop Reserved uint32{ get -> reader.ReadU32(offset + 8) }
 }
 
 internal struct CompiledVectorStrokeView {
@@ -211,18 +211,18 @@ internal struct CompiledVectorStrokeView {
     this.offset = offset
   }
 
-  internal prop Width float32{ get { return reader.ReadF32(offset) } }
-  internal prop MiterLimit float32{ get { return reader.ReadF32(offset + 4) } }
-  internal prop Cap uint32{ get { return reader.ReadU32(offset + 8) } }
-  internal prop Join uint32{ get { return reader.ReadU32(offset + 12) } }
-  internal prop DashOffset float32{ get { return reader.ReadF32(offset + 16) } }
-  internal prop PaintIndex uint32{ get { return reader.ReadU32(offset + 20) } }
-  internal prop TrackIndex uint32{ get { return reader.ReadU32(offset + 24) } }
-  internal prop DashStart uint32{ get { return reader.ReadU32(offset + 28) } }
-  internal prop DashCount uint32{ get { return reader.ReadU32(offset + 32) } }
-  internal prop HasTrack bool{ get { return TrackIndex != CompiledVectorLimits.MissingIndex } }
-  internal prop HasPaint bool{ get { return PaintIndex != CompiledVectorLimits.MissingIndex } }
-  internal prop HasDashes bool{ get { return DashCount != 0u } }
+  internal prop Width float32{ get -> reader.ReadF32(offset) }
+  internal prop MiterLimit float32{ get -> reader.ReadF32(offset + 4) }
+  internal prop Cap uint32{ get -> reader.ReadU32(offset + 8) }
+  internal prop Join uint32{ get -> reader.ReadU32(offset + 12) }
+  internal prop DashOffset float32{ get -> reader.ReadF32(offset + 16) }
+  internal prop PaintIndex uint32{ get -> reader.ReadU32(offset + 20) }
+  internal prop TrackIndex uint32{ get -> reader.ReadU32(offset + 24) }
+  internal prop DashStart uint32{ get -> reader.ReadU32(offset + 28) }
+  internal prop DashCount uint32{ get -> reader.ReadU32(offset + 32) }
+  internal prop HasTrack bool{ get -> TrackIndex != CompiledVectorLimits.MissingIndex }
+  internal prop HasPaint bool{ get -> PaintIndex != CompiledVectorLimits.MissingIndex }
+  internal prop HasDashes bool{ get -> DashCount != 0u }
 }
 
 internal struct CompiledVectorClipView {
@@ -234,12 +234,12 @@ internal struct CompiledVectorClipView {
     this.offset = offset
   }
 
-  internal prop ContourStart uint32{ get { return reader.ReadU32(offset) } }
-  internal prop ContourCount uint32{ get { return reader.ReadU32(offset + 4) } }
-  internal prop FillRule uint32{ get { return reader.ReadU32(offset + 8) } }
-  internal prop ParentClipIndex uint32{ get { return reader.ReadU32(offset + 12) } }
+  internal prop ContourStart uint32{ get -> reader.ReadU32(offset) }
+  internal prop ContourCount uint32{ get -> reader.ReadU32(offset + 4) }
+  internal prop FillRule uint32{ get -> reader.ReadU32(offset + 8) }
+  internal prop ParentClipIndex uint32{ get -> reader.ReadU32(offset + 12) }
   internal prop HasParentClip bool{
-    get { return ParentClipIndex != CompiledVectorLimits.MissingIndex }
+    get -> ParentClipIndex != CompiledVectorLimits.MissingIndex
   }
 }
 
@@ -253,16 +253,16 @@ internal struct CompiledVectorTrackView {
   }
 
   internal prop Kind CompiledVectorTrackKind{
-    get { return CompiledVectorTrackKind(reader.ReadU16(offset)) }
+    get -> CompiledVectorTrackKind(reader.ReadU16(offset))
   }
   internal prop ValueKind CompiledVectorValueKind{
-    get { return CompiledVectorValueKind(reader.ReadU16(offset + 2)) }
+    get -> CompiledVectorValueKind(reader.ReadU16(offset + 2))
   }
-  internal prop KeyframeStart uint32{ get { return reader.ReadU32(offset + 4) } }
-  internal prop KeyframeCount uint32{ get { return reader.ReadU32(offset + 8) } }
-  internal prop Duration float32{ get { return reader.ReadF32(offset + 12) } }
-  internal prop Flags uint32{ get { return reader.ReadU32(offset + 16) } }
-  internal prop Reserved uint32{ get { return reader.ReadU32(offset + 20) } }
+  internal prop KeyframeStart uint32{ get -> reader.ReadU32(offset + 4) }
+  internal prop KeyframeCount uint32{ get -> reader.ReadU32(offset + 8) }
+  internal prop Duration float32{ get -> reader.ReadF32(offset + 12) }
+  internal prop Flags uint32{ get -> reader.ReadU32(offset + 16) }
+  internal prop Reserved uint32{ get -> reader.ReadU32(offset + 20) }
 }
 
 internal struct CompiledVectorKeyframeView {
@@ -274,18 +274,18 @@ internal struct CompiledVectorKeyframeView {
     this.offset = offset
   }
 
-  internal prop Time float32{ get { return reader.ReadF32(offset) } }
-  internal prop A float32{ get { return reader.ReadF32(offset + 4) } }
-  internal prop B float32{ get { return reader.ReadF32(offset + 8) } }
-  internal prop C float32{ get { return reader.ReadF32(offset + 12) } }
-  internal prop D float32{ get { return reader.ReadF32(offset + 16) } }
-  internal prop E float32{ get { return reader.ReadF32(offset + 20) } }
-  internal prop F float32{ get { return reader.ReadF32(offset + 24) } }
-  internal prop Easing uint32{ get { return reader.ReadU32(offset + 28) } }
-  internal prop ControlA float32{ get { return reader.ReadF32(offset + 32) } }
-  internal prop ControlB float32{ get { return reader.ReadF32(offset + 36) } }
-  internal prop ControlC float32{ get { return reader.ReadF32(offset + 40) } }
-  internal prop ControlD float32{ get { return reader.ReadF32(offset + 44) } }
+  internal prop Time float32{ get -> reader.ReadF32(offset) }
+  internal prop A float32{ get -> reader.ReadF32(offset + 4) }
+  internal prop B float32{ get -> reader.ReadF32(offset + 8) }
+  internal prop C float32{ get -> reader.ReadF32(offset + 12) }
+  internal prop D float32{ get -> reader.ReadF32(offset + 16) }
+  internal prop E float32{ get -> reader.ReadF32(offset + 20) }
+  internal prop F float32{ get -> reader.ReadF32(offset + 24) }
+  internal prop Easing uint32{ get -> reader.ReadU32(offset + 28) }
+  internal prop ControlA float32{ get -> reader.ReadF32(offset + 32) }
+  internal prop ControlB float32{ get -> reader.ReadF32(offset + 36) }
+  internal prop ControlC float32{ get -> reader.ReadF32(offset + 40) }
+  internal prop ControlD float32{ get -> reader.ReadF32(offset + 44) }
 }
 
 internal struct CompiledVectorMorphKeyframeView {
@@ -297,14 +297,14 @@ internal struct CompiledVectorMorphKeyframeView {
     this.offset = offset
   }
 
-  internal prop Time float32{ get { return reader.ReadF32(offset) } }
-  internal prop TargetCurveStart uint32{ get { return reader.ReadU32(offset + 4) } }
-  internal prop TargetCurveCount uint32{ get { return reader.ReadU32(offset + 8) } }
-  internal prop Easing uint32{ get { return reader.ReadU32(offset + 28) } }
-  internal prop ControlA float32{ get { return reader.ReadF32(offset + 32) } }
-  internal prop ControlB float32{ get { return reader.ReadF32(offset + 36) } }
-  internal prop ControlC float32{ get { return reader.ReadF32(offset + 40) } }
-  internal prop ControlD float32{ get { return reader.ReadF32(offset + 44) } }
+  internal prop Time float32{ get -> reader.ReadF32(offset) }
+  internal prop TargetCurveStart uint32{ get -> reader.ReadU32(offset + 4) }
+  internal prop TargetCurveCount uint32{ get -> reader.ReadU32(offset + 8) }
+  internal prop Easing uint32{ get -> reader.ReadU32(offset + 28) }
+  internal prop ControlA float32{ get -> reader.ReadF32(offset + 32) }
+  internal prop ControlB float32{ get -> reader.ReadF32(offset + 36) }
+  internal prop ControlC float32{ get -> reader.ReadF32(offset + 40) }
+  internal prop ControlD float32{ get -> reader.ReadF32(offset + 44) }
 }
 
 internal class CompiledVectorLimits {

@@ -50,18 +50,18 @@ internal unsafe partial class VulkanTextAtlas : IDisposable {
   private var flushPrepared bool
   private var disposed bool
 
-  internal prop ByteSize VkDeviceSize{ get { return byteSize } }
-  internal prop TexelCount VkDeviceSize{ get { return byteSize / AtlasTexelBytes } }
-  internal prop Buffer VkBuffer{ get { return atlasBuffer } }
-  internal prop BufferView VkBufferView{ get { return atlasBufferView } }
-  internal prop DescriptorSetLayout VkDescriptorSetLayout{ get { return descriptorSetLayout } }
-  internal prop DescriptorSet VkDescriptorSet{ get { return descriptorSet } }
-  internal prop UploadPending bool{ get { return uploadPending } }
-  internal prop IsUploaded bool{ get { return uploaded } }
-  internal prop UploadByteOffset VkDeviceSize{ get { return uploadByteOffset } }
-  internal prop UploadByteCount VkDeviceSize{ get { return uploadByteCount } }
-  internal prop UploadSequence uint64{ get { return uploadSequence } }
-  internal prop CompletedUploadSequence uint64{ get { return completedUploadSequence } }
+  internal prop ByteSize VkDeviceSize{ get -> byteSize }
+  internal prop TexelCount VkDeviceSize{ get -> byteSize / AtlasTexelBytes }
+  internal prop Buffer VkBuffer{ get -> atlasBuffer }
+  internal prop BufferView VkBufferView{ get -> atlasBufferView }
+  internal prop DescriptorSetLayout VkDescriptorSetLayout{ get -> descriptorSetLayout }
+  internal prop DescriptorSet VkDescriptorSet{ get -> descriptorSet }
+  internal prop UploadPending bool{ get -> uploadPending }
+  internal prop IsUploaded bool{ get -> uploaded }
+  internal prop UploadByteOffset VkDeviceSize{ get -> uploadByteOffset }
+  internal prop UploadByteCount VkDeviceSize{ get -> uploadByteCount }
+  internal prop UploadSequence uint64{ get -> uploadSequence }
+  internal prop CompletedUploadSequence uint64{ get -> completedUploadSequence }
   internal prop Stats VulkanTextAtlasStats{
     get {
       return VulkanTextAtlasStats{

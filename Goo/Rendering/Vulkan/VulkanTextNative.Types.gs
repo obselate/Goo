@@ -220,13 +220,13 @@ internal sealed class VulkanTextProviderWorkspace {
   private var glyphScale int32
   private var glyphPalette uint32
 
-  internal prop ByteBuffer []uint8{ get { return byteBuffer } }
-  internal prop ByteCapacity int32{ get { return byteBuffer.Length } }
-  internal prop ByteCount int32{ get { return byteCount } }
-  internal prop RequiredByteCount int32{ get { return requiredByteCount } }
-  internal prop GlyphExtents VulkanTextGlyphExtents{ get { return glyphExtents } }
-  internal prop GlyphScale int32{ get { return glyphScale } }
-  internal prop GlyphPalette uint32{ get { return glyphPalette } }
+  internal prop ByteBuffer []uint8{ get -> byteBuffer }
+  internal prop ByteCapacity int32{ get -> byteBuffer.Length }
+  internal prop ByteCount int32{ get -> byteCount }
+  internal prop RequiredByteCount int32{ get -> requiredByteCount }
+  internal prop GlyphExtents VulkanTextGlyphExtents{ get -> glyphExtents }
+  internal prop GlyphScale int32{ get -> glyphScale }
+  internal prop GlyphPalette uint32{ get -> glyphPalette }
 
   internal init(bytes []uint8) {
     if bytes.Length > MaxByteCapacity {
@@ -265,9 +265,9 @@ internal sealed class VulkanTextShapingWorkspace {
   private let glyphBuffer []VulkanTextGlyph
   private var glyphCount int32
 
-  internal prop GlyphBuffer []VulkanTextGlyph{ get { return glyphBuffer } }
-  internal prop GlyphCapacity int32{ get { return glyphBuffer.Length } }
-  internal prop GlyphCount int32{ get { return glyphCount } }
+  internal prop GlyphBuffer []VulkanTextGlyph{ get -> glyphBuffer }
+  internal prop GlyphCapacity int32{ get -> glyphBuffer.Length }
+  internal prop GlyphCount int32{ get -> glyphCount }
 
   internal init(capacity int32) {
     if capacity < 0 || capacity > MaxGlyphCapacity {

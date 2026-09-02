@@ -103,15 +103,15 @@ internal sealed class VulkanReadbackResult {
   private let generation uint64
   private let submissionSerial uint64
 
-  internal prop Width uint32{ get { return width } }
-  internal prop Height uint32{ get { return height } }
-  internal prop RowBytes uint32{ get { return rowBytes } }
-  internal prop Format VkFormat{ get { return format } }
-  internal prop Generation uint64{ get { return generation } }
-  internal prop SubmissionSerial uint64{ get { return submissionSerial } }
-  internal prop Premultiplied bool{ get { return true } }
-  internal prop OriginBottomLeft bool{ get { return false } }
-  internal prop SrgbEncoded bool{ get { return true } }
+  internal prop Width uint32{ get -> width }
+  internal prop Height uint32{ get -> height }
+  internal prop RowBytes uint32{ get -> rowBytes }
+  internal prop Format VkFormat{ get -> format }
+  internal prop Generation uint64{ get -> generation }
+  internal prop SubmissionSerial uint64{ get -> submissionSerial }
+  internal prop Premultiplied bool{ get -> true }
+  internal prop OriginBottomLeft bool{ get -> false }
+  internal prop SrgbEncoded bool{ get -> true }
   internal prop Pixels []uint8{
     get {
       let copy = [pixels.Length]uint8

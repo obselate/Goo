@@ -29,6 +29,7 @@ internal struct PackedPrimitiveColor {
 internal unsafe class VulkanPrimitiveRenderer : IDisposable {
   private const DefaultClipDepth int32 = 64
   private const MaxGradientStops int32 = 4
+  private const PrimitiveClipDrawOrdinalWord int32 = 7
   private const PrimitiveRecordSize VkDeviceSize = 128uL
   private const PrimitiveRecordCapacity uint32 = 1024u
   private const PrimitiveBufferSize VkDeviceSize = 131072uL
@@ -66,7 +67,7 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
   private var activeExtent VkExtent2D
   private var disposed bool
 
-  internal prop ClipCapacity int32{ get { return clipStack.Length } }
+  internal prop ClipCapacity int32{ get -> clipStack.Length }
   internal prop LiveObjectCount uint32{
     get {
       var count uint32 = 4u
@@ -1336,6 +1337,8 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
       imageResources!!.BindDescriptor(commandBuffer, pipelineLayout, value.ImageId,
         value.SamplerId, samplerMode, resourceGeneration)
       clipChain!!.BindDescriptor(commandBuffer, pipelineLayout)
+      let primitiveWords = *uint32(nint(&push))
+      primitiveWords[PrimitiveClipDrawOrdinalWord] = currentDrawOrdinal
       let recordIndex = UploadPrimitiveRecord(*void(&push))
       BindPrimitiveDescriptor(commandBuffer, pipelineLayout)
       if activePipeline != sampledPipeline {
@@ -1347,7 +1350,7 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
       if uint64(recordIndex) > uint64(uint32.MaxValue) / 4uL {
         throw ArgumentOutOfRangeException("recordIndex")
       }
-      draw(commandBuffer, 4u, 1u, recordIndex * 4u, currentDrawOrdinal)
+      draw(commandBuffer, 4u, 1u, recordIndex * 4u, 0u)
     }
 
   private func EmitText(
@@ -1677,6 +1680,8 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
   }
 
   private func BindAndDraw(commandBuffer VkCommandBuffer, pipeline VkPipeline, pushData * void) {
+    let primitiveWords = *uint32(nint(pushData))
+    primitiveWords[PrimitiveClipDrawOrdinalWord] = currentDrawOrdinal
     let recordIndex = UploadPrimitiveRecord(pushData)
     if activePipeline != pipeline {
       let bindPipeline = dispatch.vkCmdBindPipeline
@@ -1689,7 +1694,7 @@ internal unsafe class VulkanPrimitiveRenderer : IDisposable {
     if uint64(recordIndex) > uint64(uint32.MaxValue) / 4uL {
       throw ArgumentOutOfRangeException("recordIndex")
     }
-    draw(commandBuffer, 4u, 1u, recordIndex * 4u, currentDrawOrdinal)
+    draw(commandBuffer, 4u, 1u, recordIndex * 4u, 0u)
   }
 
   private func PushClip(commandBuffer VkCommandBuffer, clip PrimitiveClip) {

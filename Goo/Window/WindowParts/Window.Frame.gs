@@ -78,10 +78,10 @@ public partial class Window {
   private func markReconcilePending() bool -> Interlocked.Exchange(&pendingRebuild, 1) == 0
 
   private func submitCell(cell Cell) {
-    let generation = cell.TryQueue(this)
+    let generation = cell.TryQueueCanonical(this, out var queueRoot)
     if generation != 0 {
       lock cellQueueGate {
-        let submission = DirtyCellSubmission{ Cell: cell, Generation: generation }
+        let submission = DirtyCellSubmission{ Cell: queueRoot, Generation: generation }
         if cellTransactionActive {
           deferredCells.Add(submission)
         } else {
@@ -428,9 +428,6 @@ public partial class Window {
   }
 
   private func addFiber(fiber Cell) {
-    if fiberBatch.Contains(fiber) {
-      return
-    }
     fiberBatch.Add(fiber)
   }
 

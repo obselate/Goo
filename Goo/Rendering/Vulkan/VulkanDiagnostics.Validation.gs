@@ -22,7 +22,7 @@ internal unsafe class VulkanDiagnosticsValidation {
     }
   }
 
-  internal prop Callback VulkanDiagnosticsValidationCallback{ get { return callback } }
+  internal prop Callback VulkanDiagnosticsValidationCallback{ get -> callback }
 
   private init(diagnostics VulkanDiagnostics) {
     this.diagnostics = diagnostics

@@ -21,7 +21,7 @@ public struct PanelTransform : IEquatable[PanelTransform] {
       let value = normalizeTransformTranslation(translateX, "TranslateX")
       return value.Unit == LengthUnit.Unset ? Length{ Unit: LengthUnit.Px } : value
     }
-    init{ translateX = normalizeTransformTranslation(value, "TranslateX") }
+    init -> translateX = normalizeTransformTranslation(value, "TranslateX")
   }
 
   /// Gets or sets the vertical pixel or percentage translation.
@@ -31,44 +31,44 @@ public struct PanelTransform : IEquatable[PanelTransform] {
       let value = normalizeTransformTranslation(translateY, "TranslateY")
       return value.Unit == LengthUnit.Unset ? Length{ Unit: LengthUnit.Px } : value
     }
-    init{ translateY = normalizeTransformTranslation(value, "TranslateY") }
+    init -> translateY = normalizeTransformTranslation(value, "TranslateY")
   }
 
   /// Gets or sets clockwise rotation in degrees.
   /// Authored turns are preserved for interpolation.
   public prop Rotate float64{
-    get { return float64(rotate) }
-    init{ rotate = normalizeTransformRotation(value) }
+    get -> float64(rotate)
+    init -> rotate = normalizeTransformRotation(value)
   }
 
   /// Gets or sets uniform scale. The default is 1.
   public prop Scale float64{
-    get { return float64(scaleOffset + 1.0F) }
-    init{ scaleOffset = checkedTransformScalar(value, "Scale") - 1.0F }
+    get -> float64(scaleOffset + 1.0F)
+    init -> scaleOffset = checkedTransformScalar(value, "Scale") - 1.0F
   }
 
   /// Gets or sets horizontal scale. It multiplies with Scale. The default is 1.
   public prop ScaleX float64{
-    get { return float64(scaleXOffset + 1.0F) }
-    init{ scaleXOffset = checkedTransformScalar(value, "ScaleX") - 1.0F }
+    get -> float64(scaleXOffset + 1.0F)
+    init -> scaleXOffset = checkedTransformScalar(value, "ScaleX") - 1.0F
   }
 
   /// Gets or sets vertical scale. It multiplies with Scale. The default is 1.
   public prop ScaleY float64{
-    get { return float64(scaleYOffset + 1.0F) }
-    init{ scaleYOffset = checkedTransformScalar(value, "ScaleY") - 1.0F }
+    get -> float64(scaleYOffset + 1.0F)
+    init -> scaleYOffset = checkedTransformScalar(value, "ScaleY") - 1.0F
   }
 
   /// Gets or sets the horizontal skew angle in degrees.
   public prop SkewX float64{
-    get { return float64(skewX) }
-    init{ skewX = checkedTransformScalar(value, "SkewX") }
+    get -> float64(skewX)
+    init -> skewX = checkedTransformScalar(value, "SkewX")
   }
 
   /// Gets or sets the vertical skew angle in degrees.
   public prop SkewY float64{
-    get { return float64(skewY) }
-    init{ skewY = checkedTransformScalar(value, "SkewY") }
+    get -> float64(skewY)
+    init -> skewY = checkedTransformScalar(value, "SkewY")
   }
 
   /// Tests whether another transform has the same normalized components.

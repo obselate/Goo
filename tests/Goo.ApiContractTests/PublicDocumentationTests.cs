@@ -37,6 +37,7 @@ public sealed class PublicDocumentationTests
         "M:Goo.Cell.Animate(System.Double)",
         "M:Goo.Cell.Animate``1(``0,Goo.MotionConverter{``0})",
         "M:Goo.Cell.Build",
+        "M:Goo.Cell`1.Build(`0)",
         "M:Goo.Cell.MountSeeded``1(System.String,System.Action{``0},System.Action{``0})",
         "M:Goo.Cell.Mount``1(System.String)",
         "M:Goo.Cell.Mount``1(System.String,System.Action{``0})",
@@ -274,6 +275,7 @@ public sealed class PublicDocumentationTests
             ["M:Goo.Cell.Animate(System.Double)"] = new(["initial"], [], true),
             ["M:Goo.Cell.Animate``1(``0,Goo.MotionConverter{``0})"] = new(["initial", "converter"], ["T"], true),
             ["M:Goo.Cell.Build"] = new([], [], true),
+            ["M:Goo.Cell`1.Build(`0)"] = new(["input"], [], true),
             ["M:Goo.Cell.Mount``1(System.String)"] = new(["key"], ["TCell"], true),
             ["M:Goo.Cell.Mount``1(System.String,System.Action{``0})"] = new(["key", "configure"], ["TCell"], true),
             ["M:Goo.Cell.Mount``2(System.String,``0)"] = new(["key", "input"], ["TInput", "TCell"], true),
@@ -488,6 +490,30 @@ public sealed class PublicDocumentationTests
             shapes, StringComparison.Ordinal);
         Assert.Contains("Sets every box border width or the uniform Shape stroke width.",
             style, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ApiReferenceDocumentsStyleCompositionAndGradientClearing()
+    {
+        var style = ReadApiPage("style.md");
+
+        Assert.Contains("copies another style's ordered declarations at its exact declaration position",
+            style, StringComparison.Ordinal);
+        Assert.Contains("`BackgroundGradient: nil` is an explicit clear declaration",
+            style, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ApiReferenceDocumentsKeyboardAndFocusRouting()
+    {
+        var input = ReadApiPage("input.md");
+
+        Assert.Contains("start at the currently focused element and bubble through its parents",
+            input, StringComparison.Ordinal);
+        Assert.Contains("updates the old and new `Focused` states first",
+            input, StringComparison.Ordinal);
+        Assert.Contains("depth-first tree order and wrap at the ends",
+            input, StringComparison.Ordinal);
     }
 
     [Fact]

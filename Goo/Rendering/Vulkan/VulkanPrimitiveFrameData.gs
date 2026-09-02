@@ -330,13 +330,13 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
   private var totalRetainedReuse uint64
   private var disposed bool
 
-  internal prop PreparedSlot int32{ get { return preparedSlot } }
-  internal prop PreparedBytes VkDeviceSize{ get { return preparedBytes } }
-  internal prop PreparedRecordCount int32{ get { return preparedRecords } }
+  internal prop PreparedSlot int32{ get -> preparedSlot }
+  internal prop PreparedBytes VkDeviceSize{ get -> preparedBytes }
+  internal prop PreparedRecordCount int32{ get -> preparedRecords }
   internal prop EffectDataWordOffset uint32{
     get -> uint32(preparedRecordRegionBytes / 4uL)
   }
-  internal prop LastStats VulkanPrimitiveFrameStats{ get { return lastStats } }
+  internal prop LastStats VulkanPrimitiveFrameStats{ get -> lastStats }
   internal prop Totals VulkanPrimitiveFrameStats{
     get {
       return VulkanPrimitiveFrameStats{

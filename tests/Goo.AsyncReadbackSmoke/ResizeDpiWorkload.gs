@@ -36,23 +36,23 @@ class PerformanceResizeDpiRoot : Cell {
   private var marker int32
   private var revision int32
 
-  prop Seed uint64 { get { return seed } }
-  prop Root Cell { get { return this } }
-  prop LogicalCount int64 { get { return int64(PerformanceResizeDpiLeafCount) } }
-  prop LogicalEdges int32 { get { return 0 } }
-  prop VisibleEdges int32 { get { return 0 } }
-  prop VisibleCount int32 { get { return PerformanceResizeDpiLeafCount } }
-  prop MountedCount int32 { get { return PerformanceResizeDpiLeafCount } }
-  prop MountedBound int32 { get { return PerformanceResizeDpiLeafCount } }
-  prop Width int32 { get { return logicalWidth } }
-  prop Height int32 { get { return logicalHeight } }
-  prop MutationCount int32 { get { return 1 } }
-  prop StateIndex int32 { get { return stateIndex } }
-  prop Scale float64 { get { return scale } }
-  prop FramebufferWidth int32 { get { return framebufferWidth } }
-  prop FramebufferHeight int32 { get { return framebufferHeight } }
-  prop Marker int32 { get { return marker } }
-  prop Revision int32 { get { return revision } }
+  prop Seed uint64 { get -> seed }
+  prop Root Cell { get -> this }
+  prop LogicalCount int64 { get -> int64(PerformanceResizeDpiLeafCount) }
+  prop LogicalEdges int32 { get -> 0 }
+  prop VisibleEdges int32 { get -> 0 }
+  prop VisibleCount int32 { get -> PerformanceResizeDpiLeafCount }
+  prop MountedCount int32 { get -> PerformanceResizeDpiLeafCount }
+  prop MountedBound int32 { get -> PerformanceResizeDpiLeafCount }
+  prop Width int32 { get -> logicalWidth }
+  prop Height int32 { get -> logicalHeight }
+  prop MutationCount int32 { get -> 1 }
+  prop StateIndex int32 { get -> stateIndex }
+  prop Scale float64 { get -> scale }
+  prop FramebufferWidth int32 { get -> framebufferWidth }
+  prop FramebufferHeight int32 { get -> framebufferHeight }
+  prop Marker int32 { get -> marker }
+  prop Revision int32 { get -> revision }
 
   init(initialSeed uint64) {
     seed = initialSeed

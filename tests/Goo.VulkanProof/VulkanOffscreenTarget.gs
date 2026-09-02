@@ -36,16 +36,16 @@ internal unsafe class VulkanOffscreenTarget : IDisposable {
   private var lastRecordAllocatedBytes int64
   private var disposed bool
 
-  internal prop Image VkImage{ get { return image } }
-  internal prop ImageView VkImageView{ get { return imageView } }
-  internal prop StagingBuffer VkBuffer{ get { return stagingBuffer } }
-  internal prop CompletionFence VkFence{ get { return completionFence } }
-  internal prop Extent VkExtent2D{ get { return extent } }
-  internal prop ByteSize VkDeviceSize{ get { return byteSize } }
-  internal prop Mode VulkanOffscreenMode{ get { return mode } }
-  internal prop TargetFormat VkFormat{ get { return targetFormat } }
-  internal prop LastRecordAllocatedBytes int64{ get { return lastRecordAllocatedBytes } }
-  internal prop ReadbackReady bool{ get { return readbackComplete } }
+  internal prop Image VkImage{ get -> image }
+  internal prop ImageView VkImageView{ get -> imageView }
+  internal prop StagingBuffer VkBuffer{ get -> stagingBuffer }
+  internal prop CompletionFence VkFence{ get -> completionFence }
+  internal prop Extent VkExtent2D{ get -> extent }
+  internal prop ByteSize VkDeviceSize{ get -> byteSize }
+  internal prop Mode VulkanOffscreenMode{ get -> mode }
+  internal prop TargetFormat VkFormat{ get -> targetFormat }
+  internal prop LastRecordAllocatedBytes int64{ get -> lastRecordAllocatedBytes }
+  internal prop ReadbackReady bool{ get -> readbackComplete }
   internal prop LiveObjectCount uint32{
     get {
       var count uint32 = 0u

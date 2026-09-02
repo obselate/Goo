@@ -127,17 +127,17 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
       allTimestampSink = sink
     }
 
-  internal prop TimestampFrameSlotCountValue int32{ get { return TimestampFrameSlotCount } }
-  internal prop TimestampStageCountValue int32{ get { return TimestampStageCount } }
-  internal prop TimestampScopesPerStageValue int32{ get { return TimestampScopesPerStage } }
-  internal prop TimestampQueryCountValue int32{ get { return TimestampQueryCount } }
-  internal prop TimestampQueryPool VkQueryPool{ get { return timestampPool } }
-  internal prop TimestampQueriesCreated bool{ get { return timestampPoolCreated } }
-  internal prop TimestampQueriesSupported bool{ get { return timestampSupported } }
-  internal prop TimestampComputeAndGraphicsSupported bool{ get { return timestampComputeAndGraphics } }
-  internal prop TimestampValidBits uint32{ get { return timestampValidBits } }
-  internal prop TimestampPeriod float32{ get { return timestampPeriod } }
-  internal prop TimestampLastResult VkResult{ get { return timestampLastResult } }
+  internal prop TimestampFrameSlotCountValue int32{ get -> TimestampFrameSlotCount }
+  internal prop TimestampStageCountValue int32{ get -> TimestampStageCount }
+  internal prop TimestampScopesPerStageValue int32{ get -> TimestampScopesPerStage }
+  internal prop TimestampQueryCountValue int32{ get -> TimestampQueryCount }
+  internal prop TimestampQueryPool VkQueryPool{ get -> timestampPool }
+  internal prop TimestampQueriesCreated bool{ get -> timestampPoolCreated }
+  internal prop TimestampQueriesSupported bool{ get -> timestampSupported }
+  internal prop TimestampComputeAndGraphicsSupported bool{ get -> timestampComputeAndGraphics }
+  internal prop TimestampValidBits uint32{ get -> timestampValidBits }
+  internal prop TimestampPeriod float32{ get -> timestampPeriod }
+  internal prop TimestampLastResult VkResult{ get -> timestampLastResult }
 
   internal func CreateTimestampQueryPool(nativeDevice VkDevice, nativeDispatch VkDeviceDispatch,
     validBits uint32, period float32, computeAndGraphics VkBool32) VkResult{

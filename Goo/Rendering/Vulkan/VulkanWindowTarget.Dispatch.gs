@@ -173,6 +173,15 @@ internal unsafe partial class VulkanWindowTarget {
     let destroyPipelineLayout = ResolveDeviceProc("vkDestroyPipelineLayout") as (unmanaged[Cdecl](VkDevice, VkPipelineLayout, *VkAllocationCallbacks) -> void)?
     if destroyPipelineLayout == nil { throw InvalidOperationException("vkDestroyPipelineLayout is unavailable") }
     dispatch.vkDestroyPipelineLayout = destroyPipelineLayout!!
+    let createPipelineCache = ResolveDeviceProc("vkCreatePipelineCache") as (unmanaged[Cdecl](VkDevice, *VkPipelineCacheCreateInfo, *VkAllocationCallbacks, *VkPipelineCache) -> VkResult)?
+    if createPipelineCache == nil { throw InvalidOperationException("vkCreatePipelineCache is unavailable") }
+    dispatch.vkCreatePipelineCache = createPipelineCache!!
+    let destroyPipelineCache = ResolveDeviceProc("vkDestroyPipelineCache") as (unmanaged[Cdecl](VkDevice, VkPipelineCache, *VkAllocationCallbacks) -> void)?
+    if destroyPipelineCache == nil { throw InvalidOperationException("vkDestroyPipelineCache is unavailable") }
+    dispatch.vkDestroyPipelineCache = destroyPipelineCache!!
+    let getPipelineCacheData = ResolveDeviceProc("vkGetPipelineCacheData") as (unmanaged[Cdecl](VkDevice, VkPipelineCache, *nuint, *void) -> VkResult)?
+    if getPipelineCacheData == nil { throw InvalidOperationException("vkGetPipelineCacheData is unavailable") }
+    dispatch.vkGetPipelineCacheData = getPipelineCacheData!!
     let createGraphicsPipelines = ResolveDeviceProc("vkCreateGraphicsPipelines") as (unmanaged[Cdecl](VkDevice, VkPipelineCache, uint32, *VkGraphicsPipelineCreateInfo, *VkAllocationCallbacks, *VkPipeline) -> VkResult)?
     if createGraphicsPipelines == nil { throw InvalidOperationException("vkCreateGraphicsPipelines is unavailable") }
     dispatch.vkCreateGraphicsPipelines = createGraphicsPipelines!!

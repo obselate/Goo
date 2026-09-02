@@ -12,6 +12,7 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
   private const ShaderEffectCapacity int32 = 32
   private let device VkDevice
   private let dispatch VkDeviceDispatch
+  private let pipelineCache VulkanPipelineCache
   private let format VkFormat
   private let objectAccounting VulkanObjectAccounting?
   private let pipelineLayout VkPipelineLayout
@@ -48,11 +49,11 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
   private var textPaintPipeline VkPipeline
   private var disposed bool
 
-  internal prop Format VkFormat{ get { return format } }
-  internal prop PipelineLayout VkPipelineLayout{ get { return pipelineLayout } }
-  internal prop BlendPipelineLayout VkPipelineLayout{ get { return blendPipelineLayout } }
-  internal prop PathPipelineLayout VkPipelineLayout{ get { return pathPipelineLayout } }
-  internal prop TextPipelineLayout VkPipelineLayout{ get { return textPipelineLayout } }
+  internal prop Format VkFormat{ get -> format }
+  internal prop PipelineLayout VkPipelineLayout{ get -> pipelineLayout }
+  internal prop BlendPipelineLayout VkPipelineLayout{ get -> blendPipelineLayout }
+  internal prop PathPipelineLayout VkPipelineLayout{ get -> pathPipelineLayout }
+  internal prop TextPipelineLayout VkPipelineLayout{ get -> textPipelineLayout }
   internal prop SolidPipeline VkPipeline{
     get {
       return ResolvePipeline(ref solidPipeline, analyticVertexModule, solidModule,
@@ -141,6 +142,7 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
   internal init(
     nativeDevice VkDevice,
     nativeDispatch VkDeviceDispatch,
+    nativePipelineCache VulkanPipelineCache,
     targetFormat VkFormat,
     nativePipelineLayout VkPipelineLayout,
     nativePathPipelineLayout VkPipelineLayout,
@@ -163,6 +165,9 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
     nativeObjectAccounting VulkanObjectAccounting?) {
       if nativeDevice == nint(0) {
         throw ArgumentException("Vulkan device is null", "nativeDevice")
+      }
+      if nativePipelineCache == nil {
+        throw ArgumentNullException("nativePipelineCache")
       }
       if targetFormat != VkConstants.VK_FORMAT_R8G8B8A8_SRGB
         && targetFormat != VkConstants.VK_FORMAT_B8G8R8A8_SRGB{
@@ -194,6 +199,7 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
         }
       device = nativeDevice
       dispatch = nativeDispatch
+      pipelineCache = nativePipelineCache
       format = targetFormat
       objectAccounting = nativeObjectAccounting
       pipelineLayout = nativePipelineLayout
@@ -261,6 +267,7 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
           pipeline = VulkanPipelineFactory.CreateGraphics(
             device,
             dispatch,
+            pipelineCache,
             objectAccounting,
             vertex,
             fragment,
@@ -303,6 +310,7 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
       pipeline = VulkanPipelineFactory.CreateGraphics(
         device,
         dispatch,
+        pipelineCache,
         objectAccounting,
         analyticVertexModule,
         fragmentModule,
@@ -434,6 +442,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
   private const FormatCapacity int32 = 2
   private let device VkDevice
   private let dispatch VkDeviceDispatch
+  private let pipelineCache VulkanPipelineCache
   private let imageResources VulkanImageResources
   private let objectAccounting VulkanObjectAccounting?
   private let generation uint64
@@ -470,17 +479,17 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
   private var clipMaskRgba8Pipeline VkPipeline
   private var disposed bool
 
-  internal prop Generation uint64{ get { return generation } }
-  internal prop PipelineLayout VkPipelineLayout{ get { return pipelineLayout } }
-  internal prop PrimitiveDescriptorSetLayout VkDescriptorSetLayout{ get { return primitiveDescriptorSetLayout } }
+  internal prop Generation uint64{ get -> generation }
+  internal prop PipelineLayout VkPipelineLayout{ get -> pipelineLayout }
+  internal prop PrimitiveDescriptorSetLayout VkDescriptorSetLayout{ get -> primitiveDescriptorSetLayout }
   internal prop EffectDataDescriptorSetLayout VkDescriptorSetLayout{
     get -> effectDataDescriptorSetLayout
   }
-  internal prop PathDescriptorSetLayout VkDescriptorSetLayout{ get { return pathDescriptorSetLayout } }
-  internal prop PathPipelineLayout VkPipelineLayout{ get { return pathPipelineLayout } }
-  internal prop TextDescriptorSetLayout VkDescriptorSetLayout{ get { return textDescriptorSetLayout } }
-  internal prop ClipDescriptorSetLayout VkDescriptorSetLayout{ get { return clipDescriptorSetLayout } }
-  internal prop ClipMaskPipelineLayout VkPipelineLayout{ get { return clipMaskPipelineLayout } }
+  internal prop PathDescriptorSetLayout VkDescriptorSetLayout{ get -> pathDescriptorSetLayout }
+  internal prop PathPipelineLayout VkPipelineLayout{ get -> pathPipelineLayout }
+  internal prop TextDescriptorSetLayout VkDescriptorSetLayout{ get -> textDescriptorSetLayout }
+  internal prop ClipDescriptorSetLayout VkDescriptorSetLayout{ get -> clipDescriptorSetLayout }
+  internal prop ClipMaskPipelineLayout VkPipelineLayout{ get -> clipMaskPipelineLayout }
   internal prop ClipMaskR8Pipeline VkPipeline{
     get {
       return ResolveClipMaskPipeline(ref clipMaskR8Pipeline,
@@ -538,6 +547,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
   internal init(
     nativeDevice VkDevice,
     nativeDispatch VkDeviceDispatch,
+    nativePipelineCache VulkanPipelineCache,
     nativeImageResources VulkanImageResources,
     nativeGeneration uint64,
     createPipelinesEagerly bool,
@@ -548,11 +558,15 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
       if nativeImageResources == nil {
         throw ArgumentNullException("nativeImageResources")
       }
+      if nativePipelineCache == nil {
+        throw ArgumentNullException("nativePipelineCache")
+      }
       if nativeGeneration == 0uL || nativeImageResources.Generation != nativeGeneration {
         throw ArgumentOutOfRangeException("nativeGeneration")
       }
       device = nativeDevice
       dispatch = nativeDispatch
+      pipelineCache = nativePipelineCache
       imageResources = nativeImageResources
       objectAccounting = nativeObjectAccounting
       generation = nativeGeneration
@@ -628,6 +642,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
     let created = VulkanSharedPrimitiveFormatState(
       device,
       dispatch,
+      pipelineCache,
       targetFormat,
       pipelineLayout,
       pathPipelineLayout,
@@ -855,6 +870,7 @@ internal unsafe sealed class VulkanSharedPrimitiveState : IDisposable {
     return VulkanPipelineFactory.CreateGraphics(
       device,
       dispatch,
+      pipelineCache,
       objectAccounting,
       clipMaskVertexModule,
       clipMaskFragmentModule,

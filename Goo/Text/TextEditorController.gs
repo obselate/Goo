@@ -51,11 +51,11 @@ public class TextCommandEvent {
   }
 
   /// Gets the semantic command being dispatched.
-  public prop Command TextCommand{ get { return command } }
+  public prop Command TextCommand{ get -> command }
   /// Gets or sets whether Goo skips its default command behavior.
   public prop Cancel bool{
-    get { return cancel }
-    set(v) { cancel = v }
+    get -> cancel
+    set(v) -> cancel = v
   }
 }
 
@@ -110,27 +110,27 @@ public class TextEditorController : IDisposable {
   }
 
   /// Gets the document edited by this controller.
-  public prop Document TextDocument{ get { return document } }
+  public prop Document TextDocument{ get -> document }
   /// Gets or sets the current selection.
   public prop Selection TextSelection{
-    get { return selection }
-    set(v) { setSelection(v, true) }
+    get -> selection
+    set(v) -> setSelection(v, true)
   }
   /// Gets the desired horizontal caret position used by vertical movement.
   public prop DesiredHorizontalPosition float64? {
-    get { return hasDesiredHorizontalPosition ? desiredHorizontalPosition : nil }
+    get -> hasDesiredHorizontalPosition ? desiredHorizontalPosition : nil
   }
   /// Gets the horizontal scroll target in logical pixels.
-  public prop ScrollTargetX float64{ get { return scrollTargetX } }
+  public prop ScrollTargetX float64{ get -> scrollTargetX }
   /// Gets the vertical scroll target in logical pixels.
-  public prop ScrollTargetY float64{ get { return scrollTargetY } }
+  public prop ScrollTargetY float64{ get -> scrollTargetY }
   /// Gets whether this controller currently owns editor focus.
-  public prop IsFocused bool{ get { return focused } }
+  public prop IsFocused bool{ get -> focused }
   /// Gets the transient IME composition, or nil when none is active.
-  public prop Composition TextComposition? { get { return composition } }
+  public prop Composition TextComposition? { get -> composition }
   /// Gets or sets whether typed text overwrites following grapheme clusters.
   public prop Overwrite bool{
-    get { return overwrite }
+    get -> overwrite
     set(v) {
       if overwrite != v {
         overwrite = v
@@ -141,13 +141,13 @@ public class TextEditorController : IDisposable {
   }
   /// Gets or sets the interceptor called before every semantic command.
   public prop OnCommand Action[TextCommandEvent]? {
-    get { return onCommand }
-    set(v) { onCommand = v }
+    get -> onCommand
+    set(v) -> onCommand = v
   }
   /// Gets or sets the callback invoked by an accepted submit command.
   public prop OnSubmit Action? {
-    get { return onSubmit }
-    set(v) { onSubmit = v }
+    get -> onSubmit
+    set(v) -> onSubmit = v
   }
 
   /// Dispatches and performs a semantic text-editor command.

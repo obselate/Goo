@@ -19,7 +19,7 @@ internal data struct VulkanClipMaskFormatSupport {
 internal data struct VulkanClipMaskAtlasKey {
   var Value uint64
 
-  internal prop IsValid bool{ get { return Value != 0uL } }
+  internal prop IsValid bool{ get -> Value != 0uL }
 }
 
 internal data struct VulkanClipMaskMapping {

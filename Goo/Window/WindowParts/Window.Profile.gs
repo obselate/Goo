@@ -54,11 +54,11 @@ internal class FrameProfiler {
     }
   }
 
-  internal prop Enabled bool{ get { return enabled } }
+  internal prop Enabled bool{ get -> enabled }
 
   internal prop Sink FrameProfileSink? {
-    get { return sink }
-    set { sink = value }
+    get -> sink
+    set -> sink = value
   }
 
   internal init() {

@@ -142,8 +142,8 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     }
   }
 
-  internal prop LastFrameSubmitted bool{ get { return lastFrameSubmitted } }
-  internal prop QueueWorkPending bool{ get { return queueStage != QueueStageIdle } }
+  internal prop LastFrameSubmitted bool{ get -> lastFrameSubmitted }
+  internal prop QueueWorkPending bool{ get -> queueStage != QueueStageIdle }
 
   internal func PrepareClose() bool {
     PollQueueCompletion()

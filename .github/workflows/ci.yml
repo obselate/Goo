@@ -8,16 +8,19 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
-  GOO_VERSION: 0.4.0
 
 jobs:
-  linux-x64:
+  quality:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v7
@@ -27,7 +30,50 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Validate onboarding and release metadata
-        run: .github/scripts/validate-onboarding.py --version "$GOO_VERSION"
+        run: .github/scripts/validate-onboarding.py
+
+      - name: Build repo-local G# linter
+        run: |
+          dotnet build tools/Goo.Gslint/Goo.Gslint.csproj \
+            -c Release -p:TreatWarningsAsErrors=true
+          dotnet format tools/Goo.Gslint/Goo.Gslint.csproj \
+            --verify-no-changes --no-restore
+
+      - name: Enforce strict G# lint
+        run: |
+          dotnet tools/Goo.Gslint/bin/Release/net10.0/Goo.Gslint.dll \
+            --strict \
+            --severity GL0005=none \
+            --severity GL0006=none \
+            .
+
+      - name: Build Goo with warnings as errors
+        run: dotnet build Goo/Goo.gsproj -c Release -p:TreatWarningsAsErrors=true
+
+      - name: Regenerate API documentation
+        run: |
+          dotnet run --project tools/Goo.ApiDocs/Goo.ApiDocs.csproj -c Release
+          git diff --exit-code -- docs/api
+
+      - name: Run focused API contract tests
+        run: |
+          dotnet test tests/Goo.ApiContractTests/Goo.ApiContractTests.csproj \
+            -c Release -p:TreatWarningsAsErrors=true
+
+  linux-x64:
+    needs: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Load release version
+        run: echo "GOO_VERSION=$(python3 .github/scripts/release_version.py --print)" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
 
       - name: Fetch pinned Slang compiler
         run: |
@@ -196,16 +242,6 @@ jobs:
             cat artifacts/reports/vulnerabilities.json
             exit 1
           fi
-
-      - name: Regenerate API documentation
-        run: |
-          dotnet run --project tools/Goo.ApiDocs/Goo.ApiDocs.csproj -c Release
-          git diff --exit-code -- docs/api
-
-      - name: Run focused API contract tests
-        run: |
-          dotnet test tests/Goo.ApiContractTests/Goo.ApiContractTests.csproj \
-            -c Release -p:TreatWarningsAsErrors=true
 
       - name: Run focused core behavior tests
         run: |
@@ -405,6 +441,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Load release version
+        run: echo "GOO_VERSION=$(python3 .github/scripts/release_version.py --print)" >> "$GITHUB_ENV"
+
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
@@ -414,11 +453,7 @@ jobs:
         run: |
           [[ "$GOO_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]
           test "$GITHUB_REF_NAME" = "v$GOO_VERSION"
-          grep -Fx "    <Version>$GOO_VERSION</Version>" Goo/Goo.gsproj
-          grep -Fx "    <Version>$GOO_VERSION</Version>" tools/Goo.SvgCompiler/Goo.SvgCompiler.csproj
-          grep -Fx "    <Version>$GOO_VERSION</Version>" tools/Goo.DevTools.Cli/Goo.DevTools.Cli.csproj
-          grep -Fx "    <Version>$GOO_VERSION</Version>" apps/Goo.DevTools/Goo.DevTools.gsproj
-          grep -Fx "    <Version>$GOO_VERSION</Version>" templates/Goo.Templates/Goo.Templates.csproj
+          python3 .github/scripts/release_version.py --check
           git fetch origin main --no-tags
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 

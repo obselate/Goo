@@ -6,7 +6,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>goo</ToolCommandName>
     <PackageId>Goo.DevTools</PackageId>
-    <Version>0.4.0</Version>
+    <Version>$(GooReleaseVersion)</Version>
     <Authors>Xaz</Authors>
     <Description>Local developer tooling for Goo applications.</Description>
     <PackageTags>goo;gsharp;devtools;hot-reload;inspector</PackageTags>

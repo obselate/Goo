@@ -112,6 +112,7 @@ internal unsafe class VulkanPipelineFactory {
     internal func CreateGraphics(
       device VkDevice,
       dispatch VkDeviceDispatch,
+      pipelineCache VulkanPipelineCache,
       objectAccounting VulkanObjectAccounting?,
       vertexModule VkShaderModule,
       fragmentModule VkShaderModule,
@@ -216,14 +217,7 @@ internal unsafe class VulkanPipelineFactory {
           var pipeline VkPipeline = 0uL
           var accounted bool = false
           try {
-            let createGraphicsPipelines = dispatch.vkCreateGraphicsPipelines
-            let result = createGraphicsPipelines(
-              device,
-              0uL,
-              1u,
-              &info,
-              nil,
-              &pipeline)
+            let result = pipelineCache.CreateGraphicsPipelines(1u, &info, &pipeline)
             if result != VkConstants.VK_SUCCESS || pipeline == 0uL {
               throw InvalidOperationException(
                 "vkCreateGraphicsPipelines failed: " + result.ToString())

@@ -10,8 +10,8 @@ internal unsafe sealed class VulkanMemoryBudgetState {
   private let heapUsages []VkDeviceSize
   private var available bool
 
-  internal prop Available bool{ get { return available } }
-  internal prop HeapCount uint32{ get { return heapCount } }
+  internal prop Available bool{ get -> available }
+  internal prop HeapCount uint32{ get -> heapCount }
 
   internal init(nativePhysicalDevice VkPhysicalDevice, nativeInstanceDispatch VkInstanceDispatch,
     nativeHeapCount uint32, nativeExtensionAvailable bool) {

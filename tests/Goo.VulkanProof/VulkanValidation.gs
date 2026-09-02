@@ -14,7 +14,7 @@ internal unsafe class VulkanValidation {
   private let callback VulkanValidationCallback
   private let diagnostics VulkanDiagnostics
 
-  internal prop Callback VulkanValidationCallback{ get { return callback } }
+  internal prop Callback VulkanValidationCallback{ get -> callback }
 
   internal init(diagnostics VulkanDiagnostics) {
     this.diagnostics = diagnostics

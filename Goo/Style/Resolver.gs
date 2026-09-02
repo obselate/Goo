@@ -5,8 +5,6 @@ import System.Collections.Generic
 import System.Runtime.CompilerServices
 import System.Threading
 
-internal enum FieldKind { KLength; KColor; KScalar; KEnum; KString; KGradient; KBoxShadows; KPath; KImageSource; KShaderEffect }
-
 internal data struct Transition {
   internal var Field StyleField
   internal var FromA float32
@@ -55,12 +53,6 @@ internal class Resolver {
 
     private func newStylePass() int64 -> Interlocked.Increment(&nextStylePass)
 
-    internal let inheritableFields []StyleField = []StyleField{
-      StyleField.Direction, StyleField.Color, StyleField.FontFamily, StyleField.FontSize,
-      StyleField.FontStyle, StyleField.FontWeight, StyleField.LetterSpacing, StyleField.LineHeight,
-      StyleField.TextAlign, StyleField.TextWrap, StyleField.TextDecoration, StyleField.TextTransform,
-      StyleField.TextShadows, StyleField.TextStrokeWidth, StyleField.TextStrokeColor, StyleField.Cursor }
-
     private let marginEdges []StyleField = []StyleField{
       StyleField.MarginLeft, StyleField.MarginTop, StyleField.MarginRight, StyleField.MarginBottom }
     private let paddingEdges []StyleField = []StyleField{
@@ -83,7 +75,7 @@ internal class Resolver {
   internal init() {
     Animating = List[Node]()
     pending = List[Node]()
-    inheritedScratch = [inheritableFields.Length]StyleEntry
+    inheritedScratch = [StyleFields.InheritableFields.Length]StyleEntry
   }
 
   internal func Invalidate(n Node, initial bool) {
@@ -182,13 +174,14 @@ internal class Resolver {
   }
 
   private func resolveNodeChanged(n Node, initial bool) StyleMask {
-    for i in 0 ... inheritableFields.Length {
-      inheritedScratch[i] = readField(n, inheritableFields[i])
+    for i in 0 ... StyleFields.InheritableFields.Length {
+      inheritedScratch[i] = readField(n, StyleFields.InheritableFields[i])
     }
     resolveNode(n, initial)
     var changed = StyleMask{}
-    for i in 0 ... inheritableFields.Length {
-      changed = changedField(changed, inheritedScratch[i], n, inheritableFields[i])
+    for i in 0 ... StyleFields.InheritableFields.Length {
+      changed = changedField(changed, inheritedScratch[i], n,
+        StyleFields.InheritableFields[i])
     }
     return changed
   }
@@ -229,7 +222,7 @@ internal class Resolver {
     let mask = styleMaskUnion(localMask, inheritedMask)
     let gone = styleMaskExcept(n.AppliedMask, mask)
     if !styleMaskEmpty(gone) {
-      for i in 0 ... int32(StyleField.ShaderEffect) + 1 {
+      for i in 0 ... StyleFields.Count {
         let f = StyleField(int32(i))
         if styleMaskHas(gone, f) {
           writeField(n, defaultStyleEntry(f), initial)
@@ -243,7 +236,7 @@ internal class Resolver {
   internal func applyInherited(n Node, localMask StyleMask, initial bool) StyleMask {
     guard let parent = n.Parent else { return StyleMask{} }
     var mask = StyleMask{}
-    for f in inheritableFields {
+    for f in StyleFields.InheritableFields {
       mask = inherit(n, parent, localMask, mask, f, initial)
     }
     return mask
@@ -612,23 +605,10 @@ internal class Resolver {
   else { PaintResourceInvalidated }
 }
 
-internal func styleFieldApplies(n Node, f StyleField) bool {
-  if n.Kind != NodeKind.Shape {
-    return true
-  }
-  return f != StyleField.BorderLeftWidth && f != StyleField.BorderTopWidth
-    && f != StyleField.BorderRightWidth && f != StyleField.BorderBottomWidth
-    && f != StyleField.BorderLeftColor && f != StyleField.BorderTopColor
-    && f != StyleField.BorderRightColor && f != StyleField.BorderBottomColor
-    && f != StyleField.BorderStartWidth && f != StyleField.BorderEndWidth
-    && f != StyleField.BorderStartColor && f != StyleField.BorderEndColor
-}
+internal func styleFieldApplies(n Node, f StyleField) bool ->
+n.Kind != NodeKind.Shape || !StyleFields.Has(f, StyleFieldFlags.ShapeExcluded)
 
-internal func isLogicalStyleField(f StyleField) bool -> f == StyleField.MarginStart || f == StyleField.MarginEnd
-  || f == StyleField.PaddingStart || f == StyleField.PaddingEnd
-  || f == StyleField.Start || f == StyleField.End
-  || f == StyleField.BorderStartWidth || f == StyleField.BorderEndWidth
-  || f == StyleField.BorderStartColor || f == StyleField.BorderEndColor
+internal func isLogicalStyleField(f StyleField) bool -> StyleFields.Has(f, StyleFieldFlags.Logical)
 
 internal func makeBoxShadowTransition(from BoxShadowStack?, target BoxShadowStack?,
   easing Easing, duration float64, delay float64) Transition{
@@ -663,19 +643,9 @@ internal func ease(e Easing, t float64) float64 {
 }
 
 // Paint effects without public transition selectors stay discrete.
-internal func lerpable(f StyleField) bool {
-  if f == StyleField.OutlineWidth || f == StyleField.OutlineColor || f == StyleField.OutlineOffset
-    || f == StyleField.TextShadows || f == StyleField.TextStrokeWidth
-    || f == StyleField.TextStrokeColor{
-      return false
-    }
-  let kind = fieldKind(f)
-  return kind != FieldKind.KEnum && kind != FieldKind.KString
-    && kind != FieldKind.KGradient && kind != FieldKind.KPath && kind != FieldKind.KImageSource
-    && kind != FieldKind.KShaderEffect
-}
+internal func lerpable(f StyleField) bool -> StyleFields.Has(f, StyleFieldFlags.Lerpable)
 
-internal func inheritable(f StyleField) bool -> Array.IndexOf(Resolver.inheritableFields, f) >= 0
+internal func inheritable(f StyleField) bool -> StyleFields.Has(f, StyleFieldFlags.Inheritable)
 
 internal func writeDirect(n Node, e StyleEntry) bool -> writeDirectWithInvalidation(n, e, nil)
 
@@ -953,370 +923,16 @@ internal func readField(n Node, f StyleField) StyleEntry {
   }
 }
 
-// Initializes retained style state. Packed Cursor.Default is already CLR zero.
 internal func ApplyAllDefaults(n Node) {
-  applyDefault(n, StyleField.Direction)
-  applyDefault(n, StyleField.Width)
-  applyDefault(n, StyleField.Height)
-  applyDefault(n, StyleField.MinWidth)
-  applyDefault(n, StyleField.MinHeight)
-  applyDefault(n, StyleField.MaxWidth)
-  applyDefault(n, StyleField.MaxHeight)
-  applyDefault(n, StyleField.AspectRatio)
-  applyDefault(n, StyleField.Padding)
-  applyDefault(n, StyleField.PaddingLeft)
-  applyDefault(n, StyleField.PaddingTop)
-  applyDefault(n, StyleField.PaddingRight)
-  applyDefault(n, StyleField.PaddingBottom)
-  applyDefault(n, StyleField.Margin)
-  applyDefault(n, StyleField.MarginLeft)
-  applyDefault(n, StyleField.MarginTop)
-  applyDefault(n, StyleField.MarginRight)
-  applyDefault(n, StyleField.MarginBottom)
-  applyDefault(n, StyleField.Gap)
-  applyDefault(n, StyleField.RowGap)
-  applyDefault(n, StyleField.ColumnGap)
-  applyDefault(n, StyleField.FlexDirection)
-  applyDefault(n, StyleField.FlexWrap)
-  applyDefault(n, StyleField.JustifyContent)
-  applyDefault(n, StyleField.AlignItems)
-  applyDefault(n, StyleField.AlignSelf)
-  applyDefault(n, StyleField.AlignContent)
-  applyDefault(n, StyleField.FlexGrow)
-  applyDefault(n, StyleField.FlexShrink)
-  applyDefault(n, StyleField.FlexBasis)
-  applyDefault(n, StyleField.Position)
-  applyDefault(n, StyleField.Left)
-  applyDefault(n, StyleField.Top)
-  applyDefault(n, StyleField.Right)
-  applyDefault(n, StyleField.Bottom)
-  applyDefault(n, StyleField.Display)
-  applyDefault(n, StyleField.OverflowX)
-  applyDefault(n, StyleField.OverflowY)
-  applyDefault(n, StyleField.BackgroundColor)
-  applyDefault(n, StyleField.BackgroundGradient)
-  applyDefault(n, StyleField.BorderRadius)
-  applyDefault(n, StyleField.BorderTopLeftRadius)
-  applyDefault(n, StyleField.BorderTopRightRadius)
-  applyDefault(n, StyleField.BorderBottomLeftRadius)
-  applyDefault(n, StyleField.BorderBottomRightRadius)
-  applyDefault(n, StyleField.BorderStyle)
-  applyDefault(n, StyleField.BlendMode)
-  applyDefault(n, StyleField.BorderLeftWidth)
-  applyDefault(n, StyleField.BorderTopWidth)
-  applyDefault(n, StyleField.BorderRightWidth)
-  applyDefault(n, StyleField.BorderBottomWidth)
-  applyDefault(n, StyleField.BorderLeftColor)
-  applyDefault(n, StyleField.BorderTopColor)
-  applyDefault(n, StyleField.BorderRightColor)
-  applyDefault(n, StyleField.BorderBottomColor)
-  applyDefault(n, StyleField.Opacity)
-  applyDefault(n, StyleField.BoxShadows)
-  applyDefault(n, StyleField.Color)
-  applyDefault(n, StyleField.FontFamily)
-  applyDefault(n, StyleField.FontSize)
-  applyDefault(n, StyleField.FontWeight)
-  applyDefault(n, StyleField.FontStyle)
-  applyDefault(n, StyleField.LetterSpacing)
-  applyDefault(n, StyleField.LineHeight)
-  applyDefault(n, StyleField.TextAlign)
-  applyDefault(n, StyleField.TextWrap)
-  applyDefault(n, StyleField.TextTrimming)
-  applyDefault(n, StyleField.TextTransform)
-  applyDefault(n, StyleField.Visibility)
-  applyDefault(n, StyleField.TextDecoration)
-  applyDefault(n, StyleField.ShapeStrokeWidth)
-  applyDefault(n, StyleField.ShapeStrokeColor)
-  applyDefault(n, StyleField.TextMaxLines)
-  applyDefault(n, StyleField.ShaderEffect)
+  for field in StyleFields.InitialFields {
+    applyDefault(n, field)
+  }
 }
 
-// The table's Default column. Zero-filled entries cover the common defaults.
-internal func defaultStyleEntry(f StyleField) StyleEntry {
-  if isLogicalStyleField(f) {
-    throw NotSupportedException("defaultStyleEntry: unhandled StyleField")
-  }
-  var result = StyleEntry{ Field: f }
-  switch f {
-    case StyleField.Opacity { result.A = 1.0F }
-    case StyleField.Color { result.D = 1.0F }
-    case StyleField.FontFamily { result.Payload = "" }
-    case StyleField.FontSize {
-      result.A = 16.0F
-      result.B = float32(int32(LengthUnit.Px))
-    }
-    case StyleField.FontWeight { result.A = 400.0F }
-    case StyleField.LetterSpacing { result.B = float32(int32(LengthUnit.Px)) }
-    case StyleField.LineHeight { result.A = 1.2F }
-    case StyleField.TextAlign { result.A = float32(int32(TextAlign.Start)) }
-    case StyleField.TransformTranslateX {
-      result.B = float32(int32(LengthUnit.Px))
-    }
-    case StyleField.TransformTranslateY {
-      result.B = float32(int32(LengthUnit.Px))
-    }
-    case StyleField.TransformScale { result.A = 1.0F }
-    case StyleField.TransformScaleX { result.A = 1.0F }
-    case StyleField.TransformScaleY { result.A = 1.0F }
-    case StyleField.TransformOriginX {
-      result.A = 50.0F
-      result.B = float32(int32(LengthUnit.Percent))
-    }
-    case StyleField.TransformOriginY {
-      result.A = 50.0F
-      result.B = float32(int32(LengthUnit.Percent))
-    }
-    case StyleField.BackgroundImage { result.Payload = "" }
-    case StyleField.BackgroundImageSource { result.Payload = nil }
-    case StyleField.BackgroundImageFit { result.A = float32(int32(ImageFit.Cover)) }
-    case StyleField.ClipPathFit { result.A = float32(int32(ShapeFit.Fill)) }
-    case StyleField.ClipPathFillRule { result.A = float32(int32(FillRule.NonZero)) }
-    default {}
-  }
-  return result
-}
+internal func defaultStyleEntry(f StyleField) StyleEntry -> StyleFields.Default(f)
 
 internal func applyDefault(n Node, f StyleField) bool -> writeDirect(n, defaultStyleEntry(f))
 
-internal func styleEffects(f StyleField) ReconcileEffects {
-  switch f {
-    case StyleField.Direction { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.Width { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.Height { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.MinWidth { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.MinHeight { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.MaxWidth { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.MaxHeight { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.AspectRatio { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.Padding { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.PaddingLeft { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.PaddingTop { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.PaddingRight { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.PaddingBottom { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.Margin { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.MarginLeft { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.MarginTop { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.MarginRight { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.MarginBottom { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.Gap { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.RowGap { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.ColumnGap { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.FlexDirection { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.FlexWrap { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.JustifyContent { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.AlignItems { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.AlignSelf { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.AlignContent { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.FlexGrow { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.FlexShrink { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.FlexBasis { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.Position { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.Left { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.Top { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.Right { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.Bottom { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.Display { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input)) }
-    case StyleField.Visibility {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.OverflowX { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input)) }
-    case StyleField.OverflowY { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input)) }
-    case StyleField.BackgroundColor { return ReconcileEffects.Paint }
-    case StyleField.BorderStyle { return ReconcileEffects.Paint }
-    case StyleField.BlendMode { return ReconcileEffects.Paint }
-    case StyleField.ShaderEffect { return ReconcileEffects.Paint }
-    case StyleField.BackgroundGradient { return ReconcileEffects.Paint }
-    case StyleField.BackgroundImage { return ReconcileEffects.Paint }
-    case StyleField.BackgroundImageSource { return ReconcileEffects.Paint }
-    case StyleField.BackgroundImageFit { return ReconcileEffects.Paint }
-    case StyleField.ClipPath {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.ClipPathFit {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.ClipPathFillRule {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.BorderRadius { return ReconcileEffects.Paint }
-    case StyleField.BorderTopLeftRadius { return ReconcileEffects.Paint }
-    case StyleField.BorderTopRightRadius { return ReconcileEffects.Paint }
-    case StyleField.BorderBottomLeftRadius { return ReconcileEffects.Paint }
-    case StyleField.BorderBottomRightRadius { return ReconcileEffects.Paint }
-    case StyleField.BorderLeftWidth { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.BorderTopWidth { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.BorderRightWidth { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.BorderBottomWidth { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.BorderLeftColor { return ReconcileEffects.Paint }
-    case StyleField.BorderTopColor { return ReconcileEffects.Paint }
-    case StyleField.BorderRightColor { return ReconcileEffects.Paint }
-    case StyleField.BorderBottomColor { return ReconcileEffects.Paint }
-    case StyleField.ShapeStrokeWidth {
-      return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint))
-    }
-    case StyleField.ShapeStrokeColor { return ReconcileEffects.Paint }
-    case StyleField.OutlineWidth { return ReconcileEffects.Paint }
-    case StyleField.OutlineColor { return ReconcileEffects.Paint }
-    case StyleField.OutlineOffset { return ReconcileEffects.Paint }
-    case StyleField.Opacity { return ReconcileEffects.Paint }
-    case StyleField.BoxShadows { return ReconcileEffects.Paint }
-    case StyleField.TextShadows { return ReconcileEffects.Paint }
-    case StyleField.TextStrokeWidth { return ReconcileEffects.Paint }
-    case StyleField.TextStrokeColor { return ReconcileEffects.Paint }
-    case StyleField.FontSize { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.Color { return ReconcileEffects.Paint }
-    case StyleField.FontFamily { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.FontWeight { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.FontStyle { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.LetterSpacing { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.LineHeight { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.TextAlign { return ReconcileEffects.Paint }
-    case StyleField.TextDecoration { return ReconcileEffects.Paint }
-    case StyleField.TextWrap { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.TextTrimming { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.TextMaxLines {
-      return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint))
-    }
-    case StyleField.TextTransform { return ReconcileEffects(int32(ReconcileEffects.Layout) | int32(ReconcileEffects.Paint)) }
-    case StyleField.Cursor { return ReconcileEffects.Input }
-    case StyleField.ZIndex {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.TransformTranslateX {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.TransformTranslateY {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.TransformRotate {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.TransformScale {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.TransformScaleX {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.TransformScaleY {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.TransformSkewX {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.TransformSkewY {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.TransformOriginX {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    case StyleField.TransformOriginY {
-      return ReconcileEffects(int32(ReconcileEffects.Paint) | int32(ReconcileEffects.Input))
-    }
-    default { throw NotSupportedException("styleEffects: unhandled StyleField") }
-  }
-}
+internal func styleEffects(f StyleField) ReconcileEffects -> StyleFields.Effects(f)
 
-// The table's Kind column, used by transition resolution.
-internal func fieldKind(f StyleField) FieldKind {
-  switch f {
-    case StyleField.Direction { return FieldKind.KEnum }
-    case StyleField.Width { return FieldKind.KLength }
-    case StyleField.Height { return FieldKind.KLength }
-    case StyleField.MinWidth { return FieldKind.KLength }
-    case StyleField.MinHeight { return FieldKind.KLength }
-    case StyleField.MaxWidth { return FieldKind.KLength }
-    case StyleField.MaxHeight { return FieldKind.KLength }
-    case StyleField.AspectRatio { return FieldKind.KScalar }
-    case StyleField.Padding { return FieldKind.KLength }
-    case StyleField.PaddingLeft { return FieldKind.KLength }
-    case StyleField.PaddingTop { return FieldKind.KLength }
-    case StyleField.PaddingRight { return FieldKind.KLength }
-    case StyleField.PaddingBottom { return FieldKind.KLength }
-    case StyleField.Margin { return FieldKind.KLength }
-    case StyleField.MarginLeft { return FieldKind.KLength }
-    case StyleField.MarginTop { return FieldKind.KLength }
-    case StyleField.MarginRight { return FieldKind.KLength }
-    case StyleField.MarginBottom { return FieldKind.KLength }
-    case StyleField.Gap { return FieldKind.KLength }
-    case StyleField.RowGap { return FieldKind.KLength }
-    case StyleField.ColumnGap { return FieldKind.KLength }
-    case StyleField.FlexDirection { return FieldKind.KEnum }
-    case StyleField.FlexWrap { return FieldKind.KEnum }
-    case StyleField.JustifyContent { return FieldKind.KEnum }
-    case StyleField.AlignItems { return FieldKind.KEnum }
-    case StyleField.AlignSelf { return FieldKind.KEnum }
-    case StyleField.AlignContent { return FieldKind.KEnum }
-    case StyleField.FlexGrow { return FieldKind.KScalar }
-    case StyleField.FlexShrink { return FieldKind.KScalar }
-    case StyleField.FlexBasis { return FieldKind.KLength }
-    case StyleField.Position { return FieldKind.KEnum }
-    case StyleField.Left { return FieldKind.KLength }
-    case StyleField.Top { return FieldKind.KLength }
-    case StyleField.Right { return FieldKind.KLength }
-    case StyleField.Bottom { return FieldKind.KLength }
-    case StyleField.Display { return FieldKind.KEnum }
-    case StyleField.Visibility { return FieldKind.KEnum }
-    case StyleField.BorderStyle { return FieldKind.KEnum }
-    case StyleField.BlendMode { return FieldKind.KEnum }
-    case StyleField.OverflowX { return FieldKind.KEnum }
-    case StyleField.OverflowY { return FieldKind.KEnum }
-    case StyleField.BackgroundColor { return FieldKind.KColor }
-    case StyleField.BackgroundGradient { return FieldKind.KGradient }
-    case StyleField.BackgroundImage { return FieldKind.KString }
-    case StyleField.BackgroundImageSource { return FieldKind.KImageSource }
-    case StyleField.ShaderEffect { return FieldKind.KShaderEffect }
-    case StyleField.BackgroundImageFit { return FieldKind.KEnum }
-    case StyleField.ClipPath { return FieldKind.KPath }
-    case StyleField.ClipPathFit { return FieldKind.KEnum }
-    case StyleField.ClipPathFillRule { return FieldKind.KEnum }
-    case StyleField.BorderRadius { return FieldKind.KLength }
-    case StyleField.BorderTopLeftRadius { return FieldKind.KLength }
-    case StyleField.BorderTopRightRadius { return FieldKind.KLength }
-    case StyleField.BorderBottomLeftRadius { return FieldKind.KLength }
-    case StyleField.BorderBottomRightRadius { return FieldKind.KLength }
-    case StyleField.BorderLeftWidth { return FieldKind.KLength }
-    case StyleField.BorderTopWidth { return FieldKind.KLength }
-    case StyleField.BorderRightWidth { return FieldKind.KLength }
-    case StyleField.BorderBottomWidth { return FieldKind.KLength }
-    case StyleField.BorderLeftColor { return FieldKind.KColor }
-    case StyleField.BorderTopColor { return FieldKind.KColor }
-    case StyleField.BorderRightColor { return FieldKind.KColor }
-    case StyleField.BorderBottomColor { return FieldKind.KColor }
-    case StyleField.ShapeStrokeWidth { return FieldKind.KLength }
-    case StyleField.ShapeStrokeColor { return FieldKind.KColor }
-    case StyleField.OutlineWidth { return FieldKind.KLength }
-    case StyleField.OutlineColor { return FieldKind.KColor }
-    case StyleField.OutlineOffset { return FieldKind.KLength }
-    case StyleField.Opacity { return FieldKind.KScalar }
-    case StyleField.BoxShadows { return FieldKind.KBoxShadows }
-    case StyleField.TextShadows { return FieldKind.KBoxShadows }
-    case StyleField.TextStrokeWidth { return FieldKind.KLength }
-    case StyleField.TextStrokeColor { return FieldKind.KColor }
-    case StyleField.Color { return FieldKind.KColor }
-    case StyleField.FontFamily { return FieldKind.KString }
-    case StyleField.FontSize { return FieldKind.KLength }
-    case StyleField.FontWeight { return FieldKind.KScalar }
-    case StyleField.FontStyle { return FieldKind.KEnum }
-    case StyleField.LetterSpacing { return FieldKind.KLength }
-    case StyleField.LineHeight { return FieldKind.KScalar }
-    case StyleField.TextAlign { return FieldKind.KEnum }
-    case StyleField.TextDecoration { return FieldKind.KEnum }
-    case StyleField.TextWrap { return FieldKind.KEnum }
-    case StyleField.TextTrimming { return FieldKind.KEnum }
-    case StyleField.TextMaxLines { return FieldKind.KEnum }
-    case StyleField.TextTransform { return FieldKind.KEnum }
-    case StyleField.Cursor { return FieldKind.KEnum }
-    case StyleField.ZIndex { return FieldKind.KEnum }
-    case StyleField.TransformTranslateX { return FieldKind.KLength }
-    case StyleField.TransformTranslateY { return FieldKind.KLength }
-    case StyleField.TransformRotate { return FieldKind.KScalar }
-    case StyleField.TransformScale { return FieldKind.KScalar }
-    case StyleField.TransformScaleX { return FieldKind.KScalar }
-    case StyleField.TransformScaleY { return FieldKind.KScalar }
-    case StyleField.TransformSkewX { return FieldKind.KScalar }
-    case StyleField.TransformSkewY { return FieldKind.KScalar }
-    case StyleField.TransformOriginX { return FieldKind.KLength }
-    case StyleField.TransformOriginY { return FieldKind.KLength }
-    default { throw NotSupportedException("fieldKind: unhandled StyleField") }
-  }
-}
+internal func fieldKind(f StyleField) FieldKind -> StyleFields.Kind(f)

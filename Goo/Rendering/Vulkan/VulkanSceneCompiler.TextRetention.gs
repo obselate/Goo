@@ -15,8 +15,8 @@ internal sealed class VulkanRetainedTextSnapshot {
     resourceRefs = [1]ResourceId
   }
 
-  internal prop Segments []CachedTextSegmentRefRecord{ get { return segments } }
-  internal prop ResourceRefs []ResourceId{ get { return resourceRefs } }
+  internal prop Segments []CachedTextSegmentRefRecord{ get -> segments }
+  internal prop ResourceRefs []ResourceId{ get -> resourceRefs }
 
   internal func EnsureCapacity(
     requiredSegments int32,
@@ -245,13 +245,13 @@ internal partial class VulkanSceneCompiler {
   private var retainedTextInvalidationCount uint64
   private var retainedTextTotalCount uint64
 
-  internal prop RetainedTextHitCount uint64{ get { return retainedTextHitCount } }
-  internal prop RetainedTextRebuildCount uint64{ get { return retainedTextRebuildCount } }
-  internal prop RetainedTextFallbackCount uint64{ get { return retainedTextFallbackCount } }
+  internal prop RetainedTextHitCount uint64{ get -> retainedTextHitCount }
+  internal prop RetainedTextRebuildCount uint64{ get -> retainedTextRebuildCount }
+  internal prop RetainedTextFallbackCount uint64{ get -> retainedTextFallbackCount }
   internal prop RetainedTextInvalidationCount uint64{
-    get { return retainedTextInvalidationCount }
+    get -> retainedTextInvalidationCount
   }
-  internal prop RetainedTextTotalCount uint64{ get { return retainedTextTotalCount } }
+  internal prop RetainedTextTotalCount uint64{ get -> retainedTextTotalCount }
 
   internal func CaptureRetainedTextSnapshot(
     owner VulkanSceneOwnerId,

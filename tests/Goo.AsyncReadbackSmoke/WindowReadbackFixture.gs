@@ -195,6 +195,19 @@ internal data struct VulkanWindowFramebufferExtentTestSnapshot {
 }
 
 internal partial class VulkanWindowTarget {
+  internal func MaterializePipelineCacheForTest() VulkanPipelineCacheMetrics {
+    guard let activeRuntime = runtime else {
+      return VulkanPipelineCacheMetrics{}
+    }
+    guard let activeGeneration = generation else {
+      return activeRuntime.PipelineCache.Metrics
+    }
+    activeRuntime.PrimitiveState.PipelinesFor(activeGeneration.Format).MaterializePipelines()
+    activeRuntime.PrimitiveState.ClipMaskPipelineFor(VulkanClipMaskFormat.R8Unorm)
+    activeRuntime.PrimitiveState.ClipMaskPipelineFor(VulkanClipMaskFormat.Rgba8Unorm)
+    return activeRuntime.PipelineCache.Metrics
+  }
+
   internal func DiagnosticCountersSnapshotForTest() VulkanDiagnosticCounterSnapshot {
     if let current = diagnostics {
       return current.Counters
@@ -518,6 +531,13 @@ internal partial class VulkanWindowTarget {
 }
 
 public partial class Window {
+  internal func MaterializePipelineCacheForTest() VulkanPipelineCacheMetrics {
+    guard let target = windowTarget else {
+      return VulkanPipelineCacheMetrics{}
+    }
+    return target.MaterializePipelineCacheForTest()
+  }
+
   internal func RuntimeHoldNextQueueSubmitForTest() {
     windowTarget?.HoldNextQueueSubmitForTest()
   }
@@ -525,7 +545,6 @@ public partial class Window {
   internal func RuntimeHoldNextQueuePresentForTest() {
     windowTarget?.HoldNextQueuePresentForTest()
   }
-
 
   internal func RuntimeDeferNextQueueEnqueueForTest() {
     VulkanSharedRuntime.DeferNextQueueEnqueueForTest()
@@ -925,6 +944,9 @@ internal partial class SdlHost {
 
 internal class WindowReadbackTestFixture {
   shared {
+    internal func MaterializePipelineCache(window Window) VulkanPipelineCacheMetrics ->
+    window.MaterializePipelineCacheForTest()
+
     internal func ShaderEffectVerifyPresentationRetirement() {
       let retirement = VulkanPresentationRetirement(4u, 2u)
       let completed = retirement.RecordPresent(1uL, 0u)

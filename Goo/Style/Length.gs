@@ -9,19 +9,19 @@ public struct Length {
 
   /// Gets whether this length is a percentage of the available size, as
   /// opposed to an absolute pixel value.
-  public prop IsPercent bool{ get { return Unit == LengthUnit.Percent } }
+  public prop IsPercent bool{ get -> Unit == LengthUnit.Percent }
 
   /// Gets whether this length has a concrete magnitude (pixels or percent),
   /// as opposed to `Auto` or an unset default. `Magnitude` is only defined
   /// when this is true.
-  public prop HasMagnitude bool{ get { return Unit == LengthUnit.Px || Unit == LengthUnit.Percent } }
+  public prop HasMagnitude bool{ get -> Unit == LengthUnit.Px || Unit == LengthUnit.Percent }
 
   /// Gets the raw numeric magnitude: pixels when `IsPercent` is false,
   /// percentage points (0-100) when true. Undefined for `Auto`/unset lengths;
   /// check `HasMagnitude` first.
-  public prop Magnitude float64{ get { return float64(Value) } }
+  public prop Magnitude float64{ get -> float64(Value) }
 
-  internal prop Px float32{ get { return Unit == LengthUnit.Px ? Value : 0.0F } }
+  internal prop Px float32{ get -> Unit == LengthUnit.Px ? Value : 0.0F }
 
   shared {
     /// Creates a percentage of the available size.
@@ -31,7 +31,7 @@ public struct Length {
 
     /// Gets an automatic layout length.
     public prop Auto Length{
-      get { return Length{ Unit: LengthUnit.Auto } }
+      get -> Length { Unit: LengthUnit.Auto }
     }
   }
 }

@@ -209,10 +209,10 @@ public sealed class ShaderEffect {
     }
   }
 
-  internal prop ProgramId uint64{ get { return programId } }
-  internal prop FragmentSpirv []uint8{ get { return code } }
-  internal prop SamplesBackdrop bool{ get { return samplesBackdrop } }
-  internal prop BackdropOutset float32{ get { return backdropOutset } }
+  internal prop ProgramId uint64{ get -> programId }
+  internal prop FragmentSpirv []uint8{ get -> code }
+  internal prop SamplesBackdrop bool{ get -> samplesBackdrop }
+  internal prop BackdropOutset float32{ get -> backdropOutset }
 
   internal prop PlaybackActive bool{
     get { lock gate { return playing } }

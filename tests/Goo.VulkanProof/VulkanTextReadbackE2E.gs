@@ -42,10 +42,10 @@ internal unsafe sealed class VulkanTextReadbackFixture : IDisposable {
   private var glyphId uint32
   private var disposed bool
 
-  internal prop Atlas VulkanTextAtlas{ get { return atlas!! } }
-  internal prop Frame SceneFrame{ get { return frame!! } }
-  internal prop GlyphId uint32{ get { return glyphId } }
-  internal prop Encoding VulkanTextGlyphEncoding{ get { return encoding } }
+  internal prop Atlas VulkanTextAtlas{ get -> atlas!! }
+  internal prop Frame SceneFrame{ get -> frame!! }
+  internal prop GlyphId uint32{ get -> glyphId }
+  internal prop Encoding VulkanTextGlyphEncoding{ get -> encoding }
 
   internal init(
     nativeDevice VkDevice,

@@ -14,7 +14,7 @@ public class Motion {
     /// Gets or sets the global playback rate. 1 is normal speed; 0 or lower
     /// lands every running animation on its target on the next tick.
     public prop TimeScale float64{
-      get { return timeScale }
+      get -> timeScale
       set {
         if !motionFinite(value) {
           throw ArgumentOutOfRangeException("value")
@@ -37,7 +37,7 @@ public class Motion {
 internal class MotionClock {
   internal var now float64
 
-  internal prop Now float64{ get { return now } }
+  internal prop Now float64{ get -> now }
 
   internal func Advance(dt float64) {
     now = now + dt
@@ -70,10 +70,10 @@ internal class MotionPump {
     deferred = List[MotionPumpEntry]()
   }
 
-  internal prop Now float64{ get { return clock.Now } }
+  internal prop Now float64{ get -> clock.Now }
 
   // True while any animation is still running.
-  internal prop Active bool{ get { return logicalCount > 0 } }
+  internal prop Active bool{ get -> logicalCount > 0 }
 
   internal func Register(p MotionParticle) {
     if p.registrationPump == this && p.registrationGeneration != 0 {

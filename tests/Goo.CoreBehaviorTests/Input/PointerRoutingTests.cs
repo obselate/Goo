@@ -92,4 +92,10 @@ public sealed class PointerRoutingTests
     {
         Assert.True(new InputFixtures().TransformRoutesHitsAndLocalPositions());
     }
+
+    [Fact]
+    public void ShapeStrokeHitChangesInvalidateInput()
+    {
+        Assert.True(new InputFixtures().ShapeStrokeHitChangesInvalidateInputContract());
+    }
 }

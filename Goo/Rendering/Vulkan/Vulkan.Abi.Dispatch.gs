@@ -67,6 +67,9 @@ internal unsafe struct VkDeviceDispatch {
   var vkDestroyShaderModule unmanaged[Cdecl](VkDevice, VkShaderModule, *VkAllocationCallbacks) -> void
   var vkCreatePipelineLayout unmanaged[Cdecl](VkDevice, *VkPipelineLayoutCreateInfo, *VkAllocationCallbacks, *VkPipelineLayout) -> VkResult
   var vkDestroyPipelineLayout unmanaged[Cdecl](VkDevice, VkPipelineLayout, *VkAllocationCallbacks) -> void
+  var vkCreatePipelineCache unmanaged[Cdecl](VkDevice, *VkPipelineCacheCreateInfo, *VkAllocationCallbacks, *VkPipelineCache) -> VkResult
+  var vkDestroyPipelineCache unmanaged[Cdecl](VkDevice, VkPipelineCache, *VkAllocationCallbacks) -> void
+  var vkGetPipelineCacheData unmanaged[Cdecl](VkDevice, VkPipelineCache, *nuint, *void) -> VkResult
   var vkCreateGraphicsPipelines unmanaged[Cdecl](VkDevice, VkPipelineCache, uint32, *VkGraphicsPipelineCreateInfo, *VkAllocationCallbacks, *VkPipeline) -> VkResult
   var vkDestroyPipeline unmanaged[Cdecl](VkDevice, VkPipeline, *VkAllocationCallbacks) -> void
   var vkCmdBeginRendering unmanaged[Cdecl](VkCommandBuffer, *VkRenderingInfo) -> void

@@ -24,8 +24,8 @@ internal unsafe sealed class VulkanReadbackPool : IDisposable {
   private var residentBytes VkDeviceSize
   private var disposed bool
 
-  internal prop ResourceByteBudget VkDeviceSize{ get { return resourceByteBudget } }
-  internal prop ResidentResourceBytes VkDeviceSize{ get { return residentBytes } }
+  internal prop ResourceByteBudget VkDeviceSize{ get -> resourceByteBudget }
+  internal prop ResidentResourceBytes VkDeviceSize{ get -> residentBytes }
   internal prop Stats VulkanReadbackPoolStats{
     get {
       return VulkanReadbackPoolStats{

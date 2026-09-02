@@ -29,6 +29,7 @@ internal static class Program
         RunEvenOddPathGate();
         RunPathUploadGate();
         RunUploadRingGrowthGate();
+        RunRetainedPrimitiveSpanGate();
 
         VulkanTextFont? font = null;
         try
@@ -581,6 +582,112 @@ internal static class Program
         Console.WriteLine("VULKAN_SCENE_ALLOC allocated=" + allocated
             + " draws=" + result.DrawCount + " visibleNodes=" + result.VisibleNodeCount);
         return allocated == 0 ? 0 : 1;
+    }
+
+    private static void RunRetainedPrimitiveSpanGate()
+    {
+        var root = new Node
+        {
+            Kind = NodeKind.Container,
+            Rect = new Rect { X = 0, Y = 0, W = 320, H = 180 },
+        };
+        var solid = new Node
+        {
+            Kind = NodeKind.Container,
+            Parent = root,
+            Rect = new Rect { X = 10, Y = 10, W = 80, H = 30 },
+            BackgroundColor = Color.Rgb(32, 64, 128),
+        };
+        var rounded = new Node
+        {
+            Kind = NodeKind.Container,
+            Parent = root,
+            Rect = new Rect { X = 100, Y = 10, W = 80, H = 30 },
+            BackgroundColor = Color.Rgb(64, 96, 160),
+            BorderRadius = 5,
+        };
+        var border = new Node
+        {
+            Kind = NodeKind.Container,
+            Parent = root,
+            Rect = new Rect { X = 190, Y = 10, W = 80, H = 30 },
+            BorderTopWidth = 2,
+            BorderRightWidth = 2,
+            BorderBottomWidth = 2,
+            BorderLeftWidth = 2,
+            BorderTopColor = Color.Rgb(220, 220, 220),
+            BorderRightColor = Color.Rgb(220, 220, 220),
+            BorderBottomColor = Color.Rgb(220, 220, 220),
+            BorderLeftColor = Color.Rgb(220, 220, 220),
+        };
+        root.Children.Add(solid);
+        root.Children.Add(rounded);
+        root.Children.Add(border);
+
+        var compiler = new VulkanSceneCompiler(8);
+        compiler.Compile(root, Color.Transparent, 320, 180);
+        var exactRebuildChunks = 0;
+        for (var index = 0; index < compiler.Frame.ChunkCount; index++)
+        {
+            var chunk = compiler.Frame.Chunks[index];
+            if (chunk.RetentionState != SceneChunkRetentionState.ExactLeafRebuild)
+                continue;
+            exactRebuildChunks++;
+            if (chunk.ContentKey == 0 || chunk.TopologyKey == 0)
+                throw new InvalidOperationException("Exact retained leaf rebuild digest was skipped");
+        }
+        if (exactRebuildChunks != 3)
+            throw new InvalidOperationException("Exact retained leaf rebuild chunks were not preserved");
+
+        var before = compiler.Frame.Counters.RecordOperations;
+        var stable = compiler.Compile(root, Color.Transparent, 320, 180);
+        var stableWrites = compiler.Frame.Counters.RecordOperations - before;
+        if (stable.DrawCount != 3 || stableWrites != 0)
+            throw new InvalidOperationException("Retained primitive spans were not reused");
+
+        compiler.Frame.InvalidateRetainedPrimitiveSpans();
+        before = compiler.Frame.Counters.RecordOperations;
+        var rebuilt = compiler.Compile(root, Color.Transparent, 320, 180);
+        var rebuiltWrites = compiler.Frame.Counters.RecordOperations - before;
+        if (rebuilt.DrawCount != 3 || rebuiltWrites != 3)
+            throw new InvalidOperationException("Invalid retained primitive spans were reused");
+        var exactHitChunks = 0;
+        for (var index = 0; index < compiler.Frame.ChunkCount; index++)
+        {
+            var chunk = compiler.Frame.Chunks[index];
+            if (chunk.RetentionState != SceneChunkRetentionState.ExactLeafHit)
+                continue;
+            exactHitChunks++;
+            if (chunk.ContentKey != 0 || chunk.TopologyKey != 0)
+                throw new InvalidOperationException("Exact retained leaf digest was computed");
+        }
+        if (exactHitChunks != 3)
+            throw new InvalidOperationException("Exact retained leaf chunks were not preserved");
+
+        before = compiler.Frame.Counters.RecordOperations;
+        compiler.Compile(root, Color.Transparent, 320, 180);
+        var recoveredWrites = compiler.Frame.Counters.RecordOperations - before;
+        if (recoveredWrites != 0)
+            throw new InvalidOperationException("Retained primitive spans did not recover");
+
+        root.Children.RemoveAt(0);
+        root.Children.Add(solid);
+        before = compiler.Frame.Counters.RecordOperations;
+        compiler.Compile(root, Color.Transparent, 320, 180);
+        var reorderedWrites = compiler.Frame.Counters.RecordOperations - before;
+        if (reorderedWrites != 3)
+            throw new InvalidOperationException("Reordered retained primitive spans were reused");
+
+        before = compiler.Frame.Counters.RecordOperations;
+        compiler.Compile(root, Color.Transparent, 320, 180);
+        var reorderedStableWrites = compiler.Frame.Counters.RecordOperations - before;
+        if (reorderedStableWrites != 0)
+            throw new InvalidOperationException("Reordered retained primitive spans did not stabilize");
+
+        Console.WriteLine("RETAINED_PRIMITIVE_SPAN_GATE stableWrites=" + stableWrites
+            + " invalidatedWrites=" + rebuiltWrites + " recoveredWrites=" + recoveredWrites
+            + " reorderedWrites=" + reorderedWrites
+            + " reorderedStableWrites=" + reorderedStableWrites);
     }
 
     private static int RunDamageJournalGate()

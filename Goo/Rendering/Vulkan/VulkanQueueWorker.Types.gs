@@ -39,13 +39,13 @@ internal unsafe sealed class VulkanQueueMailbox {
   }
 
   internal prop Phase int32{
-    get { return Interlocked.CompareExchange(ref phase, 0, 0) }
+    get -> Interlocked.CompareExchange(ref phase, 0, 0)
   }
 
-  internal prop SubmitResult VkResult{ get { return submitResult } }
-  internal prop PresentResult VkResult{ get { return presentResult } }
-  internal prop SyntheticDrainPerformed bool{ get { return syntheticDrainPerformed } }
-  internal prop SyntheticDrainResult VkResult{ get { return syntheticDrainResult } }
+  internal prop SubmitResult VkResult{ get -> submitResult }
+  internal prop PresentResult VkResult{ get -> presentResult }
+  internal prop SyntheticDrainPerformed bool{ get -> syntheticDrainPerformed }
+  internal prop SyntheticDrainResult VkResult{ get -> syntheticDrainResult }
 
   internal func PrepareSubmit(commandBuffer VkCommandBuffer, waitSemaphore VkSemaphore,
     signalSemaphore VkSemaphore, fence VkFence) {

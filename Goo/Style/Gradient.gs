@@ -11,7 +11,7 @@ public data struct GradientStop {
 
   /// Gets the stop position from 0 through 1.
   public prop Offset float64{
-    get { return offset }
+    get -> offset
     init{
       if Double.IsNaN(value) || Double.IsInfinity(value) || value < 0.0 || value > 1.0 {
         throw ArgumentOutOfRangeException("Offset")
@@ -22,8 +22,8 @@ public data struct GradientStop {
 
   /// Gets the stop color.
   public prop Color Color{
-    get { return color }
-    init{ color = value }
+    get -> color
+    init -> color = value
   }
 }
 
@@ -40,10 +40,10 @@ public class LinearGradient : Gradient {
   private let contentHash int32
 
   /// Gets the ordered color stops.
-  public prop Stops IReadOnlyList[GradientStop]{ get { return stops } }
+  public prop Stops IReadOnlyList[GradientStop]{ get -> stops }
   /// Gets the direction in degrees. Zero points up and positive angles turn clockwise.
-  public prop Angle float64{ get { return angle } }
-  internal prop ContentHashForCache int32{ get { return contentHash } }
+  public prop Angle float64{ get -> angle }
+  internal prop ContentHashForCache int32{ get -> contentHash }
 
   /// Creates a top-to-bottom linear gradient from evenly spread colors.
   /// @param colors At least two colors, spread evenly from 0 through 1.
@@ -81,14 +81,14 @@ public class RadialGradient : Gradient {
   private let contentHash int32
 
   /// Gets the ordered color stops.
-  public prop Stops IReadOnlyList[GradientStop]{ get { return stops } }
+  public prop Stops IReadOnlyList[GradientStop]{ get -> stops }
   /// Gets the normalized horizontal center from 0 through 1.
-  public prop CenterX float64{ get { return centerX } }
+  public prop CenterX float64{ get -> centerX }
   /// Gets the normalized vertical center from 0 through 1.
-  public prop CenterY float64{ get { return centerY } }
+  public prop CenterY float64{ get -> centerY }
   /// Gets the normalized radius above 0 and at most 1.
-  public prop Radius float64{ get { return radius } }
-  internal prop ContentHashForCache int32{ get { return contentHash } }
+  public prop Radius float64{ get -> radius }
+  internal prop ContentHashForCache int32{ get -> contentHash }
 
   /// Creates a centered radial gradient from evenly spread colors.
   /// @param colors At least two colors, spread evenly from 0 through 1.

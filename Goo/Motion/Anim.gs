@@ -100,7 +100,7 @@ public open class Anim[T] {
   }
 
   /// Gets the target value for the current or last animation.
-  public prop Target T{ get { return toT } }
+  public prop Target T{ get -> toT }
 
   /// Gets the current velocity in converter-coordinate units per second.
   /// A resting animation reports zero velocity in every dimension.
@@ -124,9 +124,9 @@ public open class Anim[T] {
   }
 
   /// Gets whether any scalar simulation is still running.
-  public prop Running bool{ get { return running } }
+  public prop Running bool{ get -> running }
 
-  internal prop Handle MotionParticle{ get { return handle } }
+  internal prop Handle MotionParticle{ get -> handle }
 
   /// Animates toward target with Motion.Default.
   /// @param target value to animate toward

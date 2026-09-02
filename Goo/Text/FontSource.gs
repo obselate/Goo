@@ -91,10 +91,10 @@ public sealed class FontSource : IDisposable {
       sourceId = FontRegistry.AllocateSourceId()
     }
 
-  public prop Family string{ get { return family } }
-  public prop Weight int32{ get { return weight } }
-  public prop Italic bool{ get { return italic } }
-  public prop FaceIndex uint32{ get { return faceIndex } }
+  public prop Family string{ get -> family }
+  public prop Weight int32{ get -> weight }
+  public prop Italic bool{ get -> italic }
+  public prop FaceIndex uint32{ get -> faceIndex }
   public prop Variations []FontVariation{
     get {
       lock (gate) {
@@ -129,8 +129,8 @@ public sealed class FontSource : IDisposable {
     if remove { FontRegistry.Unregister(this) }
   }
 
-  internal prop FamilyKey string{ get { return familyKey } }
-  internal prop SourceId uint64{ get { return sourceId } }
+  internal prop FamilyKey string{ get -> familyKey }
+  internal prop SourceId uint64{ get -> sourceId }
   internal prop IsRegisteredInternal bool{
     get { lock (gate) { return registered && !disposed && payload != nil } }
   }

@@ -18,7 +18,7 @@ Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 and meet the [platform requirements](#platform-requirements), then:
 
 ```sh
-dotnet new install Goo.Templates@0.4.0
+dotnet new install Goo.Templates@0.4.1
 
 mkdir hello-goo
 cd hello-goo
@@ -42,26 +42,40 @@ package CounterApp
 
 import Goo
 
-class Counter : Cell {
+data struct CounterInput {
+  var Title string
+  var Accent Color
+}
+
+open class Counter : Cell[CounterInput] {
+  shared {
+    let Card Style = Style{
+      Padding: 24,
+      Gap: 12,
+      BorderRadius: 16,
+      BackgroundColor: Color.Rgb(24, 31, 43),
+    }
+    let Action Style = Style{
+      Padding: 10,
+      BorderRadius: 10,
+    }
+  }
+
   private var count int32
 
-  override func Build() Blob -> Container {
+  protected override func Build(input CounterInput) Blob -> Container {
+    BasedOn: Card,
     Width: Length.Percent(100),
     Height: Length.Percent(100),
-    Padding: 24,
-    Gap: 12,
-    BorderRadius: 16,
-    BackgroundColor: Color.Rgb(24, 31, 43),
     Children: {
       Text{
-        Content: "Count: " + count.ToString(),
+        Content: input.Title + ": " + count.ToString(),
         FontSize: 24,
         Color: Color.Rgb(244, 247, 255),
       },
       Button{
-        Padding: 10,
-        BorderRadius: 10,
-        BackgroundColor: Color.Rgb(74, 125, 255),
+        BasedOn: Action,
+        BackgroundColor: input.Accent,
         OnClick: () -> { count++ },
         Children: {
           Text{ Content: "Add one", Color: Color.White },
@@ -71,13 +85,28 @@ class Counter : Cell {
   }
 }
 
+class App : Cell {
+  override func Build() Blob -> Container { Children: {
+    Cell.Mount[CounterInput, Counter]("counter", CounterInput{
+      Title: "Count",
+      Accent: Color.Rgb(74, 125, 255),
+    }),
+  } }
+}
+
 func Main() {
   Window.ConfigureApplication("Counter", "1.0.0", "com.example.counter")
-  Window{ Title: "Counter", Width: 320, Height: 180, Root: Counter{} }.Run()
+  let window = Window{ Title: "Counter", Width: 320, Height: 180, Root: App{} }
+  window.StateChanged += (state) -> {
+    if state == WindowState.Maximized { window.Title = "Counter - maximized" }
+  }
+  window.Run()
 }
 ```
 
-`Cell` owns local state. Event handlers invalidate their owning Cell automatically, so changing `count` rebuilds only this component.
+`Cell[TInput].Build(input)` receives the current immutable input snapshot directly. Packaged typed Cells are `open class` declarations because G# requires that for protected overrides. The protected `Input` property exposes the same snapshot to callbacks and `ShouldRebuild`. Event handlers invalidate their owning Cell automatically, so changing `count` rebuilds only this component.
+
+`Style.BasedOn` copies ordered declarations at its exact position. Later declarations such as the button's `BackgroundColor` win. Window notifications use native G# event authoring with `+=` and `-=`. Virtual collections now take explicit fixed item width and height so placement and scroll range do not depend on realized child measurement.
 
 ## Platforms
 

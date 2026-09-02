@@ -4,6 +4,12 @@ Generated from `Goo.xml`. Source declarations supply type ownership and XML-emit
 
 Source: [`Goo/Style`](../../Goo/Style)
 
+## Compose reusable styles
+
+`Style.BasedOn` copies another style's ordered declarations at its exact declaration position. Declarations written afterward win, as in `Container{ BasedOn: CardStyle, BackgroundColor: selectedColor }`. The destination does not retain the source Style or share its declaration log.
+
+`BackgroundGradient: nil` is an explicit clear declaration. It removes an earlier composed or lower-state gradient while preserving `BackgroundColor`. Omitting `BackgroundGradient` leaves the earlier declaration in effect.
+
 ## `AlignContent`
 
 Source:
@@ -596,7 +602,7 @@ Source:
 
 - [`Style.gs`](../../Goo/Style/Style.gs)
 
-Collects ordered layout, paint, and text declarations. Declarations are write-only. G# object spread does not copy them.
+Collects ordered layout, paint, and text declarations. Use BasedOn to copy reusable declarations. G# object spread does not copy them.
 
 ### `new`
 
@@ -624,7 +630,7 @@ Sets the background color.
 
 ### `BackgroundGradient`
 
-Sets the background gradient. It wins over BackgroundColor when both apply.
+Sets or explicitly clears the background gradient. A non-nil gradient wins over BackgroundColor when both apply.
 
 ### `BackgroundImage`
 
@@ -637,6 +643,10 @@ Sets how the background image fits its border box. The default is Cover.
 ### `BackgroundImageSource`
 
 Sets the owned or provider-backed background source. It wins over BackgroundImage when set.
+
+### `BasedOn`
+
+Copies another style's ordered declarations at this declaration position. The copy does not retain the source Style. Declarations written later take precedence.
 
 ### `BlendMode`
 

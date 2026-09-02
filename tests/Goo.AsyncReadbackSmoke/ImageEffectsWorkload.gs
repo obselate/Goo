@@ -30,13 +30,13 @@ class PerformanceImageEffectsProvider : ImageSourceProvider {
     disposed = false
   }
 
-  public prop ContentVersion uint64{ get { return version } }
+  public prop ContentVersion uint64{ get -> version }
   public event ContentChanged Action
 
   public func Acquire() ImageSourceLease -> source.Acquire()
 
-  internal prop Width int32{ get { return source.Width } }
-  internal prop Height int32{ get { return source.Height } }
+  internal prop Width int32{ get -> source.Width }
+  internal prop Height int32{ get -> source.Height }
 
   internal func Replace(next ImageSource) {
     if disposed {
@@ -217,14 +217,14 @@ class PerformanceImageEffectsRoot : Cell {
   private var replacementSlot int32
   private var advanceOrdinal int32
 
-  internal prop LogicalCount int64{ get { return int64(PerformanceImageEffectsCards) } }
-  internal prop LogicalEdges int32{ get { return 0 } }
-  internal prop VisibleCount int32{ get { return PerformanceImageEffectsCards } }
-  internal prop MountedCount int32{ get { return PerformanceImageEffectsCards } }
-  internal prop MountedBound int32{ get { return PerformanceImageEffectsCards } }
-  internal prop Width int32{ get { return PerformanceImageEffectsWidth } }
-  internal prop Height int32{ get { return PerformanceImageEffectsHeight } }
-  internal prop MutationCount int32{ get { return PerformanceImageEffectsMutations } }
+  internal prop LogicalCount int64{ get -> int64(PerformanceImageEffectsCards) }
+  internal prop LogicalEdges int32{ get -> 0 }
+  internal prop VisibleCount int32{ get -> PerformanceImageEffectsCards }
+  internal prop MountedCount int32{ get -> PerformanceImageEffectsCards }
+  internal prop MountedBound int32{ get -> PerformanceImageEffectsCards }
+  internal prop Width int32{ get -> PerformanceImageEffectsWidth }
+  internal prop Height int32{ get -> PerformanceImageEffectsHeight }
+  internal prop MutationCount int32{ get -> PerformanceImageEffectsMutations }
 
   init() {
     seed = PerformanceImageEffectsSeed

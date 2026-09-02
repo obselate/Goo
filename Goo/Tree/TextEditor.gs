@@ -13,18 +13,18 @@ public class TextEditor : Blob {
   }
 
   /// Gets the edited document.
-  public prop Document TextDocument{ get { return document } }
+  public prop Document TextDocument{ get -> document }
   /// Gets the per-view editing controller.
-  public prop Controller TextEditorController{ get { return controller } }
+  public prop Controller TextEditorController{ get -> controller }
   /// Gets the ordered presentation layers.
   public prop Layers []TextPresentationLayer{
-    get { return copyEditorLayers(layers) }
+    get -> copyEditorLayers(layers)
     init{
       validateEditorLayers(document, value)
       layers = copyEditorLayers(value)
     }
   }
-  internal prop LayerValues []TextPresentationLayer{ get { return layers } }
+  internal prop LayerValues []TextPresentationLayer{ get -> layers }
   /// Gets whether editing commands are disabled.
   public prop ReadOnly bool{ get; init; }
   /// Gets the placeholder shown for an empty document.
@@ -37,7 +37,7 @@ public class TextEditor : Blob {
   public prop CurrentLineColor Color{ get; init; }
   /// Gets the logical-line overscan used by viewport layout.
   public prop OverscanLines int32{
-    get { return overscanLines }
+    get -> overscanLines
     init{
       if value < 0 { throw ArgumentOutOfRangeException("OverscanLines") }
       overscanLines = value

@@ -77,8 +77,8 @@ internal partial class SceneFrame {
         AddCachedTextSegment(value)
         index = index + 1
       }
-      EndChunk()
       chunks[chunk].RetentionState = SceneChunkRetentionState.ExactLeafHit
+      EndChunk()
       if ownRectClip {
         BeginChunk(ownerId, version, rectClip.Bounds, false)
         AddRectClipEnd(rectClip)

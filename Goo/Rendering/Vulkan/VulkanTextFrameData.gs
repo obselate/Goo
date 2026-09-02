@@ -381,10 +381,10 @@ internal unsafe sealed class VulkanTextFrameData : IDisposable {
   private var totalPrepared uint64
   private var disposed bool
 
-  internal prop PreparedSlot int32{ get { return preparedSlot } }
-  internal prop PreparedBytes VkDeviceSize{ get { return preparedBytes } }
-  internal prop PreparedRecordCount int32{ get { return preparedRecords } }
-  internal prop LastStats VulkanTextFrameStats{ get { return lastStats } }
+  internal prop PreparedSlot int32{ get -> preparedSlot }
+  internal prop PreparedBytes VkDeviceSize{ get -> preparedBytes }
+  internal prop PreparedRecordCount int32{ get -> preparedRecords }
+  internal prop LastStats VulkanTextFrameStats{ get -> lastStats }
   internal prop Totals VulkanTextFrameStats{
     get {
       return VulkanTextFrameStats{

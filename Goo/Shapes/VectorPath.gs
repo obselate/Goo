@@ -56,7 +56,7 @@ internal class VectorPathData {
   }
 
   internal prop NormalizedOwner VectorPathNormalizedOwner? {
-    get { return normalizedOwner }
+    get -> normalizedOwner
   }
 
   internal prop NormalizedQuadratics([]PathQuadratic)? {
@@ -562,7 +562,7 @@ public struct VectorPath {
 
     /// Gets an empty path with a unit view box.
     public prop Empty VectorPath{
-      get { return VectorPath{} }
+      get -> VectorPath {}
     }
   }
 }

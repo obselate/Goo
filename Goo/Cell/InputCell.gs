@@ -16,6 +16,9 @@ public open class Cell[TInput any] : Cell {
   protected open func ShouldRebuild(previous TInput, next TInput) bool ->
   !EqualityComparer[TInput].Default.Equals(previous, next)
 
+  /// Builds the component tree from the current immutable input snapshot.
+  /// @param input current input snapshot
+  /// @returns the root blob for this component
   protected open func Build(input TInput) Blob -> Build()
 
   internal override func BuildOutput() Blob -> Build(input)

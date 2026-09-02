@@ -46,12 +46,12 @@ public struct KeyEvent {
   internal prop Control KeyboardDispatchControl? { get; init; }
   internal prop Generation int64{ get; init; }
 
-  /// Stops further callback propagation for this event.
+  /// Stops this event before the next ancestor callback without preventing its default behavior.
   public func StopPropagation() {
     if let control = Control { control.Stop(Generation) }
   }
 
-  /// Prevents the default keyboard behavior for this event.
+  /// Prevents the default keyboard behavior without stopping ancestor callbacks.
   public func PreventDefault() {
     if let control = Control { control.Prevent(Generation) }
   }
@@ -62,7 +62,7 @@ public struct FocusEvent {
   internal prop Control KeyboardDispatchControl? { get; init; }
   internal prop Generation int64{ get; init; }
 
-  /// Stops further callback propagation for this event.
+  /// Stops this lifecycle event before the next ancestor callback. Focus has already changed.
   public func StopPropagation() {
     if let control = Control { control.Stop(Generation) }
   }

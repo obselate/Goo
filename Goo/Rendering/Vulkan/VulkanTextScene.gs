@@ -208,17 +208,17 @@ internal unsafe sealed class VulkanTextScene {
   private var completedGlobalSubmissionSerial uint64
   private var textLayoutRequestCount int32
 
-  internal prop Atlas VulkanTextAtlas{ get { return atlasSet.AtlasAt(0) } }
-  internal prop Atlases VulkanTextAtlasSet{ get { return atlasSet } }
-  internal prop ResourceGeneration uint64{ get { return atlasSet.Generation } }
+  internal prop Atlas VulkanTextAtlas{ get -> atlasSet.AtlasAt(0) }
+  internal prop Atlases VulkanTextAtlasSet{ get -> atlasSet }
+  internal prop ResourceGeneration uint64{ get -> atlasSet.Generation }
   internal prop PublishedBytePrefix uint32{
-    get { return if stateCount == 0 { 0u } else { states[0]!!.PublishedBytePrefix } }
+    get -> if stateCount == 0 { 0u } else { states[0]!!.PublishedBytePrefix }
   }
   internal prop NextByteOffset uint32{
-    get { return if stateCount == 0 { 0u } else { states[0]!!.NextByteOffset } }
+    get -> if stateCount == 0 { 0u } else { states[0]!!.NextByteOffset }
   }
-  internal prop RedrawRequired bool{ get { return redrawRequired } }
-  internal prop TextLayoutRequestCount int32{ get { return textLayoutRequestCount } }
+  internal prop RedrawRequired bool{ get -> redrawRequired }
+  internal prop TextLayoutRequestCount int32{ get -> textLayoutRequestCount }
 
   internal func ConsumeColorEffectSkipped() bool {
     let result = colorEffectSkipped

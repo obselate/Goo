@@ -18,7 +18,7 @@ AnalyticVertexOutput main(
         float2(0.0, 1.0),
         float2(1.0, 1.0)
     };
-    uint primitiveRecordOrdinal = vertexIndex >> 2u;
+    uint primitiveRecordOrdinal = (vertexIndex >> 2u) + instanceIndex;
     GooPrimitiveRecord primitive = gooPrimitiveBuffer[primitiveRecordOrdinal];
     uint quadVertex = vertexIndex & 3u;
     float2 local = primitive.rect.xy + positions[quadVertex] * primitive.rect.zw;
@@ -29,7 +29,7 @@ AnalyticVertexOutput main(
     AnalyticVertexOutput output;
     output.position = float4(position, 0.0, 1.0);
     output.uv = positions[quadVertex];
-    output.clipDrawOrdinal = instanceIndex;
+    output.clipDrawOrdinal = asuint(primitive.transform0.w);
     output.primitiveRecordOrdinal = primitiveRecordOrdinal;
     return output;
 }

@@ -6,7 +6,9 @@ Source: [`Goo/Tree`](../../Goo/Tree)
 
 ## Virtualize complete data sources
 
-`Virtual(items, itemKey, itemBuilder)` accepts the complete `IReadOnlyList<T>` source. Goo reads its count, measures one realized item, derives list or wrapped-grid placement from `FlexDirection` and `FlexWrap`, and mounts only the viewport window plus one overscan line. The caller does not calculate a range, supply an item count, choose a list or grid primitive, or pass item dimensions.
+`Virtual(items, itemWidth, itemHeight, itemKey, itemBuilder)` accepts the complete `IReadOnlyList<T>` source and one positive, finite logical width and height shared by every item. Goo derives list or wrapped-grid placement from `FlexDirection` and `FlexWrap`, then mounts only the viewport window plus one overscan line. The caller does not calculate a range, supply an item count, or choose a list or grid primitive.
+
+The shared item extent is the sole source for placement and scroll range. Builder content is mounted inside that fixed extent and cannot resize the virtual layout. Variable-extent sources are unsupported.
 
 Source order controls logical order, and `itemKey` supplies stable identity. Goo uses the item type's equality semantics to retain unchanged visible nodes without calling `itemBuilder`. Newly visible and changed items invoke the builder. Items leaving the viewport unmount through the ordinary Goo lifecycle, including focus, pointer capture, handles, and accessibility state. Keys must be unique and non-empty. Rebuild the owning Cell after same-count content changes. A live source count change is detected directly.
 
@@ -102,7 +104,7 @@ Gets the opt-in transition for computed layout position changes.
 
 ### `OnBlur`
 
-Gets the non-cancelable lifecycle callback after a focus loss.
+Gets the non-cancelable callback routed after this element or a descendant loses focus.
 
 ### `OnClick`
 
@@ -110,15 +112,15 @@ Gets the action that runs when the element is clicked.
 
 ### `OnFocus`
 
-Gets the non-cancelable lifecycle callback after a focus gain.
+Gets the non-cancelable callback routed after this element or a descendant gains focus.
 
 ### `OnKeyDown`
 
-Gets the callback that receives each key down while this element has focus.
+Gets key-down callbacks routed from this focused element or a focused descendant.
 
 ### `OnKeyUp`
 
-Gets the callback that receives each key release while this element has focus.
+Gets key-up callbacks routed from this focused element or a focused descendant.
 
 ### `OnPointerCancel`
 

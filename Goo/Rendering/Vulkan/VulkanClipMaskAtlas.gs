@@ -431,23 +431,23 @@ internal unsafe sealed partial class VulkanClipMaskAtlas : IDisposable {
   private var disposed bool
   private var deviceLost bool
 
-  internal prop Width uint32{ get { return width } }
-  internal prop Height uint32{ get { return height } }
-  internal prop Format VulkanClipMaskFormat{ get { return format } }
-  internal prop BytesPerPixel uint32{ get { return bytesPerPixel } }
-  internal prop Generation uint64{ get { return generation } }
-  internal prop ActiveLayerCount uint32{ get { return activeLayerCount } }
-  internal prop MaximumLayerCount uint32{ get { return maximumLayerCount } }
-  internal prop ByteBudget VkDeviceSize{ get { return byteBudget } }
-  internal prop RegionCount int32{ get { return regionOrder.Count } }
-  internal prop DirtyRegionCount int32{ get { return dirtyRegions.Count } }
-  internal prop Image VkImage{ get { return CurrentGeneration().Image } }
-  internal prop ImageView VkImageView{ get { return CurrentGeneration().ImageView } }
+  internal prop Width uint32{ get -> width }
+  internal prop Height uint32{ get -> height }
+  internal prop Format VulkanClipMaskFormat{ get -> format }
+  internal prop BytesPerPixel uint32{ get -> bytesPerPixel }
+  internal prop Generation uint64{ get -> generation }
+  internal prop ActiveLayerCount uint32{ get -> activeLayerCount }
+  internal prop MaximumLayerCount uint32{ get -> maximumLayerCount }
+  internal prop ByteBudget VkDeviceSize{ get -> byteBudget }
+  internal prop RegionCount int32{ get -> regionOrder.Count }
+  internal prop DirtyRegionCount int32{ get -> dirtyRegions.Count }
+  internal prop Image VkImage{ get -> CurrentGeneration().Image }
+  internal prop ImageView VkImageView{ get -> CurrentGeneration().ImageView }
   internal func ImageViewAt(layer uint32) VkImageView {
     EnsureOpen()
     return CurrentGeneration().LayerViewAt(layer)
   }
-  internal prop Sampler VkSampler{ get { return CurrentGeneration().Sampler } }
+  internal prop Sampler VkSampler{ get -> CurrentGeneration().Sampler }
   internal prop ResidentBytes VkDeviceSize{
     get {
       var total = CurrentGeneration().ResidentBytes
@@ -462,7 +462,7 @@ internal unsafe sealed partial class VulkanClipMaskAtlas : IDisposable {
       return total
     }
   }
-  internal prop CurrentResidentBytes VkDeviceSize{ get { return CurrentGeneration().ResidentBytes } }
+  internal prop CurrentResidentBytes VkDeviceSize{ get -> CurrentGeneration().ResidentBytes }
   internal prop Stats VulkanClipMaskAtlasStats{
     get {
       let value = CurrentGeneration()

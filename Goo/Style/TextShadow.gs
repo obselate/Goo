@@ -12,26 +12,26 @@ public data struct TextShadow {
 
   /// Gets the horizontal offset in pixels.
   public prop OffsetX Length{
-    get { return normalizedDefault(offsetX) }
-    init{ offsetX = validateShadowGeometry("TextShadow", value, "OffsetX") }
+    get -> normalizedDefault(offsetX)
+    init -> offsetX = validateShadowGeometry("TextShadow", value, "OffsetX")
   }
 
   /// Gets the vertical offset in pixels.
   public prop OffsetY Length{
-    get { return normalizedDefault(offsetY) }
-    init{ offsetY = validateShadowGeometry("TextShadow", value, "OffsetY") }
+    get -> normalizedDefault(offsetY)
+    init -> offsetY = validateShadowGeometry("TextShadow", value, "OffsetY")
   }
 
   /// Gets the non-negative blur radius in pixels.
   public prop Blur Length{
-    get { return normalizedDefault(blur) }
-    init{ blur = normalizeShadowBlur("TextShadow", value) }
+    get -> normalizedDefault(blur)
+    init -> blur = normalizeShadowBlur("TextShadow", value)
   }
 
   /// Gets the shadow color.
   public prop Color Color{
-    get { return color }
-    init{ color = value }
+    get -> color
+    init -> color = value
   }
 }
 

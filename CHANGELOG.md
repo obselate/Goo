@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.4.1 - 2026-09-01
+
+### Added
+
+- Added ordered reusable style composition through `Style.BasedOn`.
+- Added multi-listener window state, focus, and key notification events.
+- Added a repo-local strict G# linter and enforced it in CI.
+- Added persistent Vulkan pipeline caching and compatible primitive draw batching.
+
+### Changed
+
+- Made typed cells build from their immutable input snapshot and exposed that snapshot to derived cells.
+- Made virtualized collections use explicit fixed item extents for deterministic placement and scroll range.
+- Centralized style field behavior and defaults in generated metadata.
+- Reduced dirty-cell queue work, retained-scene allocations, Vulkan command recording, and primitive staging overhead.
+
+### Fixed
+
+- Fixed best-effort cleanup ownership across reconciliation and the complete window close sequence.
+- Fixed routed keyboard and focus callback semantics and default-action cancellation.
+- Fixed Vulkan pipeline cache validation and retirement behavior.
+
+### Performance
+
+- Reduced scheduling for 1,000 dirty sibling cells from 1,088.133 to 341.695 microseconds, a 68.6% reduction, with unchanged managed allocation and without the rejected HashSet candidate's approximately 22.2 KiB retained capacity.
+- Reduced stable primitive scene compilation by approximately 20% while keeping the compiler at 0 B/op before and after.
+- Reduced compatible analytic draw calls by 92.8% to 99.0% across the sparse-box, topology, and small-animation workloads. Main-pass GPU P50 improved by 25.0%, 6.5%, and 16.7% respectively. No stable allocation improvement was measured.
+- Reduced 13-pipeline creation from 2.824 seconds uncached to 5.235 milliseconds warm with the NVIDIA implicit disk cache disabled, a 99.8% reduction and 539x speedup. The explicit cache used approximately 1.13 MiB.
+
 ## 0.4.0 - 2026-08-31
 
 ### Added

@@ -837,7 +837,6 @@ internal class Reconciler {
     var contentChanged = false
     var layoutChanged = false
     var paintChanged = false
-    var inputChanged = false
     var hitGeometryChanged = false
     if !n.ShapePath.Equals(s.Path) {
       n.ShapePath = s.Path
@@ -845,42 +844,42 @@ internal class Reconciler {
       contentChanged = true
       layoutChanged = true
       paintChanged = true
-      inputChanged = true
       hitGeometryChanged = true
     }
     if n.ShapeFit != s.Fit {
       n.ShapeFit = s.Fit
       paintChanged = true
-      inputChanged = true
       hitGeometryChanged = true
     }
     if n.ShapeFillRule != s.FillRule {
       n.ShapeFillRule = s.FillRule
       paintChanged = true
-      inputChanged = true
       hitGeometryChanged = true
     }
     if n.ShapeStrokeCap != s.StrokeCap {
       n.ShapeStrokeCap = s.StrokeCap
       paintChanged = true
+      hitGeometryChanged = true
     }
     if n.ShapeStrokeJoin != s.StrokeJoin {
       n.ShapeStrokeJoin = s.StrokeJoin
       paintChanged = true
+      hitGeometryChanged = true
     }
     if n.MiterLimit != s.MiterLimit {
       n.MiterLimit = s.MiterLimit
       paintChanged = true
+      hitGeometryChanged = true
     }
     if n.ShapeCornerRadius != s.CornerRadius {
       n.ShapeCornerRadius = s.CornerRadius
       paintChanged = true
-      inputChanged = true
       hitGeometryChanged = true
     }
     if !sameDashPattern(n.Dashes, s.Dashes) {
       n.Dashes = s.Dashes
       paintChanged = true
+      hitGeometryChanged = true
     }
     if contentChanged {
       MarkEffects(ReconcileEffects.Content)
@@ -891,7 +890,7 @@ internal class Reconciler {
     if paintChanged {
       MarkEffects(ReconcileEffects.Paint)
     }
-    if inputChanged {
+    if hitGeometryChanged {
       MarkEffects(ReconcileEffects.Input)
     }
   }
@@ -977,7 +976,7 @@ internal class Reconciler {
     try {
       validateChildren(blobs, scratchScope)
       if blobs.Count == 0 || blobs[0].Key == nil {
-        diffUnkeyedChildren(n, blobs)
+        diffUnkeyedChildren(n, blobs, scratchScope.Retire)
       } else {
         diffKeyedChildren(n, blobs, scratchScope)
       }
@@ -986,7 +985,7 @@ internal class Reconciler {
     }
   }
 
-  private func diffUnkeyedChildren(n Node, blobs IList[Blob]) {
+  private func diffUnkeyedChildren(n Node, blobs IList[Blob], retire List[Node]) {
     let oldCount = n.Children.Count
     var childrenChanged = false
     var i int32
@@ -1015,8 +1014,7 @@ internal class Reconciler {
       childrenChanged = true
       i = blobs.Count
       while i < oldCount {
-        TextLayouts.DisposeTree(n.Children[i])
-        markStructure()
+        retire.Add(n.Children[i])
         i++
       }
       i = oldCount
@@ -1024,9 +1022,13 @@ internal class Reconciler {
         n.Children.RemoveAt(n.Children.Count - 1)
         i--
       }
+      markStructure()
     }
     if childrenChanged {
       Stacking.InvalidateStructure(n)
+    }
+    if let error = disposeTrees(retire) {
+      throw error
     }
   }
 
@@ -1191,10 +1193,8 @@ internal class Reconciler {
         Stacking.InvalidateStructure(n)
       }
 
-      i = 0
-      while i < retire.Count {
-        TextLayouts.DisposeTree(retire[i])
-        i++
+      if let error = disposeTrees(retire) {
+        throw error
       }
     } catch (error Exception) {
       if !committed {
@@ -1204,6 +1204,22 @@ internal class Reconciler {
       }
       throw error
     }
+  }
+
+  private func disposeTrees(nodes List[Node]) Exception? {
+    var firstError Exception?
+    var i int32
+    while i < nodes.Count {
+      try {
+        TextLayouts.DisposeTree(nodes[i])
+      } catch (error Exception) {
+        if firstError == nil {
+          firstError = error
+        }
+      }
+      i++
+    }
+    return firstError
   }
 
   private func rollbackReplacements(scratchScope ChildDiffScratchScope) {

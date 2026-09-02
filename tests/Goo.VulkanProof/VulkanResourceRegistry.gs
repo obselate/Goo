@@ -100,9 +100,9 @@ internal unsafe class VulkanResourceRegistry {
   private var nextTouch uint64
   private var disposed bool
 
-  internal prop GpuGeneration uint64{ get { return gpuGeneration } }
-  internal prop ByteBudget VkDeviceSize{ get { return byteBudget } }
-  internal prop LogicalSourceBudget VkDeviceSize{ get { return logicalSourceBudget } }
+  internal prop GpuGeneration uint64{ get -> gpuGeneration }
+  internal prop ByteBudget VkDeviceSize{ get -> byteBudget }
+  internal prop LogicalSourceBudget VkDeviceSize{ get -> logicalSourceBudget }
   internal prop Stats VulkanResourceRegistryStats{
     get {
       return VulkanResourceRegistryStats{
@@ -696,9 +696,9 @@ internal unsafe class VulkanDescriptorTable {
   private var retiringCount int32
   private var disposed bool
 
-  internal prop Generation uint64{ get { return generation } }
-  internal prop BoundCount int32{ get { return boundCount } }
-  internal prop RetiringCount int32{ get { return retiringCount } }
+  internal prop Generation uint64{ get -> generation }
+  internal prop BoundCount int32{ get -> boundCount }
+  internal prop RetiringCount int32{ get -> retiringCount }
 
   internal init(capacity int32, initialGeneration uint64) {
     if capacity <= 0 || capacity > MaxCapacity {
@@ -942,7 +942,7 @@ internal unsafe class VulkanUploadRing {
   private var nextSequence uint64
   private var disposed bool
 
-  internal prop Generation uint64{ get { return generation } }
+  internal prop Generation uint64{ get -> generation }
   internal prop Stats VulkanUploadRingStats{
     get {
       return VulkanUploadRingStats{
