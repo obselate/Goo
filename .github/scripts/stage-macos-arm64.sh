@@ -10,6 +10,7 @@ identity="${GOO_MACOS_CODESIGN_IDENTITY:--}"
 version="$(python3 .github/scripts/release_version.py --print)"
 bundle_version="${version%%-*}"
 macos="$app/Contents/MacOS"
+resources="$app/Contents/Resources"
 
 test -d "$publish"
 test -f "$publish/$executable"
@@ -21,7 +22,7 @@ test -f "$publish/libgoo-harfbuzz-gpu.dylib"
 test -f "$publish/Vulkan/Shaders/shader-manifest.json"
 
 rm -rf "$app" "$symbols"
-mkdir -p "$macos" "$symbols"
+mkdir -p "$macos" "$resources" "$symbols"
 install -m0644 "$plist" "$app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" "$app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $bundle_version" "$app/Contents/Info.plist"
@@ -31,9 +32,19 @@ while IFS= read -r -d '' source; do
   if [[ "$relative" == *.pdb || "$relative" == *.dSYM/* ]]; then
     continue
   fi
-  mkdir -p "$(dirname -- "$macos/$relative")"
-  install -m0644 "$source" "$macos/$relative"
+  if [[ "$relative" == "$executable" || "$relative" == *.dylib ]]; then
+    destination="$macos/$relative"
+  else
+    destination="$resources/$relative"
+  fi
+  mkdir -p "$(dirname -- "$destination")"
+  install -m0644 "$source" "$destination"
 done < <(find "$publish" -type f -print0)
+
+while IFS= read -r -d '' resource; do
+  name="$(basename -- "$resource")"
+  ln -s "../Resources/$name" "$macos/$name"
+done < <(find "$resources" -mindepth 1 -maxdepth 1 -print0)
 
 chmod 0755 "$macos/$executable"
 for library in "$macos"/*.dylib; do
