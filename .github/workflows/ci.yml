@@ -105,7 +105,7 @@ jobs:
             artifacts/macos-candidate/symbols \
             Goo.PackageSmoke \
             tests/Goo.PackageSmoke/Info.plist
-          GOO_WINDOW_SMOKE=1 GOO_VK_DIAGNOSTICS=1 \
+          GOO_PRIMITIVE_SMOKE=1 GOO_VK_DIAGNOSTICS=1 \
             artifacts/macos-candidate/Goo.PackageSmoke.app/Contents/MacOS/Goo.PackageSmoke
 
       - name: Fetch pinned Slang compiler
