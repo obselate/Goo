@@ -1,0 +1,97 @@
+name: Performance regression
+description: Report a measured frame-time, allocation, or retained-memory regression
+labels:
+  - performance
+  - regression
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when a workload is measurably slower or uses more memory than an earlier Goo version. Use the bug form for correctness defects without comparative measurements.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Select the Goo source domain most closely related to the regression.
+      options:
+        - Accessibility
+        - Cell
+        - Input
+        - Layout
+        - Motion
+        - Rendering
+        - Shapes
+        - Style
+        - Text
+        - Tree
+        - Window
+        - Packaging
+        - Documentation
+        - Unsure or cross-cutting
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: State the regression and its visible or operational effect.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workload
+    attributes:
+      label: Minimal workload
+      description: Provide the smallest code, command, or exact steps that reproduce the regression.
+    validations:
+      required: true
+
+  - type: textarea
+    id: baseline
+    attributes:
+      label: Baseline results
+      description: Give the last known good Goo version or commit and its measurements.
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Current results
+      description: Give the affected Goo version or commit and measurements from the same workload.
+    validations:
+      required: true
+
+  - type: textarea
+    id: methodology
+    attributes:
+      label: Measurement method
+      description: Describe the benchmark setup, sample count, warmup, and statistic used.
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Include the OS, architecture, CPU, GPU when relevant, display backend, and G# SDK version.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Additional evidence
+      description: Include profiles, traces, logs, or result files when available.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I measured the baseline and current result under comparable conditions.
+          required: true
+        - label: I searched the existing issues first.
+          required: true

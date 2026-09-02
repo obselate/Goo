@@ -1,0 +1,65 @@
+name: Project or repository issue
+description: Report a documentation, packaging, CI, release, or repository configuration problem
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for problems with the Goo project or repository rather than Goo runtime behavior. Use the bug form for defects in the framework itself.
+
+  - type: dropdown
+    id: project-area
+    attributes:
+      label: Area
+      options:
+        - Documentation
+        - Packaging
+        - CI and automation
+        - Release process
+        - GitHub configuration
+        - Other repository infrastructure
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: State the project or repository problem and its effect.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Include relevant links, logs, commands, configuration fragments, screenshots, or recordings.
+
+  - type: input
+    id: affected-version
+    attributes:
+      label: Affected version or commit
+      placeholder: 0.1.0 or commit SHA
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched the existing issues first.
+          required: true
