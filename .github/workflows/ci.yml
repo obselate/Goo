@@ -108,6 +108,20 @@ jobs:
           GOO_WINDOW_SMOKE=1 GOO_VK_DIAGNOSTICS=1 \
             artifacts/macos-candidate/Goo.PackageSmoke.app/Contents/MacOS/Goo.PackageSmoke
 
+      - name: Fetch pinned Slang compiler
+        run: |
+          archive="$RUNNER_TEMP/slang-2026.16-macos-aarch64.tar.gz"
+          sdk="$RUNNER_TEMP/slang-2026.16"
+          curl --fail --location --retry 3 \
+            --output "$archive" \
+            https://github.com/shader-slang/slang/releases/download/v2026.16/slang-2026.16-macos-aarch64.tar.gz
+          echo "5d7edc2c91c38d1914c14a5a410f0fe517bce9a284395336715ba36a091e9d9e  $archive" \
+            | shasum -a 256 -c -
+          mkdir -p "$sdk"
+          tar -xzf "$archive" -C "$sdk"
+          "$sdk/bin/slangc" -version 2>&1 | grep -Fx "2026.16"
+          echo "SLANG_SDK=$sdk" >> "$GITHUB_ENV"
+
       - name: Bundle Goo Gallery for testers
         run: |
           dotnet publish apps/Goo.Gallery/Goo.Gallery.gsproj \
