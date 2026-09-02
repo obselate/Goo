@@ -157,8 +157,14 @@ def validate_package(path: Path) -> str:
             raise SystemExit(
                 f"package allowlist mismatch; missing={sorted(missing)}, "
                 f"unexpected={sorted(unexpected)}, metadata={sorted(variable)}")
-        for name in ("README.md", "CHANGELOG.md", "LICENSE", "THIRD-PARTY-NOTICES.md"):
-            if archive.read(name) != (ROOT / name).read_bytes():
+        package_sources = {
+            "README.md": ROOT / "docs/nuget-readme.md",
+            "CHANGELOG.md": ROOT / "CHANGELOG.md",
+            "LICENSE": ROOT / "LICENSE",
+            "THIRD-PARTY-NOTICES.md": ROOT / "THIRD-PARTY-NOTICES.md",
+        }
+        for name, source in package_sources.items():
+            if archive.read(name) != source.read_bytes():
                 raise SystemExit(f"package {name} differs from the release tree")
         if archive.read("buildTransitive/Goo.targets") != (ROOT / "Goo/Goo.targets").read_bytes():
             raise SystemExit("packaged Goo.targets differs from the release tree")
