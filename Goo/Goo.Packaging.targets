@@ -9,7 +9,12 @@
     <GooVulkanEffectiveRid Condition="'$(GooVulkanEffectiveRid)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">win-x64</GooVulkanEffectiveRid>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="$(MSBuildProjectDirectory)/../README.md" Pack="true" PackagePath="/" />
+    <!--
+      nuget.org strips the raw HTML (the centered banner and badge markup) that
+      GitHub renders fine, so the packed NuGet README is a separate, plain
+      Markdown file rather than the repository root README.md.
+    -->
+    <None Include="$(MSBuildProjectDirectory)/../docs/nuget-readme.md" Pack="true" PackagePath="README.md" />
     <None Include="$(MSBuildProjectDirectory)/../CHANGELOG.md" Pack="true" PackagePath="/" />
     <None Include="$(MSBuildProjectDirectory)/../LICENSE" Pack="true" PackagePath="/" />
     <None Include="$(MSBuildProjectDirectory)/../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
