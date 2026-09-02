@@ -57,6 +57,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
   private var getProcAddress nint = nint(0)
   private var instanceMaintenanceVariant VulkanSwapchainMaintenanceVariant
   private var swapchainMaintenanceVariant VulkanSwapchainMaintenanceVariant
+  private var portabilitySubsetSupported bool
   private var memoryBudgetSupported bool
   private var clipMaskFormatSupport VulkanClipMaskFormatSupport
   private var physicalDevice VkPhysicalDevice = nint(0)

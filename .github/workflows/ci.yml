@@ -60,8 +60,89 @@ jobs:
           dotnet test tests/Goo.ApiContractTests/Goo.ApiContractTests.csproj \
             -c Release -p:TreatWarningsAsErrors=true
 
-  linux-x64:
+  macos-arm64:
     needs: quality
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Load release version
+        run: echo "GOO_VERSION=$(python3 .github/scripts/release_version.py --print)" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install native build tools
+        run: brew install meson ninja
+
+      - name: Build pinned macOS arm64 native payloads
+        run: |
+          native="$PWD/artifacts/macos-candidate/native"
+          mkdir -p "$native"
+          .github/scripts/build-sdl-macos-arm64.sh "$native/libSDL3.dylib"
+          .github/scripts/fetch-moltenvk-macos-arm64.sh "$native/libMoltenVK.dylib"
+          .github/scripts/build-text-native-macos-arm64.sh "$native"
+
+      - name: Publish NativeAOT macOS smoke app
+        run: |
+          dotnet publish tests/Goo.PackageSmoke/Goo.PackageSmoke.gsproj \
+            -c Release -r osx-arm64 --self-contained true \
+            -p:PublishAot=true \
+            -p:TreatWarningsAsErrors=true \
+            -p:GooUseProjectReference=true \
+            -p:GooMacOsArm64NativeRoot="$PWD/artifacts/macos-candidate/native" \
+            -o artifacts/publish-macos-smoke
+
+      - name: Stage, sign, and run macOS smoke bundle
+        run: |
+          .github/scripts/stage-macos-arm64.sh \
+            artifacts/publish-macos-smoke \
+            artifacts/macos-candidate/Goo.PackageSmoke.app \
+            artifacts/macos-candidate/symbols \
+            Goo.PackageSmoke \
+            tests/Goo.PackageSmoke/Info.plist
+          GOO_WINDOW_SMOKE=1 GOO_VK_DIAGNOSTICS=1 \
+            artifacts/macos-candidate/Goo.PackageSmoke.app/Contents/MacOS/Goo.PackageSmoke
+
+      - name: Bundle Goo Gallery for testers
+        run: |
+          dotnet publish apps/Goo.Gallery/Goo.Gallery.gsproj \
+            -c Release -r osx-arm64 --self-contained true \
+            -p:PublishAot=true \
+            -p:TreatWarningsAsErrors=true \
+            -p:GooMacOsArm64NativeRoot="$PWD/artifacts/macos-candidate/native" \
+            -o artifacts/publish-macos-gallery
+          .github/scripts/stage-macos-arm64.sh \
+            artifacts/publish-macos-gallery \
+            "artifacts/macos-candidate/Goo Gallery.app" \
+            artifacts/macos-candidate/symbols \
+            Goo.Gallery \
+            apps/Goo.Gallery/Info.plist
+          (
+            cd artifacts/macos-candidate
+            COPYFILE_DISABLE=1 tar -czf Goo.Gallery-macos-arm64.tar.gz \
+              "Goo Gallery.app"
+            shasum -a 256 Goo.Gallery-macos-arm64.tar.gz \
+              >Goo.Gallery-macos-arm64.tar.gz.sha256
+          )
+          install -m0755 apps/Goo.Gallery/install-macos.sh \
+            artifacts/macos-candidate/install-goo-gallery-macos.sh
+
+      - name: Upload macOS release candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: goo-macos-arm64-candidate
+          if-no-files-found: error
+          path: |
+            artifacts/macos-candidate/
+
+  linux-x64:
+    needs:
+      - quality
+      - macos-arm64
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -70,6 +151,12 @@ jobs:
 
       - name: Load release version
         run: echo "GOO_VERSION=$(python3 .github/scripts/release_version.py --print)" >> "$GITHUB_ENV"
+
+      - name: Download macOS release candidate
+        uses: actions/download-artifact@v8
+        with:
+          name: goo-macos-arm64-candidate
+          path: artifacts/macos-candidate
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -262,7 +349,8 @@ jobs:
             -p:ContinuousIntegrationBuild=true \
             -p:RepositoryCommit="$GITHUB_SHA" \
             -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so" \
-            -p:GooWindowsSdlPath="$PWD/artifacts/native/win-x64/SDL3.dll"
+            -p:GooWindowsSdlPath="$PWD/artifacts/native/win-x64/SDL3.dll" \
+            -p:GooMacOsArm64NativeRoot="$PWD/artifacts/macos-candidate/native"
           dotnet pack tools/Goo.SvgCompiler/Goo.SvgCompiler.csproj \
             -c Release -o artifacts/packages \
             -p:TreatWarningsAsErrors=true \
@@ -426,6 +514,9 @@ jobs:
             artifacts/packages/Goo.Templates.${{ env.GOO_VERSION }}.nupkg
             artifacts/Goo.${{ env.GOO_VERSION }}-linux-x64.tar.gz
             artifacts/Goo.${{ env.GOO_VERSION }}-linux-x64.tar.gz.sha256
+            artifacts/macos-candidate/Goo.Gallery-macos-arm64.tar.gz
+            artifacts/macos-candidate/Goo.Gallery-macos-arm64.tar.gz.sha256
+            artifacts/macos-candidate/install-goo-gallery-macos.sh
 
   release-goo:
     if: github.repository == 'obselate/goo' && startsWith(github.ref, 'refs/tags/v')
@@ -519,6 +610,9 @@ jobs:
             "artifacts/packages/Goo.Templates.$GOO_VERSION.nupkg"
             "artifacts/Goo.$GOO_VERSION-linux-x64.tar.gz"
             "artifacts/Goo.$GOO_VERSION-linux-x64.tar.gz.sha256"
+            "artifacts/macos-candidate/Goo.Gallery-macos-arm64.tar.gz"
+            "artifacts/macos-candidate/Goo.Gallery-macos-arm64.tar.gz.sha256"
+            "artifacts/macos-candidate/install-goo-gallery-macos.sh"
           )
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber

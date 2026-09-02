@@ -6,7 +6,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Shared/PrimitiveScene.gs" Link="PrimitiveScene.gs" />
-    <PackageReference Include="Goo" Version="$(GooReleaseVersion)" />
+    <PackageReference Include="Goo" Version="$(GooReleaseVersion)"
+                      Condition="'$(GooUseProjectReference)' != 'true'" />
+    <ProjectReference Include="../../Goo/Goo.gsproj"
+                      Condition="'$(GooUseProjectReference)' == 'true'" />
     <Content Include="../Goo.VulkanProof/Assets/Text/VendSans-VariableFont_wght.ttf"
              Link="VendSans-VariableFont_wght.ttf"
              CopyToOutputDirectory="PreserveNewest" />
@@ -38,5 +41,27 @@
           Condition="'$(RuntimeIdentifier)' == 'win-x64'"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="Always" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'osx-arm64' and '$(GooMacOsArm64NativeRoot)' != ''">
+    <Content Include="$(GooMacOsArm64NativeRoot)/libSDL3.dylib"
+             Link="libSDL3.dylib"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="Always" />
+    <Content Include="$(GooMacOsArm64NativeRoot)/libMoltenVK.dylib"
+             Link="libMoltenVK.dylib"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="Always" />
+    <Content Include="$(GooMacOsArm64NativeRoot)/libgoo-harfbuzz.dylib"
+             Link="libgoo-harfbuzz.dylib"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="Always" />
+    <Content Include="$(GooMacOsArm64NativeRoot)/libgoo-harfbuzz-gpu.dylib"
+             Link="libgoo-harfbuzz-gpu.dylib"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="Always" />
+    <Content Include="$(GooMacOsArm64NativeRoot)/text-native-build.json"
+             Link="text-native-build.json"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="Always" />
   </ItemGroup>
 </Project>

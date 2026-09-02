@@ -231,6 +231,7 @@ internal unsafe partial class VulkanWindowTarget {
     instanceDispatch = VkInstanceDispatch{}
     instanceMaintenanceVariant = VulkanSwapchainMaintenanceVariant.None
     swapchainMaintenanceVariant = VulkanSwapchainMaintenanceVariant.None
+    portabilitySubsetSupported = false
     physicalDevice = nint(0)
     device = nint(0)
     dispatch = VkDeviceDispatch{}

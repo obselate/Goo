@@ -25,11 +25,12 @@ endings to LF. Copyright (C) GSharp Authors. All rights reserved.
 
 ## HarfBuzz and hb-gpu text runtime
 
-Goo ships private Linux and Windows native payloads built from the pinned
-HarfBuzz 14.3.1 upstream archive with `hb-gpu` enabled:
+Goo ships private Linux, Windows, and macOS native payloads built from the
+pinned HarfBuzz 14.3.1 upstream archive with `hb-gpu` enabled:
 `libgoo-harfbuzz.so` and `libgoo-harfbuzz-gpu.so` on Linux, with
-`goo-harfbuzz.dll` and `goo-harfbuzz-gpu.dll` on Windows. They are private Goo
-artifacts, not system-library replacements or a runtime fallback.
+`goo-harfbuzz.dll` and `goo-harfbuzz-gpu.dll` on Windows, and
+`libgoo-harfbuzz.dylib` and `libgoo-harfbuzz-gpu.dylib` on macOS. They are
+private Goo artifacts, not system-library replacements or a runtime fallback.
 
 - HarfBuzz 14.3.1, including hb-gpu: HarfBuzz Old MIT license.
 - Signed tag commit: `ab5ecbb83985034a76214ac0b2b833dcd590d774`.
@@ -171,6 +172,18 @@ to the following restrictions:
 2. Altered source versions must be plainly marked as such, and must not be
    misrepresented as being the original software.
 3. This notice may not be removed or altered from any source distribution.
+
+## MoltenVK
+
+Goo's macOS arm64 runtime ships MoltenVK 1.4.2 as `libMoltenVK.dylib` from the
+official non-private-API macOS release archive.
+
+- License: Apache License 2.0.
+- Release archive SHA-256:
+  `f95765a6229cb7b915990a2890ce12ebe36a730b021545d3d52ae69ce4c4024e`.
+- [MoltenVK 1.4.2 license](https://github.com/KhronosGroup/MoltenVK/blob/v1.4.2/LICENSE)
+- The complete license text is retained in
+  `Goo/Runtime/Vulkan/MoltenVK-LICENSE.txt` and shipped with Goo.
 
 ## Unicode.Bidi
 

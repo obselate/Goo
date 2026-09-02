@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <GooReleaseVersion>0.4.1</GooReleaseVersion>
+    <GooReleaseVersion>0.4.2</GooReleaseVersion>
   </PropertyGroup>
   <!-- Custom Release configurations still require optimized G# output. -->
   <PropertyGroup Condition="$([System.String]::Copy('$(Configuration)').EndsWith('Release'))">

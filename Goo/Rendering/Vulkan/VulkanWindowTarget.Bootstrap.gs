@@ -156,6 +156,12 @@ internal unsafe partial class VulkanWindowTarget {
     }
     let addDebugUtilsExtension = debugUtilsEnabled
       && !ContainsExtensionName(requiredExtensions, VkConstants.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+    let portabilityEnumerationEnabled = ContainsExtensionName(
+      requiredExtensions, VkConstants.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)
+      || HasInstanceExtensionName(VkConstants.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)
+    let addPortabilityEnumerationExtension = portabilityEnumerationEnabled
+      && !ContainsExtensionName(
+        requiredExtensions, VkConstants.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)
     var enabledExtensionCount int32 = requiredExtensions.Length
     if instanceMaintenanceVariant != VulkanSwapchainMaintenanceVariant.None
       && !ContainsExtensionName(requiredExtensions, surfaceMaintenanceName) {
@@ -166,6 +172,9 @@ internal unsafe partial class VulkanWindowTarget {
         enabledExtensionCount = enabledExtensionCount + 1
       }
     if addDebugUtilsExtension {
+      enabledExtensionCount = enabledExtensionCount + 1
+    }
+    if addPortabilityEnumerationExtension {
       enabledExtensionCount = enabledExtensionCount + 1
     }
     var extensionStorage []nint = [enabledExtensionCount]nint
@@ -201,6 +210,13 @@ internal unsafe partial class VulkanWindowTarget {
         extensionPointers[extensionIndex].Value = *int8(storage)
         extensionIndex = extensionIndex + 1
       }
+      if addPortabilityEnumerationExtension {
+        let storage = Marshal.StringToCoTaskMemUTF8(
+          VkConstants.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)
+        extensionStorage[extensionIndex] = storage
+        extensionPointers[extensionIndex].Value = *int8(storage)
+        extensionIndex = extensionIndex + 1
+      }
       appNameStorage = Marshal.StringToCoTaskMemUTF8("Goo")
       engineNameStorage = Marshal.StringToCoTaskMemUTF8("Goo")
       var applicationInfo = VkApplicationInfo{}
@@ -213,6 +229,10 @@ internal unsafe partial class VulkanWindowTarget {
       var createInfo = VkInstanceCreateInfo{}
       createInfo.sType = VkConstants.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
       createInfo.pApplicationInfo = &applicationInfo
+      if portabilityEnumerationEnabled {
+        createInfo.flags = uint32(
+          VkConstants.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR)
+      }
       createInfo.enabledExtensionCount = uint32(enabledExtensionCount)
       createInfo.ppEnabledExtensionNames = &extensionPointers[0].Value
       var debugMessengerCreateInfo = VkDebugUtilsMessengerCreateInfoEXT{}
@@ -554,6 +574,9 @@ internal unsafe partial class VulkanWindowTarget {
   }
 
   private func HasRequiredDeviceExtensions(candidate VkPhysicalDevice) bool {
+    swapchainMaintenanceVariant = VulkanSwapchainMaintenanceVariant.None
+    portabilitySubsetSupported = false
+    memoryBudgetSupported = false
     var count uint32 = 0u
     let enumerate = instanceDispatch.vkEnumerateDeviceExtensionProperties
     if enumerate(candidate, nil, &count, nil) != VkConstants.VK_SUCCESS || count == 0u {
@@ -566,6 +589,7 @@ internal unsafe partial class VulkanWindowTarget {
     var hasSwapchain = false
     var hasMaintenanceExt = false
     var hasMaintenanceKhr = false
+    var hasPortabilitySubset = false
     var hasMemoryBudget = false
     var index uint32 = 0u
     while index < count {
@@ -578,12 +602,14 @@ internal unsafe partial class VulkanWindowTarget {
       if ExtensionNameEquals(&extensions[index], VulkanWindowTargetExtensionNames.SwapchainMaintenanceKhr) {
         hasMaintenanceKhr = true
       }
+      if ExtensionNameEquals(&extensions[index], VkConstants.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME) {
+        hasPortabilitySubset = true
+      }
       if ExtensionNameEquals(&extensions[index], VkConstants.VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) {
         hasMemoryBudget = true
       }
       index = index + 1u
     }
-    swapchainMaintenanceVariant = VulkanSwapchainMaintenanceVariant.None
     if instanceMaintenanceVariant == VulkanSwapchainMaintenanceVariant.Khr && hasMaintenanceKhr {
       swapchainMaintenanceVariant = VulkanSwapchainMaintenanceVariant.Khr
     } else if instanceMaintenanceVariant == VulkanSwapchainMaintenanceVariant.Ext && hasMaintenanceExt {
@@ -592,6 +618,7 @@ internal unsafe partial class VulkanWindowTarget {
     if !hasSwapchain {
       return false
     }
+    portabilitySubsetSupported = hasPortabilitySubset
     memoryBudgetSupported = hasMemoryBudget
     return true
   }
@@ -651,16 +678,24 @@ internal unsafe partial class VulkanWindowTarget {
     queueInfo.queueFamilyIndex = queueFamilyIndex
     queueInfo.queueCount = 1u
     queueInfo.pQueuePriorities = priorities
-    var extensionStorage []nint = [3]nint
+    var extensionStorage []nint = [4]nint
     try {
       extensionStorage[0] = Marshal.StringToCoTaskMemUTF8(VkConstants.VK_KHR_SWAPCHAIN_EXTENSION_NAME)
-      let extensionPointers * VulkanWindowTargetExtensionPointer = stackalloc[3]VulkanWindowTargetExtensionPointer
+      let extensionPointers * VulkanWindowTargetExtensionPointer = stackalloc[4]VulkanWindowTargetExtensionPointer
       extensionPointers[0].Value = *int8(extensionStorage[0])
       var deviceExtensionCount uint32 = 1u
+      if portabilitySubsetSupported {
+        let extensionIndex = int32(deviceExtensionCount)
+        extensionStorage[extensionIndex] = Marshal.StringToCoTaskMemUTF8(
+          VkConstants.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME)
+        extensionPointers[extensionIndex].Value = *int8(extensionStorage[extensionIndex])
+        deviceExtensionCount = deviceExtensionCount + 1u
+      }
       if swapchainMaintenanceVariant != VulkanSwapchainMaintenanceVariant.None {
-        extensionStorage[1] = Marshal.StringToCoTaskMemUTF8(MaintenanceDeviceExtensionName())
-        extensionPointers[1].Value = *int8(extensionStorage[1])
-        deviceExtensionCount = 2u
+        let extensionIndex = int32(deviceExtensionCount)
+        extensionStorage[extensionIndex] = Marshal.StringToCoTaskMemUTF8(MaintenanceDeviceExtensionName())
+        extensionPointers[extensionIndex].Value = *int8(extensionStorage[extensionIndex])
+        deviceExtensionCount = deviceExtensionCount + 1u
       }
       if memoryBudgetSupported {
         let extensionIndex = int32(deviceExtensionCount)

@@ -6,6 +6,8 @@
   "extensions": [
     "VK_KHR_surface",
     "VK_KHR_swapchain",
+    "VK_KHR_portability_enumeration",
+    "VK_KHR_portability_subset",
     "VK_KHR_win32_surface",
     "VK_KHR_wayland_surface",
     "VK_EXT_debug_utils",
@@ -138,6 +140,9 @@
     "VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME",
     "VK_KHR_GET_SURFACE_CAPABILITIES_2_SPEC_VERSION",
     "VK_EXT_MEMORY_BUDGET_EXTENSION_NAME",
-    "VK_EXT_MEMORY_BUDGET_SPEC_VERSION"
+    "VK_EXT_MEMORY_BUDGET_SPEC_VERSION",
+    "VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME",
+    "VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME",
+    "VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR"
   ]
 }

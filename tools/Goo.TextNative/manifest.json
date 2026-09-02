@@ -1,5 +1,5 @@
 {
-  "schema": 3,
+  "schema": 4,
   "name": "Goo.TextNative",
   "source": {
     "harfbuzz": {
@@ -28,6 +28,12 @@
         "CXXFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
         "LDFLAGS": "-Wl,--build-id=none"
       },
+      "osx-arm64": {
+        "SOURCE_DATE_EPOCH": "0",
+        "CFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
+        "CXXFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
+        "LDFLAGS": "-Wl,-dead_strip"
+      },
       "win-x64": {
         "SOURCE_DATE_EPOCH": "0",
         "CFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
@@ -35,7 +41,7 @@
         "LDFLAGS": "-Wl,--no-insert-timestamp -static-libgcc -static-libstdc++"
       }
     },
-    "sourcePatch": "Set the core and GPU shared-library identities to Goo-owned private names before the pinned Meson build; Linux keeps private SONAMEs and Windows uses unversioned DLL names.",
+    "sourcePatch": "Set the core and GPU shared-library identities to Goo-owned private names before the pinned Meson build; Linux keeps private SONAMEs, macOS keeps private @rpath install names, and Windows uses unversioned DLL names.",
     "sourcePatches": [
       {
         "name": "cpal-linear-light",
@@ -76,6 +82,31 @@
           "libm.so.6"
         ]
       }
+    },
+    "macos": {
+      "requiredFormat": "Mach-O 64-bit dynamically linked shared library arm64",
+      "requiredArchitectures": [
+        "arm64"
+      ],
+      "requiredInstallName": {
+        "harfbuzz": "@rpath/libgoo-harfbuzz.dylib",
+        "gpu": "@rpath/libgoo-harfbuzz-gpu.dylib"
+      },
+      "requiredNeeded": {
+        "harfbuzz": [
+          "/usr/lib/libSystem.B.dylib",
+          "/usr/lib/libc++.1.dylib"
+        ],
+        "gpu": [
+          "/usr/lib/libSystem.B.dylib",
+          "/usr/lib/libc++.1.dylib",
+          "@rpath/libgoo-harfbuzz.dylib"
+        ]
+      },
+      "forbiddenDependencyPrefixes": [
+        "/opt/homebrew/",
+        "/usr/local/"
+      ]
     },
     "windows": {
       "target": "x86_64-w64-mingw32",
@@ -150,6 +181,10 @@
     "linux-x64": {
       "harfbuzz": "libgoo-harfbuzz.so",
       "gpu": "libgoo-harfbuzz-gpu.so"
+    },
+    "osx-arm64": {
+      "harfbuzz": "libgoo-harfbuzz.dylib",
+      "gpu": "libgoo-harfbuzz-gpu.dylib"
     },
     "win-x64": {
       "harfbuzz": "goo-harfbuzz.dll",

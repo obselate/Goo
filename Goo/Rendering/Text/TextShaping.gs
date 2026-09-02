@@ -48,7 +48,6 @@ internal class TextShaping {
     Dictionary[TextPrimaryFaceKey, TypefaceResource]()
     private let PrimaryFaceOrder Queue[TextPrimaryFaceKey] = Queue[TextPrimaryFaceKey]()
     private let PrimaryFacesLock object = Object()
-    private var FontFilesCache []string = []string{}
     private var primaryFaceDisposals int32
     private var primaryFaceCacheBytes int64
     private const PrimaryFaceCacheCapacity int32 = 64
@@ -163,7 +162,7 @@ internal class TextShaping {
       if family == nil { return false }
       for name in SplitFamilies(family) {
         if File.Exists(name) { return true }
-        if let path = FindFontFile(name, 400, false) {
+        if let path = SystemFontResolvers.Current().Find(name, 400, false) {
           if path.Length != 0 { return true }
         }
       }
@@ -742,11 +741,11 @@ internal class TextShaping {
       let names = SplitFamilies(families)
       for name in names {
         if File.Exists(name) { return TextFontSelection(name, name, nil) }
-        if let found = FindFontFile(name, weight, italic) {
+        if let found = SystemFontResolvers.Current().Find(name, weight, italic) {
           return TextFontSelection(name, found, nil)
         }
       }
-      if let found = FindFontFile("sans-serif", weight, italic) {
+      if let found = SystemFontResolvers.Current().Find("sans-serif", weight, italic) {
         return TextFontSelection("sans-serif", found, nil)
       }
       throw InvalidOperationException("No Vulkan text font file could be resolved")
@@ -756,78 +755,6 @@ internal class TextShaping {
       if families == nil || families.Trim().Length == 0 { return [1]string{"sans-serif"} }
       return families.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
     }
-
-    private func FindFontFile(family string, weight int32, italic bool) string? {
-      let files = FontFiles()
-      let requested = normalizeName(family)
-      let aliases = requested == "" || requested == "sansserif" || requested == "sans"
-        || requested == "systemui"
-      var best string?
-      var bestScore int32 = Int32.MinValue
-      for file in files {
-        guard let fileName = Path.GetFileNameWithoutExtension(file) else { continue }
-        let stem = normalizeName(fileName)
-        var familyScore int32 = 0
-        if aliases {
-          if stem.Contains("dejavusans") || stem.Contains("adwaitasans")
-            || stem.Contains("liberationsans") || stem.StartsWith("segoeui")
-            || stem.StartsWith("arial") { familyScore = 50 }
-        } else if stem.Contains(requested) {
-          familyScore = 100
-        }
-        if familyScore == 0 { continue }
-        var score = familyScore
-        let bold = stem.Contains("bold") || stem.Contains("semibold")
-          || stem == "arialbd" || stem == "arialbi" || stem == "segoeuib"
-          || stem == "segoeuibl" || stem == "segoeuisb" || stem == "segoeuiz"
-        let slanted = stem.Contains("italic") || stem.Contains("oblique")
-          || stem == "ariali" || stem == "arialbi" || stem == "segoeuii"
-          || stem == "segoeuili" || stem == "segoeuisli" || stem == "segoeuiz"
-        if weight >= 600 { score = score + (if bold { 20 } else { -15 }) }
-        else { score = score + (if bold { -10 } else { 10 }) }
-        if italic { score = score + (if slanted { 20 } else { -15 }) }
-        else { score = score + (if slanted { -10 } else { 10 }) }
-        var shouldReplace = best == nil || score > bestScore
-        if !shouldReplace && score == bestScore {
-          if let current = best {
-            shouldReplace = String.CompareOrdinal(file, current) < 0
-          }
-        }
-        if shouldReplace {
-          best = file
-          bestScore = score
-        }
-      }
-      return best
-    }
-
-    private func FontFiles() []string {
-      lock (PrimaryFacesLock) {
-        if FontFilesCache.Length != 0 { return FontFilesCache }
-        let result = List[string]()
-        let roots = []string{
-          "/usr/share/fonts", "/usr/local/share/fonts", "/usr/share/fonts/truetype",
-          "/usr/share/fonts/opentype", Environment.GetFolderPath(Environment.SpecialFolder.Fonts),
-          "C:\\Windows\\Fonts",
-        }
-        for root in roots {
-          if root == nil || root.Length == 0 || !Directory.Exists(root) { continue }
-          try {
-            let files = Directory.GetFiles(root, "*.*", SearchOption.AllDirectories)
-            for file in files {
-              let extension = Path.GetExtension(file).ToLowerInvariant()
-              if extension == ".ttf" || extension == ".otf" || extension == ".ttc"
-                || extension == ".otc" { result.Add(file) }
-            }
-          } catch (error Exception) { }
-        }
-        FontFilesCache = result.ToArray()
-        return FontFilesCache
-      }
-    }
-
-    private func normalizeName(value string) string ->
-    value.ToLowerInvariant().Replace(" ", "").Replace("-", "").Replace("_", "")
 
     private func normalizeFamily(value string) string -> value.Trim().ToLowerInvariant()
   }

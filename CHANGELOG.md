@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2 - 2026-09-02
+
+### Added
+
+- Added an Apple Silicon Goo Gallery app bundle for macOS 15 or newer.
+- Added a checksum-verified unsigned installer that installs Goo Gallery under the current user account, removes quarantine only from the installed app, and launches it.
+- Added pinned macOS arm64 SDL, MoltenVK, and HarfBuzz native payload builds with NativeAOT runtime verification.
+
 ## 0.4.1 - 2026-09-01
 
 ### Added
