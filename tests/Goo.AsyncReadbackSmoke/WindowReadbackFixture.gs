@@ -665,6 +665,24 @@ internal partial class VulkanWindowTarget {
     }
   }
 
+  internal func AbandonAcquiredFrameForTest() VkResult {
+    if !frameBegun || activeFrameSlot == nil {
+      return VkConstants.VK_ERROR_INITIALIZATION_FAILED
+    }
+    let result = TryAbandonRecordedFrameForRetry()
+    RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, result)
+    if result == VkConstants.VK_SUCCESS {
+      CloseDiagnosticFrame(false)
+      ClearActiveFrame()
+    } else {
+      if result != VkConstants.VK_ERROR_DEVICE_LOST {
+        runtime?.MarkTeardownFailed(result)
+      }
+      HandleFrameFailure(result, VulkanDiagnosticEventIds.PresentWait)
+    }
+    return result
+  }
+
   internal func SetForceFullRedrawForTest(value bool) {
     forceFullRedraw = value
   }
@@ -699,6 +717,14 @@ public partial class Window {
 
   internal func RuntimeDeferNextQueueEnqueueForTest() {
     VulkanSharedRuntime.DeferNextQueueEnqueueForTest()
+  }
+
+  internal func RuntimeAcquireAndAbandonFrameForTest() VkResult {
+    guard let target = VulkanTargetForTest() else {
+      return VkConstants.VK_ERROR_INITIALIZATION_FAILED
+    }
+    target.BeginFrame()
+    return target.AbandonAcquiredFrameForTest()
   }
 
   internal func RuntimeWaitForHeldQueueCallForTest(timeoutMs int32) bool -> VulkanSharedRuntime.WaitForHeldQueueCallForTest(timeoutMs)
@@ -1355,6 +1381,9 @@ internal class WindowReadbackTestFixture {
     internal func GraphicsTimelineValidationRollback(window Window)
     VulkanGraphicsTimelineValidationTestSnapshot ->
     window.GraphicsTimelineValidationRollbackForTest()
+
+    internal func RuntimeAcquireAndAbandonFrame(window Window) VkResult ->
+    window.RuntimeAcquireAndAbandonFrameForTest()
 
     internal func PacingRefreshRate(window Window) float64 -> window.PacingRefreshRateForTest()
 

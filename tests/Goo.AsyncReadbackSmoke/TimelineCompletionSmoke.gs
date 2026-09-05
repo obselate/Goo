@@ -68,6 +68,7 @@ func RunTimelineCompletionSmoke() {
   var first Window? = nil
   var second Window? = nil
   var deferredVerified = false
+  var acquireDrainVerified = false
   var validationRollbackVerified = false
   var fifoVerified = false
   var pendingVerified = false
@@ -171,6 +172,23 @@ func RunTimelineCompletionSmoke() {
       == VkConstants.VK_SUCCESS,
       "Timeline deferred frame retry did not complete")
 
+    let drainBefore = WindowReadbackTestFixture.GraphicsTimeline(openedFirst)
+    let localBeforeDrain = WindowReadbackTestFixture.FrameSubmissions(openedFirst)
+    let drainResult = WindowReadbackTestFixture.RuntimeAcquireAndAbandonFrame(openedFirst)
+    let drainAfter = WindowReadbackTestFixture.GraphicsTimeline(openedFirst)
+    let localAfterDrain = WindowReadbackTestFixture.FrameSubmissions(openedFirst)
+    TimelineCompletionRequire(drainResult == VkConstants.VK_SUCCESS
+        && drainAfter.LastEnqueuedSerial == drainBefore.LastEnqueuedSerial + 1uL
+        && drainAfter.CompletedResult == VkConstants.VK_SUCCESS
+        && drainAfter.CompletedSerial >= drainAfter.LastEnqueuedSerial
+        && drainAfter.PendingWindowSerial == 0uL,
+      "Timeline acquire drain did not complete one wait-only FIFO submission")
+    TimelineCompletionRequire(
+      TimelineCompletionSerialCount(localAfterDrain)
+      == TimelineCompletionSerialCount(localBeforeDrain),
+      "Timeline acquire drain changed a frame-slot submission serial")
+    acquireDrainVerified = true
+
     let beforeHold = WindowReadbackTestFixture.GraphicsTimeline(openedFirst)
     let localBeforeHold = WindowReadbackTestFixture.FrameSubmissions(openedFirst)
     WindowReadbackTestFixture.RuntimeHoldNextQueueSubmit(openedFirst)
@@ -263,6 +281,7 @@ func RunTimelineCompletionSmoke() {
   ReadbackValidateCommonDiagnostics(capturedError.ToString())
   Console.WriteLine("timeline-completion-smoke: deferred_no_hole="
     +(if deferredVerified { "1" } else { "0" })
+    +" acquire_drain=" + (if acquireDrainVerified { "1" } else { "0" })
     +" validation_rollback=" + (if validationRollbackVerified { "1" } else { "0" })
     +" fifo_window_offscreen=" + (if fifoVerified { "1" } else { "0" })
     +" no_premature_completion=" + (if pendingVerified { "1" } else { "0" })

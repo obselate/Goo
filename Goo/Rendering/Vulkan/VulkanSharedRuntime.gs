@@ -580,6 +580,54 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
       return queueWorker.EnqueueSubmit(mailbox, validate)
     }
 
+  internal func DrainAcquiredSemaphore(semaphore VkSemaphore) VkResult {
+    if semaphore == 0uL {
+      throw ArgumentException("semaphore")
+    }
+    if disposed {
+      return VkConstants.VK_ERROR_INITIALIZATION_FAILED
+    }
+    if deviceLost {
+      return VkConstants.VK_ERROR_DEVICE_LOST
+    }
+    if terminal {
+      return terminalIdleResult
+    }
+    let mailbox = queueWorker.CreateMailbox(nil)
+    mailbox.PrepareSubmit(nint(0), semaphore, 0uL)
+    if !mailbox.BeginSubmit() {
+      throw InvalidOperationException("Vulkan acquire drain mailbox was not idle")
+    }
+    var serial uint64
+    while !queueWorker.EnqueueSubmit(mailbox, (value uint64) -> { serial = value }) {
+      if disposed {
+        mailbox.CancelSubmit()
+        return VkConstants.VK_ERROR_INITIALIZATION_FAILED
+      }
+      if deviceLost {
+        mailbox.CancelSubmit()
+        return VkConstants.VK_ERROR_DEVICE_LOST
+      }
+      if terminal {
+        mailbox.CancelSubmit()
+        return terminalIdleResult
+      }
+      Thread.Yield()
+    }
+    var submitResult VkResult
+    while !mailbox.TakeSubmitCompletion(out submitResult) {
+      Thread.Yield()
+    }
+    mailbox.ResetSubmitCompletion()
+    if submitResult != VkConstants.VK_SUCCESS {
+      if submitResult == VkConstants.VK_ERROR_DEVICE_LOST {
+        MarkDeviceLost()
+      }
+      return submitResult
+    }
+    return WaitGraphicsSubmission(serial, VkConstants.VK_WHOLE_SIZE)
+  }
+
   internal func GetCompletedGraphicsSubmissionSerial(out value uint64) VkResult {
     value = 0uL
     if disposed {
@@ -906,6 +954,9 @@ internal unsafe sealed class VulkanSharedLease : IDisposable {
 
   internal func EnqueueGraphicsSubmission(mailbox VulkanQueueMailbox,
     validate Action[uint64]) bool -> owner.EnqueueGraphicsSubmission(mailbox, validate)
+
+  internal func DrainAcquiredSemaphore(semaphore VkSemaphore) VkResult ->
+  owner.DrainAcquiredSemaphore(semaphore)
 
   internal func GetCompletedGraphicsSubmissionSerial(out value uint64) VkResult ->
   owner.GetCompletedGraphicsSubmissionSerial(out value)

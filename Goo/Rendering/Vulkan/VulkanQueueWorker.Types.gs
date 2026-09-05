@@ -164,8 +164,9 @@ internal unsafe sealed class VulkanQueueMailbox {
     submitInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SUBMIT_INFO_2
     submitInfo.waitSemaphoreInfoCount = if SubmitHasWait { 1u } else { 0u }
     submitInfo.pWaitSemaphoreInfos = if SubmitHasWait { &waitInfo } else { nil }
-    submitInfo.commandBufferInfoCount = 1u
-    submitInfo.pCommandBufferInfos = &commandInfo
+    let hasCommand = SubmitCommandBuffer != nint(0)
+    submitInfo.commandBufferInfoCount = if hasCommand { 1u } else { 0u }
+    submitInfo.pCommandBufferInfos = if hasCommand { &commandInfo } else { nil }
     submitInfo.signalSemaphoreInfoCount = if SubmitHasSignal { 2u } else { 1u }
     submitInfo.pSignalSemaphoreInfos = signalInfos
     let queueSubmit = dispatch.vkQueueSubmit2

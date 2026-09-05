@@ -7,7 +7,7 @@ internal unsafe partial class VulkanWindowTarget {
   internal func RecoveryRuntime() VulkanSharedLease ? -> runtime
 
   internal func ServiceRecoveryQueueCompletion() {
-    if queueStage == QueueStageSubmit {
+    if queueStage == QueueStageSubmit || queueStage == QueueStageSubmitRetry {
       PollQueueCompletion()
     }
   }

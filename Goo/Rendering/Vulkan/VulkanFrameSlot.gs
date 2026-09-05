@@ -172,25 +172,21 @@ internal unsafe partial class VulkanFrameSlot : IDisposable {
     acquirePrepared = false
   }
 
-  internal func AbandonAcquiredForSwapchainRetirement() {
+  internal func AbandonAcquiredForSwapchainRetirement() VkResult {
     if disposed {
       throw ObjectDisposedException("VulkanFrameSlot")
     }
     if submissionFailed || !acquired || inFlight {
       throw InvalidOperationException("VulkanFrameSlot has no abandonable acquired work")
     }
+    let drainResult = sharedLease.DrainAcquiredSemaphore(acquireSemaphore)
+    if drainResult != VkConstants.VK_SUCCESS {
+      return drainResult
+    }
     acquired = false
     acquirePrepared = false
     submitPrepared = false
-    if acquireSemaphore != 0uL {
-      let destroySemaphore = dispatch.vkDestroySemaphore
-      destroySemaphore(device, acquireSemaphore, nil)
-      if let accounting = objectAccounting {
-        accounting.Release()
-      }
-      acquireSemaphore = 0uL
-    }
-    Create()
+    return VkConstants.VK_SUCCESS
   }
 
   internal func WaitForCompletion() VkResult {

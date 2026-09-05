@@ -124,6 +124,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
   private const QueueStageSubmit int32 = 1
   private const QueueStagePresentPrepare int32 = 2
   private const QueueStagePresent int32 = 3
+  private const QueueStageSubmitRetry int32 = 4
   private var queueStage int32
   private var pendingGlobalSubmissionSerial uint64
   private var pendingSubmitStart uint64
@@ -156,6 +157,9 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
       return false
     }
     if let activeRuntime = runtime {
+      if activeRuntime.Terminal {
+        return true
+      }
       if activeRuntime.QueueWorker.HasOutstandingWork {
         host.Wake()
         return false
@@ -773,24 +777,14 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
       }
       mailbox.PrepareSubmit(slot.CommandBuffer, slot.AcquireSemaphore,
         current.RenderSemaphore(activeImageIndex))
-      if !mailbox.BeginSubmit()
-        || !activeRuntime.EnqueueGraphicsSubmission(mailbox, validateGraphicsSubmission) {
-          mailbox.CancelSubmit()
-          try { AbortUnsubmittedTextUpload() } catch (cleanup Exception) { }
-          try { AbortUnsubmittedImageUploads() } catch (cleanup Exception) { }
-          try { AbortUnsubmittedPathUpload() } catch (cleanup Exception) { }
-          try { AbortUnsubmittedClipMask() } catch (cleanup Exception) { }
-          layerPool?.Abort()
-          if slot.HasAbandonableAcquiredWork {
-            try { AbandonRecordedFrameForRetry() } catch (cleanup Exception) { }
-          }
-          frameFailed = false
-          frameFailureRetryable = true
-          forceFullRedraw = true
-          CloseDiagnosticFrame(false)
-          ClearActiveFrame()
-          return
-        }
+      if !mailbox.BeginSubmit() {
+        throw InvalidOperationException("Vulkan queue mailbox rejected graphics submission")
+      }
+      if !activeRuntime.EnqueueGraphicsSubmission(mailbox, validateGraphicsSubmission) {
+        queueStage = QueueStageSubmitRetry
+        host.Wake()
+        return
+      }
       queueStage = QueueStageSubmit
     } catch (error Exception) {
       try { AbortUnsubmittedTextUpload() } catch (cleanup Exception) { }
@@ -822,7 +816,53 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     pendingGlobalSubmissionSerial = serial
   }
 
+  private func RetryQueueSubmit() bool {
+    guard let mailbox = queueMailbox, let activeRuntime = runtime else {
+      return false
+    }
+    if activeRuntime.DeviceLost {
+      if !VulkanDeviceRecoveryCoordinator.Recover(VkConstants.VK_ERROR_DEVICE_LOST) {
+        frameFailed = true
+        throw InvalidOperationException("Vulkan device recovery failed")
+      }
+      return false
+    }
+    if activeRuntime.Terminal {
+      queueStage = QueueStageIdle
+      frameFailed = true
+      presentationRetirement.CancelPendingPresentationLatency()
+      CloseDiagnosticFrame(false)
+      ClearActiveFrame()
+      return false
+    }
+    try {
+      if !activeRuntime.EnqueueGraphicsSubmission(mailbox, validateGraphicsSubmission) {
+        host.Wake()
+        return false
+      }
+    } catch (error Exception) {
+      queueStage = QueueStageIdle
+      try { AbortUnsubmittedTextUpload() } catch (cleanup Exception) { }
+      try { AbortUnsubmittedImageUploads() } catch (cleanup Exception) { }
+      try { AbortUnsubmittedPathUpload() } catch (cleanup Exception) { }
+      try { AbortUnsubmittedClipMask() } catch (cleanup Exception) { }
+      layerPool?.Abort()
+      try { AbandonRecordedFrameForRetry() } catch (cleanup Exception) { frameFailed = true }
+      CloseDiagnosticFrame(false)
+      presentationRetirement.CancelPendingPresentationLatency()
+      ClearActiveFrame()
+      throw error
+    }
+    queueStage = QueueStageSubmit
+    return true
+  }
+
   public func PollQueueCompletion() bool {
+    if queueStage == QueueStageSubmitRetry {
+      if !RetryQueueSubmit() {
+        return false
+      }
+    }
     guard let mailbox = queueMailbox else {
       return false
     }
@@ -1175,6 +1215,27 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     InvalidateLastPresentedImageState()
     let lostRuntime = runtime
     if let activeRuntime = lostRuntime {
+      if activeRuntime.Terminal {
+        disposed = true
+        VulkanDeviceRecoveryCoordinator.Unregister(this)
+        RemoveTextAtlasDiagnosticContribution()
+        RecordDiagnosticResult(
+          VulkanDiagnosticEventIds.PresentWait,
+          activeRuntime.TerminalIdleResult)
+        RecordDiagnosticEvent(
+          VulkanDiagnosticEventIds.WindowDestroy,
+          VulkanDiagnosticCategories.Window,
+          1uL,
+          int32(activeRuntime.TerminalIdleResult),
+          0uL,
+          0uL)
+        VulkanWindowTarget.RetainTerminalTarget(this)
+        if let currentDiagnostics = diagnostics {
+          currentDiagnostics.Seal()
+          try { currentDiagnostics.FlushNdjson(Console.Error) } catch (cleanup Exception) { }
+        }
+        return
+      }
       if activeRuntime.DeviceLost {
         AbandonReadbackAfterDeviceLoss()
       }
@@ -1510,12 +1571,31 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     }
   }
 
+  private func TryAbandonRecordedFrameForRetry() VkResult {
+    guard let slot = activeFrameSlot else {
+      return VkConstants.VK_ERROR_INITIALIZATION_FAILED
+    }
+    let abandonResult = slot.AbandonAcquiredForSwapchainRetirement()
+    if abandonResult == VkConstants.VK_SUCCESS {
+      recreatePending = true
+      forceFullRedraw = true
+      frameFailed = false
+    }
+    return abandonResult
+  }
+
   private func AbandonRecordedFrameForRetry() {
-    guard let slot = activeFrameSlot else { return }
-    slot.AbandonAcquiredForSwapchainRetirement()
-    recreatePending = true
-    forceFullRedraw = true
-    frameFailed = false
+    let abandonResult = TryAbandonRecordedFrameForRetry()
+    RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, abandonResult)
+    if abandonResult == VkConstants.VK_SUCCESS {
+      return
+    }
+    if abandonResult != VkConstants.VK_ERROR_DEVICE_LOST {
+      runtime?.MarkTeardownFailed(abandonResult)
+    }
+    HandleFrameFailure(abandonResult, VulkanDiagnosticEventIds.PresentWait)
+    throw InvalidOperationException(
+      "Vulkan acquired frame could not be retired: " + abandonResult.ToString())
   }
 
   private func HandleFrameFailure(result VkResult, eventId uint64) {

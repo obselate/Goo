@@ -225,7 +225,14 @@ jobs:
             libdbus-1-dev libdecor-0-dev libgl1-mesa-dev libgl1-mesa-dri \
             libegl1 libfontconfig1 libibus-1.0-dev libwayland-dev \
             libxkbcommon-dev mesa-vulkan-drivers vulkan-tools \
-            vulkan-validationlayers wayland-protocols weston
+            wayland-protocols weston
+
+      - name: Install pinned Vulkan validation layer
+        run: |
+          root="$RUNNER_TEMP/goo-vulkan-validation-layer"
+          .github/scripts/install-vulkan-validation-layer-linux-x64.sh "$root"
+          echo "VK_LAYER_PATH=$root/vulkan-validationlayers-1.4.313.0/usr/share/vulkan/explicit_layer.d" \
+            >> "$GITHUB_ENV"
 
       - name: Install pinned shader toolchain
         run: |
@@ -283,8 +290,12 @@ jobs:
       - name: Verify Vulkan software driver and validation layer
         run: |
           mkdir -p artifacts/reports
-          vulkaninfo --summary 2>&1 | tee artifacts/reports/vulkaninfo-summary.txt
-          grep -F 'VK_LAYER_KHRONOS_validation' artifacts/reports/vulkaninfo-summary.txt
+          VK_LOADER_DEBUG=layer VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation \
+            vulkaninfo --summary 2>&1 | tee artifacts/reports/vulkaninfo-summary.txt
+          grep -E '^VK_LAYER_KHRONOS_validation +Khronos Validation Layer +1\.4\.313 +version 1$' \
+            artifacts/reports/vulkaninfo-summary.txt
+          grep -F "$RUNNER_TEMP/goo-vulkan-validation-layer/vulkan-validationlayers-1.4.313.0/usr/lib/x86_64-linux-gnu/libVkLayer_khronos_validation.so" \
+            artifacts/reports/vulkaninfo-summary.txt
 
       - name: Fetch pinned Windows SDL runtime
         run: .github/scripts/fetch-sdl-win-x64.sh artifacts/native/win-x64/SDL3.dll
