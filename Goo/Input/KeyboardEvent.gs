@@ -3,7 +3,7 @@ package Goo
 import System
 import System.Runtime.CompilerServices
 
-internal class KeyboardDispatchControl {
+internal class InputDispatchControl {
   internal var Active bool
   internal var Generation int64
   internal var PropagationStopped bool
@@ -43,7 +43,7 @@ public struct KeyEvent {
   public prop Modifiers KeyModifiers{ get; init; }
   /// Reports whether this key down came from Goo key repeat.
   public prop Repeat bool{ get; init; }
-  internal prop Control KeyboardDispatchControl? { get; init; }
+  internal prop Control InputDispatchControl? { get; init; }
   internal prop Generation int64{ get; init; }
 
   /// Stops this event before the next ancestor callback without preventing its default behavior.
@@ -59,7 +59,7 @@ public struct KeyEvent {
 
 /// Describes a non-cancelable focus lifecycle callback.
 public struct FocusEvent {
-  internal prop Control KeyboardDispatchControl? { get; init; }
+  internal prop Control InputDispatchControl? { get; init; }
   internal prop Generation int64{ get; init; }
 
   /// Stops this lifecycle event before the next ancestor callback. Focus has already changed.

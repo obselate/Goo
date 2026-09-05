@@ -150,7 +150,8 @@ public class TextEditorController : IDisposable {
     set(v) -> onSubmit = v
   }
 
-  /// Dispatches and performs a semantic text-editor command.
+  /// Dispatches and performs a semantic text-editor command. MoveLeft and MoveRight use visual
+  /// order while mounted and logical document order otherwise.
   /// @param command The command to dispatch.
   /// @returns True when default handling ran.
   public func Execute(command TextCommand) bool {
@@ -201,79 +202,6 @@ public class TextEditorController : IDisposable {
     return false
   }
 
-  /// Inserts text at the active selection.
-  /// @param text The text to insert.
-  /// @returns True when default handling ran.
-  public func Insert(text string) bool -> Execute(TextCommand { Kind: TextCommandKind.Insert, Text: text })
-
-  /// Deletes the preceding grapheme cluster or selection.
-  /// @returns True when default handling ran.
-  public func DeleteBackward() bool -> Execute(TextCommand { Kind: TextCommandKind.DeleteBackward })
-
-  /// Deletes the following grapheme cluster or selection.
-  /// @returns True when default handling ran.
-  public func DeleteForward() bool -> Execute(TextCommand { Kind: TextCommandKind.DeleteForward })
-
-  /// Moves left in visual order while mounted, otherwise logical document order.
-  /// @param extendSelection True to retain the anchor.
-  /// @returns True when default handling ran.
-  public func MoveLeft(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveLeft, ExtendSelection: extendSelection })
-
-  /// Moves right in visual order while mounted, otherwise logical document order.
-  /// @param extendSelection True to retain the anchor.
-  /// @returns True when default handling ran.
-  public func MoveRight(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveRight, ExtendSelection: extendSelection })
-
-  /// Moves up by one logical line.
-  /// @param extendSelection True to retain the anchor.
-  /// @returns True when default handling ran.
-  public func MoveUp(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveUp, ExtendSelection: extendSelection })
-
-  /// Moves down by one logical line.
-  /// @param extendSelection True to retain the anchor.
-  /// @returns True when default handling ran.
-  public func MoveDown(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveDown, ExtendSelection: extendSelection })
-
-  /// Moves to the preceding word boundary.
-  /// @param extendSelection True to retain the anchor.
-  /// @returns True when default handling ran.
-  public func MoveWordLeft(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveWordLeft, ExtendSelection: extendSelection })
-
-  /// Moves to the following word boundary.
-  /// @param extendSelection True to retain the anchor.
-  /// @returns True when default handling ran.
-  public func MoveWordRight(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveWordRight, ExtendSelection: extendSelection })
-
-  /// Moves to the active line start.
-  /// @param extendSelection True to retain the anchor.
-  /// @returns True when default handling ran.
-  public func MoveLineStart(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveLineStart, ExtendSelection: extendSelection })
-
-  /// Moves to the active line end.
-  /// @param extendSelection True to retain the anchor.
-  /// @returns True when default handling ran.
-  public func MoveLineEnd(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveLineEnd, ExtendSelection: extendSelection })
-
-  /// Moves to the document start and optionally extends the selection.
-  /// @returns True when default handling ran.
-  public func MoveDocumentStart(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveDocumentStart, ExtendSelection: extendSelection })
-
-  /// Moves to the document end and optionally extends the selection.
-  /// @returns True when default handling ran.
-  public func MoveDocumentEnd(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.MoveDocumentEnd, ExtendSelection: extendSelection })
-
-  /// Moves up by one page and optionally extends the selection.
-  /// @returns True when default handling ran.
-  public func PageUp(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.PageUp, ExtendSelection: extendSelection })
-
-  /// Moves down by one page and optionally extends the selection.
-  /// @returns True when default handling ran.
-  public func PageDown(extendSelection bool) bool -> Execute(TextCommand { Kind: TextCommandKind.PageDown, ExtendSelection: extendSelection })
-
-  /// Selects the whole document.
-  /// @returns True when default handling ran.
-  public func SelectAll() bool -> Execute(TextCommand { Kind: TextCommandKind.SelectAll })
-
   /// Gets the selected text after command interception.
   /// @returns The selected text, or an empty string when canceled.
   public func Copy() string {
@@ -289,35 +217,6 @@ public class TextEditorController : IDisposable {
     cutDefault()
     return copied
   }
-
-  /// Inserts pasted text at the active selection.
-  /// @param text The text to paste.
-  /// @returns True when default handling ran.
-  public func Paste(text string) bool -> Execute(TextCommand { Kind: TextCommandKind.Paste, Text: text })
-
-  /// Reverts the previous grouped edit.
-  /// @returns True when an edit was reverted.
-  public func Undo() bool -> Execute(TextCommand { Kind: TextCommandKind.Undo })
-
-  /// Reapplies the previous reverted edit.
-  /// @returns True when an edit was reapplied.
-  public func Redo() bool -> Execute(TextCommand { Kind: TextCommandKind.Redo })
-
-  /// Inserts a tab at every selected logical line.
-  /// @returns True when default handling ran.
-  public func Indent() bool -> Execute(TextCommand { Kind: TextCommandKind.Indent })
-
-  /// Removes a leading tab or up to four spaces from every selected logical line.
-  /// @returns True when default handling ran.
-  public func Outdent() bool -> Execute(TextCommand { Kind: TextCommandKind.Outdent })
-
-  /// Dispatches the submit command.
-  /// @returns True when default handling ran.
-  public func Submit() bool -> Execute(TextCommand { Kind: TextCommandKind.Submit })
-
-  /// Starts IME composition over the active selection.
-  /// @returns True when default handling ran.
-  public func BeginComposition() bool -> Execute(TextCommand { Kind: TextCommandKind.BeginComposition })
 
   /// Updates transient IME composition text and its selected segment.
   /// @param text The transient preedit text.
@@ -343,10 +242,6 @@ public class TextEditorController : IDisposable {
     if !beginCommand(TextCommand { Kind: TextCommandKind.CommitComposition, Text: text }) { return false }
     return commitCompositionDefault(text)
   }
-
-  /// Cancels transient IME composition without changing the document.
-  /// @returns True when default handling ran.
-  public func CancelComposition() bool -> Execute(TextCommand { Kind: TextCommandKind.CancelComposition })
 
   /// Marks this controller focused.
   public func Focus() {

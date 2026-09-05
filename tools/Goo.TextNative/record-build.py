@@ -129,10 +129,43 @@ def windows_image_name(path, tool_prefix):
     return match.group(1)
 
 
+def macos_symbols(path):
+    result = subprocess.run(["nm", "-gUj", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
+    return sorted({line.strip().removeprefix("_") for line in result.stdout.splitlines() if line.strip()})
+
+
+def macos_needed(path):
+    result = subprocess.run(["otool", "-L", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
+    values = []
+    for line in result.stdout.splitlines()[1:]:
+        value = line.strip().split(" (", 1)[0]
+        if value:
+            values.append(value)
+    return sorted(set(values))
+
+
+def macos_format(path):
+    result = subprocess.run(["file", "-b", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
+    return result.stdout.strip()
+
+
+def macos_architectures(path):
+    result = subprocess.run(["lipo", "-archs", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
+    return sorted(result.stdout.split())
+
+
+def macos_install_name(path):
+    result = subprocess.run(["otool", "-D", str(path)], check=True, stdout=subprocess.PIPE, universal_newlines=True)
+    values = [line.strip() for line in result.stdout.splitlines()[1:] if line.strip()]
+    if len(values) != 1:
+        raise SystemExit(f"{path.name} has no unique Mach-O install name")
+    return values[0]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", required=True, type=Path)
-    parser.add_argument("--target", required=True, choices=("linux-x64", "win-x64"))
+    parser.add_argument("--target", required=True, choices=("linux-x64", "osx-arm64", "win-x64"))
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--artifact", required=True, action="append", metavar="NAME=PATH")
     parser.add_argument("--tool-prefix", default="")
@@ -172,7 +205,7 @@ def main():
             if glibc_versions and tuple(int(item) for item in glibc_versions[-1].split(".")) > tuple(int(item) for item in maximum.split(".")):
                 raise SystemExit(f"{name} GLIBC drift: {glibc_versions[-1]}")
             image_name = None
-        else:
+        elif args.target == "win-x64":
             if not args.tool_prefix:
                 raise SystemExit("Windows tool prefix is required")
             symbols = windows_symbols(path, args.tool_prefix)
@@ -183,6 +216,24 @@ def main():
                 raise SystemExit(f"{name} Windows dependency drift: {needed}")
             if image_name.casefold() != path.name.casefold():
                 raise SystemExit(f"{name} PE image name drift: {image_name}")
+        else:
+            policy = manifest["build"]["macos"]
+            symbols = macos_symbols(path)
+            needed = macos_needed(path)
+            image_format = macos_format(path)
+            architectures = macos_architectures(path)
+            image_name = macos_install_name(path)
+            if policy["requiredFormat"] not in image_format:
+                raise SystemExit(f"{path.name} format drift: {image_format}")
+            if architectures != sorted(policy["requiredArchitectures"]):
+                raise SystemExit(f"{name} macOS architecture drift: {architectures}")
+            if needed != sorted(policy["requiredNeeded"][name]):
+                raise SystemExit(f"{name} macOS dependency drift: {needed}")
+            if image_name != policy["requiredInstallName"][name]:
+                raise SystemExit(f"{name} Mach-O install name drift: {image_name}")
+            for dependency in needed:
+                if any(dependency.startswith(prefix) for prefix in policy["forbiddenDependencyPrefixes"]):
+                    raise SystemExit(f"{name} macOS dependency is not redistributable: {dependency}")
         symbols = sorted(value for value in symbols if value.startswith(prefixes[name]))
         required = set(manifest["requiredExports"][name])
         missing = sorted(required - set(symbols))
@@ -201,9 +252,13 @@ def main():
             artifact["runpath"] = dynamic_paths["runpath"]
             artifact["glibcVersions"] = glibc_versions
             artifact["maxGlibc"] = glibc_versions[-1] if glibc_versions else None
-        else:
+        elif args.target == "win-x64":
             artifact["format"] = image_format
             artifact["imageName"] = image_name
+        else:
+            artifact["format"] = image_format
+            artifact["architectures"] = architectures
+            artifact["installName"] = image_name
         artifacts[name] = artifact
     if set(artifacts) != set(manifest["outputs"][args.target]):
         raise SystemExit("artifact set is incomplete")
@@ -215,7 +270,7 @@ def main():
             "cc": command_text(compiler, ["--version"]),
             "strip": command_text("strip", ["--version"]),
         }
-    else:
+    elif args.target == "win-x64":
         toolchain = {
             "meson": command_text("meson", ["--version"]),
             "ninja": command_text("ninja", ["--version"]),
@@ -223,6 +278,13 @@ def main():
             "cpp": command_text(f"{args.tool_prefix}-g++", ["--version"]),
             "objdump": command_text(f"{args.tool_prefix}-objdump", ["--version"]),
             "strip": command_text(f"{args.tool_prefix}-strip", ["--version"]),
+        }
+    else:
+        toolchain = {
+            "meson": command_text("meson", ["--version"]),
+            "ninja": command_text("ninja", ["--version"]),
+            "cc": command_text("clang", ["--version"]),
+            "xcode": command_text("xcodebuild", ["-version"]),
         }
     build = dict(manifest["build"])
     build.pop("environments", None)

@@ -436,6 +436,24 @@ internal unsafe struct VkSemaphoreSubmitInfo {
 }
 
 @StructLayout(LayoutKind.Sequential)
+internal unsafe struct VkSemaphoreTypeCreateInfo {
+  var sType VkStructureType
+  var pNext * void
+  var semaphoreType VkSemaphoreType
+  var initialValue uint64
+}
+
+@StructLayout(LayoutKind.Sequential)
+internal unsafe struct VkSemaphoreWaitInfo {
+  var sType VkStructureType
+  var pNext * void
+  var flags VkSemaphoreWaitFlags
+  var semaphoreCount uint32
+  var pSemaphores * VkSemaphore
+  var pValues * uint64
+}
+
+@StructLayout(LayoutKind.Sequential)
 internal unsafe struct VkShaderModuleCreateInfo {
   var sType VkStructureType
   var pNext * void

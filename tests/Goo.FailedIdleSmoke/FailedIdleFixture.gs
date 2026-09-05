@@ -6,13 +6,14 @@ internal data struct FailedIdlePrimitiveFrameTestSnapshot {
   internal var RecordCount int32
   internal var ByteCount VkDeviceSize
   internal var BufferGeneration uint64
-  internal var WrittenBytes VkDeviceSize
-  internal var SkippedBytes VkDeviceSize
+  internal var PlannedTransferBytes VkDeviceSize
+  internal var SkippedTransferBytes VkDeviceSize
   internal var DirtyRecordCount int32
   internal var UploadRangeCount int32
   internal var FullUpload bool
-  internal var MappedWrites uint64
-  internal var Flushes uint64
+  internal var CpuWriteOperations uint64
+  internal var FlushRequests uint64
+  internal var NativeFlushCalls uint64
   internal var RetainedReuse uint64
   internal var LastUseSerial uint64
 }
@@ -53,13 +54,14 @@ internal partial class VulkanWindowTarget {
       RecordCount: stats.RecordCount,
       ByteCount: stats.ByteCount,
       BufferGeneration: stats.BufferGeneration,
-      WrittenBytes: stats.WrittenBytes,
-      SkippedBytes: stats.SkippedBytes,
+      PlannedTransferBytes: stats.PlannedTransferBytes,
+      SkippedTransferBytes: stats.SkippedTransferBytes,
       UploadRangeCount: stats.UploadRangeCount,
       DirtyRecordCount: stats.DirtyRecordCount,
       FullUpload: stats.FullUpload,
-      MappedWrites: stats.MappedWrites,
-      Flushes: stats.Flushes,
+      CpuWriteOperations: stats.CpuWriteOperations,
+      FlushRequests: stats.FlushRequests,
+      NativeFlushCalls: stats.NativeFlushCalls,
       RetainedReuse: stats.RetainedReuse,
       LastUseSerial: stats.LastUseSerial,
     }
@@ -98,14 +100,17 @@ internal partial class VulkanWindowTarget {
 }
 
 public partial class Window {
-  internal func FailedIdlePrimitiveFrameForTest() FailedIdlePrimitiveFrameTestSnapshot -> windowTarget?.FailedIdlePrimitiveFrameForTest()
+  private func FailedIdleTargetForTest() VulkanWindowTarget ? ->
+  windowTarget as VulkanWindowTarget?
+
+  internal func FailedIdlePrimitiveFrameForTest() FailedIdlePrimitiveFrameTestSnapshot -> FailedIdleTargetForTest()?.FailedIdlePrimitiveFrameForTest()
   ?? FailedIdlePrimitiveFrameTestSnapshot{}
 
-  internal func FailedIdleTextFrameForTest() FailedIdleTextFrameTestSnapshot -> windowTarget?.FailedIdleTextFrameForTest()
+  internal func FailedIdleTextFrameForTest() FailedIdleTextFrameTestSnapshot -> FailedIdleTargetForTest()?.FailedIdleTextFrameForTest()
   ?? FailedIdleTextFrameTestSnapshot{}
 
   internal func FailedIdleSubmissionSerialsForTest()
-  FailedIdleSubmissionSerialTestSnapshot -> windowTarget?.FailedIdleSubmissionSerialsForTest()
+  FailedIdleSubmissionSerialTestSnapshot -> FailedIdleTargetForTest()?.FailedIdleSubmissionSerialsForTest()
   ?? FailedIdleSubmissionSerialTestSnapshot{}
 }
 
@@ -120,7 +125,7 @@ internal partial class VulkanWindowTarget {
 
 public partial class Window {
   internal func FailedIdleCountersForTest() VulkanDiagnosticCounterSnapshot {
-    guard let target = windowTarget else {
+    guard let target = FailedIdleTargetForTest() else {
       return VulkanDiagnosticCounterSnapshot{}
     }
     return target.FailedIdleCountersForTest()
@@ -129,11 +134,11 @@ public partial class Window {
   internal func FailedIdleForcePumpForTest() bool {
     requestRender()
     PumpScheduled(0.0)
-    return windowTarget?.LastFrameSubmitted == true
+    return FailedIdleTargetForTest()?.LastFrameSubmitted == true
   }
 
   internal func FailedIdlePumpQueueForTest() bool {
-    guard let target = windowTarget else {
+    guard let target = FailedIdleTargetForTest() else {
       return true
     }
     target.PollQueueCompletion()
@@ -141,7 +146,7 @@ public partial class Window {
     return !target.QueueWorkPending && !target.NeedsRender
   }
 
-  internal func FailedIdleNeedsRenderForTest() bool -> windowTarget?.NeedsRender == true
+  internal func FailedIdleNeedsRenderForTest() bool -> FailedIdleTargetForTest()?.NeedsRender == true
 }
 
 internal class FailedIdleTestFixture {

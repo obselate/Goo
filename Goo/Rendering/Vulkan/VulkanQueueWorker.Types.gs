@@ -15,7 +15,7 @@ internal class VulkanQueueMailboxPhase {
 }
 
 internal unsafe sealed class VulkanQueueMailbox {
-  private let host SdlHost?
+  private let host VulkanSurfaceHost?
   private var phase int32
   private var submitResult VkResult = VkConstants.VK_NOT_READY
   private var presentResult VkResult = VkConstants.VK_NOT_READY
@@ -25,7 +25,8 @@ internal unsafe sealed class VulkanQueueMailbox {
   internal var SubmitCommandBuffer VkCommandBuffer
   internal var SubmitWaitSemaphore VkSemaphore
   internal var SubmitSignalSemaphore VkSemaphore
-  internal var SubmitFence VkFence
+  internal var SubmitTimeline VkSemaphore
+  internal var SubmitSerial uint64
   internal var SubmitHasWait bool
   internal var SubmitHasSignal bool
   internal var PresentSwapchain VkSwapchainKHR
@@ -34,7 +35,7 @@ internal unsafe sealed class VulkanQueueMailbox {
   internal var PresentFence VkFence
   internal var PresentFenceEnabled bool
 
-  internal init(nativeHost SdlHost?) {
+  internal init(nativeHost VulkanSurfaceHost?) {
     host = nativeHost
   }
 
@@ -48,11 +49,12 @@ internal unsafe sealed class VulkanQueueMailbox {
   internal prop SyntheticDrainResult VkResult{ get -> syntheticDrainResult }
 
   internal func PrepareSubmit(commandBuffer VkCommandBuffer, waitSemaphore VkSemaphore,
-    signalSemaphore VkSemaphore, fence VkFence) {
+    signalSemaphore VkSemaphore) {
       SubmitCommandBuffer = commandBuffer
       SubmitWaitSemaphore = waitSemaphore
       SubmitSignalSemaphore = signalSemaphore
-      SubmitFence = fence
+      SubmitTimeline = 0uL
+      SubmitSerial = 0uL
       SubmitHasWait = waitSemaphore != 0uL
       SubmitHasSignal = signalSemaphore != 0uL
     }
@@ -143,10 +145,18 @@ internal unsafe sealed class VulkanQueueMailbox {
     waitInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO
     waitInfo.semaphore = SubmitWaitSemaphore
     waitInfo.stageMask = VkConstants.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
-    var signalInfo = VkSemaphoreSubmitInfo{}
-    signalInfo.sType = VkConstants.VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO
-    signalInfo.semaphore = SubmitSignalSemaphore
-    signalInfo.stageMask = VkConstants.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+    let signalInfos * VkSemaphoreSubmitInfo = stackalloc[2]VkSemaphoreSubmitInfo
+    signalInfos[0] = VkSemaphoreSubmitInfo{}
+    signalInfos[0].sType = VkConstants.VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO
+    signalInfos[0].semaphore = SubmitTimeline
+    signalInfos[0].value = SubmitSerial
+    signalInfos[0].stageMask = VkConstants.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+    if SubmitHasSignal {
+      signalInfos[1] = VkSemaphoreSubmitInfo{}
+      signalInfos[1].sType = VkConstants.VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO
+      signalInfos[1].semaphore = SubmitSignalSemaphore
+      signalInfos[1].stageMask = VkConstants.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+    }
     var commandInfo = VkCommandBufferSubmitInfo{}
     commandInfo.sType = VkConstants.VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO
     commandInfo.commandBuffer = SubmitCommandBuffer
@@ -156,10 +166,10 @@ internal unsafe sealed class VulkanQueueMailbox {
     submitInfo.pWaitSemaphoreInfos = if SubmitHasWait { &waitInfo } else { nil }
     submitInfo.commandBufferInfoCount = 1u
     submitInfo.pCommandBufferInfos = &commandInfo
-    submitInfo.signalSemaphoreInfoCount = if SubmitHasSignal { 1u } else { 0u }
-    submitInfo.pSignalSemaphoreInfos = if SubmitHasSignal { &signalInfo } else { nil }
+    submitInfo.signalSemaphoreInfoCount = if SubmitHasSignal { 2u } else { 1u }
+    submitInfo.pSignalSemaphoreInfos = signalInfos
     let queueSubmit = dispatch.vkQueueSubmit2
-    submitResult = queueSubmit(queue, 1u, &submitInfo, SubmitFence)
+    submitResult = queueSubmit(queue, 1u, &submitInfo, 0uL)
     Interlocked.Exchange(ref phase, VulkanQueueMailboxPhase.SubmitComplete)
     host?.Wake()
   }

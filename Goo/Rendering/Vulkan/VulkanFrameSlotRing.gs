@@ -30,16 +30,17 @@ internal unsafe struct VulkanFrameSlotRing {
     dispatch VkDeviceDispatch,
     firstCommandBuffer VkCommandBuffer,
     secondCommandBuffer VkCommandBuffer,
-    objectAccounting VulkanObjectAccounting?) {
+    objectAccounting VulkanObjectAccounting?,
+    sharedLease VulkanSharedLease) {
       if first != nil || second != nil {
         throw InvalidOperationException("Vulkan frame slot ring is already created")
       }
       let createdFirst = VulkanFrameSlot(
-        device, dispatch, firstCommandBuffer, objectAccounting)
+        device, dispatch, firstCommandBuffer, objectAccounting, sharedLease)
       first = createdFirst
       try {
         second = VulkanFrameSlot(
-          device, dispatch, secondCommandBuffer, objectAccounting)
+          device, dispatch, secondCommandBuffer, objectAccounting, sharedLease)
       } catch (error Exception) {
         try { createdFirst.Dispose() } catch (cleanup Exception) { }
         first = nil
@@ -50,27 +51,6 @@ internal unsafe struct VulkanFrameSlotRing {
 
   internal func Advance() {
     currentIndex = if currentIndex == 0u { 1u } else { 0u }
-  }
-
-  internal func CompletedGlobalSubmissionSerial() uint64 {
-    var completed uint64 = 0uL
-    if let slot = first {
-      if slot.GlobalSubmissionSerial > completed {
-        completed = slot.GlobalSubmissionSerial
-      }
-      if slot.LastCompletedGlobalSubmissionSerial > completed {
-        completed = slot.LastCompletedGlobalSubmissionSerial
-      }
-    }
-    if let slot = second {
-      if slot.GlobalSubmissionSerial > completed {
-        completed = slot.GlobalSubmissionSerial
-      }
-      if slot.LastCompletedGlobalSubmissionSerial > completed {
-        completed = slot.LastCompletedGlobalSubmissionSerial
-      }
-    }
-    return completed
   }
 
   internal func Dispose() {

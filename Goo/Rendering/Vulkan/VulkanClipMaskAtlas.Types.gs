@@ -88,9 +88,5 @@ internal class VulkanClipMaskAtlasContract {
   shared {
     const MaxDepth uint32 = 8u
     const RegionPadding uint32 = 1u
-    const Std430ChainHeaderBytes uint32 = 16u
-    const Std430DrawRecordBytes uint32 = 48u
-    const Std430MaskRecordBytes uint32 = 48u
-    const Std430DrawMaskIndexCount uint32 = 8u
   }
 }

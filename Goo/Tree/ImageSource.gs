@@ -47,7 +47,6 @@ public class ImageSource : ImageSourceProvider, IDisposable {
   private let width int32
   private let height int32
   private var disposed bool
-  private var activeLeases int32
 
   /// Copies exactly Width times Height premultiplied RGBA pixels into an owned image.
   /// @param width The positive pixel width.
@@ -112,31 +111,18 @@ public class ImageSource : ImageSourceProvider, IDisposable {
       if disposed { return nil }
       if let current = image {
         current.Retain()
-        activeLeases = activeLeases + 1
         return current
       }
     }
     return nil
   }
 
-  internal func releaseLease() {
-    lock gate { activeLeases = activeLeases - 1 }
-  }
-
-  internal prop ActiveLeases int32{
-    get {
-      var result int32
-      lock gate { result = activeLeases }
-      return result
-    }
-  }
 }
 
 /// Owns one provider result while it is mounted by Goo.
 public class ImageSourceLease : IDisposable {
   private let registrations List[ImageSourceCompletion]
   private var image DecodedImage?
-  private var owner ImageSource?
   private var completed bool
   private var failed bool
   private var disposed bool
@@ -158,7 +144,6 @@ public class ImageSourceLease : IDisposable {
     let retained = source.retainImage()
     completed = true
     image = retained
-    owner = retained == nil ? nil : source
     failed = retained == nil
   }
 
@@ -252,7 +237,6 @@ public class ImageSourceLease : IDisposable {
     if !Object.ReferenceEquals(provider, finalProvider) || snapshot != finalSnapshot
       || !providerVersionMatches(finalProvider, finalSnapshot) {
         retained?.Release()
-        if retained != nil { source?.releaseLease() }
         return false
       }
     var published bool
@@ -263,7 +247,6 @@ public class ImageSourceLease : IDisposable {
         } else {
           completed = true
           image = retained
-          owner = retained == nil ? nil : source
           failed = retained == nil
           completedRegistrations = registrations.ToArray()
           registrations.Clear()
@@ -272,7 +255,6 @@ public class ImageSourceLease : IDisposable {
     }
     if !published {
       retained?.Release()
-      if retained != nil { source?.releaseLease() }
       return false
     }
     if let current = completedRegistrations {
@@ -320,7 +302,6 @@ public class ImageSourceLease : IDisposable {
   /// Releases the retained result and notifies the provider.
   public func Dispose() {
     var current DecodedImage?
-    var source ImageSource?
     var cancelled [] ? ImageSourceCompletion = nil
     var release bool
     lock registrations {
@@ -328,8 +309,6 @@ public class ImageSourceLease : IDisposable {
         disposed = true
         current = image
         image = nil
-        source = owner
-        owner = nil
         contentVersionProvider = nil
         cancelled = registrations.ToArray()
         registrations.Clear()
@@ -345,7 +324,6 @@ public class ImageSourceLease : IDisposable {
       for registration in currentCancelled { registration.Dispose() }
     }
     current?.Release()
-    source?.releaseLease()
     try {
       Released?.Invoke()
     } catch (error Exception) {

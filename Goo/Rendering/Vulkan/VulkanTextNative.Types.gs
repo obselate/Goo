@@ -14,7 +14,6 @@ internal class VulkanTextProviderAbi {
     const NativeFailure uint32 = 3u
     const OutputUnavailable uint32 = 4u
     const Disposed uint32 = 5u
-    const StatusLimit uint32 = 6u
   }
 }
 
@@ -223,10 +222,8 @@ internal sealed class VulkanTextProviderWorkspace {
   internal prop ByteBuffer []uint8{ get -> byteBuffer }
   internal prop ByteCapacity int32{ get -> byteBuffer.Length }
   internal prop ByteCount int32{ get -> byteCount }
-  internal prop RequiredByteCount int32{ get -> requiredByteCount }
   internal prop GlyphExtents VulkanTextGlyphExtents{ get -> glyphExtents }
   internal prop GlyphScale int32{ get -> glyphScale }
-  internal prop GlyphPalette uint32{ get -> glyphPalette }
 
   internal init(bytes []uint8) {
     if bytes.Length > MaxByteCapacity {

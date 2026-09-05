@@ -32,7 +32,7 @@ internal static class Program
                 return 0;
             }
             Console.Error.WriteLine(
-                "Usage: Goo.ShaderEffectTool <compile SOURCE AUTHORING_ROOT OUTPUT.spv OUTPUT.json|compilecheck SOURCE AUTHORING_ROOT|validate INPUT.spv OUTPUT.json|check INPUT.spv MANIFEST.json|selfcheck INPUT.spv>");
+                "Usage: Goo.ShaderEffectTool <compile SOURCE AUTHORING_ROOT OUTPUT.goo-effect OUTPUT.json|compilecheck SOURCE AUTHORING_ROOT|validate INPUT.spv OUTPUT.json|check INPUT.spv MANIFEST.json|selfcheck INPUT.spv>");
             return 2;
         }
         catch (Exception error)
@@ -63,7 +63,7 @@ internal static class Program
     private static void Compile(
         string input,
         string authoringRoot,
-        string outputSpirv,
+        string outputProgram,
         string outputManifest)
     {
         string sourcePath = Path.GetFullPath(input);
@@ -107,7 +107,7 @@ internal static class Program
                 AuthoringSha256 = HashFile(authoringModule)
             };
             byte[] manifest = ValidateArtifact(temporary, validator, compilerIdentity, source);
-            WriteAtomic(outputSpirv, File.ReadAllBytes(temporary));
+            WriteAtomic(outputProgram, EffectProgramBundle.Create(File.ReadAllBytes(temporary)));
             WriteAtomic(outputManifest, manifest);
             Console.WriteLine($"Compiled {input} as {EffectAbi.Id}");
         }
@@ -125,16 +125,19 @@ internal static class Program
         string directory = Path.Combine(Path.GetTempPath(),
             $"goo-shader-effect-compilecheck-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
-        string firstSpirv = Path.Combine(directory, "first.spv");
+        string firstProgram = Path.Combine(directory, "first.goo-effect");
         string firstManifest = Path.Combine(directory, "first.json");
-        string secondSpirv = Path.Combine(directory, "second.spv");
+        string secondProgram = Path.Combine(directory, "second.goo-effect");
         string secondManifest = Path.Combine(directory, "second.json");
+        string firstSpirv = Path.Combine(directory, "first.spv");
         try
         {
-            Compile(input, authoringRoot, firstSpirv, firstManifest);
-            Compile(input, authoringRoot, secondSpirv, secondManifest);
-            RequireEqual(firstSpirv, secondSpirv);
+            Compile(input, authoringRoot, firstProgram, firstManifest);
+            Compile(input, authoringRoot, secondProgram, secondManifest);
+            RequireEqual(firstProgram, secondProgram);
             RequireEqual(firstManifest, secondManifest);
+            File.WriteAllBytes(firstSpirv,
+                EffectProgramBundle.ReadVulkanSpirv(File.ReadAllBytes(firstProgram)));
             SelfCheck.Run(firstSpirv, SpirvValidator.Find());
         }
         finally

@@ -254,9 +254,9 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       }
       let spread = value.Spread
       let blurExtent = value.Blur > 0.0F ? value.Blur * 2.0F + 2.0F : 0.0F
-      let offsetExtent = Max(MathF.Abs(value.OffsetX), MathF.Abs(value.OffsetY))
+      let offsetExtent = MathF.Max(MathF.Abs(value.OffsetX), MathF.Abs(value.OffsetY))
       let expansion = value.Inset
-      ? Max(blurExtent, offsetExtent) : blurExtent + Max(spread, 0.0F)
+      ? MathF.Max(blurExtent, offsetExtent) : blurExtent + MathF.Max(spread, 0.0F)
       let shadowBounds = ConservativeBounds{
         X: value.Bounds.X + value.OffsetX - expansion,
         Y: value.Bounds.Y + value.OffsetY - expansion,
@@ -322,9 +322,9 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         return
       }
       let topWidth = ClampLength(value.TopWidth, bounds.Height)
-      let bottomWidth = ClampLength(value.BottomWidth, Max(bounds.Height - topWidth, 0.0F))
+      let bottomWidth = ClampLength(value.BottomWidth, MathF.Max(bounds.Height - topWidth, 0.0F))
       let rightWidth = ClampLength(value.RightWidth, bounds.Width)
-      let leftWidth = ClampLength(value.LeftWidth, Max(bounds.Width - rightWidth, 0.0F))
+      let leftWidth = ClampLength(value.LeftWidth, MathF.Max(bounds.Width - rightWidth, 0.0F))
       if value.Style != uint32(int32(BorderStyle.Solid))
         && value.Style != uint32(int32(BorderStyle.Dashed))
         && value.Style != uint32(int32(BorderStyle.Dotted)) {
@@ -362,7 +362,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         BindAndDraw(commandBuffer, primitivePipelines.BorderPipeline, *void(&push))
         return
       }
-      let interiorHeight = Max(bounds.Height - topWidth - bottomWidth, 0.0F)
+      let interiorHeight = MathF.Max(bounds.Height - topWidth - bottomWidth, 0.0F)
       if topWidth > 0.0F {
         EmitSolidResolved(commandBuffer, extent, ConservativeBounds{
           X: bounds.X,
@@ -424,8 +424,8 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       push.radii_y = value.RadiusTopRight
       push.radii_z = value.RadiusBottomRight
       push.radii_w = value.RadiusBottomLeft
-      let width = Max(value.Bounds.Width, 0.0001F)
-      let height = Max(value.Bounds.Height, 0.0001F)
+      let width = MathF.Max(value.Bounds.Width, 0.0001F)
+      let height = MathF.Max(value.Bounds.Height, 0.0001F)
       push.params_x = (value.StartX - value.Bounds.X) / width
       push.params_y = (value.StartY - value.Bounds.Y) / height
       push.params_z = (value.EndX - value.Bounds.X) / width
@@ -461,12 +461,12 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       push.radii_y = value.RadiusTopRight
       push.radii_z = value.RadiusBottomRight
       push.radii_w = value.RadiusBottomLeft
-      let width = Max(value.Bounds.Width, 0.0001F)
-      let height = Max(value.Bounds.Height, 0.0001F)
+      let width = MathF.Max(value.Bounds.Width, 0.0001F)
+      let height = MathF.Max(value.Bounds.Height, 0.0001F)
       push.params_x = (value.CenterX - value.Bounds.X) / width
       push.params_y = (value.CenterY - value.Bounds.Y) / height
-      push.params_z = Max(value.RadiusX / width, 0.0001F)
-      push.params_w = Max(value.RadiusY / height, 0.0001F)
+      push.params_z = MathF.Max(value.RadiusX / width, 0.0001F)
+      push.params_w = MathF.Max(value.RadiusY / height, 0.0001F)
       FillRadialStops(&push, frame, value.StopStart, value.StopCount, value.Opacity)
       BindAndDraw(commandBuffer, primitivePipelines.RadialPipeline, *void(&push))
     }
@@ -744,40 +744,20 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     value CachedTextSegmentRefRecord,
     drawClipChainId int32,
     frame SceneFrame) {
+      if primitivePrepass {
+        return
+      }
+      guard let atlases = textAtlases else {
+        throw NotSupportedException("Vulkan primitive renderer has no text atlas pipeline")
+      }
       let segment = ValidateTextSegment(value, drawClipChainId, frame)
       if value.Bounds.IsEmpty {
         return
       }
-      if primitivePrepass {
-        return
-      }
-      FlushPendingPrimitiveDraw(commandBuffer)
-      EnsureDescriptorLayout(textPipelineLayout)
-      EnsureClipDescriptorAt(commandBuffer, textPipelineLayout, 1u)
-      EnsureTextInstanceDescriptor(commandBuffer, textPipelineLayout)
-      var framePush = HbGpuTextFrameConstants{}
-      framePush.viewport_x = float32(extent.width)
-      framePush.viewport_y = float32(extent.height)
-      framePush.viewport_z = textFrameScaleX
-      framePush.viewport_w = textFrameScaleY
-      framePush.origin_x = currentOriginX
-      framePush.origin_y = currentOriginY
-      framePush.origin_z = 0.0F
-      framePush.origin_w = 0.0F
-      let pushConstants = dispatch.vkCmdPushConstants
-      pushConstants(commandBuffer, textPipelineLayout,
-        uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT),
-        0u, TextPushConstantSize, *void(&framePush))
+      FlushPendingPrimitiveBatch(commandBuffer)
       var runIndex int32 = 0
       while runIndex < segment.RunCount {
         let run = segment.Runs[runIndex]
-        let atlas = textAtlases!!.Resolve(run.AtlasId)
-        if !textDescriptorBound || !SameResourceId(textAtlasId, run.AtlasId) {
-          atlas.BindDescriptor(commandBuffer, textPipelineLayout)
-          recordDescriptorChangeCount++
-          textDescriptorBound = true
-          textAtlasId = run.AtlasId
-        }
         let selectedPipeline = if run.PipelineKind == 0u {
           primitivePipelines.TextPipeline
         } else {
@@ -786,20 +766,49 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         if selectedPipeline == 0uL {
           throw NotSupportedException("Vulkan primitive renderer has no selected text pipeline")
         }
-        if activePipeline != selectedPipeline {
-          let bindPipeline = dispatch.vkCmdBindPipeline
-          bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS,
-            selectedPipeline)
-          recordPipelineChangeCount++
-          activePipeline = selectedPipeline
-        }
         let globalFirst = uint64(value.FirstInstance) + uint64(run.FirstInstance)
         if globalFirst > uint64(uint32.MaxValue) {
           throw ArgumentOutOfRangeException("cached text global first instance")
         }
-        let draw = dispatch.vkCmdDraw
-        draw(commandBuffer, 6u, uint32(run.InstanceCount), 0u, uint32(globalFirst))
-        RecordImmediateDraw()
+        let firstInstance = uint32(globalFirst)
+        let instanceCount = uint32(run.InstanceCount)
+        if CanAppendTextDraw(selectedPipeline, run.AtlasId, firstInstance) {
+          AppendTextDraw(instanceCount)
+        } else {
+          FlushPendingTextDraw(commandBuffer)
+          EnsureDescriptorLayout(textPipelineLayout)
+          EnsureClipDescriptorAt(commandBuffer, textPipelineLayout, 1u)
+          EnsureTextInstanceDescriptor(commandBuffer, textPipelineLayout)
+          var framePush = HbGpuTextFrameConstants{}
+          framePush.viewport_x = float32(extent.width)
+          framePush.viewport_y = float32(extent.height)
+          framePush.viewport_z = textFrameScaleX
+          framePush.viewport_w = textFrameScaleY
+          framePush.origin_x = currentOriginX
+          framePush.origin_y = currentOriginY
+          framePush.origin_z = 0.0F
+          framePush.origin_w = 0.0F
+          let pushConstants = dispatch.vkCmdPushConstants
+          pushConstants(commandBuffer, textPipelineLayout,
+            uint32(VkConstants.VK_SHADER_STAGE_VERTEX_BIT),
+            0u, TextPushConstantSize, *void(&framePush))
+          let atlas = atlases.Resolve(run.AtlasId)
+          if !textDescriptorBound || !SameResourceId(textAtlasId, run.AtlasId) {
+            atlas.BindDescriptor(commandBuffer, textPipelineLayout)
+            recordDescriptorChangeCount++
+            textDescriptorBound = true
+            textAtlasId = run.AtlasId
+          }
+          if activePipeline != selectedPipeline {
+            let bindPipeline = dispatch.vkCmdBindPipeline
+            bindPipeline(commandBuffer, VkConstants.VK_PIPELINE_BIND_POINT_GRAPHICS,
+              selectedPipeline)
+            recordPipelineChangeCount++
+            activePipeline = selectedPipeline
+          }
+          BeginTextDraw(selectedPipeline, run.AtlasId, firstInstance,
+            instanceCount)
+        }
         runIndex = runIndex + 1
       }
     }
@@ -808,7 +817,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     value CachedTextSegmentRefRecord,
     drawClipChainId int32,
     frame SceneFrame) VulkanRetainedTextSegment{
-      if textAtlases == nil || textPipelineLayout == 0uL {
+      guard let atlases = textAtlases else {
+        throw NotSupportedException("Vulkan primitive renderer has no text atlas pipeline")
+      }
+      if textPipelineLayout == 0uL {
         throw NotSupportedException("Vulkan primitive renderer has no text atlas pipeline")
       }
       ValidateBounds(value.Bounds)
@@ -856,12 +868,6 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
         && segment.RendererValidationValid
         && segment.RendererValidationVersion == segment.Version
         && segment.RendererValidationAtlasGeneration == resourceGeneration{
-          var validatedRunIndex int32 = 0
-          while validatedRunIndex < segment.RunCount {
-            let atlas = textAtlases!!.Resolve(
-              segment.Runs[validatedRunIndex].AtlasId)
-            validatedRunIndex = validatedRunIndex + 1
-          }
           return segment
         }
       var expectedFirst int32 = 0
@@ -875,7 +881,7 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
           || !run.AtlasId.IsValid || run.AtlasId.Kind != SceneResourceKind.Atlas{
             throw ArgumentException("cached text segment run is invalid")
           }
-        let atlas = textAtlases!!.Resolve(run.AtlasId)
+        let atlas = atlases.Resolve(run.AtlasId)
         let runEnd = run.FirstInstance + run.InstanceCount
         var glyphIndex = run.FirstInstance
         while glyphIndex < runEnd {
@@ -1235,10 +1241,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       ValidateFinite(y0, "clip y0")
       ValidateFinite(x1, "clip x1")
       ValidateFinite(y1, "clip y1")
-      var leftValue = MathF.Floor(Min(x0, x1))
-      var topValue = MathF.Floor(Min(y0, y1))
-      var rightValue = MathF.Ceiling(Max(x0, x1))
-      var bottomValue = MathF.Ceiling(Max(y0, y1))
+      var leftValue = MathF.Floor(MathF.Min(x0, x1))
+      var topValue = MathF.Floor(MathF.Min(y0, y1))
+      var rightValue = MathF.Ceiling(MathF.Max(x0, x1))
+      var bottomValue = MathF.Ceiling(MathF.Max(y0, y1))
       let width = float32(extent.width)
       let height = float32(extent.height)
       if leftValue < 0.0F { leftValue = 0.0F }
@@ -1261,10 +1267,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
 
   private func Intersect(first PrimitiveClip, second PrimitiveClip) PrimitiveClip {
     var result = PrimitiveClip{}
-    result.Left = Max(first.Left, second.Left)
-    result.Top = Max(first.Top, second.Top)
-    result.Right = Min(first.Right, second.Right)
-    result.Bottom = Min(first.Bottom, second.Bottom)
+    result.Left = first.Left > second.Left ? first.Left : second.Left
+    result.Top = first.Top > second.Top ? first.Top : second.Top
+    result.Right = first.Right < second.Right ? first.Right : second.Right
+    result.Bottom = first.Bottom < second.Bottom ? first.Bottom : second.Bottom
     if result.Right < result.Left { result.Right = result.Left }
     if result.Bottom < result.Top { result.Bottom = result.Top }
     return result
@@ -1359,11 +1365,4 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     return value
   }
 
-  private func Min(first float32, second float32) float32 -> MathF.Min(first, second)
-
-  private func Max(first float32, second float32) float32 -> MathF.Max(first, second)
-
-  private func Min(first int32, second int32) int32 -> first < second ? first : second
-
-  private func Max(first int32, second int32) int32 -> first > second ? first : second
 }

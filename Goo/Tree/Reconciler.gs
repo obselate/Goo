@@ -330,6 +330,11 @@ internal class Reconciler {
     n.OnPointerCancel = b.OnPointerCancel
     if (n.OnWheel != nil) != (b.OnWheel != nil) { inputChanged = true }
     n.OnWheel = b.OnWheel
+    let nextHitTestSelf = resolvedHitTestSelf(b, focusable, entries, hover, active)
+    if n.HitTestSelf != nextHitTestSelf {
+      n.HitTestSelf = nextHitTestSelf
+      inputChanged = true
+    }
     if inputChanged {
       MarkEffects(ReconcileEffects.Input)
     }
@@ -337,6 +342,10 @@ internal class Reconciler {
 
   internal func applyContainer(n Node, c Container, initial bool) {
     applyStyle(n, c, c.Focusable, initial)
+    if !Transforming.SameVectorViewport(Transforming.GetVectorViewport(n), c.VectorViewport) {
+      Transforming.SetVectorViewport(n, c.VectorViewport)
+      MarkEffects(ReconcileEffects.Paint | ReconcileEffects.Input)
+    }
     if n.PinToBottom != c.PinToBottom {
       n.PinToBottom = c.PinToBottom
       MarkEffects(ReconcileEffects.Layout)
@@ -344,10 +353,6 @@ internal class Reconciler {
     }
     if n.DragsWindow != c.DragsWindow {
       n.DragsWindow = c.DragsWindow
-      MarkEffects(ReconcileEffects.Input)
-    }
-    if n.HitTestSelf != c.HitTestSelf {
-      n.HitTestSelf = c.HitTestSelf
       MarkEffects(ReconcileEffects.Input)
     }
   }
@@ -432,7 +437,7 @@ internal class Reconciler {
         validateEditorLayerOverlaps(layers)
         t.Controller.Attach(n)
         n.EditorController = t.Controller
-        n.EditorState = TextEditorRenderState(n, t.Document, t.Controller, layers, t.ReadOnly,
+        n.EditorState = TextEditorRenderState(n, t.Controller.Document, t.Controller, layers, t.ReadOnly,
           RetainedInvalidated)
         contentChanged = true
         paintChanged = true
@@ -873,6 +878,11 @@ internal class Reconciler {
     }
     if n.ShapeCornerRadius != s.CornerRadius {
       n.ShapeCornerRadius = s.CornerRadius
+      paintChanged = true
+      hitGeometryChanged = true
+    }
+    if n.ShapeStrokeInset != s.StrokeInset {
+      n.ShapeStrokeInset = s.StrokeInset
       paintChanged = true
       hitGeometryChanged = true
     }

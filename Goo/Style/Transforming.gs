@@ -3,6 +3,12 @@ package Goo
 import System
 import System.Runtime.CompilerServices
 
+internal data struct VectorViewport {
+  internal let NativeWidth float64
+  internal let NativeHeight float64
+  internal let Fit ShapeFit
+}
+
 internal class Transforming {
   shared {
     private var values ConditionalWeakTable[Node, TransformValue]?
@@ -65,6 +71,42 @@ internal class Transforming {
     internal func OriginY(n Node) Length {
       if let value = Get(n) { return value.OriginY }
       return Length.Percent(50.0)
+    }
+
+    internal func GetVectorViewport(n Node) VectorViewport? {
+      if let value = Get(n) { return value.Viewport }
+      return nil
+    }
+
+    internal func SameVectorViewport(left VectorViewport?, right VectorViewport?) bool {
+      if let leftValue = left {
+        if let rightValue = right {
+          return leftValue.NativeWidth == rightValue.NativeWidth
+            && leftValue.NativeHeight == rightValue.NativeHeight
+            && leftValue.Fit == rightValue.Fit
+        }
+        return false
+      }
+      if let rightValue = right { return false }
+      return true
+    }
+
+    internal func SetVectorViewport(n Node, next VectorViewport?) {
+      if let viewport = next {
+        validateViewport(viewport)
+        if let value = Get(n) {
+          value.Viewport = next
+          update(n, value)
+        } else if let value = getOrAdd(n, false) {
+          value.Viewport = next
+          update(n, value)
+        }
+        return
+      }
+      if let value = Get(n) {
+        value.Viewport = nil
+        update(n, value)
+      }
     }
 
     internal func SetTranslateX(n Node, next Length) {
@@ -156,7 +198,7 @@ internal class Transforming {
       let visual = !isZeroLength(state.TranslateX) || !isZeroLength(state.TranslateY)
         || state.Rotate != 0.0F || state.Scale != 1.0F
         || state.ScaleX != 1.0F || state.ScaleY != 1.0F
-        || state.SkewX != 0.0F || state.SkewY != 0.0F
+        || state.SkewX != 0.0F || state.SkewY != 0.0F || state.Viewport != nil
       n.HasVisualTransform = visual
       if visual || !isDefaultTranslation(state.TranslateX)
         || !isDefaultTranslation(state.TranslateY)
@@ -172,6 +214,21 @@ internal class Transforming {
     private func isDefaultTranslation(value Length) bool -> value.Unit == LengthUnit.Px && value.Value == 0.0F
 
     private func isDefaultOrigin(value Length) bool -> value.Unit == LengthUnit.Percent && value.Value == 50.0F
+
+    private func validateViewport(value VectorViewport) {
+      if Double.IsNaN(value.NativeWidth) || Double.IsInfinity(value.NativeWidth)
+        || value.NativeWidth <= 0.0 {
+          throw ArgumentOutOfRangeException("VectorViewport.NativeWidth")
+        }
+      if Double.IsNaN(value.NativeHeight) || Double.IsInfinity(value.NativeHeight)
+        || value.NativeHeight <= 0.0 {
+          throw ArgumentOutOfRangeException("VectorViewport.NativeHeight")
+        }
+      let fit = int32(value.Fit)
+      if fit < int32(ShapeFit.Contain) || fit > int32(ShapeFit.None) {
+        throw ArgumentOutOfRangeException("VectorViewport.Fit")
+      }
+    }
   }
 }
 
@@ -190,6 +247,7 @@ internal class TransformValue {
   internal var Sin float32
   internal var TanX float32
   internal var TanY float32
+  internal var Viewport VectorViewport?
 
   internal init() {
     TranslateX = Length{ Unit: LengthUnit.Px }

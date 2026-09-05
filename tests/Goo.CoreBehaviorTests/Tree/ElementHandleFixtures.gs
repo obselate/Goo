@@ -149,7 +149,7 @@ internal class ElementHandleFixtures {
     if !entry.IsMounted { return false }
     TextLayouts.DisposeTree(node)
     let document = TextDocument{}
-    node = mount(rec, owner, TextEditor(document, TextEditorController(document)) {
+    node = mount(rec, owner, TextEditor(TextEditorController(document)) {
       Handle = editor,
     })
     if !editor.IsMounted { return false }

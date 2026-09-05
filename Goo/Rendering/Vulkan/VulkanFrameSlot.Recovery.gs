@@ -20,14 +20,5 @@ internal unsafe partial class VulkanFrameSlot {
         try { accounting.Release() } catch (cleanup Exception) { }
       }
     }
-    if submissionFence != 0uL {
-      let staleFence = submissionFence
-      submissionFence = 0uL
-      let destroyFence = dispatch.vkDestroyFence
-      try { destroyFence(device, staleFence, nil) } catch (cleanup Exception) { }
-      if let accounting = objectAccounting {
-        try { accounting.Release() } catch (cleanup Exception) { }
-      }
-    }
   }
 }

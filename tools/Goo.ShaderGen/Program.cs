@@ -995,7 +995,7 @@ internal static class Program
         RequireAssembly(manifest.Assemblies[0], "hb_gpu_vertex", new[]
         {
             new AssemblyPart { Path = HarfBuzzVertexPath, Sha256 = HarfBuzzVertexSha256 },
-            new AssemblyPart { Path = "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/hb_gpu.vert.wrapper.glsl", Sha256 = "fa6b174882dd8b5aea6bf956e8fbeed11ff9619517556e233c653acf0d9d79c8" }
+            new AssemblyPart { Path = "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/hb_gpu.vert.wrapper.glsl", Sha256 = "128842ac415dc642e1c7a31804bf59254743df55725c34d6766890002624bf08" }
         });
         RequireAssembly(manifest.Assemblies[1], "hb_gpu_draw_fragment", new[]
         {
@@ -1295,15 +1295,14 @@ internal static class Program
     {
         Require(record.Set == 2, "textInstanceRecord.set", "2");
         Require(record.Binding == 0, "textInstanceRecord.binding", "0");
-        Require(record.Stride == 128, "textInstanceRecord.stride", "128");
+        Require(record.Stride == 112, "textInstanceRecord.stride", "112");
         RequireSequence(record.Stages, new[] { "vertex" }, "textInstanceRecord.stages");
         RequireMembers(record.Members, new[]
         {
             new PushConstantMember { Name = "transform", Offset = 0, Type = "mat4" },
             new PushConstantMember { Name = "glyphBounds", Offset = 64, Type = "vec4" },
             new PushConstantMember { Name = "glyphInput", Offset = 80, Type = "uvec4" },
-            new PushConstantMember { Name = "foreground", Offset = 96, Type = "vec4" },
-            new PushConstantMember { Name = "effectParams", Offset = 112, Type = "vec4" }
+            new PushConstantMember { Name = "foreground", Offset = 96, Type = "vec4" }
         }, "textInstanceRecord.members");
         Require(record.HostPacking.Path == "HbGpuTextInstanceRecord.Generated.gs", "textInstanceRecord.hostPacking.path", "HbGpuTextInstanceRecord.Generated.gs");
         Require(record.HostPacking.TypeName == "HbGpuTextInstanceRecord", "textInstanceRecord.hostPacking.typeName", "HbGpuTextInstanceRecord");

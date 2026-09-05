@@ -18,7 +18,7 @@ internal class InputFixtures {
       },
     })
     Layout().Calculate(tree, 100.0F, 100.0F)
-    if Hit().Topmost(tree, 45.0F, 5.0F) != tree || Hit().Topmost(tree, 5.0F, 5.0F) != nil {
+    if hitTopmost(tree, 45.0F, 5.0F) != tree || hitTopmost(tree, 5.0F, 5.0F) != nil {
       return false
     }
     let input = PointerInput()
@@ -54,7 +54,7 @@ internal class InputFixtures {
       Width: 20, Height: 20, Transform: PanelTransform{ Scale: 0 }, OnClick: () -> {},
     })
     Layout().Calculate(singular, 100.0F, 100.0F)
-    if Hit().Topmost(singular, 10.0F, 10.0F) != nil { return false }
+    if hitTopmost(singular, 10.0F, 10.0F) != nil { return false }
 
     let shape = Reconciler{ Res: Resolver{} }.Mount(Shape{
       Width: 100, Height: 100,
@@ -63,8 +63,8 @@ internal class InputFixtures {
       TransformOriginX: Length.Percent(0), TransformOriginY: Length.Percent(0),
     })
     Layout().Calculate(shape, 200.0F, 100.0F)
-    if Hit().Topmost(shape, 100.0F, 50.0F) != shape
-      || Hit().Topmost(shape, 55.0F, 5.0F) != nil {
+    if hitTopmost(shape, 100.0F, 50.0F) != shape
+      || hitTopmost(shape, 55.0F, 5.0F) != nil {
         return false
       }
 
@@ -1576,23 +1576,22 @@ internal class InputFixtures {
     }
     root.Children.Add(side)
     root.Children.Add(bottom)
-    let hit = Hit{}
     let chain = List[Node]()
-    hit.ChainInto(root, 125.0F, 25.0F, chain)
+    hitChainInto(root, 125.0F, 25.0F, chain)
     if chain.Count != 2 || chain[0] != root || chain[1] != side
-      || hit.Topmost(root, 125.0F, 25.0F) != side
-      || !hit.DispatchClick(root, 125.0F, 25.0F)
-      || hit.DispatchClick(root, 25.0F, 125.0F)
+      || hitTopmost(root, 125.0F, 25.0F) != side
+      || !hitDispatchClick(root, 125.0F, 25.0F)
+      || hitDispatchClick(root, 25.0F, 125.0F)
       || sideClicks != 1 || bottomClicks != 0 {
         return false
       }
 
     root.OverflowX = Overflow.Hidden
     root.OverflowY = Overflow.Visible
-    return hit.Topmost(root, 125.0F, 25.0F) == nil
-      && hit.Topmost(root, 25.0F, 125.0F) == bottom
-      && !hit.DispatchClick(root, 125.0F, 25.0F)
-      && hit.DispatchClick(root, 25.0F, 125.0F)
+    return hitTopmost(root, 125.0F, 25.0F) == nil
+      && hitTopmost(root, 25.0F, 125.0F) == bottom
+      && !hitDispatchClick(root, 125.0F, 25.0F)
+      && hitDispatchClick(root, 25.0F, 125.0F)
       && sideClicks == 1 && bottomClicks == 1
   }
 
@@ -1651,7 +1650,7 @@ internal class InputFixtures {
     return hitKey(root, 20.0F, 20.0F)
   }
 
-  private func hitKey(root Node, x float32, y float32) string -> Hit().Topmost(root, x, y)?.Key ?? ""
+  private func hitKey(root Node, x float32, y float32) string -> hitTopmost(root, x, y)?.Key ?? ""
 
   private func zIndexRuntimeHits() []string {
     let window = Window{ Root: ZIndexRuntimeRootCell{}, Width: 40, Height: 40 }

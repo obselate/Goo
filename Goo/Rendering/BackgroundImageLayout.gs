@@ -67,12 +67,12 @@ internal class BackgroundImageLayouts {
       releasePath(current)
       current.Image = nil
       current.Settled = false
-      current.SetSourceChanged(func() {
+      current.SetSourceChanged(() -> {
         BackgroundImageLayouts.refreshSource(n, current)
       })
       current.RebindSource(source)
       if Refresh(n) { return true }
-      current.WatchSource(func(token ImageSourceBindingToken) {
+      current.WatchSource((token ImageSourceBindingToken) -> {
         BackgroundImageLayouts.invalidateSource(n, current, token)
       })
       return false
@@ -86,9 +86,6 @@ internal class BackgroundImageLayouts {
         if !lease.IsComplete { return false }
         image = value.CompletedResult()
       } else if let request = value.Request {
-        if !request.IsComplete { return false }
-        value.Completion?.Dispose()
-        value.Completion = nil
         image = request.Result
       } else {
         return false
@@ -131,19 +128,11 @@ internal class BackgroundImageLayouts {
     private func startPath(n Node, value BackgroundImageValue, path string) {
       let request = ImageDecoding.Request(path)
       value.Request = request
-      if Refresh(n) {
-        return
-      }
-      value.Completion = request.OnCompleted(func() {
-        BackgroundImageLayouts.invalidateRequest(n, value, request)
-      })
+      Refresh(n)
     }
 
     private func releasePath(value BackgroundImageValue) {
-      value.Completion?.Dispose()
-      value.Request?.Release()
       value.Request = nil
-      value.Completion = nil
     }
 
     private func state(n Node) BackgroundImageValue? {
@@ -153,19 +142,6 @@ internal class BackgroundImageLayouts {
       }
       n.HasBackgroundImageState = false
       return nil
-    }
-
-    private func invalidateRequest(n Node, value BackgroundImageValue, request ImageRequest) {
-      if n.Retired {
-        return
-      }
-      guard let current = state(n) else {
-        return
-      }
-      if current != value || current.Request != request {
-        return
-      }
-      current.Invalidated?.Invoke()
     }
 
     private func invalidateSource(n Node, value BackgroundImageValue,
@@ -203,7 +179,7 @@ internal class BackgroundImageLayouts {
       if lease.IsComplete {
         return
       }
-      value.WatchSource(func(token ImageSourceBindingToken) {
+      value.WatchSource((token ImageSourceBindingToken) -> {
         BackgroundImageLayouts.invalidateSource(n, value, token)
       })
     }
@@ -213,7 +189,6 @@ internal class BackgroundImageLayouts {
 internal class BackgroundImageValue : ImageSourceBinding {
   internal var Path string
   internal var Request ImageRequest?
-  internal var Completion ImageCompletionRegistration?
   internal var Image DecodedImage?
   internal var Settled bool
   internal var Invalidated Action?

@@ -1,7 +1,6 @@
 package Goo
 
 import System.Collections.Generic
-import System.Collections.ObjectModel
 
 /// Specifies a UTF-16 range with a Start offset and Length.
 public data struct TextRange(Start int32, Length int32) { }
@@ -23,4 +22,4 @@ public data struct TextChange(Range TextRange, InsertedText string) { }
 public data struct TextDocumentChange(BeforeVersion int64, AfterVersion int64,
   Changes IReadOnlyList[TextChange]) { }
 
-internal func freezeTextChanges(values IReadOnlyList[TextChange]) IReadOnlyList[TextChange] -> ReadOnlyCollection[TextChange](List[TextChange](values))
+internal func freezeTextChanges(values []TextChange) IReadOnlyList[TextChange] -> Array.AsReadOnly(values)

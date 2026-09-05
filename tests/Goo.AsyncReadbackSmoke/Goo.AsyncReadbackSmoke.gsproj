@@ -9,7 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <GooShaderEffect Include="Shaders/control_effect.frag.slang"
-                     TargetPath="control_effect.frag.spv" />
+                     TargetPath="control_effect.frag.goo-effect" />
     <Compile Remove="WindowReadbackFixture.gs" />
     <Compile Include="../Shared/PrimitiveScene.gs" Link="PrimitiveScene.gs" />
     <Compile Include="../Shared/RoundedOverflowScene.gs" Link="RoundedOverflowScene.gs" />
@@ -23,6 +23,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../Goo/Goo.gsproj"
+                      AdditionalProperties="Configuration=AsyncReadbackTestRelease;IncludeTestFixtures=true;GooTestFixturesProps=$(MSBuildProjectDirectory)/Goo.AsyncReadbackFixtures.props" />
+    <ProjectReference Include="../../Goo.Svg/Goo.Svg.csproj"
                       AdditionalProperties="Configuration=AsyncReadbackTestRelease;IncludeTestFixtures=true;GooTestFixturesProps=$(MSBuildProjectDirectory)/Goo.AsyncReadbackFixtures.props" />
   </ItemGroup>
   <Target Name="UseGooLinuxSdlForAsyncReadbackSmoke"

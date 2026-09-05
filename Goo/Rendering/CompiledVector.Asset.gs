@@ -55,164 +55,181 @@ internal sealed class CompiledVectorRadialGradient : Gradient {
     }
 }
 
-public sealed class CompiledVectorAsset {
+public sealed class VectorAsset {
   private const MaxRenderDepth int32 = 1024
-  private let value CompiledVector
-  private let cachedPaths []VectorPath
-  private let cachedPathReady []bool
-  private let cachedClipPaths []VectorPath
-  private let cachedClipPathReady []bool
-  private let cachedGradients []Gradient?
-  private let cachedGradientReady []bool
-  private let cachedDashes []DashPattern?
-  private let cachedDashReady []bool
-  private let cachedPathLock object
+  private let document VectorAssetDocument
+  private let serialized CompiledVector?
 
-  private init(bytes []uint8) {
-    value = CompiledVector.Load(bytes)
-    cachedPaths = [value.NodeCount]VectorPath
-    cachedPathReady = [value.NodeCount]bool
-    cachedClipPaths = [value.ClipCount]VectorPath
-    cachedClipPathReady = [value.ClipCount]bool
-    cachedGradients = [value.PaintCount]Gradient?
-    cachedGradientReady = [value.PaintCount]bool
-    cachedDashes = [value.StrokeCount]DashPattern?
-    cachedDashReady = [value.StrokeCount]bool
-    cachedPathLock = Object()
-  }
+  public init(viewBoxX float64, viewBoxY float64, viewBoxWidth float64,
+    viewBoxHeight float64, roots []VectorNode) {
+      document = VectorAssetDocument(viewBoxX, viewBoxY, viewBoxWidth,
+        viewBoxHeight, roots)
+      serialized = nil
+    }
 
   shared {
-    public func Load(bytes []uint8) CompiledVectorAsset -> CompiledVectorAsset(bytes)
+    public func Load(bytes []uint8) VectorAsset -> VectorAsset(CompiledVector.Load(bytes))
 
-    public func TryLoad(bytes []uint8) CompiledVectorAsset? {
+    public func TryLoad(bytes []uint8) VectorAsset? {
       guard let parsed = CompiledVector.TryLoad(bytes) else { return nil }
-      return CompiledVectorAsset(parsed)
+      return VectorAsset(parsed)
     }
   }
 
-  private init(parsed CompiledVector) {
-    value = parsed
-    cachedPaths = [value.NodeCount]VectorPath
-    cachedPathReady = [value.NodeCount]bool
-    cachedClipPaths = [value.ClipCount]VectorPath
-    cachedClipPathReady = [value.ClipCount]bool
-    cachedGradients = [value.PaintCount]Gradient?
-    cachedGradientReady = [value.PaintCount]bool
-    cachedDashes = [value.StrokeCount]DashPattern?
-    cachedDashReady = [value.StrokeCount]bool
-    cachedPathLock = Object()
+  internal init(parsed CompiledVector) {
+    document = VectorAssetDocument(parsed)
+    serialized = parsed
   }
 
-  public prop Version uint16{ get -> value.Version }
-  public prop Flags uint32{ get -> value.Flags }
-  public prop ByteCount int32{ get -> value.ByteCount }
-  public prop ViewBoxX float32{ get -> value.ViewBoxX }
-  public prop ViewBoxY float32{ get -> value.ViewBoxY }
-  public prop ViewBoxWidth float32{ get -> value.ViewBoxWidth }
-  public prop ViewBoxHeight float32{ get -> value.ViewBoxHeight }
-  public prop NodeCount int32{ get -> value.NodeCount }
-  public prop ContourCount int32{ get -> value.ContourCount }
-  public prop CurveCount int32{ get -> value.CurveCount }
-  public prop MorphCurveCount int32{ get -> value.MorphCurveCount }
-  public prop PaintCount int32{ get -> value.PaintCount }
-  public prop StrokeCount int32{ get -> value.StrokeCount }
-  public prop ClipCount int32{ get -> value.ClipCount }
-  public prop TrackCount int32{ get -> value.TrackCount }
-  public prop KeyframeCount int32{ get -> value.KeyframeCount }
+  public prop Version uint16{
+    get {
+      guard let current = serialized else { return uint16(0) }
+      return current.Version
+    }
+  }
+  public prop Flags uint32{
+    get {
+      guard let current = serialized else { return uint32(0) }
+      return current.Flags
+    }
+  }
+  public prop ByteCount int32{
+    get {
+      guard let current = serialized else { return 0 }
+      return current.ByteCount
+    }
+  }
+  public prop ViewBoxX float32{ get -> float32(document.ViewBoxX) }
+  public prop ViewBoxY float32{ get -> float32(document.ViewBoxY) }
+  public prop ViewBoxWidth float32{ get -> float32(document.ViewBoxWidth) }
+  public prop ViewBoxHeight float32{ get -> float32(document.ViewBoxHeight) }
+  public prop Nodes IReadOnlyList[VectorNode]{ get -> document.PublicNodes }
+  public prop NodeCount int32{ get -> document.Nodes.Length }
+  public prop ContourCount int32{ get -> document.ContourCount }
+  public prop CurveCount int32{ get -> document.CurveCount }
+  public prop MorphCurveCount int32{
+    get {
+      guard let current = serialized else { return 0 }
+      return current.MorphCurveCount
+    }
+  }
+  public prop PaintCount int32{ get -> document.PaintCount }
+  public prop StrokeCount int32{ get -> document.StrokeCount }
+  public prop ClipCount int32{ get -> document.ClipCount }
+  public prop TrackCount int32{
+    get {
+      guard let current = serialized else { return 0 }
+      return current.TrackCount
+    }
+  }
+  public prop KeyframeCount int32{
+    get {
+      guard let current = serialized else { return 0 }
+      return current.KeyframeCount
+    }
+  }
 
-  public func PathForNode(index int32) VectorPath -> CachedPathForNode(index)
+  public func NodeAt(index int32) VectorNode {
+    if index < 0 || index >= document.Nodes.Length {
+      throw ArgumentOutOfRangeException("index")
+    }
+    return document.Nodes[index]
+  }
 
-  internal func PlayerNodeAt(index int32) CompiledVectorNodeView -> value.NodeAt(index)
+  public func PathForNode(index int32) VectorPath -> NodeAt(index).Path
 
-  internal func PlayerPaintAt(index int32) CompiledVectorPaintView -> value.PaintAt(index)
+  internal func PlayerNodeAt(index int32) CompiledVectorNodeView -> compiled().NodeAt(index)
 
-  internal func PlayerStrokeAt(index int32) CompiledVectorStrokeView -> value.StrokeAt(index)
+  internal func PlayerPaintAt(index int32) CompiledVectorPaintView -> compiled().PaintAt(index)
 
-  internal func PlayerTrackAt(index int32) CompiledVectorTrackView -> value.TrackAt(index)
+  internal func PlayerStrokeAt(index int32) CompiledVectorStrokeView -> compiled().StrokeAt(index)
 
-  internal func PlayerMorphKeyframeAt(index int32) CompiledVectorMorphKeyframeView -> value.MorphKeyframeAt(index)
+  internal func PlayerTrackAt(index int32) CompiledVectorTrackView -> compiled().TrackAt(index)
 
-  internal func PlayerMorphCurveAt(index int32) CompiledVectorMorphCurveView -> value.MorphCurveAt(index)
+  internal func PlayerMorphKeyframeAt(index int32) CompiledVectorMorphKeyframeView -> compiled().MorphKeyframeAt(index)
 
-  internal func PlayerPathForNode(index int32) VectorPath -> CachedPathForNode(index)
+  internal func PlayerMorphCurveAt(index int32) CompiledVectorMorphCurveView -> compiled().MorphCurveAt(index)
 
-  internal func PlayerMutablePathForNode(index int32) VectorPath -> value.MutablePathForNode(index)
+  internal func PlayerPathForNode(index int32) VectorPath -> PathForNode(index)
+
+  internal func PlayerMutablePathForNode(index int32) VectorPath {
+    let path = compiled().MutablePathForNode(index)
+    guard let owner = path.NormalizedOwner else { return path }
+    return VectorPath.CreateMutableNormalized(owner, 0.0, 0.0,
+      document.ViewBoxWidth, document.ViewBoxHeight)
+  }
 
   internal prop HasPlaybackTracks bool{
     get {
-      return value.TrackCount != 0
+      guard let current = serialized else { return false }
+      return current.TrackCount != 0
     }
   }
 
-  internal func PlayerKeyframeAt(index int32) CompiledVectorKeyframeView -> value.KeyframeAt(index)
+  internal func PlayerKeyframeAt(index int32) CompiledVectorKeyframeView -> compiled().KeyframeAt(index)
 
-  internal func PlayerDashValueAt(index int32) float32 -> value.DashValueAt(index)
+  internal func PlayerDashValueAt(index int32) float32 -> compiled().DashValueAt(index)
 
-  public func Render(key string?) Blob -> Cell.Mount[CompiledVectorAsset, CompiledVectorDisplayCell](key, this)
+  public func Render(key string?) Blob ->
+  Cell.Mount[VectorAssetRenderInput, VectorAssetDisplayCell](key,
+    VectorAssetRenderInput{ Asset: this, Fit: ShapeFit.Contain })
 
   public func Render() Blob -> Render(nil)
 
-  internal func BuildStaticTree() Container {
-    let width = float64(value.ViewBoxWidth)
-    let height = float64(value.ViewBoxHeight)
+  internal func BuildStaticTree() Container -> BuildStaticTree(ShapeFit.Contain)
+
+  internal func BuildStaticTree(fit ShapeFit) Container {
     let result = Container{
-      Width: width,
-      Height: height,
+      Width: Length.Percent(100.0),
+      Height: Length.Percent(100.0),
       Position: PositionType.Relative,
+      AspectRatio: document.ViewBoxWidth / document.ViewBoxHeight,
     }
-    var index int32 = 0
-    while index < value.NodeCount {
-      let node = value.NodeAt(index)
-      if !node.HasParent {
-        result.Children.Add(BuildNode(index, 1.0F, 0))
-      }
-      index++
-    }
-    return result
-  }
-
-  internal func CachedPathForNode(index int32) VectorPath {
-    if index < 0 || index >= cachedPaths.Length {
-      throw ArgumentOutOfRangeException("index")
-    }
-    if cachedPathReady[index] {
-      return cachedPaths[index]
-    }
-    lock cachedPathLock {
-      if cachedPathReady[index] {
-        return cachedPaths[index]
-      }
-      let path = value.PathForNode(index)
-      cachedPaths[index] = path
-      cachedPathReady[index] = true
-      return path
-    }
-  }
-
-  private func BuildNode(index int32, inheritedOpacity float32, depth int32) Container {
-    if depth >= MaxRenderDepth {
-      throw InvalidOperationException("Compiled vector render depth exceeded")
-    }
-    let node = value.NodeAt(index)
-    let opacity = inheritedOpacity * node.Opacity
-    let width = float64(value.ViewBoxWidth)
-    let height = float64(value.ViewBoxHeight)
-    let result = Container{
-      Key: "node-" + index.ToString(),
-      Width: width,
-      Height: height,
+    let content = Container{
+      Width: document.ViewBoxWidth,
+      Height: document.ViewBoxHeight,
       Position: PositionType.Absolute,
       Left: 0.0,
       Top: 0.0,
       TransformOriginX: Length.Percent(0.0),
       TransformOriginY: Length.Percent(0.0),
-      Transform: NodeTransform(node),
-      Opacity: float64(node.Opacity),
+      Transform: ViewBoxTransform(),
+      VectorViewport: VectorViewport{
+        NativeWidth: document.ViewBoxWidth,
+        NativeHeight: document.ViewBoxHeight,
+        Fit: fit,
+      },
     }
-    let content = if node.HasClip {
+    for index in document.Roots {
+      content.Children.Add(BuildNode(index, 0, ShapeFit.Fill))
+    }
+    result.Children.Add(content)
+    return result
+  }
+
+  private func BuildNode(index int32, depth int32, fit ShapeFit) Container {
+    if depth >= MaxRenderDepth {
+      throw InvalidOperationException("Vector asset render depth exceeded")
+    }
+    let node = document.Nodes[index]
+    let clipIndex = document.NodeClipIndices[index]
+    let hasClip = clipIndex >= 0
+    let result = Container{
+      Key: if let key = node.Key { key } else { "node-" + index.ToString() },
+      Width: Length.Percent(100.0),
+      Height: Length.Percent(100.0),
+      Position: PositionType.Absolute,
+      Left: 0.0,
+      Top: 0.0,
+      TransformOriginX: Length.Percent(0.0),
+      TransformOriginY: Length.Percent(0.0),
+      Transform: node.Transform,
+      Opacity: node.Opacity,
+    }
+    let content = if hasClip {
       Container{
-        Width: width,
-        Height: height,
+        Width: Length.Percent(100.0),
+        Height: Length.Percent(100.0),
         Position: PositionType.Absolute,
         Left: 0.0,
         Top: 0.0,
@@ -220,293 +237,166 @@ public sealed class CompiledVectorAsset {
     } else {
       result
     }
-    if value.TrackCount != 0 || opacity > 0.0F {
-      AddFill(content, index, node, width, height)
-      AddStroke(content, index, node, width, height)
-      var childIndex = node.FirstChildIndex
-      let childEnd = childIndex + node.ChildCount
+    AddFill(content, index, node, fit)
+    AddStroke(content, index, node, fit)
+    let firstChild = document.FirstChildren[index]
+    if firstChild >= 0 {
+      var childIndex = firstChild
+      let childEnd = childIndex + document.ChildCounts[index]
       while childIndex < childEnd {
-        content.Children.Add(BuildNode(int32(childIndex), opacity, depth + 1))
+        content.Children.Add(BuildNode(childIndex, depth + 1, fit))
         childIndex++
       }
     }
-    if node.HasClip {
-      result.Children.Add(WrapClip(int32(node.ClipIndex), content, width, height, 0))
+    if hasClip {
+      result.Children.Add(WrapClip(clipIndex, content, fit, 0))
     }
     return result
   }
 
-  private func AddFill(result Container, index int32,
-    node CompiledVectorNodeView, width float64, height float64) {
-      if !node.HasPaint || node.ContourCount == 0u {
-        return
-      }
-      let paint = value.PaintAt(int32(node.PaintIndex))
-      if paint.Opacity <= 0.0F {
-        return
-      }
-      let fillOpacity = clampOpacity(paint.Opacity)
-      if fillOpacity <= 0.0F {
-        return
-      }
-      let fillRule = (node.Flags & CompiledVectorLimits.NodeEvenOdd) != 0u
-      ? FillRule.EvenOdd : FillRule.NonZero
-      if paint.Kind == CompiledVectorPaintKind.Solid {
-        result.Children.Add(Shape{
+  private func AddFill(result Container, index int32, node VectorNode,
+    fit ShapeFit) {
+      guard let paint = node.Fill else { return }
+      if node.Path.CommandCount == 0 { return }
+      let shape = if let gradient = paint.Gradient {
+        Shape{
           Key: "fill-" + index.ToString(),
-          Path: CachedPathForNode(index),
-          Fit: ShapeFit.Fill,
-          FillRule: fillRule,
-          Width: width,
-          Height: height,
+          Path: node.Path,
+          Fit: fit,
+          FillRule: node.FillRule,
+          Width: Length.Percent(100.0),
+          Height: Length.Percent(100.0),
+          Position: PositionType.Absolute,
+          Left: 0.0,
+          Top: 0.0,
+          BackgroundGradient: gradient,
+        }
+      } else {
+        Shape{
+          Key: "fill-" + index.ToString(),
+          Path: node.Path,
+          Fit: fit,
+          FillRule: node.FillRule,
+          Width: Length.Percent(100.0),
+          Height: Length.Percent(100.0),
           Position: PositionType.Absolute,
           Left: 0.0,
           Top: 0.0,
           BackgroundColor: paint.Color,
-          Opacity: float64(fillOpacity),
-        })
-        return
-      }
-      guard let gradient = CachedGradientForPaint(int32(node.PaintIndex), paint) else { return }
-      result.Children.Add(Shape{
-        Key: "fill-" + index.ToString(),
-        Path: CachedPathForNode(index),
-        Fit: ShapeFit.Fill,
-        FillRule: fillRule,
-        Width: width,
-        Height: height,
-        Position: PositionType.Absolute,
-        Left: 0.0,
-        Top: 0.0,
-        BackgroundGradient: gradient,
-        Opacity: float64(fillOpacity),
-      })
-    }
-
-  private func AddStroke(result Container, index int32,
-    node CompiledVectorNodeView, width float64, height float64) {
-      if !node.HasStroke || node.ContourCount == 0u {
-        return
-      }
-      let strokeIndex = int32(node.StrokeIndex)
-      let stroke = value.StrokeAt(strokeIndex)
-      if !stroke.HasPaint || (stroke.Width <= 0.0F && !stroke.HasTrack) {
-        return
-      }
-      let paint = value.PaintAt(int32(stroke.PaintIndex))
-      if paint.Kind != CompiledVectorPaintKind.Solid || paint.Opacity <= 0.0F {
-        return
-      }
-      let strokeOpacity = clampOpacity(paint.Opacity)
-      if strokeOpacity <= 0.0F {
-        return
-      }
-      let cap = StrokeCap(stroke.Cap)
-      let join = StrokeJoin(stroke.Join)
-      result.Children.Add(Shape{
-        Key: "stroke-" + index.ToString(),
-        Path: CachedPathForNode(index),
-        Fit: ShapeFit.Fill,
-        FillRule: FillRule.NonZero,
-        StrokeCap: cap,
-        StrokeJoin: join,
-        MiterLimit: float64(stroke.MiterLimit),
-        Dashes: CachedDashPattern(strokeIndex, stroke),
-        BorderWidth: float64(stroke.Width),
-        BorderColor: paint.Color,
-        Width: width,
-        Height: height,
-        Position: PositionType.Absolute,
-        Left: 0.0,
-        Top: 0.0,
-        BackgroundColor: Color.Transparent,
-        Opacity: float64(strokeOpacity),
-      })
-    }
-
-  private func CachedGradientForPaint(index int32, paint CompiledVectorPaintView) Gradient? {
-    if index < 0 || index >= cachedGradients.Length {
-      throw ArgumentOutOfRangeException("index")
-    }
-    if cachedGradientReady[index] {
-      return cachedGradients[index]
-    }
-    lock cachedPathLock {
-      if cachedGradientReady[index] {
-        return cachedGradients[index]
-      }
-      let stops = [int32(paint.StopCount)]GradientStop
-      var stopIndex int32 = 0
-      while stopIndex < stops.Length {
-        let stop = value.PaintStopAt(int32(paint.StopStart) + stopIndex)
-        stops[stopIndex] = GradientStop{
-          Offset: float64(stop.Offset),
-          Color: stop.Color,
         }
-        stopIndex++
       }
-      let viewBoxX = float64(value.ViewBoxX)
-      let viewBoxY = float64(value.ViewBoxY)
-      let viewBoxWidth = float64(value.ViewBoxWidth)
-      let viewBoxHeight = float64(value.ViewBoxHeight)
-      let x0 = (float64(paint.X0) - viewBoxX) / viewBoxWidth
-      let y0 = (float64(paint.Y0) - viewBoxY) / viewBoxHeight
-      let x1 = (float64(paint.X1) - viewBoxX) / viewBoxWidth
-      let y1 = (float64(paint.Y1) - viewBoxY) / viewBoxHeight
-      let gradient = if paint.Kind == CompiledVectorPaintKind.LinearGradient {
-        CompiledVectorLinearGradient(x0, y0, x1, y1, stops)
-      } else {
-        CompiledVectorRadialGradient(x0, y0, Math.Abs(x1 - x0), Math.Abs(y1 - y0), stops)
-      }
-      cachedGradients[index] = gradient
-      cachedGradientReady[index] = true
-      return gradient
+      result.Children.Add(shape)
     }
-  }
 
-  private func CachedDashPattern(index int32, stroke CompiledVectorStrokeView) DashPattern? {
-    if !stroke.HasDashes {
-      return nil
-    }
-    if index < 0 || index >= cachedDashes.Length {
-      throw ArgumentOutOfRangeException("index")
-    }
-    if cachedDashReady[index] {
-      return cachedDashes[index]
-    }
-    lock cachedPathLock {
-      if cachedDashReady[index] {
-        return cachedDashes[index]
+  private func AddStroke(result Container, index int32, node VectorNode,
+    fit ShapeFit) {
+      guard let stroke = node.Stroke else { return }
+      if node.Path.CommandCount == 0 || stroke.Width <= 0.0 {
+        return
       }
-      let intervals = [int32(stroke.DashCount)]float64
-      var dashIndex int32 = 0
-      while dashIndex < intervals.Length {
-        intervals[dashIndex] = float64(value.DashValueAt(int32(stroke.DashStart) + dashIndex))
-        dashIndex++
+      guard let gradient = stroke.Paint.Gradient else {
+        let shape = Shape{
+          Key: "stroke-" + index.ToString(),
+          Path: node.Path,
+          Fit: fit,
+          FillRule: node.FillRule,
+          StrokeCap: stroke.Cap,
+          StrokeJoin: stroke.Join,
+          MiterLimit: stroke.MiterLimit,
+          Dashes: stroke.Dashes,
+          BorderWidth: stroke.Width,
+          BorderColor: stroke.Paint.Color,
+          Width: Length.Percent(100.0),
+          Height: Length.Percent(100.0),
+          Position: PositionType.Absolute,
+          Left: 0.0,
+          Top: 0.0,
+          BackgroundColor: Color.Transparent,
+          StrokeInset: false,
+        }
+        result.Children.Add(shape)
+        return
       }
-      let pattern = DashPattern(intervals, float64(stroke.DashOffset))
-      cachedDashes[index] = pattern
-      cachedDashReady[index] = true
-      return pattern
     }
-  }
 
-  private func CachedClipPath(index int32) VectorPath {
-    if index < 0 || index >= cachedClipPaths.Length {
-      throw ArgumentOutOfRangeException("index")
-    }
-    if cachedClipPathReady[index] {
-      return cachedClipPaths[index]
-    }
-    lock cachedPathLock {
-      if cachedClipPathReady[index] {
-        return cachedClipPaths[index]
-      }
-      let clip = value.ClipAt(index)
-      let path = value.PathForContours(int32(clip.ContourStart), int32(clip.ContourCount))
-      cachedClipPaths[index] = path
-      cachedClipPathReady[index] = true
-      return path
-    }
-  }
-
-  private func WrapClip(index int32, content Container, width float64,
-    height float64, depth int32) Container{
+  private func WrapClip(index int32, content Container, fit ShapeFit,
+    depth int32) Container{
       if depth >= MaxRenderDepth {
-        throw InvalidOperationException("Compiled vector clip depth exceeded")
+        throw InvalidOperationException("Vector asset clip depth exceeded")
       }
-      let clip = value.ClipAt(index)
-      let inner = if clip.HasParentClip {
-        WrapClip(int32(clip.ParentClipIndex), content, width, height, depth + 1)
+      if index < 0 || index >= document.ClipRecords.Length {
+        throw ArgumentOutOfRangeException("index")
+      }
+      let clip = document.ClipRecords[index]
+      let inner = if clip.ParentIndex >= 0 {
+        WrapClip(clip.ParentIndex, content, fit, depth + 1)
       } else {
         content
       }
       let result = Container{
-        Width: width,
-        Height: height,
+        Width: Length.Percent(100.0),
+        Height: Length.Percent(100.0),
         Position: PositionType.Absolute,
         Left: 0.0,
         Top: 0.0,
-        ClipPath: CachedClipPath(index),
-        ClipPathFit: ShapeFit.Fill,
-        ClipPathFillRule: FillRule(clip.FillRule),
+        ClipPath: clip.Path,
+        ClipPathFit: fit,
+        ClipPathFillRule: clip.FillRule,
       }
       result.Children.Add(inner)
       return result
     }
 
-  private func NodeTransform(node CompiledVectorNodeView) PanelTransform {
-    let a = node.M11
-    let b = node.M12
-    let c = node.M21
-    let d = node.M22
-    let firstLength = MathF.Sqrt(a * a + c * c)
-    let epsilon = 0.0000001F
-    if firstLength <= epsilon {
-      let secondLength = MathF.Sqrt(b * b + d * d)
-      if secondLength > epsilon {
-        let radians = MathF.Atan2(-b, d)
-        return PanelTransform{
-          TranslateX: float64(node.TranslateX),
-          TranslateY: float64(node.TranslateY),
-          Rotate: float64(radians * 180.0F / MathF.PI),
-          ScaleX: 0.0,
-          ScaleY: float64(secondLength),
-        }
-      }
-      return PanelTransform{
-        TranslateX: float64(node.TranslateX),
-        TranslateY: float64(node.TranslateY),
-        ScaleX: 0.0,
-        ScaleY: 0.0,
-      }
+  private func ViewBoxTransform() PanelTransform -> PanelTransform {
+    TranslateX: -document.ViewBoxX,
+    TranslateY: -document.ViewBoxY,
+  }
+
+  private func compiled() CompiledVector {
+    guard let current = serialized else {
+      throw InvalidOperationException("Authored vector assets have no playback data")
     }
-    let radians = MathF.Atan2(c, a)
-    let cosine = MathF.Cos(radians)
-    let sine = MathF.Sin(radians)
-    let secondScale = cosine * d - sine * b
-    if MathF.Abs(secondScale) <= epsilon {
-      let secondLength = MathF.Sqrt(b * b + d * d)
-      if secondLength > epsilon {
-        let alternateRadians = MathF.Atan2(-b, d)
-        let alternateCosine = MathF.Cos(alternateRadians)
-        let alternateSine = MathF.Sin(alternateRadians)
-        let alternateScale = alternateCosine * a + alternateSine * c
-        if MathF.Abs(alternateScale) > epsilon {
-          let tangentY = (-alternateSine * a + alternateCosine * c) / alternateScale
-          return PanelTransform{
-            TranslateX: float64(node.TranslateX),
-            TranslateY: float64(node.TranslateY),
-            Rotate: float64(alternateRadians * 180.0F / MathF.PI),
-            ScaleX: float64(alternateScale),
-            ScaleY: float64(secondLength),
-            SkewY: float64(MathF.Atan(tangentY) * 180.0F / MathF.PI),
-          }
-        }
-      }
-      return PanelTransform{
-        TranslateX: float64(node.TranslateX),
-        TranslateY: float64(node.TranslateY),
-        Rotate: float64(radians * 180.0F / MathF.PI),
-        ScaleX: float64(firstLength),
-        ScaleY: 0.0,
-      }
-    }
-    let tangentX = (cosine * b + sine * d) / secondScale
-    return PanelTransform{
-      TranslateX: float64(node.TranslateX),
-      TranslateY: float64(node.TranslateY),
-      Rotate: float64(radians * 180.0F / MathF.PI),
-      ScaleX: float64(firstLength),
-      ScaleY: float64(secondScale),
-      SkewX: float64(MathF.Atan(tangentX) * 180.0F / MathF.PI),
+    return current
+  }
+}
+
+public sealed class CompiledVectorAsset {
+  private let inner VectorAsset
+
+  private init(parsed CompiledVector) {
+    inner = VectorAsset(parsed)
+  }
+
+  shared {
+    public func Load(bytes []uint8) CompiledVectorAsset ->
+    CompiledVectorAsset(CompiledVector.Load(bytes))
+
+    public func TryLoad(bytes []uint8) CompiledVectorAsset? {
+      guard let parsed = CompiledVector.TryLoad(bytes) else { return nil }
+      return CompiledVectorAsset(parsed)
     }
   }
 
-  private func clampOpacity(value float32) float32 {
-    if value <= 0.0F { return 0.0F }
-    if value >= 1.0F { return 1.0F }
-    return value
-  }
+  public prop Version uint16{ get -> inner.Version }
+  public prop Flags uint32{ get -> inner.Flags }
+  public prop ByteCount int32{ get -> inner.ByteCount }
+  public prop ViewBoxX float32{ get -> inner.ViewBoxX }
+  public prop ViewBoxY float32{ get -> inner.ViewBoxY }
+  public prop ViewBoxWidth float32{ get -> inner.ViewBoxWidth }
+  public prop ViewBoxHeight float32{ get -> inner.ViewBoxHeight }
+  public prop NodeCount int32{ get -> inner.NodeCount }
+  public prop ContourCount int32{ get -> inner.ContourCount }
+  public prop CurveCount int32{ get -> inner.CurveCount }
+  public prop MorphCurveCount int32{ get -> inner.MorphCurveCount }
+  public prop PaintCount int32{ get -> inner.PaintCount }
+  public prop StrokeCount int32{ get -> inner.StrokeCount }
+  public prop ClipCount int32{ get -> inner.ClipCount }
+  public prop TrackCount int32{ get -> inner.TrackCount }
+  public prop KeyframeCount int32{ get -> inner.KeyframeCount }
 
+  public func PathForNode(index int32) VectorPath -> inner.PathForNode(index)
+
+  public func Render(key string?) Blob -> inner.Render(key)
+
+  public func Render() Blob -> inner.Render()
 }

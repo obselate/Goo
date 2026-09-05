@@ -107,8 +107,7 @@ float4 gooEffect(float2 uv, float4 source, float4 backdrop)
 {
     float4 frame = gooParameter(0);
     float4 controls = gooParameter(2);
-    float2 resolution = max(frame.yz, float2(1.0, 1.0));
-    float aspect = resolution.x / resolution.y;
+    const float aspect = 16.0 / 9.0;
     float speed = clamp(controls.x, 0.0, 2.0);
     float depth = clamp(controls.y, 0.0, 1.0);
     float glow = clamp(controls.z, 0.0, 2.0);

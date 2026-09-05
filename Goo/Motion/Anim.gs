@@ -35,7 +35,7 @@ internal class AnimHandle : MotionParticle {
 
 /// Bridges scalar simulations to a Cell-owned animated value.
 /// @typeparam T animated value type
-public open class Anim[T] {
+public class Anim[T] {
   private let converter MotionConverter[T]
   private let sims []Simulation?
   private let nextSims []Simulation?
@@ -43,7 +43,8 @@ public open class Anim[T] {
   private let toDims []float64
   private let velDims []float64
   private let velRead []float64
-  private let invalidate() -> void
+  private let invalidate Action?
+  private let onChange Action[T]?
   private let handle AnimHandle
   private var currentT T
   private var toT T
@@ -57,7 +58,7 @@ public open class Anim[T] {
   private var memoValue T
   private var memoValid bool
 
-  internal init(initial T, converter MotionConverter[T], invalidate() -> void) {
+  internal init(initial T, converter MotionConverter[T], invalidate Action?, onChange Action[T]?) {
     if converter == nil {
       throw ArgumentNullException("converter")
     }
@@ -77,10 +78,9 @@ public open class Anim[T] {
     toT = initial
     memoValue = initial
     this.invalidate = invalidate
+    this.onChange = onChange
     handle = AnimHandle(tickInternal, disposeInternal, bindInternal)
   }
-
-  internal open func gate();
 
   /// Gets the current value at the current motion clock time.
   public prop Value T{
@@ -165,7 +165,7 @@ public open class Anim[T] {
       retargetRequired(target, velocity, true, spec, specs)
     }
 
-  /// Snaps to value, stops all scalar simulations, and invalidates the owner.
+  /// Snaps to value, stops all scalar simulations, and notifies the owner.
   /// @param value value to set
   public func Set(value T) {
     applySnap(value, true)
@@ -186,7 +186,9 @@ public open class Anim[T] {
     try {
       converter.Read(value, toDims)
       if notify {
-        invalidate()
+        if let rebuild = invalidate {
+          rebuild()
+        }
       }
       for var i = 0; i < work.Length; i++ {
         work[i] = toDims[i]
@@ -199,6 +201,9 @@ public open class Anim[T] {
       running = false
       if let owner = handle.registrationPump {
         owner.Deregister(handle)
+      }
+      if notify {
+        notifyChange(value)
       }
     } finally {
       mutating = false
@@ -377,7 +382,7 @@ public open class Anim[T] {
       currentT = toT
       running = false
       clearSims()
-      invalidate()
+      notifyOwner(currentT)
       return false
     }
     let elapsed = elapsedAt(now)
@@ -392,12 +397,32 @@ public open class Anim[T] {
       running = false
       clearSims()
       memoValid = false
-      invalidate()
+      notifyOwner(currentT)
       return false
     }
-    memoize(now)
-    invalidate()
+    let value = memoize(now)
+    notifyOwner(value)
     return true
+  }
+
+  private func notifyOwner(value T) {
+    if let rebuild = invalidate {
+      rebuild()
+    }
+    notifyChange(value)
+  }
+
+  private func notifyChange(value T) {
+    guard let changed = onChange else {
+      return
+    }
+    let wasMutating = mutating
+    mutating = true
+    try {
+      changed(value)
+    } finally {
+      mutating = wasMutating
+    }
   }
   private func currentNow() float64 {
     guard let pump = boundPump else {
@@ -434,10 +459,5 @@ public open class Anim[T] {
       throw InvalidOperationException("running animation is missing a simulation")
     }
     return sim
-  }
-}
-
-internal class AnimCore[T](initial T, converter MotionConverter[T], invalidate() -> void) : Anim[T](initial, converter, invalidate) {
-  internal override func gate() {
   }
 }

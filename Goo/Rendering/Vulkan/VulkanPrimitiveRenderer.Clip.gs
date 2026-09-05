@@ -342,10 +342,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     extent VkExtent2D) PrimitiveClipBounds{
       let first = TransformBounds(value.Bounds, transform)
       let second = TransformBounds(value.PathBounds, transform)
-      let left = Floor(Max(first.X, second.X))
-      let top = Floor(Max(first.Y, second.Y))
-      let right = Ceiling(Min(first.Right, second.Right))
-      let bottom = Ceiling(Min(first.Bottom, second.Bottom))
+      let left = Floor(MathF.Max(first.X, second.X))
+      let top = Floor(MathF.Max(first.Y, second.Y))
+      let right = Ceiling(MathF.Min(first.Right, second.Right))
+      let bottom = Ceiling(MathF.Min(first.Bottom, second.Bottom))
       let extentWidth = int32(extent.width)
       let extentHeight = int32(extent.height)
       var x = int32(left)
@@ -361,18 +361,18 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       if r > extentWidth { r = extentWidth }
       if b > extentHeight { b = extentHeight }
       if r <= x {
-        x = Max(extentWidth - 1, 0)
+        x = extentWidth - 1 > 0 ? extentWidth - 1 : 0
         r = extentWidth
       }
       if b <= y {
-        y = Max(extentHeight - 1, 0)
+        y = extentHeight - 1 > 0 ? extentHeight - 1 : 0
         b = extentHeight
       }
       return PrimitiveClipBounds{
         X: x,
         Y: y,
-        Width: uint32(Max(r - x, 1)),
-        Height: uint32(Max(b - y, 1)),
+        Width: uint32(r - x > 1 ? r - x : 1),
+        Height: uint32(b - y > 1 ? b - y : 1),
       }
     }
 
@@ -386,10 +386,10 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       let y2 = transform.B * value.X + transform.D * value.Bottom + transform.TY
       let x3 = transform.A * value.Right + transform.C * value.Bottom + transform.TX
       let y3 = transform.B * value.Right + transform.D * value.Bottom + transform.TY
-      let left = Min(Min(x0, x1), Min(x2, x3))
-      let top = Min(Min(y0, y1), Min(y2, y3))
-      let right = Max(Max(x0, x1), Max(x2, x3))
-      let bottom = Max(Max(y0, y1), Max(y2, y3))
+      let left = MathF.Min(MathF.Min(x0, x1), MathF.Min(x2, x3))
+      let top = MathF.Min(MathF.Min(y0, y1), MathF.Min(y2, y3))
+      let right = MathF.Max(MathF.Max(x0, x1), MathF.Max(x2, x3))
+      let bottom = MathF.Max(MathF.Max(y0, y1), MathF.Max(y2, y3))
       return ConservativeBounds{ X: left, Y: top, Width: right - left, Height: bottom - top }
     }
 

@@ -9,7 +9,7 @@ internal data struct ImageCompletionWork {
   internal var Token object
 }
 
-/// Hosts a Goo tree in an SDL window.
+/// Hosts a Goo tree in a native window.
 public partial class Window {
   private func acceptImageCompletions() {
     lock imageCompletionGate {

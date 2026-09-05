@@ -123,6 +123,14 @@ internal data struct VulkanRectOverflowClipPreflight {
   internal var RectangularEmittable bool
 }
 
+internal data struct VulkanRetentionCounters {
+  internal var Hit uint64
+  internal var Rebuild uint64
+  internal var Fallback uint64
+  internal var Invalidation uint64
+  internal var Total uint64
+}
+
 internal data struct VulkanSceneCompileResult {
   internal var FrameVersion uint64
   internal var RootOwnerId uint64
@@ -144,26 +152,10 @@ internal data struct VulkanSceneCompileResult {
   internal var UnsupportedDetailCount int32
   internal var UnsupportedDetailDropped int32
   internal var BackgroundDrawn bool
-  internal var RetainedLeafHitCount uint64
-  internal var RetainedLeafRebuildCount uint64
-  internal var RetainedLeafFallbackCount uint64
-  internal var RetainedLeafInvalidationCount uint64
-  internal var RetainedLeafTotalCount uint64
-  internal var RetainedBorderHitCount uint64
-  internal var RetainedBorderRebuildCount uint64
-  internal var RetainedBorderFallbackCount uint64
-  internal var RetainedBorderInvalidationCount uint64
-  internal var RetainedBorderTotalCount uint64
-  internal var RetainedParentBoxHitCount uint64
-  internal var RetainedParentBoxRebuildCount uint64
-  internal var RetainedParentBoxFallbackCount uint64
-  internal var RetainedParentBoxInvalidationCount uint64
-  internal var RetainedParentBoxTotalCount uint64
-  internal var RetainedTextHitCount uint64
-  internal var RetainedTextRebuildCount uint64
-  internal var RetainedTextFallbackCount uint64
-  internal var RetainedTextInvalidationCount uint64
-  internal var RetainedTextTotalCount uint64
+  internal var RetainedLeaf VulkanRetentionCounters
+  internal var RetainedBorder VulkanRetentionCounters
+  internal var RetainedParentBox VulkanRetentionCounters
+  internal var RetainedText VulkanRetentionCounters
   internal var ExactTextClipCandidateCount int32
   internal var ExactTextClipCullCount int32
   internal var CachedTextPaintCullCount int32

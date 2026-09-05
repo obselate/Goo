@@ -63,7 +63,7 @@ internal partial class PointerInput {
   private func tryBeginScrollDrag(root Node, resolver Resolver, x float32, y float32) bool {
     scratchChain.Clear()
     try {
-      hit.ChainInto(root, x, y, scratchChain)
+      hitChainInto(root, x, y, scratchChain)
       if chainDisabled(scratchChain) { return false }
       for var i = scratchChain.Count; i > 0; i-- {
         let n = scratchChain[i - 1]

@@ -25,13 +25,3 @@ internal class VulkanDiagnosticResultClassifier {
     internal func IsNonSuccess(result VkResult) bool -> Classify(result) == VulkanDiagnosticResultClass.NonSuccess
   }
 }
-
-internal unsafe partial class VulkanDiagnostics {
-  internal func ClassifyResult(result VkResult) VulkanDiagnosticResultClass -> VulkanDiagnosticResultClassifier.Classify(result)
-
-  internal func IsResultSuccess(result VkResult) bool -> VulkanDiagnosticResultClassifier.IsSuccess(result)
-
-  internal func IsResultRecoverableWsi(result VkResult) bool -> VulkanDiagnosticResultClassifier.IsRecoverableWsi(result)
-
-  internal func IsResultNonSuccess(result VkResult) bool -> VulkanDiagnosticResultClassifier.IsNonSuccess(result)
-}

@@ -77,9 +77,9 @@ class PerformanceTextEditingRoot : Cell {
 
   func Advance(frame int32) {
     let accepted = if (frame & 1) == 0 {
-      controller.Insert("x")
+      controller.Execute(TextCommand{ Kind: TextCommandKind.Insert, Text: "x" })
     } else {
-      controller.DeleteBackward()
+      controller.Execute(TextCommand{ Kind: TextCommandKind.DeleteBackward })
     }
     operationCount = operationCount + 1
     lastFrame = frame
@@ -88,7 +88,7 @@ class PerformanceTextEditingRoot : Cell {
     Rebuild()
   }
 
-  override func Build() Blob -> TextEditor(document, controller) {
+  override func Build() Blob -> TextEditor(controller) {
     Key = EditorKey,
     Width = ViewportWidth,
     Height = ViewportHeight,

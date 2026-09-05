@@ -183,20 +183,6 @@ internal unsafe partial class VulkanImageResources : IDisposable {
       return true
     }
 
-  internal func RecordUploads(commandBuffer VkCommandBuffer, expectedGeneration uint64) int32 {
-    var recordedBytes VkDeviceSize = 0uL
-    var recordedBarriers int32 = 0
-    return RecordUploads(commandBuffer, expectedGeneration, out recordedBytes,
-      out recordedBarriers)
-  }
-
-  internal func RecordUploads(commandBuffer VkCommandBuffer, expectedGeneration uint64,
-    out recordedBytes VkDeviceSize) int32{
-      var recordedBarriers int32 = 0
-      return RecordUploads(commandBuffer, expectedGeneration, out recordedBytes,
-        out recordedBarriers)
-    }
-
   internal func RecordUploads(commandBuffer VkCommandBuffer, expectedGeneration uint64,
     out recordedBytes VkDeviceSize, out recordedBarriers int32) int32{
       EnsureOpen()
@@ -775,22 +761,6 @@ internal unsafe partial class VulkanImageResources : IDisposable {
         && entry.ProviderId == source.ProviderId
         && entry.SourceId == source.SourceId
         && entry.Id.Version > source.Version{
-          return true
-        }
-      index++
-    }
-    return false
-  }
-
-  private func HasPriorRenderableSourceVersion(source VulkanResourceSource) bool {
-    var index int32 = 0
-    while index < entries.Length {
-      let entry = entries[index]
-      if entry.State == VulkanImageResourceState.Resident
-        && entry.GpuPublished && !entry.PendingRetire
-        && entry.ProviderId == source.ProviderId
-        && entry.SourceId == source.SourceId
-        && entry.Id.Version < source.Version{
           return true
         }
       index++

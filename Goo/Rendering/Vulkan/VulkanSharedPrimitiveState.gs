@@ -2,13 +2,20 @@ package Goo
 
 import System
 import System.IO
+import System.Runtime.CompilerServices
 
-internal struct VulkanShaderEffectPipelineEntry {
-  internal var ProgramId uint64
+internal sealed class VulkanShaderEffectPipelineEntry {
+  internal let Digest []uint8
+  internal let Spirv []uint8
   internal var Pipeline VkPipeline
+
+  internal init(digest []uint8, spirv []uint8) {
+    Digest = digest
+    Spirv = spirv
+  }
 }
 
-internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
+internal unsafe sealed partial class VulkanSharedPrimitiveFormatState : IDisposable {
   private const ShaderEffectCapacity int32 = 32
   private let device VkDevice
   private let dispatch VkDeviceDispatch
@@ -20,7 +27,9 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
   private let pathPipelineLayout VkPipelineLayout
   private let textPipelineLayout VkPipelineLayout
   private let analyticVertexModule VkShaderModule
-  private let shaderEffectPipelines []VulkanShaderEffectPipelineEntry
+  private let shaderEffectPipelines []VulkanShaderEffectPipelineEntry?
+  private let shaderEffectPipelineAliases ConditionalWeakTable[ShaderEffectProgram,
+    VulkanShaderEffectPipelineEntry]
   private let solidModule VkShaderModule
   private let shadowModule VkShaderModule
   private let borderModule VkShaderModule
@@ -221,7 +230,9 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
       this.textFragmentModule = textFragmentModule
       this.textPaintFragmentModule = textPaintFragmentModule
       pipelineGate = Object()
-      shaderEffectPipelines = [ShaderEffectCapacity]VulkanShaderEffectPipelineEntry
+      shaderEffectPipelines = [ShaderEffectCapacity]VulkanShaderEffectPipelineEntry?
+      shaderEffectPipelineAliases = ConditionalWeakTable[ShaderEffectProgram,
+        VulkanShaderEffectPipelineEntry]()
     }
   internal func MaterializePipelines() {
     ResolvePipeline(ref solidPipeline, analyticVertexModule, solidModule,
@@ -289,70 +300,91 @@ internal unsafe sealed class VulkanSharedPrimitiveFormatState : IDisposable {
 
   internal func ResolveShaderEffectPipeline(effect ShaderEffect) VkPipeline {
     if disposed { throw ObjectDisposedException("VulkanSharedPrimitiveFormatState") }
-    let programId = effect.ProgramId
-    var index int32 = 0
-    while index < shaderEffectPipelineCount {
-      let entry = shaderEffectPipelines[index]
-      if entry.ProgramId == programId { return entry.Pipeline }
-      index = index + 1
+    let program = effect.Program
+    if shaderEffectPipelineAliases.TryGetValue(program, out var existing) {
+      return existing.Pipeline
     }
-    if shaderEffectPipelineCount >= shaderEffectPipelines.Length {
-      throw InvalidOperationException("Vulkan shader effect pipeline capacity exhausted")
-    }
-    let fragmentModule = VulkanPipelineFactory.CreateShaderModule(
-      device,
-      dispatch,
-      objectAccounting,
-      effect.FragmentSpirv,
-      "shader effect")
-    var pipeline VkPipeline
-    try {
-      pipeline = VulkanPipelineFactory.CreateGraphics(
+    lock (pipelineGate) {
+      if disposed { throw ObjectDisposedException("VulkanSharedPrimitiveFormatState") }
+      if shaderEffectPipelineAliases.TryGetValue(program, out var cached) {
+        return cached.Pipeline
+      }
+      let spirv = program.VulkanSpirv
+      let digest = program.VulkanSpirvDigest
+      var index int32
+      while index < shaderEffectPipelineCount {
+        if let entry = shaderEffectPipelines[index] {
+          if BytesEqual(entry.Digest, digest) && BytesEqual(entry.Spirv, spirv) {
+            shaderEffectPipelineAliases.Add(program, entry)
+            return entry.Pipeline
+          }
+        }
+        index++
+      }
+      if shaderEffectPipelineCount >= shaderEffectPipelines.Length {
+        throw InvalidOperationException("Vulkan shader effect pipeline capacity exhausted")
+      }
+      let entry = VulkanShaderEffectPipelineEntry(digest, spirv)
+      let fragmentModule = VulkanPipelineFactory.CreateShaderModule(
         device,
         dispatch,
-        pipelineCache,
         objectAccounting,
-        analyticVertexModule,
-        fragmentModule,
-        blendPipelineLayout,
-        format,
-        VkConstants.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-        true,
-        FullColorWriteMask())
-    } finally {
-      let destroyShaderModule = dispatch.vkDestroyShaderModule
-      destroyShaderModule(device, fragmentModule, nil)
-      if let accounting = objectAccounting { accounting.Release() }
+        spirv,
+        "shader effect")
+      var pipeline VkPipeline
+      try {
+        pipeline = VulkanPipelineFactory.CreateGraphics(
+          device,
+          dispatch,
+          pipelineCache,
+          objectAccounting,
+          analyticVertexModule,
+          fragmentModule,
+          blendPipelineLayout,
+          format,
+          VkConstants.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+          true,
+          FullColorWriteMask())
+      } finally {
+        let destroyShaderModule = dispatch.vkDestroyShaderModule
+        destroyShaderModule(device, fragmentModule, nil)
+        if let accounting = objectAccounting { accounting.Release() }
+      }
+      entry.Pipeline = pipeline
+      shaderEffectPipelines[shaderEffectPipelineCount] = entry
+      shaderEffectPipelineCount++
+      shaderEffectPipelineAliases.Add(program, entry)
+      return pipeline
     }
-    let slot = shaderEffectPipelineCount
-    shaderEffectPipelines[slot] = VulkanShaderEffectPipelineEntry{
-      ProgramId: programId,
-      Pipeline: pipeline,
-    }
-    shaderEffectPipelineCount = shaderEffectPipelineCount + 1
-    return pipeline
   }
 
+  private func BytesEqual(left []uint8, right []uint8) bool ->
+  MemoryExtensions.SequenceEqual[uint8](left.AsSpan(), right.AsSpan())
+
   public func Dispose() {
-    if disposed {
-      return
+    lock (pipelineGate) {
+      if disposed {
+        return
+      }
+      disposed = true
+      DestroyPipelines()
     }
-    disposed = true
-    DestroyPipelines()
   }
 
   private func DestroyPipelines() {
     let destroyPipeline = dispatch.vkDestroyPipeline
     var shaderIndex int32 = 0
     while shaderIndex < shaderEffectPipelineCount {
-      let pipeline = shaderEffectPipelines[shaderIndex].Pipeline
-      if pipeline != 0uL {
-        destroyPipeline(device, pipeline, nil)
-        if let accounting = objectAccounting { accounting.Release() }
+      if let entry = shaderEffectPipelines[shaderIndex] {
+        if entry.Pipeline != 0uL {
+          destroyPipeline(device, entry.Pipeline, nil)
+          if let accounting = objectAccounting { accounting.Release() }
+        }
       }
-      shaderEffectPipelines[shaderIndex] = VulkanShaderEffectPipelineEntry{}
+      shaderEffectPipelines[shaderIndex] = nil
       shaderIndex = shaderIndex + 1
     }
+    shaderEffectPipelineAliases.Clear()
     shaderEffectPipelineCount = 0
     if textPaintPipeline != 0uL {
       destroyPipeline(device, textPaintPipeline, nil)

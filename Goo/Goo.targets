@@ -20,10 +20,10 @@
 
   <ItemGroup Condition="'@(GooShaderEffect)' != ''">
     <_GooShaderEffect Include="@(GooShaderEffect)">
-      <SpirvPath>$(GooShaderEffectIntermediateRoot)/$([MSBuild]::StableStringHash('%(FullPath)', 'Sha256'))/%(Filename).spv</SpirvPath>
-      <ManifestPath>$(GooShaderEffectIntermediateRoot)/$([MSBuild]::StableStringHash('%(FullPath)', 'Sha256'))/%(Filename).spv.json</ManifestPath>
+      <ProgramPath>$(GooShaderEffectIntermediateRoot)/$([MSBuild]::StableStringHash('%(FullPath)', 'Sha256'))/%(Filename).goo-effect</ProgramPath>
+      <ManifestPath>$(GooShaderEffectIntermediateRoot)/$([MSBuild]::StableStringHash('%(FullPath)', 'Sha256'))/%(Filename).goo-effect.json</ManifestPath>
       <OutputTargetPath Condition="'%(TargetPath)' != ''">%(TargetPath)</OutputTargetPath>
-      <OutputTargetPath Condition="'%(TargetPath)' == ''">%(RelativeDir)%(Filename).spv</OutputTargetPath>
+      <OutputTargetPath Condition="'%(TargetPath)' == ''">%(RelativeDir)%(Filename).goo-effect</OutputTargetPath>
     </_GooShaderEffect>
   </ItemGroup>
 
@@ -38,12 +38,12 @@
           DependsOnTargets="_BuildGooShaderEffectTool"
           Condition="'@(_GooShaderEffect)' != '' and '$(DesignTimeBuild)' != 'true'"
           Inputs="@(_GooShaderEffect->'%(FullPath)');$(GooShaderEffectAuthoringRoot)\goo_effect.slang;$(GooShaderEffectAuthoringRoot)\goo_effect.glsl;$(GooShaderEffectToolPath)"
-          Outputs="@(_GooShaderEffect->'%(SpirvPath)');@(_GooShaderEffect->'%(ManifestPath)')">
+          Outputs="@(_GooShaderEffect->'%(ProgramPath)');@(_GooShaderEffect->'%(ManifestPath)')">
     <Error Condition="!Exists('$(GooShaderEffectToolPath)')"
            Text="Goo ShaderEffect compiler is missing: $(GooShaderEffectToolPath)" />
     <Error Condition="!Exists('$(GooShaderEffectAuthoringRoot)\goo_effect.slang') or !Exists('$(GooShaderEffectAuthoringRoot)\goo_effect.glsl')"
            Text="Goo ShaderEffect authoring modules are missing: $(GooShaderEffectAuthoringRoot)" />
-    <Exec Command="&quot;$(GooShaderEffectDotNetHost)&quot; exec &quot;$(GooShaderEffectToolPath)&quot; compile &quot;%(_GooShaderEffect.FullPath)&quot; &quot;$(GooShaderEffectAuthoringRoot)&quot; &quot;%(_GooShaderEffect.SpirvPath)&quot; &quot;%(_GooShaderEffect.ManifestPath)&quot;" />
+    <Exec Command="&quot;$(GooShaderEffectDotNetHost)&quot; exec &quot;$(GooShaderEffectToolPath)&quot; compile &quot;%(_GooShaderEffect.FullPath)&quot; &quot;$(GooShaderEffectAuthoringRoot)&quot; &quot;%(_GooShaderEffect.ProgramPath)&quot; &quot;%(_GooShaderEffect.ManifestPath)&quot;" />
   </Target>
 
   <Target Name="_RegisterGooShaderEffectOutputs"
@@ -51,7 +51,7 @@
           DependsOnTargets="GooCompileShaderEffects"
           Condition="'@(_GooShaderEffect)' != '' and '$(DesignTimeBuild)' != 'true'">
     <ItemGroup>
-      <Content Include="%(_GooShaderEffect.SpirvPath)"
+      <Content Include="%(_GooShaderEffect.ProgramPath)"
                TargetPath="%(_GooShaderEffect.OutputTargetPath)"
                CopyToOutputDirectory="PreserveNewest"
                CopyToPublishDirectory="Always" />
@@ -59,7 +59,7 @@
                TargetPath="%(_GooShaderEffect.OutputTargetPath).json"
                CopyToOutputDirectory="PreserveNewest"
                CopyToPublishDirectory="Always" />
-      <FileWrites Include="%(_GooShaderEffect.SpirvPath)" />
+      <FileWrites Include="%(_GooShaderEffect.ProgramPath)" />
       <FileWrites Include="%(_GooShaderEffect.ManifestPath)" />
     </ItemGroup>
   </Target>

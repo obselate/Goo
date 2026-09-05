@@ -44,8 +44,8 @@ Sources:
 - [`Window.Frame.gs`](../../Goo/Window/WindowParts/Window.Frame.gs)
 - [`Window.Host.gs`](../../Goo/Window/WindowParts/Window.Host.gs)
 - [`Window.Images.gs`](../../Goo/Window/WindowParts/Window.Images.gs)
+- [`Window.Platform.gs`](../../Goo/Window/WindowParts/Window.Platform.gs)
 - [`Window.Retained.gs`](../../Goo/Window/WindowParts/Window.Retained.gs)
-- [`Window.Sdl.gs`](../../Goo/Window/WindowParts/Window.Sdl.gs)
 
 Hosts a Goo tree on one process-wide UI thread. After Open, only Post and RequestClose are safe from another thread.
 

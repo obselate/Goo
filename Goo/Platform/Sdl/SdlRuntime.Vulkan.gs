@@ -1,6 +1,7 @@
 package Goo
 
 import System
+import System.IO
 import System.Runtime.InteropServices
 import Hexa.NET.SDL3
 
@@ -45,9 +46,22 @@ internal unsafe partial class SdlRuntime {
           throw InvalidOperationException("SDL Vulkan loader state is invalid.")
         }
 
-        let path * uint8 = nil
-        if !SDL.VulkanLoadLibrary(path) {
-          return false
+        var pathStorage nint = nint(0)
+        if OperatingSystem.IsMacOS() {
+          let bundledPath = Path.Combine(AppContext.BaseDirectory, "libMoltenVK.dylib")
+          if File.Exists(bundledPath) {
+            pathStorage = Marshal.StringToCoTaskMemUTF8(bundledPath)
+          }
+        }
+        try {
+          let path = if pathStorage == nint(0) { nil } else { *uint8(pathStorage) }
+          if !SDL.VulkanLoadLibrary(path) {
+            return false
+          }
+        } finally {
+          if pathStorage != nint(0) {
+            Marshal.FreeCoTaskMem(pathStorage)
+          }
         }
 
         try {

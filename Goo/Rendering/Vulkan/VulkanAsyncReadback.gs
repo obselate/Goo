@@ -67,7 +67,6 @@ internal unsafe sealed class VulkanAsyncReadback : IDisposable {
       }
       target = nativeTarget
       sharedLease = nativeSharedLease
-      target.BindSharedLeaseForDeviceLoss(nativeSharedLease)
       generation = expectedGeneration
       state = VulkanReadbackState.Idle
       region = VulkanReadbackPlan.Full(target.Extent).Region
@@ -78,7 +77,8 @@ internal unsafe sealed class VulkanAsyncReadback : IDisposable {
     }
 
   internal func Request(frame SceneFrame, clearColor VkClearColorValue,
-    requestedRegion VulkanReadbackRegion) VkResult{
+    requestedRegion VulkanReadbackRegion, textScaleX float32,
+    textScaleY float32) VkResult{
       EnsureOpen()
       if frame == nil {
         throw ArgumentNullException("frame")
@@ -86,7 +86,6 @@ internal unsafe sealed class VulkanAsyncReadback : IDisposable {
       if state == VulkanReadbackState.Pending {
         throw InvalidOperationException("Vulkan readback is already pending")
       }
-      let requestedSubmissionSerial = sharedLease.ReserveGraphicsSubmissionSerial()
       let plan = VulkanReadbackPlan.Create(requestedRegion, target.Extent)
       if plan.ByteSize > target.StagingByteSize || plan.ByteSize > uint64(Int32.MaxValue) {
         throw ArgumentOutOfRangeException("requestedRegion")
@@ -98,14 +97,14 @@ internal unsafe sealed class VulkanAsyncReadback : IDisposable {
         return prepare
       }
       try {
-        target.RecordScene(frame, clearColor)
-        let submit = target.Submit(requestedSubmissionSerial)
+        target.RecordScene(frame, clearColor, textScaleX, textScaleY)
+        let submit = target.Submit()
         if submit == VkConstants.VK_ERROR_DEVICE_LOST || target.DeviceLossDetected {
           sharedLease.MarkDeviceLost()
         }
         if submit == VkConstants.VK_SUCCESS {
           region = requestedRegion
-          submissionSerial = requestedSubmissionSerial
+          submissionSerial = target.PendingSubmissionSerial
           result = nil
           state = VulkanReadbackState.Pending
         } else {
@@ -122,7 +121,7 @@ internal unsafe sealed class VulkanAsyncReadback : IDisposable {
       }
     }
 
-  internal func Request(frame SceneFrame, clearColor VkClearColorValue) VkResult -> Request(frame, clearColor, VulkanReadbackPlan.Full(target.Extent).Region)
+  internal func Request(frame SceneFrame, clearColor VkClearColorValue) VkResult -> Request(frame, clearColor, VulkanReadbackPlan.Full(target.Extent).Region, 1.0F, 1.0F)
 
   internal func PollCompletion() VkResult {
     EnsureOpen()

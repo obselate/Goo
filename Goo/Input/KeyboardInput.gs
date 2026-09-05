@@ -14,7 +14,8 @@ internal class KeyboardInput {
   private var skipRepeatStep bool
   private var pressedButton Node?
   private var pressedKey Key
-  private var control KeyboardDispatchControl
+  private var control InputDispatchControl
+  private var diagnosticsHook((Key, KeyModifiers) -> bool)?
   private var dispatchGeneration int64
 
   internal init() {
@@ -22,19 +23,19 @@ internal class KeyboardInput {
     queueHead = 0
     heldKey = Key.Unknown
     pressedKey = Key.Unknown
-    control = KeyboardDispatchControl()
+    control = InputDispatchControl()
   }
 
   internal func SetDiagnosticsHook(value((Key, KeyModifiers) -> bool)?) {
-    InputDiagnostics.SetKeyboard(this, value)
+    diagnosticsHook = value
   }
 
-  internal func Bind(host SdlHost) {
-    host.KeyPressed += func(key SdlHostKey, modifiers SdlHostModifiers) {
-      QueueKeyPress(fromSdlKey(key), fromSdlModifiers(modifiers))
+  internal func Bind(host WindowHost) {
+    host.KeyPressed += (key Key, modifiers KeyModifiers) -> {
+      QueueKeyPress(key, modifiers)
     }
-    host.KeyReleased += func(key SdlHostKey, modifiers SdlHostModifiers) {
-      QueueKeyRelease(fromSdlKey(key), fromSdlModifiers(modifiers))
+    host.KeyReleased += (key Key, modifiers KeyModifiers) -> {
+      QueueKeyRelease(key, modifiers)
     }
   }
 
@@ -97,7 +98,7 @@ internal class KeyboardInput {
           queueHead = queueHead + 1
           try {
             if e.Kind == KeyboardEventKind.Press {
-              if let hook = InputDiagnostics.KeyboardHook(this) {
+              if let hook = diagnosticsHook {
                 if hook(e.Key, e.Modifiers) {
                   changed = true
                   continue
@@ -252,7 +253,7 @@ internal class KeyboardInput {
   }
 
   internal func HandleKey(root Node?, resolver Resolver, text TextInput, key Key, modifiers KeyModifiers) bool {
-    if let hook = InputDiagnostics.KeyboardHook(this) {
+    if let hook = diagnosticsHook {
       if hook(key, modifiers) { return true }
     }
     let dispatch = DispatchKeyDown(text.FocusedNode(), key, modifiers, false)
@@ -275,7 +276,7 @@ internal class KeyboardInput {
     n.Pressed = true
     resolver.Invalidate(n, false)
     if key == Key.Enter {
-      Hit().Activate(root, n)
+      hitActivate(root, n)
     }
     return true
   }
@@ -292,7 +293,7 @@ internal class KeyboardInput {
       let shouldActivate = activate && key == Key.Space && text.FocusedNode() == n
       clearButtonPress(resolver)
       if shouldActivate {
-        Hit().Activate(root, n)
+        hitActivate(root, n)
       }
       return true
     }

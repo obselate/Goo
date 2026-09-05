@@ -7,8 +7,8 @@ internal unsafe partial class VulkanFrameSlot : IDisposable {
   private let dispatch VkDeviceDispatch
   private let commandBuffer VkCommandBuffer
   private let objectAccounting VulkanObjectAccounting?
+  private let sharedLease VulkanSharedLease
   private var acquireSemaphore VkSemaphore
-  private var submissionFence VkFence
   private var acquirePrepared bool
   private var acquired bool
   private var submitPrepared bool
@@ -22,7 +22,6 @@ internal unsafe partial class VulkanFrameSlot : IDisposable {
 
   internal prop CommandBuffer VkCommandBuffer{ get -> commandBuffer }
   internal prop AcquireSemaphore VkSemaphore{ get -> acquireSemaphore }
-  internal prop SubmissionFence VkFence{ get -> submissionFence }
   internal prop InFlight bool{ get -> inFlight }
   internal prop SubmissionSerial uint64{ get -> submissionSerial }
   internal prop NextSubmissionSerial uint64{ get -> submissionSerial + 1uL }
@@ -36,50 +35,30 @@ internal unsafe partial class VulkanFrameSlot : IDisposable {
   }
 
   internal init(nativeDevice VkDevice, nativeDispatch VkDeviceDispatch,
-    suppliedCommandBuffer VkCommandBuffer, nativeObjectAccounting VulkanObjectAccounting?) {
+    suppliedCommandBuffer VkCommandBuffer, nativeObjectAccounting VulkanObjectAccounting?,
+    nativeSharedLease VulkanSharedLease) {
       if nativeDevice == nint(0) {
         throw ArgumentException("Vulkan device is null", "nativeDevice")
       }
       if suppliedCommandBuffer == nint(0) {
         throw ArgumentException("Vulkan command buffer is null", "suppliedCommandBuffer")
       }
+      if nativeSharedLease == nil {
+        throw ArgumentNullException("nativeSharedLease")
+      }
       this.device = nativeDevice
       this.dispatch = nativeDispatch
       this.commandBuffer = suppliedCommandBuffer
       objectAccounting = nativeObjectAccounting
+      sharedLease = nativeSharedLease
       Create()
     }
 
   private func Create() {
-    try {
-      acquireSemaphore = VulkanSynchronizationFactory.CreateSemaphore(
-        device,
-        dispatch,
-        objectAccounting)
-      submissionFence = VulkanSynchronizationFactory.CreateFence(
-        device,
-        dispatch,
-        objectAccounting,
-        uint32(VkConstants.VK_FENCE_CREATE_SIGNALED_BIT))
-    } catch (error Exception) {
-      if submissionFence != 0uL {
-        let destroyFence = dispatch.vkDestroyFence
-        destroyFence(device, submissionFence, nil)
-        if let accounting = objectAccounting {
-          accounting.Release()
-        }
-        submissionFence = 0uL
-      }
-      if acquireSemaphore != 0uL {
-        let destroySemaphore = dispatch.vkDestroySemaphore
-        destroySemaphore(device, acquireSemaphore, nil)
-        if let accounting = objectAccounting {
-          accounting.Release()
-        }
-        acquireSemaphore = 0uL
-      }
-      throw error
-    }
+    acquireSemaphore = VulkanSynchronizationFactory.CreateSemaphore(
+      device,
+      dispatch,
+      objectAccounting)
   }
 
   internal func PrepareAcquire() VkResult {
@@ -116,8 +95,7 @@ internal unsafe partial class VulkanFrameSlot : IDisposable {
     if !inFlight {
       return VkConstants.VK_SUCCESS
     }
-    let getFenceStatus = dispatch.vkGetFenceStatus
-    let result = getFenceStatus(device, submissionFence)
+    let result = sharedLease.PollGraphicsSubmission(globalSubmissionSerial)
     if result == VkConstants.VK_SUCCESS {
       lastCompletedSerial = submissionSerial
       lastCompletedGlobalSubmissionSerial = globalSubmissionSerial
@@ -153,12 +131,8 @@ internal unsafe partial class VulkanFrameSlot : IDisposable {
     if !acquired || submitPrepared || inFlight {
       throw InvalidOperationException("VulkanFrameSlot is not ready to prepare submission")
     }
-    let resetFences = dispatch.vkResetFences
-    let resetResult = resetFences(device, 1u, &submissionFence)
-    if resetResult == VkConstants.VK_SUCCESS {
-      submitPrepared = true
-    }
-    return resetResult
+    submitPrepared = true
+    return VkConstants.VK_SUCCESS
   }
 
   internal func MarkSubmitted(submitResult VkResult, submittedGlobalSerial uint64) VkResult {
@@ -216,14 +190,6 @@ internal unsafe partial class VulkanFrameSlot : IDisposable {
       }
       acquireSemaphore = 0uL
     }
-    if submissionFence != 0uL {
-      let destroyFence = dispatch.vkDestroyFence
-      destroyFence(device, submissionFence, nil)
-      if let accounting = objectAccounting {
-        accounting.Release()
-      }
-      submissionFence = 0uL
-    }
     Create()
   }
 
@@ -237,9 +203,8 @@ internal unsafe partial class VulkanFrameSlot : IDisposable {
     if !inFlight {
       return VkConstants.VK_SUCCESS
     }
-    let waitForFences = dispatch.vkWaitForFences
-    let result = waitForFences(
-      device, 1u, &submissionFence, VkConstants.VK_TRUE, VkConstants.VK_WHOLE_SIZE)
+    let result = sharedLease.WaitGraphicsSubmission(
+      globalSubmissionSerial, VkConstants.VK_WHOLE_SIZE)
     if result == VkConstants.VK_SUCCESS {
       lastCompletedSerial = submissionSerial
       lastCompletedGlobalSubmissionSerial = globalSubmissionSerial
@@ -256,8 +221,7 @@ internal unsafe partial class VulkanFrameSlot : IDisposable {
       throw InvalidOperationException("VulkanFrameSlot has unconsumed acquired work")
     }
     if inFlight {
-      let getFenceStatus = dispatch.vkGetFenceStatus
-      let status = getFenceStatus(device, submissionFence)
+      let status = sharedLease.PollGraphicsSubmission(globalSubmissionSerial)
       if status != VkConstants.VK_SUCCESS {
         throw InvalidOperationException("VulkanFrameSlot submission is still in flight")
       }
@@ -273,14 +237,6 @@ internal unsafe partial class VulkanFrameSlot : IDisposable {
         accounting.Release()
       }
       acquireSemaphore = 0uL
-    }
-    if submissionFence != 0uL {
-      let destroyFence = dispatch.vkDestroyFence
-      destroyFence(device, submissionFence, nil)
-      if let accounting = objectAccounting {
-        accounting.Release()
-      }
-      submissionFence = 0uL
     }
   }
 }

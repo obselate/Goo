@@ -59,7 +59,6 @@ internal unsafe sealed partial class VulkanTextAtlasSet : IDisposable {
         && atlasByteSize <= byteBudget - residentByteSize
     }
   }
-  internal prop PublishedVersion uint64{ get -> publishedVersion }
   internal prop DescriptorSetLayout VkDescriptorSetLayout{
     get -> descriptorSetLayout
   }
@@ -315,12 +314,6 @@ internal unsafe sealed partial class VulkanTextAtlasSet : IDisposable {
       index++
     }
     return -1
-  }
-
-  internal func RecordUploads(commandBuffer VkCommandBuffer, out recordedBytes VkDeviceSize)
-  int32{
-    var recordedBarriers int32 = 0
-    return RecordUploads(commandBuffer, out recordedBytes, out recordedBarriers)
   }
 
   internal func RecordUploads(commandBuffer VkCommandBuffer, out recordedBytes VkDeviceSize,

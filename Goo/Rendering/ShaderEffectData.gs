@@ -9,7 +9,7 @@ public sealed class ShaderEffectData : IDisposable {
   private let gate object
   private let identity uint64
   private var current ShaderEffectDataGeneration?
-  private var changedCallbacks([]Action)?
+  private let changedObservers ShaderEffectObservers
   private var version uint64
   private var disposed bool
 
@@ -46,6 +46,7 @@ public sealed class ShaderEffectData : IDisposable {
     validate(bytes)
     gate = Object()
     identity = allocateIdentity()
+    changedObservers = ShaderEffectObservers()
     current = ShaderEffectDataGeneration(bytes, true, nil)
     version = 1uL
   }
@@ -53,6 +54,7 @@ public sealed class ShaderEffectData : IDisposable {
   private init(bytes []uint8, released Action) {
     gate = Object()
     identity = allocateIdentity()
+    changedObservers = ShaderEffectObservers()
     current = ShaderEffectDataGeneration(bytes, false, released)
     version = 1uL
   }
@@ -101,11 +103,10 @@ public sealed class ShaderEffectData : IDisposable {
       disposed = true
       previous = current
       current = nil
-      callbacks = changedCallbacks
-      changedCallbacks = nil
+      callbacks = changedObservers.Clear()
     }
     previous?.Release()
-    notify(callbacks)
+    changedObservers.Notify(callbacks)
   }
 
   internal prop Identity uint64{ get -> identity }
@@ -127,44 +128,11 @@ public sealed class ShaderEffectData : IDisposable {
   }
 
   internal func AddChanged(callback Action) {
-    lock gate {
-      if let callbacks = changedCallbacks {
-        let expanded = [callbacks.Length + 1]Action
-        Array.Copy(callbacks, expanded, callbacks.Length)
-        expanded[callbacks.Length] = callback
-        changedCallbacks = expanded
-      } else {
-        changedCallbacks = []Action{ callback }
-      }
-    }
+    lock gate { changedObservers.Add(callback) }
   }
 
   internal func RemoveChanged(callback Action) {
-    lock gate {
-      guard let callbacks = changedCallbacks else { return }
-      var removeIndex = -1
-      var index int32
-      while index < callbacks.Length {
-        if Object.ReferenceEquals(callbacks[index], callback) { removeIndex = index }
-        index++
-      }
-      if removeIndex < 0 { return }
-      if callbacks.Length == 1 {
-        changedCallbacks = nil
-        return
-      }
-      let reduced = [callbacks.Length - 1]Action
-      index = 0
-      var output int32
-      while index < callbacks.Length {
-        if index != removeIndex {
-          reduced[output] = callbacks[index]
-          output++
-        }
-        index++
-      }
-      changedCallbacks = reduced
-    }
+    lock gate { changedObservers.Remove(callback) }
   }
 
   private func replace(bytes []uint8, copy bool, released Action?) {
@@ -180,15 +148,77 @@ public sealed class ShaderEffectData : IDisposable {
       previous = current
       current = replacement
       version++
-      callbacks = changedCallbacks
+      callbacks = changedObservers.Snapshot()
     }
     previous?.Release()
-    notify(callbacks)
+    changedObservers.Notify(callbacks)
+  }
+}
+
+internal sealed class ShaderEffectObservers {
+  private let gate object
+  private var callbacks([]Action)?
+
+  internal init() {
+    gate = Object()
   }
 
-  private func notify(callbacks([]Action)?) {
-    if let currentCallbacks = callbacks {
-      for callback in currentCallbacks { callback.Invoke() }
+  internal func Add(callback Action) {
+    lock gate {
+      if let current = callbacks {
+        let expanded = [current.Length + 1]Action
+        Array.Copy(current, expanded, current.Length)
+        expanded[current.Length] = callback
+        callbacks = expanded
+      } else {
+        callbacks = []Action{ callback }
+      }
+    }
+  }
+
+  internal func Remove(callback Action) {
+    lock gate {
+      guard let current = callbacks else { return }
+      var removeIndex = -1
+      var index int32
+      while index < current.Length {
+        if Object.ReferenceEquals(current[index], callback) { removeIndex = index }
+        index++
+      }
+      if removeIndex < 0 { return }
+      if current.Length == 1 {
+        callbacks = nil
+        return
+      }
+      let reduced = [current.Length - 1]Action
+      index = 0
+      var output int32
+      while index < current.Length {
+        if index != removeIndex {
+          reduced[output] = current[index]
+          output++
+        }
+        index++
+      }
+      callbacks = reduced
+    }
+  }
+
+  internal func Snapshot()([]Action)? {
+    lock gate { return callbacks }
+  }
+
+  internal func Clear()([]Action)? {
+    lock gate {
+      let current = callbacks
+      callbacks = nil
+      return current
+    }
+  }
+
+  internal func Notify(callbacks([]Action)?) {
+    if let current = callbacks {
+      for callback in current { callback.Invoke() }
     }
   }
 }

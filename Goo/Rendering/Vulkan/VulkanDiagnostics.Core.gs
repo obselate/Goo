@@ -89,18 +89,10 @@ internal unsafe partial class VulkanDiagnostics {
     }
   }
 
-  internal prop TraceCapacityValue int32{ get -> TraceCapacity }
-  internal prop ResultCapacityValue int32{ get -> ResultCapacity }
-  internal prop ValidationCapacityValue int32{ get -> ValidationCapacity }
   internal prop ValidationErrorCount int64{ get -> Interlocked.Read(ref validationErrors) }
-  internal prop TraceDroppedCount int64{ get -> Interlocked.Read(ref traceDropped) }
-  internal prop ResultDroppedCount int64{ get -> Interlocked.Read(ref resultDropped) }
-  internal prop ValidationDroppedCount int64{ get -> Interlocked.Read(ref validationDropped) }
   internal prop TraceWriteCount int64{ get -> Interlocked.Read(ref traceWrite) }
   internal prop ResultWriteCount int64{ get -> Interlocked.Read(ref resultWrite) }
   internal prop ValidationWriteCount int64{ get -> Interlocked.Read(ref validationWrite) }
-  internal prop WriterState int32{ get -> Volatile.Read(ref writerState) }
-  internal prop ActiveWriterCount int32{ get -> Volatile.Read(ref activeWriters) }
   internal prop IsSealed bool{ get -> Volatile.Read(ref writerState) == WriterSealed }
   internal prop Counters VulkanDiagnosticCounterSnapshot{ get -> counters.Snapshot }
   internal prop Fatal VulkanDiagnosticFatalSnapshot{

@@ -9,24 +9,39 @@ internal data struct VulkanPrimitiveFrameStats {
   var ByteCount VkDeviceSize
   var Capacity VkDeviceSize
   var BufferGeneration uint64
-  var WrittenBytes VkDeviceSize
-  var SkippedBytes VkDeviceSize
+  var PlannedTransferBytes VkDeviceSize
+  var SkippedTransferBytes VkDeviceSize
   var DirtyRecordCount int32
   var UploadRangeCount int32
   var FullUpload bool
-  var MappedWrites uint64
-  var Flushes uint64
+  var CpuWriteOperations uint64
+  var NativeFlushCalls uint64
   var RetainedReuse uint64
   var LastUseSerial uint64
   var Prepared bool
 
-  var TotalWrittenBytes VkDeviceSize
-  var TotalSkippedBytes VkDeviceSize
+  var CpuWrittenBytes uint64
+  var CpuComparedBytes uint64
+  var HistoryCopiedBytes uint64
+  var FlushRequests uint64
+  var SubmittedTransferBytes uint64
+  var RecordedCopyCommands uint64
+  var RecordedBarriers uint64
+
+  var TotalCpuWrittenBytes uint64
+  var TotalCpuComparedBytes uint64
+  var TotalHistoryCopiedBytes uint64
+  var TotalFlushRequests uint64
+  var TotalSubmittedTransferBytes uint64
+  var TotalRecordedCopyCommands uint64
+  var TotalRecordedBarriers uint64
+  var TotalPlannedTransferBytes VkDeviceSize
+  var TotalSkippedTransferBytes VkDeviceSize
   var TotalDirtyRecordCount uint64
   var TotalUploadRangeCount uint64
   var TotalFullUploads uint64
-  var TotalMappedWrites uint64
-  var TotalFlushes uint64
+  var TotalCpuWriteOperations uint64
+  var TotalNativeFlushCalls uint64
   var TotalRetainedReuse uint64
 }
 
@@ -200,28 +215,6 @@ internal unsafe sealed class VulkanPrimitiveFrameSlot : IDisposable {
     PreparedRanges = replacement
   }
 
-  internal func FlushRanges() uint64 {
-    guard let allocation = StagingAllocation else {
-      throw InvalidOperationException("Vulkan primitive staging buffer is not allocated")
-    }
-    var index int32 = 0
-    var flushes uint64 = 0uL
-    while index < PreparedRangeCount {
-      let copyRange = PreparedRanges[index]
-      if copyRange.size > 0uL {
-        let result = Allocator.FlushBeforeSubmit(allocation,
-          copyRange.srcOffset, copyRange.size)
-        if result != VkConstants.VK_SUCCESS {
-          throw InvalidOperationException("vkFlushMappedMemoryRanges failed for Vulkan primitive frame data")
-        }
-        flushes = flushes + 1uL
-      }
-      index++
-    }
-    FlushPrepared = true
-    return flushes
-  }
-
   internal func DestroyBuffers() {
     if StagingBuffer != 0uL {
       let stale = StagingBuffer
@@ -320,13 +313,20 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
   private var preparedEffectDataWritten bool
   private var preparedCommandBuffer VkCommandBuffer
   private var lastStats VulkanPrimitiveFrameStats
-  private var totalWrittenBytes VkDeviceSize
-  private var totalSkippedBytes VkDeviceSize
+  private var totalCpuWrittenBytes uint64
+  private var totalCpuComparedBytes uint64
+  private var totalHistoryCopiedBytes uint64
+  private var totalFlushRequests uint64
+  private var totalSubmittedTransferBytes uint64
+  private var totalRecordedCopyCommands uint64
+  private var totalRecordedBarriers uint64
+  private var totalPlannedTransferBytes VkDeviceSize
+  private var totalSkippedTransferBytes VkDeviceSize
   private var totalDirtyRecordCount uint64
   private var totalUploadRangeCount uint64
   private var totalFullUploads uint64
-  private var totalMappedWrites uint64
-  private var totalFlushes uint64
+  private var totalCpuWriteOperations uint64
+  private var totalNativeFlushCalls uint64
   private var totalRetainedReuse uint64
   private var disposed bool
 
@@ -336,17 +336,44 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
   internal prop EffectDataWordOffset uint32{
     get -> uint32(preparedRecordRegionBytes / 4uL)
   }
-  internal prop LastStats VulkanPrimitiveFrameStats{ get -> lastStats }
+  internal prop LastStats VulkanPrimitiveFrameStats{
+    get {
+      var snapshot = lastStats
+      snapshot.TotalPlannedTransferBytes = totalPlannedTransferBytes
+      snapshot.TotalSkippedTransferBytes = totalSkippedTransferBytes
+      snapshot.TotalDirtyRecordCount = totalDirtyRecordCount
+      snapshot.TotalUploadRangeCount = totalUploadRangeCount
+      snapshot.TotalFullUploads = totalFullUploads
+      snapshot.TotalCpuWriteOperations = totalCpuWriteOperations
+      snapshot.TotalNativeFlushCalls = totalNativeFlushCalls
+      snapshot.TotalRetainedReuse = totalRetainedReuse
+      snapshot.TotalCpuWrittenBytes = totalCpuWrittenBytes
+      snapshot.TotalCpuComparedBytes = totalCpuComparedBytes
+      snapshot.TotalHistoryCopiedBytes = totalHistoryCopiedBytes
+      snapshot.TotalFlushRequests = totalFlushRequests
+      snapshot.TotalSubmittedTransferBytes = totalSubmittedTransferBytes
+      snapshot.TotalRecordedCopyCommands = totalRecordedCopyCommands
+      snapshot.TotalRecordedBarriers = totalRecordedBarriers
+      return snapshot
+    }
+  }
   internal prop Totals VulkanPrimitiveFrameStats{
     get {
       return VulkanPrimitiveFrameStats{
-        TotalWrittenBytes: totalWrittenBytes,
-        TotalSkippedBytes: totalSkippedBytes,
+        TotalCpuWrittenBytes: totalCpuWrittenBytes,
+        TotalCpuComparedBytes: totalCpuComparedBytes,
+        TotalHistoryCopiedBytes: totalHistoryCopiedBytes,
+        TotalFlushRequests: totalFlushRequests,
+        TotalSubmittedTransferBytes: totalSubmittedTransferBytes,
+        TotalRecordedCopyCommands: totalRecordedCopyCommands,
+        TotalRecordedBarriers: totalRecordedBarriers,
+        TotalPlannedTransferBytes: totalPlannedTransferBytes,
+        TotalSkippedTransferBytes: totalSkippedTransferBytes,
         TotalDirtyRecordCount: totalDirtyRecordCount,
         TotalUploadRangeCount: totalUploadRangeCount,
         TotalFullUploads: totalFullUploads,
-        TotalMappedWrites: totalMappedWrites,
-        TotalFlushes: totalFlushes,
+        TotalCpuWriteOperations: totalCpuWriteOperations,
+        TotalNativeFlushCalls: totalNativeFlushCalls,
         TotalRetainedReuse: totalRetainedReuse,
       }
     }
@@ -459,6 +486,7 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
             || slot.HistoryEffectDataByteCount != dataBytes
             || slot.HistoryEffectDataVersion != effectDataVersion)
       slot.EnsureRangeCapacity(int32(recordLimit) + 1)
+      lastStats = VulkanPrimitiveFrameStats{ SlotIndex: slotIndex, Prepared: true }
       preparedSlot = slotIndex
       preparedBytes = 0uL
       preparedRecordBytes = 0uL
@@ -477,6 +505,38 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
       slot.FlushPrepared = false
       slot.PreparedRangeCount = 0
     }
+
+  private func CountCpuWrite(bytes uint64) {
+    lastStats.CpuWrittenBytes += bytes
+    lastStats.CpuWriteOperations++
+    totalCpuWrittenBytes = SaturatingAdd(totalCpuWrittenBytes, bytes)
+    totalCpuWriteOperations = SaturatingAdd(totalCpuWriteOperations, 1uL)
+  }
+
+  private func FlushRanges(slot VulkanPrimitiveFrameSlot) {
+    guard let allocation = slot.StagingAllocation else {
+      throw InvalidOperationException("Vulkan primitive staging buffer is not allocated")
+    }
+    var index int32 = 0
+    while index < slot.PreparedRangeCount {
+      let copyRange = slot.PreparedRanges[index]
+      if copyRange.size > 0uL {
+        lastStats.FlushRequests++
+        totalFlushRequests = SaturatingAdd(totalFlushRequests, 1uL)
+        let result = allocator.FlushBeforeSubmit(allocation,
+          copyRange.srcOffset, copyRange.size, out var nativeCall)
+        if nativeCall {
+          lastStats.NativeFlushCalls++
+          totalNativeFlushCalls = SaturatingAdd(totalNativeFlushCalls, 1uL)
+        }
+        if result != VkConstants.VK_SUCCESS {
+          throw InvalidOperationException("vkFlushMappedMemoryRanges failed for Vulkan primitive frame data")
+        }
+      }
+      index++
+    }
+    slot.FlushPrepared = true
+  }
 
   internal func WriteRecord(recordIndex int32, source * void) {
     EnsureOpen()
@@ -498,6 +558,7 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
       destination[index] = sourceWords[index]
       index++
     }
+    CountCpuWrite(RecordBytes)
     preparedRecords = preparedRecords + 1
   }
 
@@ -513,6 +574,7 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
     if byteCount > 0 && preparedEffectDataNeedsWrite {
       let destination = nint(slots[preparedSlot].Mapped) + nint(preparedRecordRegionBytes)
       Marshal.Copy(source, 0, destination, byteCount)
+      CountCpuWrite(uint64(byteCount))
     }
     preparedEffectDataWritten = true
   }
@@ -526,6 +588,9 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
       throw InvalidOperationException("Vulkan shader effect data was not written")
     }
     let slot = slots[preparedSlot]
+    if slot.FlushPrepared {
+      throw InvalidOperationException("Vulkan primitive frame data is already prepared")
+    }
     if preparedRecords <= 0 {
       preparedRecords = 1
       let destination = *uint32(nint(slot.Mapped))
@@ -534,6 +599,7 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
         destination[index] = 0u
         index++
       }
+      CountCpuWrite(RecordBytes)
     }
     if uint64(preparedRecords) > maxStorageBufferRange / RecordBytes {
       throw ArgumentOutOfRangeException("primitive record storage range")
@@ -573,6 +639,9 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
           }
           wordIndex++
         }
+        let comparedBytes = uint64(wordIndex + (same ? 0 : 1)) * 4uL
+        lastStats.CpuComparedBytes += comparedBytes
+        totalCpuComparedBytes = SaturatingAdd(totalCpuComparedBytes, comparedBytes)
         if !same {
           dirtyRecordCount++
           if rangeStart < 0 { rangeStart = recordIndex }
@@ -605,50 +674,36 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
       rangeCount++
     }
     slot.PreparedRangeCount = rangeCount
-    let writtenBytes = uint64(dirtyRecordCount) * RecordBytes
+    let plannedTransferBytes = uint64(dirtyRecordCount) * RecordBytes
     +(dataChanged ? preparedEffectDataBytes : 0uL)
-    let skippedBytes = preparedBytes - writtenBytes
+    let skippedTransferBytes = preparedBytes - plannedTransferBytes
     let retainedReuse = if fullUpload {
       0uL
     } else {
       uint64(preparedRecords - dirtyRecordCount)
     }
-    let flushes = slot.FlushRanges()
+    FlushRanges(slot)
     UpdateDescriptors(preparedSlot, preparedRecordBytes,
       preparedEffectDataBytes > 0uL ? preparedBufferSpan : 0uL)
-    lastStats = VulkanPrimitiveFrameStats{
-      SlotIndex: preparedSlot,
-      RecordCount: preparedRecords,
-      ByteCount: preparedBytes,
-      Capacity: slot.Capacity,
-      BufferGeneration: slot.BufferGeneration,
-      WrittenBytes: writtenBytes,
-      SkippedBytes: skippedBytes,
-      DirtyRecordCount: dirtyRecordCount,
-      UploadRangeCount: rangeCount,
-      FullUpload: fullUpload,
-      MappedWrites: 1uL,
-      Flushes: flushes,
-      RetainedReuse: retainedReuse,
-      LastUseSerial: slot.LastUseGlobalSubmissionSerial,
-      Prepared: true,
-    }
-    totalWrittenBytes = SaturatingAdd(totalWrittenBytes, writtenBytes)
-    totalSkippedBytes = SaturatingAdd(totalSkippedBytes, skippedBytes)
+    lastStats.SlotIndex = preparedSlot
+    lastStats.RecordCount = preparedRecords
+    lastStats.ByteCount = preparedBytes
+    lastStats.Capacity = slot.Capacity
+    lastStats.BufferGeneration = slot.BufferGeneration
+    lastStats.PlannedTransferBytes = plannedTransferBytes
+    lastStats.SkippedTransferBytes = skippedTransferBytes
+    lastStats.DirtyRecordCount = dirtyRecordCount
+    lastStats.UploadRangeCount = rangeCount
+    lastStats.FullUpload = fullUpload
+    lastStats.RetainedReuse = retainedReuse
+    lastStats.LastUseSerial = slot.LastUseGlobalSubmissionSerial
+    lastStats.Prepared = true
+    totalPlannedTransferBytes = SaturatingAdd(totalPlannedTransferBytes, plannedTransferBytes)
+    totalSkippedTransferBytes = SaturatingAdd(totalSkippedTransferBytes, skippedTransferBytes)
     totalDirtyRecordCount = SaturatingAdd(totalDirtyRecordCount, uint64(dirtyRecordCount))
     totalUploadRangeCount = SaturatingAdd(totalUploadRangeCount, uint64(rangeCount))
     if fullUpload { totalFullUploads = SaturatingAdd(totalFullUploads, 1uL) }
-    totalMappedWrites = SaturatingAdd(totalMappedWrites, 1uL)
-    totalFlushes = SaturatingAdd(totalFlushes, flushes)
     totalRetainedReuse = SaturatingAdd(totalRetainedReuse, retainedReuse)
-    lastStats.TotalWrittenBytes = totalWrittenBytes
-    lastStats.TotalSkippedBytes = totalSkippedBytes
-    lastStats.TotalDirtyRecordCount = totalDirtyRecordCount
-    lastStats.TotalUploadRangeCount = totalUploadRangeCount
-    lastStats.TotalFullUploads = totalFullUploads
-    lastStats.TotalMappedWrites = totalMappedWrites
-    lastStats.TotalFlushes = totalFlushes
-    lastStats.TotalRetainedReuse = totalRetainedReuse
   }
 
   internal func RecordUpload(commandBuffer VkCommandBuffer) {
@@ -673,6 +728,8 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
       let copyBuffer = dispatch.vkCmdCopyBuffer
       copyBuffer(commandBuffer, slot.StagingBuffer, slot.Buffer,
         uint32(slot.PreparedRangeCount), &slot.PreparedRanges[0])
+      lastStats.RecordedCopyCommands++
+      totalRecordedCopyCommands = SaturatingAdd(totalRecordedCopyCommands, 1uL)
       VulkanTransitions.RecordBuffer(
         commandBuffer,
         dispatch.vkCmdPipelineBarrier2,
@@ -684,6 +741,8 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
         VkConstants.VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT
         | VkConstants.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
         VkConstants.VK_ACCESS_2_SHADER_STORAGE_READ_BIT)
+      lastStats.RecordedBarriers++
+      totalRecordedBarriers = SaturatingAdd(totalRecordedBarriers, 1uL)
     }
     slot.Recorded = true
     slot.RecordedCommandBuffer = commandBuffer
@@ -797,12 +856,17 @@ internal unsafe sealed class VulkanPrimitiveFrameData : IDisposable {
     if !slot.Prepared {
       throw InvalidOperationException("Vulkan primitive frame slot has no candidate history")
     }
+    lastStats.SubmittedTransferBytes = lastStats.PlannedTransferBytes
+    totalSubmittedTransferBytes = SaturatingAdd(totalSubmittedTransferBytes,
+      lastStats.SubmittedTransferBytes)
     let candidate = *uint32(nint(slot.Mapped))
     var rangeIndex int32 = 0
     while rangeIndex < slot.PreparedRangeCount {
       let copyRange = slot.PreparedRanges[rangeIndex]
       let firstWord = int32(copyRange.srcOffset / 4uL)
       let wordCount = int32(copyRange.size / 4uL)
+      lastStats.HistoryCopiedBytes += copyRange.size
+      totalHistoryCopiedBytes = SaturatingAdd(totalHistoryCopiedBytes, copyRange.size)
       var wordIndex int32 = 0
       while wordIndex < wordCount {
         slot.HistoryWords[firstWord + wordIndex] = candidate[firstWord + wordIndex]

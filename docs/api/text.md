@@ -334,12 +334,6 @@ Creates a controller for one document.
 
 - `document`: The document edited by this controller.
 
-### `BeginComposition`
-
-Starts IME composition over the active selection.
-
-Returns: True when default handling ran.
-
 ### `Blur`
 
 Clears focus and cancels transient IME composition.
@@ -347,12 +341,6 @@ Clears focus and cancels transient IME composition.
 ### `BreakUndoGroup`
 
 Creates an undo boundary without ending a currently active group.
-
-### `CancelComposition`
-
-Cancels transient IME composition without changing the document.
-
-Returns: True when default handling ran.
 
 ### `CommitComposition`
 
@@ -380,25 +368,13 @@ Gets and deletes the selected text after command interception.
 
 Returns: The deleted text, or an empty string when canceled.
 
-### `DeleteBackward`
-
-Deletes the preceding grapheme cluster or selection.
-
-Returns: True when default handling ran.
-
-### `DeleteForward`
-
-Deletes the following grapheme cluster or selection.
-
-Returns: True when default handling ran.
-
 ### `Dispose`
 
 Releases document subscriptions held by this controller.
 
 ### `Execute(TextCommand)`
 
-Dispatches and performs a semantic text-editor command.
+Dispatches and performs a semantic text-editor command. MoveLeft and MoveRight use visual order while mounted and logical document order otherwise.
 
 - `command`: The command to dispatch.
 
@@ -408,152 +384,12 @@ Returns: True when default handling ran.
 
 Marks this controller focused.
 
-### `Indent`
-
-Inserts a tab at every selected logical line.
-
-Returns: True when default handling ran.
-
-### `Insert(string)`
-
-Inserts text at the active selection.
-
-- `text`: The text to insert.
-
-Returns: True when default handling ran.
-
-### `MoveDocumentEnd(bool)`
-
-Moves to the document end and optionally extends the selection.
-
-Returns: True when default handling ran.
-
-### `MoveDocumentStart(bool)`
-
-Moves to the document start and optionally extends the selection.
-
-Returns: True when default handling ran.
-
-### `MoveDown(bool)`
-
-Moves down by one logical line.
-
-- `extendSelection`: True to retain the anchor.
-
-Returns: True when default handling ran.
-
-### `MoveLeft(bool)`
-
-Moves left in visual order while mounted, otherwise logical document order.
-
-- `extendSelection`: True to retain the anchor.
-
-Returns: True when default handling ran.
-
-### `MoveLineEnd(bool)`
-
-Moves to the active line end.
-
-- `extendSelection`: True to retain the anchor.
-
-Returns: True when default handling ran.
-
-### `MoveLineStart(bool)`
-
-Moves to the active line start.
-
-- `extendSelection`: True to retain the anchor.
-
-Returns: True when default handling ran.
-
-### `MoveRight(bool)`
-
-Moves right in visual order while mounted, otherwise logical document order.
-
-- `extendSelection`: True to retain the anchor.
-
-Returns: True when default handling ran.
-
-### `MoveUp(bool)`
-
-Moves up by one logical line.
-
-- `extendSelection`: True to retain the anchor.
-
-Returns: True when default handling ran.
-
-### `MoveWordLeft(bool)`
-
-Moves to the preceding word boundary.
-
-- `extendSelection`: True to retain the anchor.
-
-Returns: True when default handling ran.
-
-### `MoveWordRight(bool)`
-
-Moves to the following word boundary.
-
-- `extendSelection`: True to retain the anchor.
-
-Returns: True when default handling ran.
-
-### `Outdent`
-
-Removes a leading tab or up to four spaces from every selected logical line.
-
-Returns: True when default handling ran.
-
-### `PageDown(bool)`
-
-Moves down by one page and optionally extends the selection.
-
-Returns: True when default handling ran.
-
-### `PageUp(bool)`
-
-Moves up by one page and optionally extends the selection.
-
-Returns: True when default handling ran.
-
-### `Paste(string)`
-
-Inserts pasted text at the active selection.
-
-- `text`: The text to paste.
-
-Returns: True when default handling ran.
-
-### `Redo`
-
-Reapplies the previous reverted edit.
-
-Returns: True when an edit was reapplied.
-
 ### `ScrollTo(float64,float64)`
 
 Changes the logical scroll target.
 
 - `x`: The non-negative horizontal target.
 - `y`: The non-negative vertical target.
-
-### `SelectAll`
-
-Selects the whole document.
-
-Returns: True when default handling ran.
-
-### `Submit`
-
-Dispatches the submit command.
-
-Returns: True when default handling ran.
-
-### `Undo`
-
-Reverts the previous grouped edit.
-
-Returns: True when an edit was reverted.
 
 ### `UpdateComposition(string,int32,int32)`
 
@@ -702,60 +538,9 @@ Adds or updates a keyed style span.
 
 Gets the document whose source ranges this layer references.
 
-### `Projections`
-
-Gets a snapshot of atomic projections in layer order.
-
 ### `Revision`
 
 Gets the monotonic revision of presentation-layer mutations.
-
-### `StyleSpans`
-
-Gets a snapshot of keyed style spans in layer order.
-
-## `TextPresentationProjection`
-
-Source:
-
-- [`TextPresentationLayer.gs`](../../Goo/Text/TextPresentationLayer.gs)
-
-Describes one atomic source projection owned by a presentation layer.
-
-### `Content`
-
-Gets the retained Goo slot content, or nil for text projections.
-
-### `Key`
-
-Gets the stable projection key within its presentation layer.
-
-### `Kind`
-
-Gets the projection behavior.
-
-### `Range`
-
-Gets the source range replaced or hidden by this projection.
-
-### `Text`
-
-Gets replacement text, or an empty string for non-text projections.
-
-## `TextProjectionKind`
-
-Source:
-
-- [`TextPresentationLayer.gs`](../../Goo/Text/TextPresentationLayer.gs)
-
-Selects how a presentation projection replaces source text.
-
-### Values
-
-- `Replacement`
-- `Hidden`
-- `InlineSlot`
-- `BlockSlot`
 
 ## `TextRange`
 
@@ -838,11 +623,3 @@ Source:
 - [`TextDocument.Models.gs`](../../Goo/Text/TextDocument.Models.gs)
 
 Specifies one ordered passive Text Style over a Range in source UTF-16 offsets. Later overlapping ranges override earlier fields. Use Text.TextTransform for transformations.
-
-## `TextStyleSpan`
-
-Source:
-
-- [`TextPresentationLayer.gs`](../../Goo/Text/TextPresentationLayer.gs)
-
-Specifies one text style span with a Key, Range, and Style.

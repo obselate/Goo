@@ -2,6 +2,34 @@ package Goo
 
 import System
 
+internal class VulkanRetainedTextValidation {
+  shared {
+    internal func ValidRuns(segment VulkanRetainedTextSegment) bool {
+      var index int32 = 0
+      var count int32 = 0
+      while index < segment.RunCount {
+        let run = segment.Runs[index]
+        if run.FirstInstance != count || run.InstanceCount <= 0
+          || run.PipelineKind > 1u
+          || !run.AtlasId.IsValid
+          || run.AtlasId.Kind != SceneResourceKind.Atlas
+          || run.InstanceCount > segment.GlyphCount - count{
+            return false
+          }
+        count = count + run.InstanceCount
+        index = index + 1
+      }
+      return count == segment.GlyphCount
+    }
+
+    internal func ValidBounds(value ConservativeBounds) bool -> !value.IsEmpty
+      && !Single.IsNaN(value.X) && !Single.IsInfinity(value.X)
+      && !Single.IsNaN(value.Y) && !Single.IsInfinity(value.Y)
+      && !Single.IsNaN(value.Width) && !Single.IsInfinity(value.Width)
+      && !Single.IsNaN(value.Height) && !Single.IsInfinity(value.Height)
+  }
+}
+
 internal partial class SceneFrame {
   internal func AppendRetainedTextSnapshot(
     ownerId uint64,
@@ -14,7 +42,6 @@ internal partial class SceneFrame {
       if activeClipChainId != 0 || snapshot.SegmentCount < 0
         || snapshot.ResourceCount < 0
         || snapshot.SegmentCount > snapshot.Segments.Length
-        || snapshot.ResourceCount > snapshot.ResourceRefs.Length
         || drawRefCount > Int32.MaxValue - clipDrawCount
         || snapshot.SegmentCount > Int32.MaxValue - drawRefCount - clipDrawCount
         || snapshot.ResourceCount > Int32.MaxValue - resourceRefCount{
@@ -40,26 +67,7 @@ internal partial class SceneFrame {
           || segmentResourceCount > snapshot.ResourceCount - expectedResources{
             return false
           }
-        var glyphIndex int32 = 0
-        while glyphIndex < segment.GlyphCount {
-          if !SameRetainedTextResource(
-            snapshot.ResourceRefs[expectedResources],
-            segment.GlyphResources[glyphIndex]) {
-              return false
-            }
-          expectedResources = expectedResources + 1
-          glyphIndex = glyphIndex + 1
-        }
-        var runIndex int32 = 0
-        while runIndex < segment.RunCount {
-          if !SameRetainedTextResource(
-            snapshot.ResourceRefs[expectedResources],
-            segment.Runs[runIndex].AtlasId) {
-              return false
-            }
-          expectedResources = expectedResources + 1
-          runIndex = runIndex + 1
-        }
+        expectedResources = expectedResources + segmentResourceCount
         index = index + 1
       }
       if expectedResources != snapshot.ResourceCount {
@@ -74,7 +82,10 @@ internal partial class SceneFrame {
       while index < snapshot.SegmentCount {
         var value = snapshot.Segments[index]
         value.FirstInstance = -1
-        AddCachedTextSegment(value)
+        guard let segment = value.Segment else {
+          throw InvalidOperationException("retained text segment is unavailable")
+        }
+        AppendValidatedRetainedTextSegment(value, segment)
         index = index + 1
       }
       chunks[chunk].RetentionState = SceneChunkRetentionState.ExactLeafHit
@@ -85,6 +96,30 @@ internal partial class SceneFrame {
         EndChunk()
       }
       return true
+    }
+
+  private func AppendValidatedRetainedTextSegment(
+    value CachedTextSegmentRefRecord,
+    segment VulkanRetainedTextSegment) {
+      RequireOpenChunk()
+      GrowCachedTextSegments(NextCount(cachedTextSegmentCount))
+      GrowResourceRefs(resourceRefCount + segment.GlyphCount + segment.RunCount)
+      var glyphIndex int32 = 0
+      while glyphIndex < segment.GlyphCount {
+        AddResourceReference(segment.GlyphResources[glyphIndex])
+        glyphIndex = glyphIndex + 1
+      }
+      var runIndex int32 = 0
+      while runIndex < segment.RunCount {
+        AddResourceReference(segment.Runs[runIndex].AtlasId)
+        runIndex = runIndex + 1
+      }
+      let index = cachedTextSegmentCount
+      cachedTextSegments[index] = value
+      cachedTextSegmentCount = NextCount(cachedTextSegmentCount)
+      recordOperations = recordOperations + 1uL
+      AppendDrawRef(DrawRef{ Kind: SceneDrawKind.CachedTextSegment, Index: index,
+        Flags: 0u, ClipChainId: value.ClipChainId })
     }
 
   private func ValidRetainedTextSegment(
@@ -109,42 +144,11 @@ internal partial class SceneFrame {
     && segment.GlyphCount <= segment.GlyphEffectAtlasTexelCounts.Length
     && segment.RunCount > 0
     && segment.RunCount <= segment.Runs.Length
-    && ValidRetainedTextBounds(value.Bounds)
+    && VulkanRetainedTextValidation.ValidBounds(value.Bounds)
     && value.Bounds.X == segment.Bounds.X
     && value.Bounds.Y == segment.Bounds.Y
     && value.Bounds.Width == segment.Bounds.Width
     && value.Bounds.Height == segment.Bounds.Height
-    && ValidRetainedTextRuns(segment)
-
-  private func ValidRetainedTextRuns(
-    segment VulkanRetainedTextSegment) bool{
-      var index int32 = 0
-      var count int32 = 0
-      while index < segment.RunCount {
-        let run = segment.Runs[index]
-        if run.FirstInstance != count || run.InstanceCount <= 0
-          || run.PipelineKind > 1u
-          || !run.AtlasId.IsValid
-          || run.AtlasId.Kind != SceneResourceKind.Atlas
-          || run.InstanceCount > segment.GlyphCount - count{
-            return false
-          }
-        count = count + run.InstanceCount
-        index = index + 1
-      }
-      return count == segment.GlyphCount
-    }
-
-  private func ValidRetainedTextBounds(value ConservativeBounds) bool -> !value.IsEmpty
-    && !Single.IsNaN(value.X) && !Single.IsInfinity(value.X)
-    && !Single.IsNaN(value.Y) && !Single.IsInfinity(value.Y)
-    && !Single.IsNaN(value.Width) && !Single.IsInfinity(value.Width)
-    && !Single.IsNaN(value.Height) && !Single.IsInfinity(value.Height)
-
-  private func SameRetainedTextResource(
-    left ResourceId,
-    right ResourceId) bool -> left.Kind == right.Kind
-    && left.LogicalId == right.LogicalId
-    && left.Version == right.Version
+    && VulkanRetainedTextValidation.ValidRuns(segment)
 
 }

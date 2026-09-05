@@ -104,6 +104,7 @@ func RunQueueIsolationSmoke() {
   var third Window? = nil
   var submitHoldVerified = false
   var presentHoldVerified = false
+  var pendingWaitVerified = false
   var siblingServiceVerified = false
   var retryVerified = false
   var convergenceVerified = false
@@ -231,6 +232,11 @@ func RunQueueIsolationSmoke() {
     }
     QueueIsolationRequire(presentHeld,
       "Runtime present hold did not reach the queue worker")
+    let pendingWait = WindowReadbackTestFixture.SchedulerWaitMs(openedFirst,
+      float64(Stopwatch.GetTimestamp() + Stopwatch.Frequency))
+    QueueIsolationRequire(pendingWait > 0,
+      "Runtime present hold left the scheduler polling at 0 ms")
+    pendingWaitVerified = true
     let firstHeldPresent = WindowReadbackTestFixture.FrameSubmissions(openedFirst)
     pump = 0
     while pump < 4 {
@@ -348,12 +354,12 @@ func RunQueueIsolationSmoke() {
   QueueIsolationRequire(drainedBeforeClose && closed,
     "Runtime queue isolation did not drain queue work and close all windows")
   QueueIsolationRequire(submitHoldVerified && presentHoldVerified
-      && siblingServiceVerified && retryVerified && convergenceVerified,
+      && pendingWaitVerified && siblingServiceVerified && retryVerified && convergenceVerified,
     "Runtime queue isolation gate did not complete all phases")
   let submitCount = DiagnosticCounter(diagnostics, "submitCount")
   let presentCount = DiagnosticCounter(diagnostics, "presentCount")
   let resultCount = DiagnosticCounter(diagnostics, "resultCount")
-  Console.WriteLine("queue-isolation-smoke: submit_hold=1 present_hold=1"
+  Console.WriteLine("queue-isolation-smoke: submit_hold=1 present_hold=1 pending_wait=1"
     +" sibling_service=1 retry=1 convergence=1 close=1"
     +" submitCount=" + submitCount.ToString()
     +" presentCount=" + presentCount.ToString()

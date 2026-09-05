@@ -38,7 +38,7 @@ internal class DiagnosticPipeHost : IDisposable {
     worker = nil
     disposed = false
     try {
-      let created = Thread(func() { run() })
+      let created = Thread(() -> { run() })
       created.IsBackground = true
       worker = created
       created.Start()
@@ -138,7 +138,7 @@ internal class DiagnosticPipeHost : IDisposable {
   private func dispatchOnUi(id string, command string, payload JsonElement) string {
     let completion = DiagnosticPipeCompletion()
     try {
-      session.Post(func() {
+      session.Post(() -> {
         try {
           completion.Result = execute(command, payload)
         } catch (error Exception) {

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import hashlib
+import json
 from pathlib import Path
 import re
 import struct
@@ -47,6 +48,7 @@ PACKAGE_FILES = {
     "contentFiles/any/any/Vulkan/Shaders/hb_gpu_paint.frag.spv",
     "contentFiles/any/any/Vulkan/Shaders/lava.frag.spv",
     "contentFiles/any/any/Vulkan/Shaders/harfbuzz-14.3.1.provenance.json",
+    "contentFiles/any/any/Vulkan/Runtime/MoltenVK-LICENSE.txt",
     "contentFiles/any/any/Vulkan/Shaders/path_band.frag.spv",
     "contentFiles/any/any/Vulkan/Shaders/path_band.vert.spv",
     "contentFiles/any/any/Vulkan/Shaders/shader-manifest.json",
@@ -56,6 +58,11 @@ PACKAGE_FILES = {
     "runtimes/linux-x64/native/libgoo-harfbuzz-gpu.so",
     "runtimes/linux-x64/native/libgoo-harfbuzz.so",
     "runtimes/linux-x64/native/text-native-build.json",
+    "runtimes/osx-arm64/native/libMoltenVK.dylib",
+    "runtimes/osx-arm64/native/libSDL3.dylib",
+    "runtimes/osx-arm64/native/libgoo-harfbuzz-gpu.dylib",
+    "runtimes/osx-arm64/native/libgoo-harfbuzz.dylib",
+    "runtimes/osx-arm64/native/text-native-build.json",
     "runtimes/win-x64/native/goo-harfbuzz-gpu.dll",
     "runtimes/win-x64/native/goo-harfbuzz.dll",
     "runtimes/win-x64/native/SDL3.dll",
@@ -288,6 +295,8 @@ def validate_package(path: Path) -> str:
             raise SystemExit("packaged Goo.dll does not contain embedded debug symbols")
         if archive.read("buildTransitive/Goo.targets") != (ROOT / "Goo/Goo.targets").read_bytes():
             raise SystemExit("packaged Goo.targets differs from the release tree")
+        if archive.read("contentFiles/any/any/Vulkan/Runtime/MoltenVK-LICENSE.txt") != (ROOT / "Goo/Runtime/Vulkan/MoltenVK-LICENSE.txt").read_bytes():
+            raise SystemExit("packaged MoltenVK license differs from the release tree")
         nuspec = archive.read("Goo.nuspec").decode("utf-8-sig")
         dependency = re.search(r'<dependency id="Hexa.NET.SDL3"[^>]+>', nuspec)
         if dependency is None or "Native" not in dependency.group(0):
@@ -310,6 +319,20 @@ def validate_package(path: Path) -> str:
             imports = pe_imports(windows_target)
             if imports != WINDOWS_SDL_IMPORTS:
                 raise SystemExit(f"unexpected SDL3.dll imports: {sorted(imports)}")
+            macos_names = (
+                "libMoltenVK.dylib",
+                "libSDL3.dylib",
+                "libgoo-harfbuzz-gpu.dylib",
+                "libgoo-harfbuzz.dylib",
+            )
+            for name in macos_names:
+                data = archive.read(f"runtimes/osx-arm64/native/{name}")
+                if data[:4] != b"\xcf\xfa\xed\xfe":
+                    raise SystemExit(f"packaged {name} is not a thin arm64 Mach-O library")
+            text_native = json.loads(
+                archive.read("runtimes/osx-arm64/native/text-native-build.json"))
+            if text_native.get("buildEvidence", {}).get("target") != "osx-arm64":
+                raise SystemExit("packaged macOS text-native provenance target is invalid")
     print(f"Package OK: {path.stat().st_size} bytes")
     return sdl_digest
 

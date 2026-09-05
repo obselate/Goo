@@ -4,7 +4,6 @@ import System
 
 internal sealed class VulkanRetainedTextSnapshot {
   private var segments []CachedTextSegmentRefRecord
-  private var resourceRefs []ResourceId
 
   internal var ChunkBounds ConservativeBounds
   internal var SegmentCount int32
@@ -12,28 +11,18 @@ internal sealed class VulkanRetainedTextSnapshot {
 
   internal init() {
     segments = [1]CachedTextSegmentRefRecord
-    resourceRefs = [1]ResourceId
   }
 
   internal prop Segments []CachedTextSegmentRefRecord{ get -> segments }
-  internal prop ResourceRefs []ResourceId{ get -> resourceRefs }
 
-  internal func EnsureCapacity(
-    requiredSegments int32,
-    requiredResources int32) {
-      if requiredSegments > segments.Length {
-        let expanded = [GrowthCapacity(segments.Length,
-          requiredSegments)]CachedTextSegmentRefRecord
-        CopySegments(segments, expanded, SegmentCount)
-        segments = expanded
-      }
-      if requiredResources > resourceRefs.Length {
-        let expanded = [GrowthCapacity(resourceRefs.Length,
-          requiredResources)]ResourceId
-        CopyResources(resourceRefs, expanded, ResourceCount)
-        resourceRefs = expanded
-      }
+  internal func EnsureCapacity(requiredSegments int32) {
+    if requiredSegments > segments.Length {
+      let expanded = [GrowthCapacity(segments.Length,
+        requiredSegments)]CachedTextSegmentRefRecord
+      Array.Copy(segments, expanded, SegmentCount)
+      segments = expanded
     }
+  }
 
   private func GrowthCapacity(current int32, required int32) int32 {
     var next = current
@@ -46,30 +35,9 @@ internal sealed class VulkanRetainedTextSnapshot {
     return next
   }
 
-  private func CopySegments(
-    source []CachedTextSegmentRefRecord,
-    destination []CachedTextSegmentRefRecord,
-    count int32) {
-      var index int32 = 0
-      while index < count {
-        destination[index] = source[index]
-        index = index + 1
-      }
-    }
-
-  private func CopyResources(
-    source []ResourceId,
-    destination []ResourceId,
-    count int32) {
-      var index int32 = 0
-      while index < count {
-        destination[index] = source[index]
-        index = index + 1
-      }
-    }
 }
 
-internal sealed class VulkanRetainedTextSnapshotStorage {
+internal partial class VulkanSceneCompiler {
   internal func Snapshot(owner VulkanSceneOwnerId) VulkanRetainedTextSnapshot ? -> owner.RetainedTextSnapshot
 
   internal func Capture(
@@ -95,6 +63,15 @@ internal sealed class VulkanRetainedTextSnapshotStorage {
       if firstReference.Kind == SceneDrawKind.RectClipBegin {
         if firstReference.Index < 0 || firstReference.Index >= frame.RectClipCount {
           return false
+        }
+        let lastReference = frame.DrawRefs[chunk.FirstDraw + chunk.DrawCount - 1]
+        if lastReference.Kind == SceneDrawKind.RectClipEnd {
+          if lastReference.Index < 0 || lastReference.Index >= frame.RectClipCount
+            || !SameRectClip(frame.RectClips[firstReference.Index],
+              frame.RectClips[lastReference.Index]) {
+                return false
+              }
+          segmentCount = segmentCount - 1
         }
         firstSegmentDraw = firstSegmentDraw + 1
         segmentCount = segmentCount - 1
@@ -161,17 +138,12 @@ internal sealed class VulkanRetainedTextSnapshotStorage {
         snapshot = VulkanRetainedTextSnapshot()
         owner.RetainedTextSnapshot = snapshot
       }
-      let resolved = snapshot!!
-      resolved.EnsureCapacity(segmentCount, chunk.ResourceCount)
+      let resolved = snapshot
+      resolved.EnsureCapacity(segmentCount)
       index = 0
       while index < segmentCount {
         let reference = frame.DrawRefs[firstSegmentDraw + index]
         resolved.Segments[index] = frame.CachedTextSegments[reference.Index]
-        index = index + 1
-      }
-      index = 0
-      while index < chunk.ResourceCount {
-        resolved.ResourceRefs[index] = frame.ResourceRefs[chunk.FirstResource + index]
         index = index + 1
       }
       resolved.ChunkBounds = chunk.Bounds
@@ -201,98 +173,44 @@ internal sealed class VulkanRetainedTextSnapshotStorage {
     && segment.GlyphCount <= segment.GlyphAtlasTexelCounts.Length
     && segment.GlyphCount <= segment.GlyphEffectAtlasTexelOffsets.Length
     && segment.GlyphCount <= segment.GlyphEffectAtlasTexelCounts.Length
-    && ValidBounds(value.Bounds)
+    && VulkanRetainedTextValidation.ValidBounds(value.Bounds)
     && value.Bounds.X == segment.Bounds.X
     && value.Bounds.Y == segment.Bounds.Y
     && value.Bounds.Width == segment.Bounds.Width
     && value.Bounds.Height == segment.Bounds.Height
-    && ValidRuns(segment)
-
-  private func ValidRuns(segment VulkanRetainedTextSegment) bool {
-    var index int32 = 0
-    var count int32 = 0
-    while index < segment.RunCount {
-      let run = segment.Runs[index]
-      if run.FirstInstance != count || run.InstanceCount <= 0
-        || run.PipelineKind > 1u
-        || !run.AtlasId.IsValid
-        || run.AtlasId.Kind != SceneResourceKind.Atlas
-        || run.InstanceCount > segment.GlyphCount - count{
-          return false
-        }
-      count = count + run.InstanceCount
-      index = index + 1
-    }
-    return count == segment.GlyphCount
-  }
-
-  private func ValidBounds(value ConservativeBounds) bool -> !value.IsEmpty
-    && !Single.IsNaN(value.X) && !Single.IsInfinity(value.X)
-    && !Single.IsNaN(value.Y) && !Single.IsInfinity(value.Y)
-    && !Single.IsNaN(value.Width) && !Single.IsInfinity(value.Width)
-    && !Single.IsNaN(value.Height) && !Single.IsInfinity(value.Height)
+    && VulkanRetainedTextValidation.ValidRuns(segment)
 
   private func SameResource(left ResourceId, right ResourceId) bool -> left.Kind == right.Kind && left.LogicalId == right.LogicalId
     && left.Version == right.Version
+
+  private func SameRectClip(left RectClipRecord, right RectClipRecord) bool ->
+  left.Bounds.X == right.Bounds.X
+    && left.Bounds.Y == right.Bounds.Y
+    && left.Bounds.Width == right.Bounds.Width
+    && left.Bounds.Height == right.Bounds.Height
+    && left.TransformIndex == right.TransformIndex
+    && left.ParentIndex == right.ParentIndex
 }
 
 internal partial class VulkanSceneCompiler {
-  private let retainedTextSnapshots VulkanRetainedTextSnapshotStorage =
-  VulkanRetainedTextSnapshotStorage()
-  private var retainedTextHitCount uint64
-  private var retainedTextRebuildCount uint64
-  private var retainedTextFallbackCount uint64
-  private var retainedTextInvalidationCount uint64
-  private var retainedTextTotalCount uint64
-
-  internal prop RetainedTextHitCount uint64{ get -> retainedTextHitCount }
-  internal prop RetainedTextRebuildCount uint64{ get -> retainedTextRebuildCount }
-  internal prop RetainedTextFallbackCount uint64{ get -> retainedTextFallbackCount }
+  internal prop RetainedTextHitCount uint64{ get -> retainedText.Hit }
+  internal prop RetainedTextRebuildCount uint64{ get -> retainedText.Rebuild }
+  internal prop RetainedTextFallbackCount uint64{ get -> retainedText.Fallback }
   internal prop RetainedTextInvalidationCount uint64{
-    get -> retainedTextInvalidationCount
+    get -> retainedText.Invalidation
   }
-  internal prop RetainedTextTotalCount uint64{ get -> retainedTextTotalCount }
+  internal prop RetainedTextTotalCount uint64{ get -> retainedText.Total }
 
   internal func CaptureRetainedTextSnapshot(
     owner VulkanSceneOwnerId,
-    chunkIndex int32) bool -> retainedTextSnapshots.Capture(frame, owner, chunkIndex)
-
-  private func IncrementRetainedTextHit() {
-    if retainedTextHitCount != uint64.MaxValue {
-      retainedTextHitCount = retainedTextHitCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedTextRebuild() {
-    if retainedTextRebuildCount != uint64.MaxValue {
-      retainedTextRebuildCount = retainedTextRebuildCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedTextFallback() {
-    if retainedTextFallbackCount != uint64.MaxValue {
-      retainedTextFallbackCount = retainedTextFallbackCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedTextInvalidation() {
-    if retainedTextInvalidationCount != uint64.MaxValue {
-      retainedTextInvalidationCount = retainedTextInvalidationCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedTextTotal() {
-    if retainedTextTotalCount != uint64.MaxValue {
-      retainedTextTotalCount = retainedTextTotalCount + 1uL
-    }
-  }
+    chunkIndex int32) bool -> Capture(frame, owner, chunkIndex)
 
   private func InvalidateRetainedText(owner VulkanSceneOwnerId) {
     if !owner.RetainedTextValid {
       return
     }
     owner.ClearRetainedText()
-    IncrementRetainedTextInvalidation()
+    IncrementSaturated(ref retainedText.Invalidation)
   }
 
   private func RetainedTextEligible(
@@ -308,16 +226,16 @@ internal partial class VulkanSceneCompiler {
     parentPathClipChainId int32,
     activeClipBounds ConservativeBounds) bool -> textScene != nil
     && !bounds.IsEmpty
-    && Finite(opacity)
+    && finiteVulkanSceneValue(opacity)
     && opacity > 0.0F
     && !Double.IsNaN(node.Opacity)
     && !Double.IsInfinity(node.Opacity)
-    && Finite(node.Color.R)
-    && Finite(node.Color.G)
-    && Finite(node.Color.B)
-    && Finite(node.Color.A)
+    && finiteVulkanSceneValue(node.Color.R)
+    && finiteVulkanSceneValue(node.Color.G)
+    && finiteVulkanSceneValue(node.Color.B)
+    && finiteVulkanSceneValue(node.Color.A)
     && !styleMaskHas(node.AppliedMask, StyleField.ShaderEffect)
-    && StrictPlainTextContentEligible(node, owner, bounds)
+    && RetainedTextContentEligible(node, owner, bounds)
     && RetainedTextOwnRectClipSupported(
       node, bounds, parentAxisAligned, parentClipDepth)
     && RetainedTextContextSupported(parentTransformIndex, parentClipIndex,
@@ -390,8 +308,8 @@ internal partial class VulkanSceneCompiler {
     && ExactFloat(value.B, 0.0F)
     && ExactFloat(value.C, 0.0F)
     && ExactFloat(value.D, 1.0F)
-    && Finite(value.TX)
-    && Finite(value.TY)
+    && finiteVulkanSceneValue(value.TX)
+    && finiteVulkanSceneValue(value.TY)
 
   private func TryAppendRetainedText(
     node Node,
@@ -410,7 +328,8 @@ internal partial class VulkanSceneCompiler {
         return false
       }
       let parentTransform = ResolveCompilerFrameTransform(parentTransformIndex)
-      if !Object.ReferenceEquals(owner.RetainedTextContent, node.Content)
+      if !Object.ReferenceEquals(owner.RetainedTextContent,
+        RetainedTextContent(node))
         || owner.RetainedTextPaintVersion != node.ScenePaintVersion
         || owner.RetainedTextFontRegistryGeneration != FontRegistry.Generation
         || !ExactBounds(owner.RetainedTextBounds, bounds)
@@ -424,16 +343,22 @@ internal partial class VulkanSceneCompiler {
           InvalidateRetainedText(owner)
           return false
         }
-      guard let snapshot = retainedTextSnapshots.Snapshot(owner) else {
+      guard let snapshot = Snapshot(owner) else {
         InvalidateRetainedText(owner)
         return false
       }
-      let ownRectClip = node.OverflowX == Overflow.Hidden
+      let entry = node.Kind == NodeKind.Entry
+      let ownRectClip = entry || node.OverflowX == Overflow.Hidden
         && node.OverflowY == Overflow.Hidden
       let rectClip = RectClipRecord{
-        Bounds: bounds,
+        Bounds: entry ? ConservativeBounds{
+          X: TextLayouts.ContentLeft(node),
+          Y: TextLayouts.ContentTop(node),
+          Width: TextLayouts.ContentWidth(node),
+          Height: TextLayouts.ContentHeight(node),
+        } : bounds,
         TransformIndex: parentTransformIndex,
-        ParentIndex: parentClipIndex,
+        ParentIndex: entry ? -1 : parentClipIndex,
       }
       if !ProtectRetainedTextAtlases(scene, snapshot)
         || !frame.AppendRetainedTextSnapshot(owner.Value, frameVersion, snapshot,
@@ -441,7 +366,7 @@ internal partial class VulkanSceneCompiler {
             InvalidateRetainedText(owner)
             return false
           }
-      IncrementRetainedTextHit()
+      IncrementSaturated(ref retainedText.Hit)
       return true
     }
 
@@ -450,27 +375,17 @@ internal partial class VulkanSceneCompiler {
     snapshot VulkanRetainedTextSnapshot) bool{
       if snapshot.SegmentCount < 0
         || snapshot.SegmentCount > snapshot.Segments.Length
-        || snapshot.ResourceCount < 0
-        || snapshot.ResourceCount > snapshot.ResourceRefs.Length{
+        || snapshot.ResourceCount < 0 {
           return false
         }
       var index int32 = 0
-      while index < snapshot.ResourceCount {
-        let resource = snapshot.ResourceRefs[index]
-        if resource.Kind == SceneResourceKind.Atlas
-          && !scene.TryMarkAtlasActive(resource) {
-            return false
-          }
-        index = index + 1
-      }
       var expectedResources int32 = 0
-      index = 0
       while index < snapshot.SegmentCount {
         let value = snapshot.Segments[index]
         guard let segment = value.Segment else {
           return false
         }
-        if !retainedTextSnapshots.ValidSegmentReference(value, segment)
+        if !ValidSegmentReference(value, segment)
           || segment.GlyphCount > Int32.MaxValue - segment.RunCount{
             return false
           }
@@ -481,11 +396,10 @@ internal partial class VulkanSceneCompiler {
           }
         var glyphIndex int32 = 0
         while glyphIndex < segment.GlyphCount {
-          if !SameRetainedTextResource(
-            snapshot.ResourceRefs[expectedResources],
-            segment.GlyphResources[glyphIndex]) {
-              return false
-            }
+          let resource = segment.GlyphResources[glyphIndex]
+          if !resource.IsValid || resource.Kind != SceneResourceKind.GlyphRun {
+            return false
+          }
           expectedResources = expectedResources + 1
           glyphIndex = glyphIndex + 1
         }
@@ -495,11 +409,6 @@ internal partial class VulkanSceneCompiler {
           let run = segment.Runs[runIndex]
           if run.InstanceCount > segment.GlyphCount - glyphBase
             || !scene.TryMarkAtlasActive(run.AtlasId) {
-              return false
-            }
-          if !SameRetainedTextResource(
-            snapshot.ResourceRefs[expectedResources],
-            run.AtlasId) {
               return false
             }
           expectedResources = expectedResources + 1
@@ -520,12 +429,6 @@ internal partial class VulkanSceneCompiler {
       return expectedResources == snapshot.ResourceCount
     }
 
-  private func SameRetainedTextResource(
-    left ResourceId,
-    right ResourceId) bool -> left.Kind == right.Kind
-    && left.LogicalId == right.LogicalId
-    && left.Version == right.Version
-
   private func StoreRetainedTextFingerprint(
     node Node,
     owner VulkanSceneOwnerId,
@@ -537,13 +440,10 @@ internal partial class VulkanSceneCompiler {
       guard let scene = textScene else {
         throw InvalidOperationException("Vulkan retained text scene is unavailable")
       }
-      guard let layout = node.TextLayout else {
-        throw InvalidOperationException("Vulkan retained text layout is unavailable")
-      }
       let parentTransform = ResolveCompilerFrameTransform(parentTransformIndex)
-      owner.RetainedTextContent = node.Content
+      owner.RetainedTextContent = RetainedTextContent(node)
       owner.RetainedTextPaintVersion = node.ScenePaintVersion
-      owner.RetainedTextFontRegistryGeneration = layout.FontRegistryGeneration
+      owner.RetainedTextFontRegistryGeneration = RetainedTextFontGeneration(node)
       owner.RetainedTextBounds = bounds
       owner.RetainedTextColor = node.Color.ToPackedRgba()
       owner.RetainedTextOpacity = opacity
@@ -553,5 +453,56 @@ internal partial class VulkanSceneCompiler {
       owner.RetainedTextClipDepth = parentClipDepth
       owner.RetainedTextClipBounds = activeClipBounds
       owner.RetainedTextValid = true
+    }
+
+  private func RetainedTextContent(node Node) string ->
+  node.Kind == NodeKind.Entry ? node.Buffer : node.Content
+
+  private func RetainedTextFontGeneration(node Node) uint64 {
+    if node.Kind == NodeKind.Entry {
+      return FontRegistry.Generation
+    }
+    guard let layout = node.TextLayout else {
+      throw InvalidOperationException("Vulkan retained text layout is unavailable")
+    }
+    return layout.FontRegistryGeneration
+  }
+
+  private func RetainedTextContentEligible(
+    node Node,
+    owner VulkanSceneOwnerId,
+    bounds ConservativeBounds) bool{
+      if node.Kind == NodeKind.Text {
+        return StrictPlainTextContentEligible(node, owner, bounds)
+      }
+      if node.Kind != NodeKind.Entry || node.Children.Count != 0
+        || node.Focused || node.Buffer == "" && node.Placeholder == ""
+        || node.Width.Unit != LengthUnit.Px
+        || node.Height.Unit != LengthUnit.Px
+        || node.FontSize.Unit != LengthUnit.Px
+        || node.BackgroundColor.A > 0.0F
+        || node.BackgroundGradient != nil
+        || node.HasBackgroundImageState
+        || node.HasOutlineState
+        || boxShadowCount(node.BoxShadows) != 0
+        || node.HasTextShadowState
+        || node.HasTextStrokeState
+        || node.TextDecoration != TextDecoration.None
+        || node.HasClipPath
+        || node.HasTransformState
+        || node.HasVisualTransform
+        || node.ScrollX != 0.0F
+        || node.ScrollY != 0.0F
+        || node.EditScrollX != 0.0F
+        || node.BlendMode != BlendMode.Normal
+        || HasBorderWidth(node, bounds)
+        || node.BorderTopColor.A > 0.0F
+        || node.BorderRightColor.A > 0.0F
+        || node.BorderBottomColor.A > 0.0F
+        || node.BorderLeftColor.A > 0.0F {
+          return false
+        }
+      return node.OverflowX == Overflow.Visible
+        && node.OverflowY == Overflow.Visible
     }
 }

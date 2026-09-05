@@ -5,6 +5,10 @@ import System.IO
 import Goo
 
 class TextTransportCell : Cell {
+  shared {
+    let Entry ElementHandle = ElementHandle{}
+  }
+
   private var Mutated bool
 
   init() {
@@ -44,6 +48,17 @@ class TextTransportCell : Cell {
         TextTrimming: TextTrimming.Ellipsis,
         Color: Color.Rgb(48, 144, 220),
       },
+      TextEntry{
+        Handle: Entry,
+        Value: "QRST",
+        Position: PositionType.Absolute,
+        Left: 48,
+        Top: 0,
+        Width: 40,
+        Height: 20,
+        FontSize: 16,
+        Color: Color.Rgb(220, 220, 220),
+      },
     },
   }
 }
@@ -63,12 +78,14 @@ func RunTextTransportSmoke() {
   var initialScene VulkanSceneRetentionTestSnapshot{}
   var warmScene VulkanSceneRetentionTestSnapshot{}
   var partialScene VulkanSceneRetentionTestSnapshot{}
+  var focusedScene VulkanSceneRetentionTestSnapshot{}
   var sawInitial bool = false
   var sawWarm bool = false
   var sawPartial bool = false
   var initialFrame int32 = 0
   var warmFrame int32 = 0
   var partialFrame int32 = 0
+  var batchedDraws uint64 = 0uL
   try {
     let opened = Window{
       Title: "Goo Retained text transport gate",
@@ -109,8 +126,8 @@ func RunTextTransportSmoke() {
       "Retained text transport clip payload is not the no-mask 16-byte header")
     Require(initialPrimitive.RecordCount < initialText.RecordCount,
       "Retained analytic capacity included text records")
-    Require(initialScene.RetainedTextRebuildCount >= 2uL,
-      "Retained initial retained text did not capture both text nodes")
+    Require(initialScene.RetainedTextRebuildCount >= 3uL,
+      "Retained initial text did not capture both text nodes and the entry")
 
     while warmFrame < 12 && !sawWarm {
       WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
@@ -136,11 +153,20 @@ func RunTextTransportSmoke() {
         && warmText.Flushes == 0uL
         && warmText.RetainedReuse == uint64(warmText.RecordCount),
       "Retained unchanged text transport did not retain the warmed slot")
+    let beforeBatch = WindowReadbackTestFixture.DiagnosticCounters(opened)
+    WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+    let afterBatch = WindowReadbackTestFixture.DiagnosticCounters(opened)
+    Require(afterBatch.drawCount >= beforeBatch.drawCount,
+      "Retained text draw counter moved backwards")
+    batchedDraws = afterBatch.drawCount - beforeBatch.drawCount
+    Require(batchedDraws > 0uL
+        && batchedDraws < uint64(warmText.SegmentCount),
+      "Compatible retained text segments did not batch")
     let warmTextTotal = warmScene.RetainedTextTotalCount
     -initialScene.RetainedTextTotalCount
     let warmTextHits = warmScene.RetainedTextHitCount
     -initialScene.RetainedTextHitCount
-    Require(warmTextTotal >= 2uL
+    Require(warmTextTotal >= 3uL
         && warmTextHits == warmTextTotal
         && warmScene.RetainedTextRebuildCount == initialScene.RetainedTextRebuildCount
         && warmScene.RetainedTextFallbackCount == initialScene.RetainedTextFallbackCount
@@ -189,6 +215,22 @@ func RunTextTransportSmoke() {
       == warmScene.RetainedTextFallbackCount,
       "Retained mutated text did not rebuild exactly one retained text node")
 
+    Require(TextTransportCell.Entry.Focus(),
+      "Retained text entry did not focus")
+    WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+    focusedScene = WindowReadbackTestFixture.SceneRetention(opened)
+    let focusedTextTotal = focusedScene.RetainedTextTotalCount
+    -partialScene.RetainedTextTotalCount
+    let focusedTextHits = focusedScene.RetainedTextHitCount
+    -partialScene.RetainedTextHitCount
+    Require(focusedTextTotal >= 3uL
+        && focusedTextHits == focusedTextTotal - 1uL
+        && focusedScene.RetainedTextFallbackCount
+      == partialScene.RetainedTextFallbackCount + 1uL
+        && focusedScene.RetainedTextInvalidationCount
+      == partialScene.RetainedTextInvalidationCount + 1uL,
+      "Focused text entry did not leave the retained snapshot path")
+
     opened.RequestClose()
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
     Require(!opened.IsOpen, "Retained text transport gate window did not close")
@@ -217,6 +259,7 @@ func RunTextTransportSmoke() {
     +" partial_ranges=" + partialText.UploadRangeCount.ToString()
     +" partial_mapped=" + partialText.MappedWrites.ToString()
     +" analytic_records=" + initialPrimitive.RecordCount.ToString()
+    +" batched_draws=" + batchedDraws.ToString()
     +" clip_bytes=" + initialClip.ByteCount.ToString()
     +" retained_text_hits=" + partialScene.RetainedTextHitCount.ToString()
     +" retained_text_rebuilds=" + partialScene.RetainedTextRebuildCount.ToString()

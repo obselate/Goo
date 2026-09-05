@@ -50,15 +50,6 @@ internal class DiagnosticOverrideStore {
     }
   }
 
-  internal func WriteCurrent(n Node) bool {
-    guard let state = State(n) else { return false }
-    var changed = false
-    for pair in state.Values {
-      if writeDirect(n, pair.Value.Current) { changed = true }
-    }
-    return changed
-  }
-
   internal func ClearFields(n Node, fields []StyleField) bool {
     guard let state = State(n) else { return false }
     var changed = false

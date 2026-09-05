@@ -44,6 +44,8 @@ internal unsafe struct VkDeviceDispatch {
   var vkResetCommandBuffer unmanaged[Cdecl](VkCommandBuffer, VkCommandBufferResetFlags) -> VkResult
   var vkCreateSemaphore unmanaged[Cdecl](VkDevice, *VkSemaphoreCreateInfo, *VkAllocationCallbacks, *VkSemaphore) -> VkResult
   var vkDestroySemaphore unmanaged[Cdecl](VkDevice, VkSemaphore, *VkAllocationCallbacks) -> void
+  var vkGetSemaphoreCounterValue unmanaged[Cdecl](VkDevice, VkSemaphore, *uint64) -> VkResult
+  var vkWaitSemaphores unmanaged[Cdecl](VkDevice, *VkSemaphoreWaitInfo, uint64) -> VkResult
   var vkCreateFence unmanaged[Cdecl](VkDevice, *VkFenceCreateInfo, *VkAllocationCallbacks, *VkFence) -> VkResult
   var vkDestroyFence unmanaged[Cdecl](VkDevice, VkFence, *VkAllocationCallbacks) -> void
   var vkWaitForFences unmanaged[Cdecl](VkDevice, uint32, *VkFence, VkBool32, uint64) -> VkResult

@@ -157,6 +157,7 @@ internal unsafe partial class VulkanWindowTarget {
     pendingSubmitStart = 0uL
     pendingPresentStart = 0uL
     pendingPresentFence = 0uL
+    completedGraphicsSubmissionSerial = 0uL
     let staleImageScene = imageScene
     imageScene = nil
     if let scene = staleImageScene {
@@ -231,6 +232,7 @@ internal unsafe partial class VulkanWindowTarget {
     instanceDispatch = VkInstanceDispatch{}
     instanceMaintenanceVariant = VulkanSwapchainMaintenanceVariant.None
     swapchainMaintenanceVariant = VulkanSwapchainMaintenanceVariant.None
+    portabilitySubsetSupported = false
     physicalDevice = nint(0)
     device = nint(0)
     dispatch = VkDeviceDispatch{}

@@ -40,8 +40,8 @@ internal partial class SdlRuntime {
     private var mainThreadId int32
     private var references int32
     private var wakeEventType uint32
-    private let cursors []SDLCursorPtr = [int32(SdlHostCursor.ResizeWest) + 1]SDLCursorPtr
-    private var currentCursor SdlHostCursor = SdlHostCursor.Default
+    private let cursors []SDLCursorPtr = [int32(Cursor.ResizeWest) + 1]SDLCursorPtr
+    private var currentCursor Cursor = Cursor.Default
     private var applicationConfigured bool
     private var applicationName string?
     private var applicationVersion string?
@@ -151,10 +151,10 @@ internal partial class SdlRuntime {
       return expected != 0 && Environment.CurrentManagedThreadId == expected
     }
 
-    internal func SetCursor(value SdlHostCursor) {
+    internal func SetCursor(value Cursor) {
       RequireMainThread("SDL cursor mutation")
-      if int32(value) < int32(SdlHostCursor.Default) ||
-      int32(value) > int32(SdlHostCursor.ResizeWest) {
+      if int32(value) < int32(Cursor.Default) ||
+      int32(value) > int32(Cursor.ResizeWest) {
         throw ArgumentOutOfRangeException("value")
       }
       if value == currentCursor {
@@ -162,7 +162,7 @@ internal partial class SdlRuntime {
       }
 
       var cursor SDLCursorPtr
-      if value == SdlHostCursor.Default {
+      if value == Cursor.Default {
         cursor = SDL.GetDefaultCursor()
       } else {
         cursor = cursors[int32(value)]
@@ -180,27 +180,27 @@ internal partial class SdlRuntime {
       currentCursor = value
     }
 
-    internal func MapSystemCursor(value SdlHostCursor) SDLSystemCursor -> switch value {
-      case SdlHostCursor.Default: SDLSystemCursor.Default
-      case SdlHostCursor.Pointer: SDLSystemCursor.Pointer
-      case SdlHostCursor.Text: SDLSystemCursor.Text
-      case SdlHostCursor.Crosshair: SDLSystemCursor.Crosshair
-      case SdlHostCursor.Move: SDLSystemCursor.Move
-      case SdlHostCursor.NotAllowed: SDLSystemCursor.NotAllowed
-      case SdlHostCursor.Wait: SDLSystemCursor.Wait
-      case SdlHostCursor.Progress: SDLSystemCursor.Progress
-      case SdlHostCursor.ResizeHorizontal: SDLSystemCursor.EwResize
-      case SdlHostCursor.ResizeVertical: SDLSystemCursor.NsResize
-      case SdlHostCursor.ResizeNorthwestSoutheast: SDLSystemCursor.NwseResize
-      case SdlHostCursor.ResizeNortheastSouthwest: SDLSystemCursor.NeswResize
-      case SdlHostCursor.ResizeNorthwest: SDLSystemCursor.NwResize
-      case SdlHostCursor.ResizeNorth: SDLSystemCursor.NResize
-      case SdlHostCursor.ResizeNortheast: SDLSystemCursor.NeResize
-      case SdlHostCursor.ResizeEast: SDLSystemCursor.EResize
-      case SdlHostCursor.ResizeSoutheast: SDLSystemCursor.SeResize
-      case SdlHostCursor.ResizeSouth: SDLSystemCursor.SResize
-      case SdlHostCursor.ResizeSouthwest: SDLSystemCursor.SwResize
-      case SdlHostCursor.ResizeWest: SDLSystemCursor.WResize
+    internal func MapSystemCursor(value Cursor) SDLSystemCursor -> switch value {
+      case Cursor.Default: SDLSystemCursor.Default
+      case Cursor.Pointer: SDLSystemCursor.Pointer
+      case Cursor.Text: SDLSystemCursor.Text
+      case Cursor.Crosshair: SDLSystemCursor.Crosshair
+      case Cursor.Move: SDLSystemCursor.Move
+      case Cursor.NotAllowed: SDLSystemCursor.NotAllowed
+      case Cursor.Wait: SDLSystemCursor.Wait
+      case Cursor.Progress: SDLSystemCursor.Progress
+      case Cursor.ResizeHorizontal: SDLSystemCursor.EwResize
+      case Cursor.ResizeVertical: SDLSystemCursor.NsResize
+      case Cursor.ResizeNorthwestSoutheast: SDLSystemCursor.NwseResize
+      case Cursor.ResizeNortheastSouthwest: SDLSystemCursor.NeswResize
+      case Cursor.ResizeNorthwest: SDLSystemCursor.NwResize
+      case Cursor.ResizeNorth: SDLSystemCursor.NResize
+      case Cursor.ResizeNortheast: SDLSystemCursor.NeResize
+      case Cursor.ResizeEast: SDLSystemCursor.EResize
+      case Cursor.ResizeSoutheast: SDLSystemCursor.SeResize
+      case Cursor.ResizeSouth: SDLSystemCursor.SResize
+      case Cursor.ResizeSouthwest: SDLSystemCursor.SwResize
+      case Cursor.ResizeWest: SDLSystemCursor.WResize
       case _: throw ArgumentOutOfRangeException("value")
     }
 
@@ -257,7 +257,7 @@ internal partial class SdlRuntime {
               SDL.DestroyCursor(cursor)
             }
           }
-          currentCursor = SdlHostCursor.Default
+          currentCursor = Cursor.Default
           SDL.QuitSubSystem(requiredSubsystems)
         }
       }

@@ -6,7 +6,7 @@ import System.Diagnostics
 import System.Numerics
 import System.Threading
 
-internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink {
+internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink, WindowRenderTarget {
   shared {
     private var terminalTargets List[VulkanWindowTarget]? = nil
     private var testFailNextSurfaceLost int32
@@ -25,7 +25,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     private func TakeTestSurfaceLostForTest() bool -> Interlocked.Exchange(ref testFailNextSurfaceLost, 0) != 0
   }
 
-  private let host SdlHost
+  private let host VulkanSurfaceHost
   private let diagnosticWindowHandle uint64
   private var diagnostics VulkanDiagnostics? = nil
   private var timestampState VulkanDiagnosticTimestampState? = nil
@@ -34,6 +34,8 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
   private let presentationRetirement VulkanPresentationRetirement
   private var runtime VulkanSharedLease? = nil
   private var queueMailbox VulkanQueueMailbox? = nil
+  private let validateGraphicsSubmission Action[uint64]
+  private var completedGraphicsSubmissionSerial uint64
   private var objectAccounting VulkanObjectAccounting? = nil
   private var sharedObjectAccounting VulkanObjectAccounting? = nil
   private var windowObjectAccounting VulkanObjectAccounting? = nil
@@ -57,6 +59,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
   private var getProcAddress nint = nint(0)
   private var instanceMaintenanceVariant VulkanSwapchainMaintenanceVariant
   private var swapchainMaintenanceVariant VulkanSwapchainMaintenanceVariant
+  private var portabilitySubsetSupported bool
   private var memoryBudgetSupported bool
   private var clipMaskFormatSupport VulkanClipMaskFormatSupport
   private var physicalDevice VkPhysicalDevice = nint(0)
@@ -127,7 +130,9 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
   private var pendingPresentStart uint64
   private var pendingPresentFence VkFence
 
-  internal prop NeedsRender bool{
+  public prop ProfileSink FrameProfileSink{ get -> this }
+
+  public prop NeedsRender bool{
     get {
       if let activeRuntime = runtime {
         if activeRuntime.DeviceLost {
@@ -142,10 +147,10 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     }
   }
 
-  internal prop LastFrameSubmitted bool{ get -> lastFrameSubmitted }
-  internal prop QueueWorkPending bool{ get -> queueStage != QueueStageIdle }
+  public prop LastFrameSubmitted bool{ get -> lastFrameSubmitted }
+  public prop QueueWorkPending bool{ get -> queueStage != QueueStageIdle }
 
-  internal func PrepareClose() bool {
+  public func PrepareClose() bool {
     PollQueueCompletion()
     if queueStage != QueueStageIdle || frameBegun {
       return false
@@ -270,7 +275,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     }
   }
 
-  internal func SetVSync(value bool) {
+  public func SetVSync(value bool) {
     if disposed || vsync == value {
       return
     }
@@ -281,11 +286,12 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     host.Wake()
   }
 
-  internal init(nativeHost SdlHost) {
+  internal init(nativeHost VulkanSurfaceHost) {
     if nativeHost == nil {
       throw ArgumentNullException("nativeHost")
     }
     host = nativeHost
+    validateGraphicsSubmission = (serial uint64) -> { ValidateGraphicsSubmission(serial) }
     diagnosticWindowHandle = uint64(nativeHost.WindowHandle)
     vsync = host.VSync
     sceneCompiler = VulkanSceneCompiler()
@@ -314,7 +320,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     }
   }
 
-  internal func BeginFrame() {
+  public func BeginFrame() {
     lastFrameSubmitted = false
     if frameFailed {
       throw InvalidOperationException("Vulkan window target cannot continue after a failed frame")
@@ -385,24 +391,36 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         HandleFrameFailure(prepareResult, VulkanDiagnosticEventIds.PresentWait)
         return
       }
+      guard let activeRuntime = runtime else {
+        throw InvalidOperationException("Vulkan shared runtime is unavailable")
+      }
+      var completed uint64
+      let completionResult = activeRuntime.GetCompletedGraphicsSubmissionSerial(out completed)
+      RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, completionResult)
+      if completionResult != VkConstants.VK_SUCCESS {
+        selectedSlot.AbortPrepared()
+        HandleFrameFailure(completionResult, VulkanDiagnosticEventIds.PresentWait)
+        return
+      }
+      completedGraphicsSubmissionSerial = completed
       ResolveDiagnosticTimestamp(selectedSlot, slotIndex)
       if let atlas = textAtlas {
-        atlas.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
+        atlas.Collect(completedGraphicsSubmissionSerial)
         textScene?.PublishCompletedUploads()
       }
       if let resources = imageResources {
-        resources.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
+        resources.Collect(completedGraphicsSubmissionSerial)
       }
       if let resources = pathScene {
-        resources.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
+        resources.Collect(completedGraphicsSubmissionSerial)
       }
-      layerPool?.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
+      layerPool?.Collect(completedGraphicsSubmissionSerial)
       if let renderer = primitiveRenderer {
-        renderer.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
+        renderer.Collect(completedGraphicsSubmissionSerial)
         clipMaskFrameStats = renderer.ClipMaskFrameStats
         clipMaskFrameTotals = renderer.ClipMaskFrameTotals
       } else if let atlas = clipMaskAtlas {
-        atlas.Collect(selectedSlot.LastCompletedGlobalSubmissionSerial)
+        atlas.Collect(completedGraphicsSubmissionSerial)
       }
       presentationRetirement.CollectCompleted(slotIndex, selectedSlot.LastCompletedSerial)
       CollectRetiredSwapchains()
@@ -474,7 +492,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     Render(root, background, dpi, nil)
   }
 
-  internal func Render(root Node?, background Color, dpi Vector2, overlay DiagnosticOverlay?) {
+  public func Render(root Node?, background Color, dpi Vector2, overlay DiagnosticOverlay?) {
     if disposed || !frameBegun || frameRendered {
       return
     }
@@ -497,11 +515,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         activeGeneration.SupportsTransferSource
       } else { false }
       sceneCompiler.SetBlendModeSupport(blendModesSupported)
-      var completedGlobalSubmissionSerial uint64 = 0uL
-      if let slot = activeFrameSlot {
-        completedGlobalSubmissionSerial = slot.LastCompletedGlobalSubmissionSerial
-      }
-      textScene?.BeginCompile(completedGlobalSubmissionSerial)
+      textScene?.BeginCompile(completedGraphicsSubmissionSerial)
       imageScene?.BeginCompile()
       let planStart = DiagnosticTimestamp()
       let compileResult = sceneCompiler.Compile(root, background, logicalWidth, logicalHeight)
@@ -621,7 +635,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
             sceneCompiler.Frame,
             current.Extent,
             int32(activeFrameSlotIndex),
-            completedGlobalSubmissionSerial)
+            completedGraphicsSubmissionSerial)
           clipMaskFrameStats = clipFrameStats
           clipMaskFrameTotals = renderer.ClipMaskFrameTotals
           clipMaskFramePrepared = true
@@ -632,7 +646,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
             current.Extent,
             scaleX,
             scaleY,
-            completedGlobalSubmissionSerial)
+            completedGraphicsSubmissionSerial)
           renderer.RecordPrimitiveFrameUpload(slot.CommandBuffer)
           renderer.RecordClipMaskPass(slot.CommandBuffer, current.Extent)
           BeginRendering(current, slot, activeImageIndex, activeDamageRegion)
@@ -641,7 +655,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
             current.Image(activeImageIndex),
             current.ImageView(activeImageIndex),
             current.Extent,
-            completedGlobalSubmissionSerial)
+            completedGraphicsSubmissionSerial)
           renderer.ConfigureTimestampRecording(
             timestampState,
             int32(activeFrameSlotIndex),
@@ -680,7 +694,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     }
   }
 
-  internal func Present() {
+  public func Present() {
     if disposed || !frameBegun || queueStage != QueueStageIdle {
       return
     }
@@ -757,36 +771,26 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         HandleFrameFailure(prepareSubmit, VulkanDiagnosticEventIds.Submit)
         return
       }
-      let globalSubmissionSerial = activeRuntime.ReserveGraphicsSubmissionSerial()
-      pendingGlobalSubmissionSerial = globalSubmissionSerial
-      if let resources = imageResources {
-        resources.ValidateUploadSubmission(slot.CommandBuffer, globalSubmissionSerial, resources.Generation)
-      }
-      if clipMaskFramePrepared {
-        guard let renderer = primitiveRenderer else {
-          throw InvalidOperationException("Vulkan clip renderer is unavailable after preparation")
-        }
-        renderer.ValidateClipFrameSubmission(int32(activeFrameSlotIndex), globalSubmissionSerial)
-      }
       mailbox.PrepareSubmit(slot.CommandBuffer, slot.AcquireSemaphore,
-        current.RenderSemaphore(activeImageIndex), slot.SubmissionFence)
-      if !mailbox.BeginSubmit() || !activeRuntime.QueueWorker.Enqueue(mailbox) {
-        mailbox.CancelSubmit()
-        try { AbortUnsubmittedTextUpload() } catch (cleanup Exception) { }
-        try { AbortUnsubmittedImageUploads() } catch (cleanup Exception) { }
-        try { AbortUnsubmittedPathUpload() } catch (cleanup Exception) { }
-        try { AbortUnsubmittedClipMask() } catch (cleanup Exception) { }
-        layerPool?.Abort()
-        if slot.HasAbandonableAcquiredWork {
-          try { AbandonRecordedFrameForRetry() } catch (cleanup Exception) { }
+        current.RenderSemaphore(activeImageIndex))
+      if !mailbox.BeginSubmit()
+        || !activeRuntime.EnqueueGraphicsSubmission(mailbox, validateGraphicsSubmission) {
+          mailbox.CancelSubmit()
+          try { AbortUnsubmittedTextUpload() } catch (cleanup Exception) { }
+          try { AbortUnsubmittedImageUploads() } catch (cleanup Exception) { }
+          try { AbortUnsubmittedPathUpload() } catch (cleanup Exception) { }
+          try { AbortUnsubmittedClipMask() } catch (cleanup Exception) { }
+          layerPool?.Abort()
+          if slot.HasAbandonableAcquiredWork {
+            try { AbandonRecordedFrameForRetry() } catch (cleanup Exception) { }
+          }
+          frameFailed = false
+          frameFailureRetryable = true
+          forceFullRedraw = true
+          CloseDiagnosticFrame(false)
+          ClearActiveFrame()
+          return
         }
-        frameFailed = false
-        frameFailureRetryable = true
-        forceFullRedraw = true
-        CloseDiagnosticFrame(false)
-        ClearActiveFrame()
-        return
-      }
       queueStage = QueueStageSubmit
     } catch (error Exception) {
       try { AbortUnsubmittedTextUpload() } catch (cleanup Exception) { }
@@ -802,7 +806,23 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     }
   }
 
-  internal func PollQueueCompletion() bool {
+  private func ValidateGraphicsSubmission(serial uint64) {
+    guard let slot = activeFrameSlot else {
+      throw InvalidOperationException("Vulkan active frame slot is unavailable")
+    }
+    if let resources = imageResources {
+      resources.ValidateUploadSubmission(slot.CommandBuffer, serial, resources.Generation)
+    }
+    if clipMaskFramePrepared {
+      guard let renderer = primitiveRenderer else {
+        throw InvalidOperationException("Vulkan clip renderer is unavailable after preparation")
+      }
+      renderer.ValidateClipFrameSubmission(int32(activeFrameSlotIndex), serial)
+    }
+    pendingGlobalSubmissionSerial = serial
+  }
+
+  public func PollQueueCompletion() bool {
     guard let mailbox = queueMailbox else {
       return false
     }
@@ -1032,7 +1052,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
       }
       return
     }
-    if !activeRuntime.QueueWorker.Enqueue(mailbox) {
+    if !activeRuntime.QueueWorker.EnqueuePresent(mailbox) {
       mailbox.RetryPresent()
       try { current.ReconcilePreparedPresent(activeImageIndex, false) } catch (cleanup Exception) { }
       pendingPresentFence = 0uL
@@ -1116,7 +1136,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
     return completed
   }
 
-  internal func Resize(width int32, height int32) bool {
+  public func Resize(width int32, height int32) bool {
     if disposed {
       return false
     }

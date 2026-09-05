@@ -30,7 +30,7 @@ internal partial class SceneFrame {
             bounds = next
             hasBounds = true
           } else {
-            bounds = Union(bounds, next)
+            bounds = unionVulkanSceneBounds(bounds, next)
           }
         }
       }
@@ -165,20 +165,7 @@ internal partial class SceneFrame {
   }
 
   private func DebugEdge(value float32) float32 {
-    if Single.IsNaN(value) || Single.IsInfinity(value) { return 0.0F }
+    if !finiteVulkanSceneValue(value) { return 0.0F }
     return value
-  }
-
-  private func Union(left ConservativeBounds, right ConservativeBounds) ConservativeBounds {
-    let x = left.X < right.X ? left.X : right.X
-    let y = left.Y < right.Y ? left.Y : right.Y
-    let rightEdge = left.Right > right.Right ? left.Right : right.Right
-    let bottomEdge = left.Bottom > right.Bottom ? left.Bottom : right.Bottom
-    return ConservativeBounds{
-      X: x,
-      Y: y,
-      Width: rightEdge - x,
-      Height: bottomEdge - y,
-    }
   }
 }

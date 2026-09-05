@@ -893,7 +893,7 @@ internal class TextGeometryQueries {
     private func staticPositionAt(n Node, local Point, out position TextPosition) bool {
       position = TextPosition{}
       guard let layout = TextLayouts.CurrentForGeometry(n) else { return false }
-      guard let geometry = TextLayoutGeometries.Get(layout) else { return false }
+      guard let geometry = layout.Geometry else { return false }
       if layout.Lines.Count == 0 || geometry.Lines.Count != layout.Lines.Count { return false }
       let contentX = TextLayouts.ContentLeft(n) - n.Rect.X
       let contentY = TextLayouts.ContentTop(n) - n.Rect.Y
@@ -935,7 +935,7 @@ internal class TextGeometryQueries {
       rect = Rect{}
       if position.Offset < 0 || position.Offset > n.Content.Length { return false }
       guard let layout = TextLayouts.CurrentForGeometry(n) else { return false }
-      guard let geometry = TextLayoutGeometries.Get(layout) else { return false }
+      guard let geometry = layout.Geometry else { return false }
       if geometry.Lines.Count != layout.Lines.Count { return false }
       var display = position.Offset
       if display > 0 && display < n.Content.Length && n.Content[display] == 10
@@ -977,7 +977,7 @@ internal class TextGeometryQueries {
         required = 0
         if !validRange(textRange, n.Content.Length) { return false }
         guard let layout = TextLayouts.CurrentForGeometry(n) else { return false }
-        guard let geometry = TextLayoutGeometries.Get(layout) else { return false }
+        guard let geometry = layout.Geometry else { return false }
         if geometry.Lines.Count != layout.Lines.Count { return false }
         let start = textRange.Start
         let end = textRange.Start + textRange.Length

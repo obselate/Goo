@@ -85,8 +85,8 @@ internal open class ImageSourceBinding {
         currentToken = ImageSourceBindingToken(this, source, currentLease, acceptedVersion)
       }
     }
-    let registration = func() {
-      dispatchToOwner(func() {
+    let registration = () -> {
+      dispatchToOwner(() -> {
         if Object.ReferenceEquals(Source, source) {
           var version uint64
           try { version = source.ContentVersion } catch (error Exception) { return }
@@ -107,7 +107,7 @@ internal open class ImageSourceBinding {
     if ownerThreadId != 0 { return }
     ownerThreadId = Environment.CurrentManagedThreadId
     if let owner = ElementHandles.CurrentOwner() {
-      ownerPost = func(action Action) { owner.Post(action) }
+      ownerPost = (action Action) -> { owner.Post(action) }
     }
   }
 
@@ -131,7 +131,7 @@ internal open class ImageSourceBinding {
   internal func WatchSource(callback Action[ImageSourceBindingToken]) {
     SourceCompletion?.Dispose()
     guard let token = currentToken else { return }
-    SourceCompletion = token.Lease.OnCompleted(func() {
+    SourceCompletion = token.Lease.OnCompleted(() -> {
       if IsCurrentToken(token) {
         callback(token)
       }
@@ -208,29 +208,15 @@ internal class ImageLayouts {
           return
         }
         let request = ImageDecoding.Request(path)
-        if n.ImageRequest == request {
-          request.Release()
-          n.ImagePath = request.Path
-          Refresh(n)
-          return
-        }
         let intrinsicWidth = n.ImageIntrinsicWidth
         let intrinsicHeight = n.ImageIntrinsicHeight
         removeSource(n)
-        n.ImageCompletion?.Dispose()
-        n.ImageRequest?.Release()
         n.ImagePath = request.Path
         n.ImageRequest = request
-        n.ImageCompletion = nil
         n.DecodedImage = nil
         n.ImageIntrinsicWidth = intrinsicWidth
         n.ImageIntrinsicHeight = intrinsicHeight
-        if Refresh(n) {
-          return
-        }
-        n.ImageCompletion = request.OnCompleted(func() {
-          if let callback = completed { callback(n, request) }
-        })
+        Refresh(n)
       }
 
     internal func ApplySource(n Node, source ImageSourceProvider, fit ImageFit,
@@ -243,17 +229,14 @@ internal class ImageLayouts {
         }
         let intrinsicWidth = n.ImageIntrinsicWidth
         let intrinsicHeight = n.ImageIntrinsicHeight
-        n.ImageCompletion?.Dispose()
-        n.ImageRequest?.Release()
         n.ImageRequest = nil
-        n.ImageCompletion = nil
         removeSource(n, prior)
         n.ImagePath = ""
         n.DecodedImage = nil
         n.ImageIntrinsicWidth = intrinsicWidth
         n.ImageIntrinsicHeight = intrinsicHeight
         let value = ImageSourceBinding()
-        value.SetSourceChanged(func() {
+        value.SetSourceChanged(() -> {
           ImageLayouts.refreshSource(n, value, completed)
         })
         value.BindSource(source)
@@ -263,7 +246,7 @@ internal class ImageLayouts {
         if Refresh(n, value) {
           return
         }
-        value.WatchSource(func(token ImageSourceBindingToken) {
+        value.WatchSource((token ImageSourceBindingToken) -> {
           ImageLayouts.invalidateSource(n, value, token, completed)
         })
       }
@@ -275,13 +258,10 @@ internal class ImageLayouts {
         if !lease.IsComplete { return false }
         decoded = value.CompletedResult()
       } else if let request = n.ImageRequest {
-        if !request.IsComplete { return false }
         decoded = request.Result
       } else {
         return false
       }
-      n.ImageCompletion?.Dispose()
-      n.ImageCompletion = nil
       let width = if let image = decoded {
         image.IsValid && image.Width > 0 ? float32(image.Width) : 0.0F
       } else { 0.0F }
@@ -305,11 +285,8 @@ internal class ImageLayouts {
     internal func Dispose(n Node) {
       let hadDimensions = n.ImageIntrinsicWidth > 0.0F || n.ImageIntrinsicHeight > 0.0F
         || n.DecodedImage != nil
-      n.ImageCompletion?.Dispose()
-      n.ImageRequest?.Release()
       removeSource(n)
       n.ImageRequest = nil
-      n.ImageCompletion = nil
       n.DecodedImage = nil
       n.ImageIntrinsicWidth = 0.0F
       n.ImageIntrinsicHeight = 0.0F
@@ -334,7 +311,8 @@ internal class ImageLayouts {
         } else {
           if sourceState(n) != nil { return YGSize{} }
           guard let request = n.ImageRequest else { return YGSize{} }
-          if request.IsComplete || n.ImageIntrinsicWidth <= 0.0F || n.ImageIntrinsicHeight <= 0.0F {
+          if !request.Result.IsValid { return YGSize{} }
+          if n.ImageIntrinsicWidth <= 0.0F || n.ImageIntrinsicHeight <= 0.0F {
             return YGSize{}
           }
           naturalWidth = n.ImageIntrinsicWidth
@@ -390,7 +368,7 @@ internal class ImageLayouts {
         }
         guard let lease = value.Lease else { return }
         if lease.IsComplete { return }
-        value.WatchSource(func(token ImageSourceBindingToken) {
+        value.WatchSource((token ImageSourceBindingToken) -> {
           ImageLayouts.invalidateSource(n, value, token, completed)
         })
       }

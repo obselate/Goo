@@ -18,10 +18,8 @@ internal unsafe partial class VulkanWindowTarget {
   private var readbackPrerequisiteFrame SceneFrame? = nil
   private var readbackPrerequisiteGeneration uint64 = 0uL
   private var readbackPrerequisiteSceneVersion uint64 = 0uL
-
-  internal prop ReadbackPending bool{
-    get -> readbackRequest?.IsPending == true
-  }
+  private var readbackPrerequisiteTextScaleX float32 = 1.0F
+  private var readbackPrerequisiteTextScaleY float32 = 1.0F
 
   internal prop ReadbackSubmissionReadyForReconcile bool{
     get -> readbackRequest?.SubmissionReadyForReconcile == true
@@ -43,19 +41,6 @@ internal unsafe partial class VulkanWindowTarget {
     return true
   }
 
-  internal prop ReadbackState VulkanReadbackState{
-    get {
-      if let request = readbackRequest {
-        return request.State
-      }
-      return VulkanReadbackState.Idle
-    }
-  }
-
-  internal prop ReadbackResourceByteBudget VkDeviceSize{
-    get -> ReadbackBudgetBytes
-  }
-
   internal prop ReadbackResidentResourceBytes VkDeviceSize{
     get {
       if let pool = readbackPool {
@@ -67,18 +52,10 @@ internal unsafe partial class VulkanWindowTarget {
 
   internal prop ReadbackRequestCount uint64{ get -> readbackRequestCount }
   internal prop ReadbackCompletionCount uint64{ get -> readbackCompletionCount }
-  internal prop ReadbackAbandonCount uint64{ get -> readbackAbandonCount }
-  internal prop ReadbackBudgetExceededCount uint64{ get -> readbackBudgetExceededCount }
   internal prop ReadbackTiming VulkanReadbackTimingSnapshot{ get -> readbackTiming }
-  internal prop ReadbackRequestedByteSize VkDeviceSize{
-    get -> readbackTiming.RequestedByteSize
-  }
-  internal prop ReadbackResidentByteSize VkDeviceSize{
-    get -> readbackTiming.ResidentResourceBytes
-  }
 
   internal func RequestReadback(root Node?, background Color, dpi Vector2,
-    requestedRegion VulkanReadbackRegion) VulkanReadbackRequestStatus{
+    requestedRegion VulkanReadbackRegion) WindowReadbackRequestStatus{
       PollQueueCompletion()
       let hasPrerequisite = readbackPrerequisiteFrame != nil
       if !hasPrerequisite {
@@ -94,30 +71,32 @@ internal unsafe partial class VulkanWindowTarget {
       }
       if disposed || frameFailed {
         ClearReadbackPrerequisite()
-        return VulkanReadbackRequestStatus.NotReady
+        return WindowReadbackRequestStatus.NotReady
       }
       if let existing = readbackRequest {
         if existing.State == VulkanReadbackState.Pending
           || existing.State == VulkanReadbackState.Complete{
-            return VulkanReadbackRequestStatus.Busy
+            return WindowReadbackRequestStatus.Busy
           }
         if existing.State != VulkanReadbackState.Idle {
           if !ClearReadbackStorage() {
-            return VulkanReadbackRequestStatus.Busy
+            return WindowReadbackRequestStatus.Busy
           }
         }
       }
       if frameBegun {
-        return VulkanReadbackRequestStatus.Busy
+        return WindowReadbackRequestStatus.Busy
       }
       var captureFrame SceneFrame? = nil
+      var replayTextScaleX = ResolveScale(dpi.X)
+      var replayTextScaleY = ResolveScale(dpi.Y)
       if let prerequisite = readbackPrerequisiteFrame {
         if queueStage != QueueStageIdle {
-          return VulkanReadbackRequestStatus.NotReady
+          return WindowReadbackRequestStatus.NotReady
         }
         guard let prerequisiteGeneration = generation else {
           ClearReadbackPrerequisite()
-          return VulkanReadbackRequestStatus.NotReady
+          return WindowReadbackRequestStatus.NotReady
         }
         if prerequisiteGeneration.Generation != readbackPrerequisiteGeneration
           || !Object.ReferenceEquals(sceneCompiler.Frame, prerequisite)
@@ -125,35 +104,37 @@ internal unsafe partial class VulkanWindowTarget {
             ClearReadbackPrerequisite()
           } else {
             captureFrame = prerequisite
+            replayTextScaleX = readbackPrerequisiteTextScaleX
+            replayTextScaleY = readbackPrerequisiteTextScaleY
           }
       }
       if captureFrame == nil && queueStage != QueueStageIdle {
-        return VulkanReadbackRequestStatus.Busy
+        return WindowReadbackRequestStatus.Busy
       }
       guard let activeRuntime = runtime else {
-        return VulkanReadbackRequestStatus.NotReady
+        return WindowReadbackRequestStatus.NotReady
       }
       if activeRuntime.DeviceLost || activeRuntime.Terminal {
-        return VulkanReadbackRequestStatus.DeviceLost
+        return WindowReadbackRequestStatus.DeviceLost
       }
       guard let currentGeneration = generation else {
-        return VulkanReadbackRequestStatus.NotReady
+        return WindowReadbackRequestStatus.NotReady
       }
       let extent = currentGeneration.Extent
       var readbackPlan VulkanReadbackPlan
       try {
         readbackPlan = VulkanReadbackPlan.Create(requestedRegion, extent)
       } catch (error Exception) {
-        return VulkanReadbackRequestStatus.Failed
+        return WindowReadbackRequestStatus.Failed
       }
       let requestedByteSize = readbackPlan.ByteSize
       readbackTiming.RequestedByteSize = requestedByteSize
       if readbackPlan.ResourceByteSize > ReadbackBudgetBytes {
         readbackBudgetExceededCount = readbackBudgetExceededCount + 1uL
-        return VulkanReadbackRequestStatus.BudgetExceeded
+        return WindowReadbackRequestStatus.BudgetExceeded
       }
       if !ReadbackFormatSupported(VkConstants.VK_FORMAT_R8G8B8A8_SRGB) {
-        return VulkanReadbackRequestStatus.Failed
+        return WindowReadbackRequestStatus.Failed
       }
 
       var request VulkanAsyncReadback? = nil
@@ -171,14 +152,14 @@ internal unsafe partial class VulkanWindowTarget {
             if reusedSlot {
               ReleaseReusableReadback(request, pool)
             }
-            return VulkanReadbackRequestStatus.NotReady
+            return WindowReadbackRequestStatus.NotReady
           }
           Render(root, background, dpi)
           if !frameRendered {
             if reusedSlot {
               ReleaseReusableReadback(request, pool)
             }
-            return VulkanReadbackRequestStatus.Failed
+            return WindowReadbackRequestStatus.Failed
           }
           readbackTiming.RecordTicks = Stopwatch.GetTimestamp()
           Present()
@@ -190,34 +171,36 @@ internal unsafe partial class VulkanWindowTarget {
                 readbackRequest = nil
                 readbackAbandonCount = readbackAbandonCount + 1uL
               }
-              return VulkanReadbackRequestStatus.DeviceLost
+              return WindowReadbackRequestStatus.DeviceLost
             }
           }
           if frameFailed {
             if reusedSlot {
               ReleaseReusableReadback(request, pool)
             }
-            return VulkanReadbackRequestStatus.Failed
+            return WindowReadbackRequestStatus.Failed
           }
           let prerequisite = sceneCompiler.Frame
           guard let currentGeneration = generation else {
-            return VulkanReadbackRequestStatus.NotReady
+            return WindowReadbackRequestStatus.NotReady
           }
           readbackPrerequisiteFrame = prerequisite
           readbackPrerequisiteGeneration = currentGeneration.Generation
           readbackPrerequisiteSceneVersion = activeSceneVersion
-          return VulkanReadbackRequestStatus.NotReady
+          readbackPrerequisiteTextScaleX = ResolveScale(dpi.X)
+          readbackPrerequisiteTextScaleY = ResolveScale(dpi.Y)
+          return WindowReadbackRequestStatus.NotReady
         }
         let replayFrame = captureFrame
         request = TryAcquireReusableReadback(extent, requestedByteSize)
         pool = readbackPool
         reusedSlot = request != nil
         if request == nil && readbackPool != nil {
-          return VulkanReadbackRequestStatus.Busy
+          return WindowReadbackRequestStatus.Busy
         }
         if request == nil {
           guard let readbackLease = VulkanSharedRuntime.TryAcquire() else {
-            return VulkanReadbackRequestStatus.NotReady
+            return WindowReadbackRequestStatus.NotReady
           }
           leaseOwned = true
           ownedLease = readbackLease
@@ -229,7 +212,7 @@ internal unsafe partial class VulkanWindowTarget {
             readbackLease.Release()
             leaseOwned = false
             ownedLease = nil
-            return VulkanReadbackRequestStatus.NotReady
+            return WindowReadbackRequestStatus.NotReady
           }
           let target = VulkanOffscreenTarget(
             device,
@@ -254,7 +237,7 @@ internal unsafe partial class VulkanWindowTarget {
             diagnostics,
             timestampState,
             activeRuntime.QueueWorker.CreateMailbox(nil),
-            activeRuntime.QueueWorker)
+            readbackLease)
           if let accounting = objectAccounting {
             let currentAllocations = accounting.AllocationCount
             let baseline = readbackObjectAllocationBaseline
@@ -282,23 +265,24 @@ internal unsafe partial class VulkanWindowTarget {
         }
         let activeRequest = request
         guard let activePool = pool else {
-          return VulkanReadbackRequestStatus.Failed
+          return WindowReadbackRequestStatus.Failed
         }
         let clearColor = VkClearColorValue{}
-        let submitResult = activeRequest.Request(replayFrame, clearColor, requestedRegion)
+        let submitResult = activeRequest.Request(replayFrame, clearColor,
+          requestedRegion, replayTextScaleX, replayTextScaleY)
         readbackTiming.SubmitTicks = Stopwatch.GetTimestamp()
         if submitResult == VkConstants.VK_ERROR_DEVICE_LOST {
           try { activeRequest.AbandonAfterDeviceLoss() } catch (cleanup Exception) { }
           try { activePool.Dispose() } catch (cleanup Exception) { }
           readbackAbandonCount = readbackAbandonCount + 1uL
           ClearReadbackStorage()
-          return VulkanReadbackRequestStatus.DeviceLost
+          return WindowReadbackRequestStatus.DeviceLost
         }
         if submitResult != VkConstants.VK_SUCCESS {
           try { activeRequest.Dispose() } catch (cleanup Exception) { }
           try { activePool.Dispose() } catch (cleanup Exception) { }
           ClearReadbackStorage()
-          return VulkanReadbackRequestStatus.Failed
+          return WindowReadbackRequestStatus.Failed
         }
         readbackPool = activePool
         readbackRequest = activeRequest
@@ -308,7 +292,7 @@ internal unsafe partial class VulkanWindowTarget {
         ownedTarget = nil
         ClearReadbackPrerequisite()
         readbackRequestCount = readbackRequestCount + 1uL
-        return VulkanReadbackRequestStatus.Accepted
+        return WindowReadbackRequestStatus.Accepted
       } catch (error Exception) {
         ClearReadbackPrerequisite()
         var installedHandled = false
@@ -341,18 +325,34 @@ internal unsafe partial class VulkanWindowTarget {
             try { activeLease.Release() } catch (cleanup Exception) { }
           }
         }
-        return VulkanReadbackRequestStatus.Failed
+        return WindowReadbackRequestStatus.Failed
       }
     }
 
   internal func RequestReadback(root Node?, background Color, dpi Vector2)
-  VulkanReadbackRequestStatus{
+  WindowReadbackRequestStatus{
     guard let currentGeneration = generation else {
-      return VulkanReadbackRequestStatus.NotReady
+      return WindowReadbackRequestStatus.NotReady
     }
     return RequestReadback(root, background, dpi,
       VulkanReadbackPlan.Full(currentGeneration.Extent).Region)
   }
+
+  public func RequestCapture(root Node?, background Color, dpi Vector2)
+  WindowReadbackRequestStatus -> RequestReadback(root, background, dpi)
+
+  public func PollCapture() WindowReadbackPollStatus {
+    let result = PollReadback()
+    if result == VkConstants.VK_SUCCESS {
+      return WindowReadbackPollStatus.Complete
+    }
+    if result == VkConstants.VK_NOT_READY {
+      return WindowReadbackPollStatus.NotReady
+    }
+    return WindowReadbackPollStatus.Failed
+  }
+
+  public func TakeCaptureResult() WindowReadbackResult ? -> TakeReadbackResult()
 
   internal func PollReadback() VkResult {
     guard let request = readbackRequest else {
@@ -414,15 +414,6 @@ internal unsafe partial class VulkanWindowTarget {
           return nil
         }
       return pool.Acquire()
-    }
-
-  private func ReleaseReadbackAttempt(request VulkanAsyncReadback,
-    pool VulkanReadbackPool, reused bool) {
-      if reused {
-        try { pool.Release(request) } catch (cleanup Exception) { }
-      } else {
-        try { pool.Dispose() } catch (cleanup Exception) { }
-      }
     }
 
   private func ReleaseReusableReadback(request VulkanAsyncReadback?,
@@ -557,6 +548,8 @@ internal unsafe partial class VulkanWindowTarget {
     readbackPrerequisiteFrame = nil
     readbackPrerequisiteGeneration = 0uL
     readbackPrerequisiteSceneVersion = 0uL
+    readbackPrerequisiteTextScaleX = 1.0F
+    readbackPrerequisiteTextScaleY = 1.0F
   }
 
   private func CurrentObjectLiveCount() uint64 {

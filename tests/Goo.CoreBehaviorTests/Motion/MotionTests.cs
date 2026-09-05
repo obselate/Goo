@@ -5,6 +5,22 @@ using Xunit;
 public sealed class MotionTests
 {
     [Fact]
+    public void TweenFactoryUsesExactDurationAndEasing()
+    {
+        Assert.True(new MotionFixtures().TweenFactoryContract());
+        Assert.Throws<ArgumentOutOfRangeException>(() => Motion.Tween(-1.0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Motion.Tween(double.NaN));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Motion.Tween(1.0, (Easing)999));
+    }
+
+    [Fact]
+    public void CallbackAnimationPublishesWithoutRebuilding()
+    {
+        Assert.True(new MotionFixtures().CallbackAnimationContract());
+        Assert.Throws<ArgumentNullException>(() => new Cell().Animate(0.0, (Action<double>)null!));
+    }
+
+    [Fact]
     public void RetargetPreservesVelocity()
     {
         Assert.True(new MotionFixtures().RetargetPreservesVelocityContract());

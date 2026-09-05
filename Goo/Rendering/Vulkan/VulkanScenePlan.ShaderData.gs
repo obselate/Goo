@@ -155,11 +155,7 @@ internal partial class SceneFrame {
       shaderEffectDataChanged = true
     }
     if shaderEffectDataChanged {
-      shaderEffectDataVersion = if shaderEffectDataVersion == uint64.MaxValue {
-        1uL
-      } else {
-        shaderEffectDataVersion + 1uL
-      }
+      shaderEffectDataVersion = nextVulkanSceneVersion(shaderEffectDataVersion)
     }
     shaderEffectDataVersionFinalized = true
   }

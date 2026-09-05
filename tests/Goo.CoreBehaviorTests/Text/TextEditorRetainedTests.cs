@@ -1,10 +1,35 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Goo;
 using Xunit;
 
 public sealed class TextEditorRetainedTests
 {
+    [Theory]
+    [InlineData("office", 0)]
+    [InlineData("a\u0301b", 0)]
+    [InlineData("abc \u05e9\u05dc\u05d5\u05dd def", 0)]
+    [InlineData("\u05e9\u05dc\u05d5\u05dd", 2)]
+    public void CaretFastPathMatchesPreparedGeometry(string text, int direction)
+    {
+        using var shaped = TextShaping.Shape(text, "", 20, 400, false, 0, direction);
+        var boundaries = new List<int>(StringInfo.ParseCombiningCharacters(text)) { text.Length };
+        var expected = boundaries
+            .SelectMany(index => new[]
+            {
+                (Index: index, Affinity: 0, X: shaped.CaretX(index, 0)),
+                (Index: index, Affinity: 1, X: shaped.CaretX(index, 1)),
+            })
+            .ToArray();
+
+        shaped.PrepareGeometry();
+
+        foreach (var value in expected)
+            Assert.InRange(Math.Abs(shaped.CaretX(value.Index, value.Affinity) - value.X), 0, 0.001);
+    }
+
     [Fact]
     public void ProjectionLayersRejectOverlapAndRender()
     {
@@ -13,7 +38,7 @@ public sealed class TextEditorRetainedTests
         using var first = new TextPresentationLayer(document);
         using var second = new TextPresentationLayer(document);
         first.SetReplacement("first", new TextRange(0, 1), "X");
-        var node = Mount(new TextEditor(document, controller, new[] { first, second })
+        var node = Mount(new TextEditor(controller, new[] { first, second })
         {
             Width = 200.0,
             Height = 40.0,
@@ -35,7 +60,7 @@ public sealed class TextEditorRetainedTests
                 new TextPosition(1, TextAffinity.Upstream),
                 new TextPosition(1, TextAffinity.Downstream)),
         };
-        var node = Mount(new TextEditor(document, controller) { Width = 200.0, Height = 40.0 });
+        var node = Mount(new TextEditor(controller) { Width = 200.0, Height = 40.0 });
         controller.UpdateComposition("xy", 1, 1);
 
         var layout = TextEditorLayouts.For(node, 200, 40);
@@ -48,7 +73,7 @@ public sealed class TextEditorRetainedTests
     {
         var document = new TextDocument("abc");
         using var controller = new TextEditorController(document);
-        var node = Mount(new TextEditor(document, controller) { Width = 200.0, Height = 40.0 });
+        var node = Mount(new TextEditor(controller) { Width = 200.0, Height = 40.0 });
         new Layout().Calculate(node, 200, 40);
         var before = TextEditorLayouts.For(node, 200, 40);
 
@@ -64,7 +89,7 @@ public sealed class TextEditorRetainedTests
     {
         var document = new TextDocument(string.Join("\n", Enumerable.Range(0, 200)));
         using var controller = new TextEditorController(document);
-        var node = Mount(new TextEditor(document, controller) { Width = 200.0, Height = 40.0 });
+        var node = Mount(new TextEditor(controller) { Width = 200.0, Height = 40.0 });
         var before = TextEditorLayouts.For(node, 200, 40);
 
         document.Apply(new TextChange(new TextRange(document.Length, 0), "\ntail"));
@@ -80,7 +105,7 @@ public sealed class TextEditorRetainedTests
         using var controller = new TextEditorController(document);
         using var layer = new TextPresentationLayer(document);
         layer.SetStyle("styled", new TextRange(8, 6), new Style { FontWeight = 700 });
-        var node = Mount(new TextEditor(document, controller, new[] { layer })
+        var node = Mount(new TextEditor(controller, new[] { layer })
         {
             Width = 200.0,
             Height = 1.0,
@@ -105,7 +130,7 @@ public sealed class TextEditorRetainedTests
         using var second = new TextPresentationLayer(document);
         first.SetHiddenRange("first", new TextRange(0, 2));
         second.SetHiddenRange("second", new TextRange(1, 2));
-        var editor = new TextEditor(document, controller, new[] { first, second });
+        var editor = new TextEditor(controller, new[] { first, second });
 
         Assert.Throws<ArgumentException>(() => Mount(editor));
     }
@@ -137,7 +162,7 @@ public sealed class TextEditorRetainedTests
             Color = Color.Rgb(0, 0, 255),
             FontWeight = 700,
         });
-        var node = Mount(new TextEditor(document, controller, new[] { first, second })
+        var node = Mount(new TextEditor(controller, new[] { first, second })
         {
             Width = 240.0,
             Height = 60.0,
@@ -171,7 +196,7 @@ public sealed class TextEditorRetainedTests
         using var layer = new TextPresentationLayer(document);
         layer.SetStyle("red", new TextRange(0, 3), new Style { Color = Color.Rgb(255, 0, 0) });
         layer.SetStyle("blue", new TextRange(1, 1), new Style { Color = Color.Rgb(0, 0, 255) });
-        var node = Mount(new TextEditor(document, controller, new[] { layer })
+        var node = Mount(new TextEditor(controller, new[] { layer })
         {
             Width = 240.0,
             Height = 40.0,
@@ -193,7 +218,7 @@ public sealed class TextEditorRetainedTests
         var document = new TextDocument("line");
         using var controller = new TextEditorController(document);
         var reconciler = new Reconciler { Res = new Resolver() };
-        var node = reconciler.Mount(new TextEditor(document, controller)
+        var node = reconciler.Mount(new TextEditor(controller)
         {
             Width = 240.0,
             Height = 80.0,
@@ -202,7 +227,7 @@ public sealed class TextEditorRetainedTests
         });
         var before = Assert.Single(TextEditorLayouts.For(node, 240, 80).Lines);
 
-        node = reconciler.Diff(node, new TextEditor(document, controller)
+        node = reconciler.Diff(node, new TextEditor(controller)
         {
             Width = 240.0,
             Height = 80.0,
@@ -224,7 +249,7 @@ public sealed class TextEditorRetainedTests
         using var controller = new TextEditorController(document);
         using var layer = new TextPresentationLayer(document);
         layer.SetBlockSlot("block", new TextRange(7, 1), new Container { Width = 120.0, Height = 24.0 });
-        var node = Mount(new TextEditor(document, controller, new[] { layer })
+        var node = Mount(new TextEditor(controller, new[] { layer })
         {
             Width = 200.0,
             Height = 100.0,
@@ -248,7 +273,7 @@ public sealed class TextEditorRetainedTests
         using var controller = new TextEditorController(document);
         using var layer = new TextPresentationLayer(document);
         layer.SetBlockSlot("block", new TextRange(0, 1), new Container { Width = 120.0, Height = 80.0 });
-        var node = Mount(new TextEditor(document, controller, new[] { layer })
+        var node = Mount(new TextEditor(controller, new[] { layer })
         {
             Width = 200.0,
             Height = 20.0,
@@ -278,7 +303,7 @@ public sealed class TextEditorRetainedTests
     {
         var document = new TextDocument();
         using var controller = new TextEditorController(document);
-        var node = Mount(new TextEditor(document, controller) { Width = 200.0, Height = 40.0 });
+        var node = Mount(new TextEditor(controller) { Width = 200.0, Height = 40.0 });
 
         controller.UpdateComposition("x", 0, 0);
 
@@ -297,15 +322,37 @@ public sealed class TextEditorRetainedTests
                 new TextPosition(7, TextAffinity.Downstream),
                 new TextPosition(7, TextAffinity.Downstream)),
         };
-        var node = Mount(new TextEditor(document, controller) { Width = 240.0, Height = 40.0 });
+        var node = Mount(new TextEditor(controller) { Width = 240.0, Height = 40.0 });
         var position = controller.Selection.Active;
         var expected = TextEditorLayouts.MoveHorizontal(node, position, -1);
 
         Assert.NotNull(expected);
-        controller.MoveLeft(false);
+        controller.Execute(Command(TextCommandKind.MoveLeft));
 
         Assert.Equal(expected!.Value.Offset, controller.Selection.Active.Offset);
         Assert.Equal(expected.Value.Affinity, controller.Selection.Active.Affinity);
+    }
+
+    [Fact]
+    public void VisualMovementUsesExtendedGraphemeBoundaries()
+    {
+        var document = new TextDocument("a\u0301fi");
+        using var controller = new TextEditorController(document);
+        var node = Mount(new TextEditor(controller)
+        {
+            Width = 200.0,
+            Height = 40.0,
+            TextWrap = TextWrap.NoWrap,
+        });
+        var priorX = float.NegativeInfinity;
+
+        foreach (var offset in new[] { 0, 2, 3, 4 })
+        {
+            var rect = TextEditorLayouts.CaretRect(
+                node, new TextPosition(offset, TextAffinity.Downstream));
+            Assert.True(rect.X > priorX, $"offset={offset} prior={priorX} current={rect.X}");
+            priorX = rect.X;
+        }
     }
 
     [Fact]
@@ -313,7 +360,7 @@ public sealed class TextEditorRetainedTests
     {
         var document = new TextDocument("aaaa aaaa");
         using var controller = new TextEditorController(document);
-        var node = Mount(new TextEditor(document, controller)
+        var node = Mount(new TextEditor(controller)
         {
             Width = 45.0,
             Height = 100.0,
@@ -339,7 +386,7 @@ public sealed class TextEditorRetainedTests
         using var controller = new TextEditorController(document);
         using var layer = new TextPresentationLayer(document);
         layer.SetReplacement("wide", new TextRange(0, 1), "WIDE");
-        var node = Mount(new TextEditor(document, controller, new[] { layer })
+        var node = Mount(new TextEditor(controller, new[] { layer })
         {
             Width = 200.0,
             Height = 40.0,
@@ -362,8 +409,8 @@ public sealed class TextEditorRetainedTests
         using var controller = new TextEditorController(document);
         using var layer = new TextPresentationLayer(document);
         layer.SetInlineSlot("status", new TextRange(2, 10), new Text { Content = "Status" });
-        var projection = Assert.Single(layer.Projections);
-        _ = Mount(new TextEditor(document, controller, new[] { layer })
+        var projection = Assert.Single(layer.ReadProjections());
+        _ = Mount(new TextEditor(controller, new[] { layer })
         {
             Width = 240.0,
             Height = 40.0,
@@ -372,18 +419,18 @@ public sealed class TextEditorRetainedTests
             new TextPosition(12, TextAffinity.Downstream),
             new TextPosition(12, TextAffinity.Downstream));
 
-        Assert.True(controller.DeleteBackward());
+        Assert.True(controller.Execute(Command(TextCommandKind.DeleteBackward)));
         Assert.Equal("a  b", document.GetText());
-        Assert.Empty(layer.Projections);
+        Assert.Empty(layer.ReadProjections());
         Assert.Equal(1, document.Version);
 
-        Assert.True(controller.Undo());
+        Assert.True(controller.Execute(Command(TextCommandKind.Undo)));
         Assert.Equal("a [[status]] b", document.GetText());
-        Assert.Same(projection, Assert.Single(layer.Projections));
+        Assert.Same(projection, Assert.Single(layer.ReadProjections()));
 
-        Assert.True(controller.Redo());
+        Assert.True(controller.Execute(Command(TextCommandKind.Redo)));
         Assert.Equal("a  b", document.GetText());
-        Assert.Empty(layer.Projections);
+        Assert.Empty(layer.ReadProjections());
     }
 
     [Fact]
@@ -393,7 +440,7 @@ public sealed class TextEditorRetainedTests
         using var controller = new TextEditorController(document);
         using var layer = new TextPresentationLayer(document);
         layer.SetInlineSlot("status", new TextRange(2, 10), new Text { Content = "Status" });
-        _ = Mount(new TextEditor(document, controller, new[] { layer })
+        _ = Mount(new TextEditor(controller, new[] { layer })
         {
             Width = 240.0,
             Height = 40.0,
@@ -401,12 +448,12 @@ public sealed class TextEditorRetainedTests
         controller.Selection = new TextSelection(
             new TextPosition(12, TextAffinity.Downstream),
             new TextPosition(12, TextAffinity.Downstream));
-        controller.DeleteBackward();
+        controller.Execute(Command(TextCommandKind.DeleteBackward));
         document.Apply(new TextChange(new TextRange(0, 0), "!"));
 
         Assert.True(document.Undo());
         Assert.Equal("a  b", document.GetText());
-        Assert.Empty(layer.Projections);
+        Assert.Empty(layer.ReadProjections());
     }
 
     [Fact]
@@ -418,7 +465,7 @@ public sealed class TextEditorRetainedTests
         {
             forwardLayer.SetInlineSlot("status", new TextRange(2, 10),
                 new Text { Content = "Status" });
-            _ = Mount(new TextEditor(forwardDocument, forwardController, new[] { forwardLayer })
+            _ = Mount(new TextEditor(forwardController, new[] { forwardLayer })
             {
                 Width = 240.0,
                 Height = 40.0,
@@ -427,9 +474,9 @@ public sealed class TextEditorRetainedTests
                 new TextPosition(2, TextAffinity.Upstream),
                 new TextPosition(2, TextAffinity.Upstream));
 
-            Assert.True(forwardController.DeleteForward());
+            Assert.True(forwardController.Execute(Command(TextCommandKind.DeleteForward)));
             Assert.Equal("a  b", forwardDocument.GetText());
-            Assert.Empty(forwardLayer.Projections);
+            Assert.Empty(forwardLayer.ReadProjections());
         }
 
         var replaceDocument = new TextDocument("a [[status]] b");
@@ -437,8 +484,8 @@ public sealed class TextEditorRetainedTests
         using var replaceLayer = new TextPresentationLayer(replaceDocument);
         replaceLayer.SetInlineSlot("status", new TextRange(2, 10),
             new Text { Content = "Status" });
-        var projection = Assert.Single(replaceLayer.Projections);
-        _ = Mount(new TextEditor(replaceDocument, replaceController, new[] { replaceLayer })
+        var projection = Assert.Single(replaceLayer.ReadProjections());
+        _ = Mount(new TextEditor(replaceController, new[] { replaceLayer })
         {
             Width = 240.0,
             Height = 40.0,
@@ -447,12 +494,12 @@ public sealed class TextEditorRetainedTests
             new TextPosition(4, TextAffinity.Upstream),
             new TextPosition(6, TextAffinity.Downstream));
 
-        Assert.True(replaceController.Insert("ok"));
+        Assert.True(replaceController.Execute(Command(TextCommandKind.Insert, "ok")));
         Assert.Equal("a ok b", replaceDocument.GetText());
-        Assert.Empty(replaceLayer.Projections);
-        Assert.True(replaceController.Undo());
+        Assert.Empty(replaceLayer.ReadProjections());
+        Assert.True(replaceController.Execute(Command(TextCommandKind.Undo)));
         Assert.Equal("a [[status]] b", replaceDocument.GetText());
-        Assert.Same(projection, Assert.Single(replaceLayer.Projections));
+        Assert.Same(projection, Assert.Single(replaceLayer.ReadProjections()));
     }
 
     [Fact]
@@ -464,7 +511,7 @@ public sealed class TextEditorRetainedTests
         {
             beforeLayer.SetInlineSlot("status", new TextRange(2, 10),
                 new Text { Content = "Status" });
-            _ = Mount(new TextEditor(beforeDocument, beforeController, new[] { beforeLayer })
+            _ = Mount(new TextEditor(beforeController, new[] { beforeLayer })
             {
                 Width = 240.0,
                 Height = 40.0,
@@ -473,9 +520,9 @@ public sealed class TextEditorRetainedTests
                 new TextPosition(2, TextAffinity.Upstream),
                 new TextPosition(2, TextAffinity.Upstream));
 
-            Assert.True(beforeController.Insert("x"));
+            Assert.True(beforeController.Execute(Command(TextCommandKind.Insert, "x")));
             Assert.Equal("a x[[status]] b", beforeDocument.GetText());
-            Assert.Equal(new TextRange(3, 10), Assert.Single(beforeLayer.Projections).Range);
+            Assert.Equal(new TextRange(3, 10), Assert.Single(beforeLayer.ReadProjections()).Range);
         }
 
         var afterDocument = new TextDocument("a [[status]] b");
@@ -483,7 +530,7 @@ public sealed class TextEditorRetainedTests
         using var afterLayer = new TextPresentationLayer(afterDocument);
         afterLayer.SetInlineSlot("status", new TextRange(2, 10),
             new Text { Content = "Status" });
-        _ = Mount(new TextEditor(afterDocument, afterController, new[] { afterLayer })
+        _ = Mount(new TextEditor(afterController, new[] { afterLayer })
         {
             Width = 240.0,
             Height = 40.0,
@@ -492,9 +539,9 @@ public sealed class TextEditorRetainedTests
             new TextPosition(12, TextAffinity.Downstream),
             new TextPosition(12, TextAffinity.Downstream));
 
-        Assert.True(afterController.Insert("x"));
+        Assert.True(afterController.Execute(Command(TextCommandKind.Insert, "x")));
         Assert.Equal("a [[status]]x b", afterDocument.GetText());
-        Assert.Equal(new TextRange(2, 10), Assert.Single(afterLayer.Projections).Range);
+        Assert.Equal(new TextRange(2, 10), Assert.Single(afterLayer.ReadProjections()).Range);
     }
 
     [Fact]
@@ -506,18 +553,18 @@ public sealed class TextEditorRetainedTests
         {
             outdentLayer.SetInlineSlot("status", new TextRange(0, 7),
                 new Text { Content = "Status" });
-            var projection = Assert.Single(outdentLayer.Projections);
-            _ = Mount(new TextEditor(outdentDocument, outdentController, new[] { outdentLayer })
+            var projection = Assert.Single(outdentLayer.ReadProjections());
+            _ = Mount(new TextEditor(outdentController, new[] { outdentLayer })
             {
                 Width = 240.0,
                 Height = 80.0,
             });
 
-            Assert.True(outdentController.Outdent());
+            Assert.True(outdentController.Execute(Command(TextCommandKind.Outdent)));
             Assert.Equal("\nnext", outdentDocument.GetText());
-            Assert.Empty(outdentLayer.Projections);
-            Assert.True(outdentController.Undo());
-            Assert.Same(projection, Assert.Single(outdentLayer.Projections));
+            Assert.Empty(outdentLayer.ReadProjections());
+            Assert.True(outdentController.Execute(Command(TextCommandKind.Undo)));
+            Assert.Same(projection, Assert.Single(outdentLayer.ReadProjections()));
         }
 
         var groupedDocument = new TextDocument("x[[status]]");
@@ -525,8 +572,8 @@ public sealed class TextEditorRetainedTests
         using var groupedLayer = new TextPresentationLayer(groupedDocument);
         groupedLayer.SetInlineSlot("status", new TextRange(1, 10),
             new Text { Content = "Status" });
-        var groupedProjection = Assert.Single(groupedLayer.Projections);
-        _ = Mount(new TextEditor(groupedDocument, groupedController, new[] { groupedLayer })
+        var groupedProjection = Assert.Single(groupedLayer.ReadProjections());
+        _ = Mount(new TextEditor(groupedController, new[] { groupedLayer })
         {
             Width = 240.0,
             Height = 40.0,
@@ -535,15 +582,15 @@ public sealed class TextEditorRetainedTests
             new TextPosition(11, TextAffinity.Downstream),
             new TextPosition(11, TextAffinity.Downstream));
 
-        groupedController.DeleteBackward();
-        groupedController.DeleteBackward();
+        groupedController.Execute(Command(TextCommandKind.DeleteBackward));
+        groupedController.Execute(Command(TextCommandKind.DeleteBackward));
         Assert.Equal("", groupedDocument.GetText());
-        Assert.True(groupedController.Undo());
+        Assert.True(groupedController.Execute(Command(TextCommandKind.Undo)));
         Assert.Equal("x[[status]]", groupedDocument.GetText());
-        Assert.Same(groupedProjection, Assert.Single(groupedLayer.Projections));
-        Assert.True(groupedController.Redo());
+        Assert.Same(groupedProjection, Assert.Single(groupedLayer.ReadProjections()));
+        Assert.True(groupedController.Execute(Command(TextCommandKind.Redo)));
         Assert.Equal("", groupedDocument.GetText());
-        Assert.Empty(groupedLayer.Projections);
+        Assert.Empty(groupedLayer.ReadProjections());
     }
 
     [Fact]
@@ -552,14 +599,14 @@ public sealed class TextEditorRetainedTests
         var document = new TextDocument("abc");
         using var controller = new TextEditorController(document);
         var reconciler = new Reconciler { Res = new Resolver() };
-        var node = reconciler.Mount(new TextEditor(document, controller)
+        var node = reconciler.Mount(new TextEditor(controller)
         {
             Width = 200.0,
             Height = 40.0,
         });
         Assert.Equal("abc", TextEditorLayouts.For(node, 200, 40).Lines[0].Paragraph.Text);
 
-        node = reconciler.Diff(node, new TextEditor(document, controller)
+        node = reconciler.Diff(node, new TextEditor(controller)
         {
             Width = 200.0,
             Height = 40.0,
@@ -574,4 +621,7 @@ public sealed class TextEditorRetainedTests
         var reconciler = new Reconciler { Res = new Resolver() };
         return reconciler.Mount(editor);
     }
+
+    private static TextCommand Command(TextCommandKind kind, string text = "") =>
+        new(kind, text, false);
 }

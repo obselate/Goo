@@ -14,7 +14,7 @@ Bridges scalar simulations to a Cell-owned animated value.
 
 ### `Set(T)`
 
-Snaps to value, stops all scalar simulations, and invalidates the owner.
+Snaps to value, stops all scalar simulations, and notifies the owner.
 
 - `value`: value to set
 
@@ -85,6 +85,15 @@ Source:
 - [`Motion.gs`](../../Goo/Motion/Motion.gs)
 
 Configures the animation core.
+
+### `Tween(float64,Easing)`
+
+Creates an exact-duration scalar simulation factory.
+
+- `duration`: duration in seconds, including zero
+- `easing`: progress curve
+
+Returns: a reusable scalar simulation factory
 
 ### `Default`
 

@@ -52,14 +52,10 @@ internal unsafe partial class VulkanWindowTarget {
       throw OverflowException("Vulkan swapchain generation overflow")
     }
     nextGenerationId = nextGenerationId + 1uL
+    let old = generation
     var oldSwapchain VkSwapchainKHR = 0uL
-    if let old = generation {
-      if old.PresentFenceEnabled {
-        oldSwapchain = old.Handle
-      }
-      if !RetireCurrentSwapchain(false) {
-        return false
-      }
+    if let current = old {
+      oldSwapchain = current.Handle
     }
     if primitiveRenderer != nil && oldFormat != selection.Format.format {
       primitiveRenderer!!.Dispose()
@@ -86,6 +82,19 @@ internal unsafe partial class VulkanWindowTarget {
       swapchainMaintenanceVariant != VulkanSwapchainMaintenanceVariant.None,
       windowObjectAccounting)
     generation = next
+    if let previous = old {
+      InvalidateLastPresentedImageState()
+      retiredSwapchains.Enqueue(previous, presentationRetirement)
+      if !previous.PresentFenceEnabled {
+        let idleResult = WaitDeviceIdleResult()
+        if idleResult != VkConstants.VK_SUCCESS {
+          RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, idleResult)
+          HandleFrameFailure(idleResult, VulkanDiagnosticEventIds.PresentWait)
+          return false
+        }
+        DisposeRetiredSwapchains()
+      }
+    }
     next.ResetSceneVersions()
     EnsureClipMaskAtlas(next.Extent.width, next.Extent.height)
     if primitiveRenderer == nil {
@@ -603,5 +612,15 @@ internal unsafe partial class VulkanWindowTarget {
     clipMaskAtlasAbandoned = false
   }
 
-  private func CompletedGlobalSubmissionSerial() uint64 -> frameSlots.CompletedGlobalSubmissionSerial()
+  private func CompletedGlobalSubmissionSerial() uint64 {
+    guard let activeRuntime = runtime else { return 0uL }
+    var completed uint64
+    let result = activeRuntime.GetCompletedGraphicsSubmissionSerial(out completed)
+    RecordDiagnosticResult(VulkanDiagnosticEventIds.PresentWait, result)
+    if result != VkConstants.VK_SUCCESS {
+      if result == VkConstants.VK_ERROR_DEVICE_LOST { activeRuntime.MarkDeviceLost() }
+      throw InvalidOperationException("Vulkan graphics timeline query failed: " + result.ToString())
+    }
+    return completed
+  }
 }

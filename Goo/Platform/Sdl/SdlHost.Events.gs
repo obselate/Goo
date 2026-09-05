@@ -28,7 +28,7 @@ internal unsafe partial class SdlHost {
     if eventType == SDLEventType.MouseMotion {
       if nativeEvent.Motion.WindowID == windowId && !IsSyntheticMouse(nativeEvent.Motion.Which) {
         pointerButtons = MapPointerButtons(nativeEvent.Motion.State)
-        PointerMoved?.Invoke(MousePointerId, SdlHostPointerDevice.Mouse,
+        PointerMoved?.Invoke(MousePointerId, PointerDevice.Mouse,
           nativeEvent.Motion.X, nativeEvent.Motion.Y, pointerButtons,
           MousePressure(pointerButtons), MapModifiers(SDL.GetModState()))
       }
@@ -37,10 +37,10 @@ internal unsafe partial class SdlHost {
     if eventType == SDLEventType.MouseButtonDown {
       if nativeEvent.Button.WindowID == windowId && !IsSyntheticMouse(nativeEvent.Button.Which) {
         let button = MapPointerButton(nativeEvent.Button.Button)
-        if button != SdlHostPointerButton.None {
-          pointerButtons = SdlHostPointerButtons(
+        if button != PointerButton.None {
+          pointerButtons = PointerButtons(
             int32(pointerButtons) | int32(ToPointerButtons(button)))
-          PointerPressed?.Invoke(MousePointerId, SdlHostPointerDevice.Mouse,
+          PointerPressed?.Invoke(MousePointerId, PointerDevice.Mouse,
             nativeEvent.Button.X, nativeEvent.Button.Y, button, pointerButtons,
             MousePressure(pointerButtons), MapModifiers(SDL.GetModState()))
         }
@@ -50,10 +50,10 @@ internal unsafe partial class SdlHost {
     if eventType == SDLEventType.MouseButtonUp {
       if nativeEvent.Button.WindowID == windowId && !IsSyntheticMouse(nativeEvent.Button.Which) {
         let button = MapPointerButton(nativeEvent.Button.Button)
-        if button != SdlHostPointerButton.None {
-          pointerButtons = SdlHostPointerButtons(
+        if button != PointerButton.None {
+          pointerButtons = PointerButtons(
             int32(pointerButtons) & ^int32(ToPointerButtons(button)))
-          PointerReleased?.Invoke(MousePointerId, SdlHostPointerDevice.Mouse,
+          PointerReleased?.Invoke(MousePointerId, PointerDevice.Mouse,
             nativeEvent.Button.X, nativeEvent.Button.Y, button, pointerButtons,
             MousePressure(pointerButtons), MapModifiers(SDL.GetModState()))
         }
@@ -72,9 +72,9 @@ internal unsafe partial class SdlHost {
     if eventType == SDLEventType.FingerDown {
       if nativeEvent.Tfinger.WindowID == windowId && !IsSyntheticTouch(nativeEvent.Tfinger.TouchID) {
         let pointerId = GetTouchPointerId(nativeEvent.Tfinger.TouchID, nativeEvent.Tfinger.FingerID)
-        PointerPressed?.Invoke(pointerId, SdlHostPointerDevice.Touch,
+        PointerPressed?.Invoke(pointerId, PointerDevice.Touch,
           TouchX(nativeEvent.Tfinger.X), TouchY(nativeEvent.Tfinger.Y),
-          SdlHostPointerButton.Primary, SdlHostPointerButtons.Primary,
+          PointerButton.Primary, PointerButtons.Primary,
           NormalizePressure(nativeEvent.Tfinger.Pressure), MapModifiers(SDL.GetModState()))
       }
       return
@@ -84,9 +84,9 @@ internal unsafe partial class SdlHost {
         if touchPointers.TryGetValue(
           TouchContactKey(nativeEvent.Tfinger.TouchID, nativeEvent.Tfinger.FingerID),
           out var pointerId) {
-            PointerMoved?.Invoke(pointerId, SdlHostPointerDevice.Touch,
+            PointerMoved?.Invoke(pointerId, PointerDevice.Touch,
               TouchX(nativeEvent.Tfinger.X), TouchY(nativeEvent.Tfinger.Y),
-              SdlHostPointerButtons.Primary, NormalizePressure(nativeEvent.Tfinger.Pressure),
+              PointerButtons.Primary, NormalizePressure(nativeEvent.Tfinger.Pressure),
               MapModifiers(SDL.GetModState()))
           }
       }
@@ -106,18 +106,18 @@ internal unsafe partial class SdlHost {
     }
     if eventType == SDLEventType.PenDown {
       if nativeEvent.Ptouch.WindowID == windowId {
-        let buttons = SdlHostPointerButtons(
+        let buttons = PointerButtons(
           int32(PenButtons(nativeEvent.Ptouch.PenState)) |
-          int32(SdlHostPointerButtons.Primary))
-        PointerPressed?.Invoke(int64(nativeEvent.Ptouch.Which), SdlHostPointerDevice.Pen,
-          nativeEvent.Ptouch.X, nativeEvent.Ptouch.Y, SdlHostPointerButton.Primary,
+          int32(PointerButtons.Primary))
+        PointerPressed?.Invoke(int64(nativeEvent.Ptouch.Which), PointerDevice.Pen,
+          nativeEvent.Ptouch.X, nativeEvent.Ptouch.Y, PointerButton.Primary,
           buttons, PenPressure(int64(nativeEvent.Ptouch.Which)), MapModifiers(SDL.GetModState()))
       }
       return
     }
     if eventType == SDLEventType.PenMotion {
       if nativeEvent.Pmotion.WindowID == windowId {
-        PointerMoved?.Invoke(int64(nativeEvent.Pmotion.Which), SdlHostPointerDevice.Pen,
+        PointerMoved?.Invoke(int64(nativeEvent.Pmotion.Which), PointerDevice.Pen,
           nativeEvent.Pmotion.X, nativeEvent.Pmotion.Y,
           PenButtons(nativeEvent.Pmotion.PenState),
           PenPressure(int64(nativeEvent.Pmotion.Which)), MapModifiers(SDL.GetModState()))
@@ -126,10 +126,10 @@ internal unsafe partial class SdlHost {
     }
     if eventType == SDLEventType.PenUp {
       if nativeEvent.Ptouch.WindowID == windowId {
-        let buttons = SdlHostPointerButtons(
-          int32(PenButtons(nativeEvent.Ptouch.PenState)) & ^int32(SdlHostPointerButtons.Primary))
-        PointerReleased?.Invoke(int64(nativeEvent.Ptouch.Which), SdlHostPointerDevice.Pen,
-          nativeEvent.Ptouch.X, nativeEvent.Ptouch.Y, SdlHostPointerButton.Primary,
+        let buttons = PointerButtons(
+          int32(PenButtons(nativeEvent.Ptouch.PenState)) & ^int32(PointerButtons.Primary))
+        PointerReleased?.Invoke(int64(nativeEvent.Ptouch.Which), PointerDevice.Pen,
+          nativeEvent.Ptouch.X, nativeEvent.Ptouch.Y, PointerButton.Primary,
           buttons, PenPressure(int64(nativeEvent.Ptouch.Which)), MapModifiers(SDL.GetModState()))
       }
       return
@@ -158,7 +158,7 @@ internal unsafe partial class SdlHost {
     if eventType == SDLEventType.PenProximityOut {
       if nativeEvent.Pproximity.WindowID == 0u || nativeEvent.Pproximity.WindowID == windowId {
         penPressures?.Remove(int64(nativeEvent.Pproximity.Which))
-        PointerCanceled?.Invoke(int64(nativeEvent.Pproximity.Which), SdlHostPointerDevice.Pen)
+        PointerCanceled?.Invoke(int64(nativeEvent.Pproximity.Which), PointerDevice.Pen)
       }
       return
     }
@@ -235,24 +235,24 @@ internal unsafe partial class SdlHost {
       RefreshMetrics()
       RaiseMetrics()
     } else if eventType == SDLEventType.WindowMinimized {
-      StateChanged?.Invoke(SdlHostState.Minimized)
+      StateChanged?.Invoke(WindowState.Minimized)
     } else if eventType == SDLEventType.WindowMaximized {
-      StateChanged?.Invoke(SdlHostState.Maximized)
+      StateChanged?.Invoke(WindowState.Maximized)
     } else if eventType == SDLEventType.WindowShown {
       RefreshDisplayPacing(true)
     } else if eventType == SDLEventType.WindowRestored {
       RefreshDisplayPacing(true)
-      StateChanged?.Invoke(SdlHostState.Normal)
+      StateChanged?.Invoke(WindowState.Normal)
     } else if eventType == SDLEventType.WindowEnterFullscreen {
       RefreshDisplayPacing(true)
-      StateChanged?.Invoke(SdlHostState.Fullscreen)
+      StateChanged?.Invoke(WindowState.Fullscreen)
     } else if eventType == SDLEventType.WindowLeaveFullscreen {
       RefreshDisplayPacing(true)
-      StateChanged?.Invoke(SdlHostState.Normal)
+      StateChanged?.Invoke(WindowState.Normal)
     } else if eventType == SDLEventType.WindowFocusGained {
       FocusChanged?.Invoke(true)
     } else if eventType == SDLEventType.WindowFocusLost {
-      pointerButtons = SdlHostPointerButtons.None
+      pointerButtons = PointerButtons.None
       FocusChanged?.Invoke(false)
     } else if eventType == SDLEventType.WindowCloseRequested {
       RequestClose()
@@ -266,7 +266,7 @@ internal unsafe partial class SdlHost {
 
   private func IsSyntheticTouch(touchId int64) bool -> touchId == MouseTouchId || touchId == PenTouchId
 
-  private func MapModifiers(value uint16) SdlHostModifiers {
+  private func MapModifiers(value uint16) KeyModifiers {
     let alt = uint16(SDL.SDL_KMOD_LALT | SDL.SDL_KMOD_RALT)
     let shift = uint16(SDL.SDL_KMOD_LSHIFT | SDL.SDL_KMOD_RSHIFT)
     let ctrl = uint16(SDL.SDL_KMOD_LCTRL | SDL.SDL_KMOD_RCTRL)
@@ -275,78 +275,83 @@ internal unsafe partial class SdlHost {
     let shiftDown = (value & shift) != uint16(0)
     let ctrlDown = (value & ctrl) != uint16(0)
     let superDown = (value & superKey) != uint16(0)
-    return SdlHostModifiers(altDown, shiftDown, ctrlDown, superDown)
+    return KeyModifiers{
+      Alt: altDown,
+      Shift: shiftDown,
+      Ctrl: ctrlDown,
+      Super: superDown,
+    }
   }
 
-  private func MapPointerButton(button uint8) SdlHostPointerButton -> switch button {
-    case SDL.SDL_BUTTON_LEFT: SdlHostPointerButton.Primary
-    case SDL.SDL_BUTTON_RIGHT: SdlHostPointerButton.Secondary
-    case SDL.SDL_BUTTON_MIDDLE: SdlHostPointerButton.Middle
-    case SDL.SDL_BUTTON_X1: SdlHostPointerButton.Back
-    case SDL.SDL_BUTTON_X2: SdlHostPointerButton.Forward
-    case _: SdlHostPointerButton.None
+  private func MapPointerButton(button uint8) PointerButton -> switch button {
+    case SDL.SDL_BUTTON_LEFT: PointerButton.Primary
+    case SDL.SDL_BUTTON_RIGHT: PointerButton.Secondary
+    case SDL.SDL_BUTTON_MIDDLE: PointerButton.Middle
+    case SDL.SDL_BUTTON_X1: PointerButton.Back
+    case SDL.SDL_BUTTON_X2: PointerButton.Forward
+    case _: PointerButton.None
   }
 
-  private func MapPointerButtons(state uint32) SdlHostPointerButtons {
-    var buttons = SdlHostPointerButtons.None
+  private func MapPointerButtons(state uint32) PointerButtons {
+    var buttons = PointerButtons.None
     if (state & NativePointerMask(SDL.SDL_BUTTON_LEFT)) != 0u {
-      buttons = SdlHostPointerButtons(int32(buttons) | int32(SdlHostPointerButtons.Primary))
+      buttons = PointerButtons(int32(buttons) | int32(PointerButtons.Primary))
     }
     if (state & NativePointerMask(SDL.SDL_BUTTON_RIGHT)) != 0u {
-      buttons = SdlHostPointerButtons(int32(buttons) | int32(SdlHostPointerButtons.Secondary))
+      buttons = PointerButtons(int32(buttons) | int32(PointerButtons.Secondary))
     }
     if (state & NativePointerMask(SDL.SDL_BUTTON_MIDDLE)) != 0u {
-      buttons = SdlHostPointerButtons(int32(buttons) | int32(SdlHostPointerButtons.Middle))
+      buttons = PointerButtons(int32(buttons) | int32(PointerButtons.Middle))
     }
     if (state & NativePointerMask(SDL.SDL_BUTTON_X1)) != 0u {
-      buttons = SdlHostPointerButtons(int32(buttons) | int32(SdlHostPointerButtons.Back))
+      buttons = PointerButtons(int32(buttons) | int32(PointerButtons.Back))
     }
     if (state & NativePointerMask(SDL.SDL_BUTTON_X2)) != 0u {
-      buttons = SdlHostPointerButtons(int32(buttons) | int32(SdlHostPointerButtons.Forward))
+      buttons = PointerButtons(int32(buttons) | int32(PointerButtons.Forward))
     }
     return buttons
   }
 
   private func NativePointerMask(button uint8) uint32 -> uint32(1) << int32(uint32(button) - 1u)
 
-  private func PenButtons(state uint32) SdlHostPointerButtons {
-    var buttons = SdlHostPointerButtons.None
+  private func PenButtons(state uint32) PointerButtons {
+    var buttons = PointerButtons.None
     if (state & uint32(SDLPenInputFlags.Down)) != 0u {
-      buttons = SdlHostPointerButtons(int32(buttons) | int32(SdlHostPointerButtons.Primary))
+      buttons = PointerButtons(int32(buttons) | int32(PointerButtons.Primary))
     }
     if (state & uint32(SDLPenInputFlags.Button1)) != 0u {
-      buttons = SdlHostPointerButtons(int32(buttons) | int32(SdlHostPointerButtons.Secondary))
+      buttons = PointerButtons(int32(buttons) | int32(PointerButtons.Secondary))
     }
     if (state & uint32(SDLPenInputFlags.Button2)) != 0u {
-      buttons = SdlHostPointerButtons(int32(buttons) | int32(SdlHostPointerButtons.Middle))
+      buttons = PointerButtons(int32(buttons) | int32(PointerButtons.Middle))
     }
     if (state & uint32(SDLPenInputFlags.Button3)) != 0u {
-      buttons = SdlHostPointerButtons(int32(buttons) | int32(SdlHostPointerButtons.Back))
+      buttons = PointerButtons(int32(buttons) | int32(PointerButtons.Back))
     }
     if (state & uint32(SDLPenInputFlags.Button4)) != 0u {
-      buttons = SdlHostPointerButtons(int32(buttons) | int32(SdlHostPointerButtons.Forward))
+      buttons = PointerButtons(int32(buttons) | int32(PointerButtons.Forward))
     }
     return buttons
   }
 
-  private func MapPenButton(button uint8) SdlHostPointerButton {
-    if button == uint8(1) { return SdlHostPointerButton.Secondary }
-    if button == uint8(2) { return SdlHostPointerButton.Middle }
-    if button == uint8(3) { return SdlHostPointerButton.Back }
-    if button == uint8(4) { return SdlHostPointerButton.Forward }
-    return SdlHostPointerButton.None
+  private func MapPenButton(button uint8) PointerButton {
+    if button == uint8(1) { return PointerButton.Secondary }
+    if button == uint8(2) { return PointerButton.Middle }
+    if button == uint8(3) { return PointerButton.Back }
+    if button == uint8(4) { return PointerButton.Forward }
+    return PointerButton.None
   }
 
-  private func ToPointerButtons(button SdlHostPointerButton) SdlHostPointerButtons -> switch button {
-    case SdlHostPointerButton.Primary: SdlHostPointerButtons.Primary
-    case SdlHostPointerButton.Secondary: SdlHostPointerButtons.Secondary
-    case SdlHostPointerButton.Middle: SdlHostPointerButtons.Middle
-    case SdlHostPointerButton.Back: SdlHostPointerButtons.Back
-    case SdlHostPointerButton.Forward: SdlHostPointerButtons.Forward
-    case _: SdlHostPointerButtons.None
+  private func ToPointerButtons(button PointerButton) PointerButtons -> switch button {
+    case PointerButton.Primary: PointerButtons.Primary
+    case PointerButton.Secondary: PointerButtons.Secondary
+    case PointerButton.Middle: PointerButtons.Middle
+    case PointerButton.Back: PointerButtons.Back
+    case PointerButton.Forward: PointerButtons.Forward
+    case _: PointerButtons.None
   }
 
-  private func MousePressure(buttons SdlHostPointerButtons) float32 -> (int32(buttons) & int32(SdlHostPointerButtons.Primary)) != 0 ? 1.0F : 0.0F
+  private func MousePressure(buttons PointerButtons) float32 -> (int32(buttons) & int32(PointerButtons.Primary)) != 0 ? 1.0F : 0.0F
 
   private func NormalizePressure(pressure float32) float32 {
     if Single.IsNaN(pressure) || pressure <= 0.0F { return 0.0F }
@@ -372,29 +377,29 @@ internal unsafe partial class SdlHost {
     let key = TouchContactKey(touch.TouchID, touch.FingerID)
     if !touchPointers.Remove(key, out var pointerId) { return }
     if canceled {
-      PointerCanceled?.Invoke(pointerId, SdlHostPointerDevice.Touch)
+      PointerCanceled?.Invoke(pointerId, PointerDevice.Touch)
       return
     }
-    PointerReleased?.Invoke(pointerId, SdlHostPointerDevice.Touch,
-      TouchX(touch.X), TouchY(touch.Y), SdlHostPointerButton.Primary,
-      SdlHostPointerButtons.None, NormalizePressure(touch.Pressure),
+    PointerReleased?.Invoke(pointerId, PointerDevice.Touch,
+      TouchX(touch.X), TouchY(touch.Y), PointerButton.Primary,
+      PointerButtons.None, NormalizePressure(touch.Pressure),
       MapModifiers(SDL.GetModState()))
   }
 
   private func DispatchPenButton(pen SDLPenButtonEvent, down bool) {
     let button = MapPenButton(pen.Button)
-    if button == SdlHostPointerButton.None { return }
+    if button == PointerButton.None { return }
     var buttons = PenButtons(pen.PenState)
     if down {
-      buttons = SdlHostPointerButtons(int32(buttons) | int32(ToPointerButtons(button)))
+      buttons = PointerButtons(int32(buttons) | int32(ToPointerButtons(button)))
     } else {
-      buttons = SdlHostPointerButtons(int32(buttons) & ^int32(ToPointerButtons(button)))
+      buttons = PointerButtons(int32(buttons) & ^int32(ToPointerButtons(button)))
     }
     if down {
-      PointerPressed?.Invoke(int64(pen.Which), SdlHostPointerDevice.Pen, pen.X, pen.Y,
+      PointerPressed?.Invoke(int64(pen.Which), PointerDevice.Pen, pen.X, pen.Y,
         button, buttons, PenPressure(int64(pen.Which)), MapModifiers(SDL.GetModState()))
     } else {
-      PointerReleased?.Invoke(int64(pen.Which), SdlHostPointerDevice.Pen, pen.X, pen.Y,
+      PointerReleased?.Invoke(int64(pen.Which), PointerDevice.Pen, pen.X, pen.Y,
         button, buttons, PenPressure(int64(pen.Which)), MapModifiers(SDL.GetModState()))
     }
   }

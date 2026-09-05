@@ -6,7 +6,7 @@ Source: [`Goo/Rendering`](../../Goo/Rendering)
 
 ## Apply fragment shaders to retained elements
 
-Create one `ShaderEffect` from precompiled fragment SPIR-V and assign it through the ordinary `Style.ShaderEffect` property on a `Container`, `Button`, `Text`, `Image`, `Shape`, or another Blob. Goo renders that element and its subtree into a bounded offscreen layer, runs the fragment program, then composites the result without changing layout, hit testing, accessibility, transforms, or clipping.
+Load one backend-neutral `ShaderEffectProgram`, create retained `ShaderEffect` state from it, and assign the effect through the ordinary `Style.ShaderEffect` property on a `Container`, `Button`, `Text`, `Image`, `Shape`, or another Blob. Goo renders that element and its subtree into a bounded offscreen layer, runs the selected backend artifact, then composites the result without changing layout, hit testing, accessibility, transforms, or clipping.
 
 ```gsharp
 import System
@@ -14,8 +14,9 @@ import System.IO
 import System.Numerics
 import Goo
 
-let path = Path.Combine(AppContext.BaseDirectory, "Shaders", "glass.spv")
-let effect = ShaderEffect(File.ReadAllBytes(path),
+let path = Path.Combine(AppContext.BaseDirectory, "Shaders", "glass.goo-effect")
+let program = ShaderEffectProgram.Load(path)
+let effect = ShaderEffect(program,
   samplesBackdrop: true,
   backdropOutset: 24.0F)
 effect.SetParameter(0, Vector4(0.18F, 0.65F, 0.9F, 1.0F))
@@ -30,7 +31,7 @@ let control = Button{
 }
 ```
 
-Reuse the same effect instance for controls that share program and parameters. `SetParameter` accepts slots 0 through 7, marks mounted users paint-dirty only when a value changes, and stays allocation-free after construction. Create separate effect instances when controls need independent parameter state.
+Reuse the same effect instance for controls that share program and parameters. Create separate effect instances from the same program when controls need independent parameter state. Program sharing also shares the backend pipeline identity. `SetParameter` accepts slots 0 through 7, marks mounted users paint-dirty only when a value changes, and stays allocation-free after construction.
 
 Set `Playing = true` to opt into continuous renderer-driven playback. `ElapsedSeconds` is supplied separately through `gooElapsedSeconds()`, so playback does not consume one of the eight parameter slots. Pausing preserves the current elapsed position, and assigning `ElapsedSeconds` seeks while paused or playing. Goo schedules continuous frames only while a playing effect is mounted.
 
@@ -55,13 +56,13 @@ Add the source to the G# project:
 </ItemGroup>
 ```
 
-Build requires the pinned Slang 2026.16 compiler through `SLANG_SDK` or `PATH` and SPIRV-Tools 2026.3 from Vulkan SDK 1.4.357.0 through `VULKAN_SDK` or `PATH`. Goo compiles and validates the source during the build, writes deterministic intermediates under `obj`, and copies `Shaders/glass.spv` plus `Shaders/glass.spv.json` provenance to build and publish output. Set `TargetPath` on `GooShaderEffect` to override the relative output path. Unchanged inputs skip compilation. Tool-version mismatches, compiler errors, validation errors, ABI mismatches, and unsupported capabilities fail the build.
+Build requires the pinned Slang 2026.16 compiler through `SLANG_SDK` or `PATH` and SPIRV-Tools 2026.3 from Vulkan SDK 1.4.357.0 through `VULKAN_SDK` or `PATH`. Goo compiles and validates the source during the build, writes deterministic intermediates under `obj`, and copies `Shaders/glass.goo-effect` plus `Shaders/glass.goo-effect.json` provenance to build and publish output. The program container can carry separate artifacts for multiple rendering backends. The current compiler emits Vulkan SPIR-V. Set `TargetPath` on `GooShaderEffect` to override the relative output path. Unchanged inputs skip compilation. Tool-version mismatches, compiler errors, validation errors, ABI mismatches, and unsupported capabilities fail the build.
 
 The fixed ABI binds the isolated source at set 0, the optional backdrop at set 1, Goo primitive data at set 2, Goo clip data at set 3, optional retained effect data at set 4, and eight `vec4` values in a 128-byte fragment push block. `uv` is normalized to the visible element bounds. `source` and `backdrop` are premultiplied linear colors. Return premultiplied linear color. Goo applies retained clip coverage and element opacity after `gooEffect`. Set `backdropOutset` to the largest displacement or filter radius the shader needs beyond those bounds. When backdrop sampling is disabled, the backdrop argument aliases the source and Goo skips the target copy.
 
 Each `ShaderEffectData` publication is a complete replacement. The constructor and `Publish` copy bytes. `Transfer` and `PublishTransferred` take array ownership and invoke the supplied callback after Goo no longer reads that publication. Each source is limited to 16 MiB, each compiled scene frame is limited to 64 MiB of effect data, and unchanged retained versions reuse the existing upload. Goo recreates device-local data from the retained publication after device recovery.
 
-SPIR-V stays a sidecar asset in JIT and NativeAOT builds. Goo packages the build adapter, but neither the adapter, authoring modules, nor compiler toolchains are copied to application output. Goo does not invoke a runtime shader compiler. The first use creates a Vulkan pipeline in a device-generation cache. Warm parameter updates reuse that pipeline and the retained layer pool. One target format supports up to 32 distinct effect program identities per device generation. A non-normal `BlendMode` cannot currently share the same element with `ShaderEffect`.
+The compiled program stays a sidecar asset in JIT and NativeAOT builds. Goo packages the build adapter, but neither the adapter, authoring modules, nor compiler toolchains are copied to application output. Goo does not invoke a runtime shader compiler. The first use creates a backend pipeline in a device-generation cache. Warm parameter updates reuse that pipeline and the retained layer pool. One target format supports up to 32 distinct effect program identities per device generation. A non-normal `BlendMode` cannot currently share the same element with `ShaderEffect`.
 
 ## `CompiledVectorAsset`
 
@@ -161,13 +162,13 @@ Source:
 
 - [`ShaderEffect.gs`](../../Goo/Rendering/ShaderEffect.gs)
 
-Owns one precompiled fragment SPIR-V program and its retained parameter state.
+Owns retained parameter state for one backend-neutral shader effect program.
 
-### `new(System.Byte[],bool,float32)`
+### `new(ShaderEffectProgram,bool,float32)`
 
 Creates a retained fragment effect with optional bounded backdrop sampling.
 
-- `fragmentSpirv`: The complete fragment shader module bytes.
+- `program`: The compiled shader effect program.
 - `samplesBackdrop`: Whether Goo copies the existing target behind the element for shader sampling.
 - `backdropOutset`: The finite nonnegative logical-pixel distance captured around the element, up to 256.
 
@@ -249,6 +250,28 @@ Gets the monotonically increasing publication version.
 
 Gets whether this source has released its current publication.
 
+## `ShaderEffectProgram`
+
+Source:
+
+- [`ShaderEffectProgram.gs`](../../Goo/Rendering/ShaderEffectProgram.gs)
+
+Owns one immutable compiled shader effect program with backend-specific artifacts.
+
+### `new(System.Byte[])`
+
+Loads and validates a compiled shader effect program from memory.
+
+- `program`: The complete Goo shader effect program bytes.
+
+### `Load(string)`
+
+Loads and validates a compiled shader effect program from a file.
+
+- `path`: The program file path.
+
+Returns: The immutable compiled program.
+
 ## `TextAffinity`
 
 Source:
@@ -261,3 +284,107 @@ Specifies the visual side of a text position at a directional boundary.
 
 - `Upstream`
 - `Downstream`
+
+## `VectorAsset`
+
+Source:
+
+- [`CompiledVector.Asset.gs`](../../Goo/Rendering/CompiledVector.Asset.gs)
+
+Owns an immutable vector document shared by authored, runtime SVG, and compiled assets.
+
+### `new(float64,float64,float64,float64,VectorNode[])`
+
+Snapshots a vector document whose paths use the supplied view-box coordinate space.
+
+### `Load(System.Byte[])`
+
+Decodes a validated compiled vector document.
+
+### `NodeAt(int32)`
+
+Returns the immutable node at a flattened document index.
+
+### `PathForNode(int32)`
+
+Returns a node path in the document coordinate space.
+
+### `Render`
+
+Creates a retained vector display fitted within its parent.
+
+### `Render(string)`
+
+Creates a keyed retained vector display fitted within its parent.
+
+### `TryLoad(System.Byte[])`
+
+Decodes a compiled vector document or returns nil when the bytes are invalid.
+
+### `ByteCount`
+
+Gets the encoded source byte count, or zero for authored documents.
+
+### `ClipCount`
+
+Gets the clip count.
+
+### `ContourCount`
+
+Gets the contour count.
+
+### `CurveCount`
+
+Gets the quadratic curve count.
+
+### `Flags`
+
+Gets source format flags, or zero for authored documents.
+
+### `KeyframeCount`
+
+Gets the animation keyframe count.
+
+### `MorphCurveCount`
+
+Gets the morph curve count.
+
+### `NodeCount`
+
+Gets the node count.
+
+### `Nodes`
+
+Gets the immutable flattened node sequence.
+
+### `PaintCount`
+
+Gets the paint count.
+
+### `StrokeCount`
+
+Gets the stroke count.
+
+### `TrackCount`
+
+Gets the animation track count.
+
+### `Version`
+
+Gets the source format version, or zero for authored documents.
+
+### `ViewBoxHeight`
+
+Gets the view-box height.
+
+### `ViewBoxWidth`
+
+Gets the view-box width.
+
+### `ViewBoxX`
+
+Gets the view-box x origin.
+
+### `ViewBoxY`
+
+Gets the view-box y origin.

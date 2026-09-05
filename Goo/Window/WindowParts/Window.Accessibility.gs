@@ -42,7 +42,7 @@ public partial class Window {
     } else {
       result = switch request.Action {
         case AccessibilityAction.Focus: FocusElement(target)
-        case AccessibilityAction.Activate: Hit().Activate(node, target)
+        case AccessibilityAction.Activate: hitActivate(node, target)
         case AccessibilityAction.SetValue: input.AccessibilitySetValue(node, resolver, target, request.Value)
         case AccessibilityAction.SetSelection: input.AccessibilitySetSelection(resolver, target,
           request.SelectionStart, request.SelectionLength)

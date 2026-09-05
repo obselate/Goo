@@ -255,7 +255,12 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
     }
 
   internal func FlushBeforeSubmit(allocation VulkanMemoryAllocation,
-    relativeOffset VkDeviceSize, byteCount VkDeviceSize) VkResult{
+    relativeOffset VkDeviceSize, byteCount VkDeviceSize) VkResult ->
+  FlushBeforeSubmit(allocation, relativeOffset, byteCount, out var nativeCall)
+
+  internal func FlushBeforeSubmit(allocation VulkanMemoryAllocation,
+    relativeOffset VkDeviceSize, byteCount VkDeviceSize, out nativeCall bool) VkResult{
+      nativeCall = false
       lastResult = VkConstants.VK_SUCCESS
       EnsureUsable(allocation)
       ValidateMappedRangeArguments(allocation, relativeOffset, byteCount)
@@ -270,6 +275,7 @@ internal unsafe partial class VulkanMemoryAllocator : IDisposable {
       }
       var mappedRange = CreateMappedRange(allocation, relativeOffset, byteCount)
       let flushMappedMemoryRanges = deviceDispatch.vkFlushMappedMemoryRanges
+      nativeCall = true
       lastResult = flushMappedMemoryRanges(device, 1u, &mappedRange)
       return lastResult
     }

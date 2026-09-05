@@ -185,7 +185,7 @@ internal partial class PointerInput {
         captured = true
       } else {
         scratchChain.Clear()
-        hit.ChainInto(tree, x, y, scratchChain)
+        hitChainInto(tree, x, y, scratchChain)
         if chainDisabled(scratchChain) {
           scratchChain.Clear()
           return false

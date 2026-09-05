@@ -208,15 +208,7 @@ internal unsafe sealed class VulkanTextScene {
   private var completedGlobalSubmissionSerial uint64
   private var textLayoutRequestCount int32
 
-  internal prop Atlas VulkanTextAtlas{ get -> atlasSet.AtlasAt(0) }
-  internal prop Atlases VulkanTextAtlasSet{ get -> atlasSet }
   internal prop ResourceGeneration uint64{ get -> atlasSet.Generation }
-  internal prop PublishedBytePrefix uint32{
-    get -> if stateCount == 0 { 0u } else { states[0]!!.PublishedBytePrefix }
-  }
-  internal prop NextByteOffset uint32{
-    get -> if stateCount == 0 { 0u } else { states[0]!!.NextByteOffset }
-  }
   internal prop RedrawRequired bool{ get -> redrawRequired }
   internal prop TextLayoutRequestCount int32{ get -> textLayoutRequestCount }
 
@@ -377,7 +369,7 @@ internal unsafe sealed class VulkanTextScene {
           let cache = GetNodeSegmentCache(node)
           cache.BeginBuild()
           activeNodeSegments = cache
-          activeSegmentReuse = node.Kind != NodeKind.Entry
+          activeSegmentReuse = true
         }
       switch node.Kind {
         case NodeKind.Text {
@@ -645,7 +637,7 @@ internal unsafe sealed class VulkanTextScene {
       if decoration == TextDecoration.None { return }
       guard let shape = run.Shape else { return }
       if !HasVisibleGlyphs(shape) { return }
-      guard let segments = TextPaintDecorations.Get(run) else { return }
+      guard let segments = run.DecorationSegments else { return }
       var index int32 = 0
       while index + 1 < segments.Length {
         let left = originX + segments[index]
@@ -814,7 +806,8 @@ internal unsafe sealed class VulkanTextScene {
       let selectionEnd = controller.Selection.Anchor.Offset > controller.Selection.Active.Offset
       ? controller.Selection.Anchor.Offset : controller.Selection.Active.Offset
       var result = true
-      for line in layout.Lines {
+      for lineIndex in 0 ... layout.Lines.Count {
+        let line = layout.Lines[lineIndex]
         let lineY = contentY + line.Top - scrollY
         let lineX = contentX + TextEditorLayouts.editorLineOffset(node, line, width) - scrollX
         if let current = activeLine {
@@ -864,7 +857,8 @@ internal unsafe sealed class VulkanTextScene {
         let baseline = lineY + (line.Height - (line.Descent - line.Ascent)) * 0.5F
         -line.Ascent
         if line.Runs.Count != 0 {
-          for run in line.Runs {
+          for runIndex in 0 ... line.Runs.Count {
+            let run = line.Runs[runIndex]
             guard let runShape = run.Shape else { continue }
             let color = PackedColor(run.Style.Color, opacity)
             if !EmitShapeWithStyle(frame, runShape, run.Style.FontSize,
@@ -1196,15 +1190,11 @@ internal unsafe sealed class VulkanTextScene {
                 } else { glyph.EffectByteOffset / 8u },
                 glyphInput_y: effectMode,
                 glyphInput_z: uint32(frame.ActiveClipChainId),
-                glyphInput_w: 0u,
+                glyphInput_w: uint32(BitConverter.SingleToInt32Bits(shaderEffectRadius)),
                 foreground_x: foregroundR,
                 foreground_y: foregroundG,
                 foreground_z: foregroundB,
                 foreground_w: foregroundA,
-                effectParams_x: shaderEffectRadius,
-                effectParams_y: 0.0F,
-                effectParams_z: 0.0F,
-                effectParams_w: 0.0F,
               }
               workspace.GlyphResources[recordIndex] = glyphRunId
               workspace.GlyphAtlasTexelOffsets[recordIndex] =
@@ -1459,10 +1449,6 @@ internal unsafe sealed class VulkanTextScene {
     && SameTextFloat(left.foreground_y, right.foreground_y)
     && SameTextFloat(left.foreground_z, right.foreground_z)
     && SameTextFloat(left.foreground_w, right.foreground_w)
-    && SameTextFloat(left.effectParams_x, right.effectParams_x)
-    && SameTextFloat(left.effectParams_y, right.effectParams_y)
-    && SameTextFloat(left.effectParams_z, right.effectParams_z)
-    && SameTextFloat(left.effectParams_w, right.effectParams_w)
 
   private func SameTextFloat(left float32, right float32) bool -> BitConverter.SingleToInt32Bits(left)
   == BitConverter.SingleToInt32Bits(right)

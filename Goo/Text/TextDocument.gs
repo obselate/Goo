@@ -136,12 +136,14 @@ public class TextDocument {
   /// @param changes The replacements, interpreted against the pre-edit snapshot.
   /// @returns The committed change description.
   public func ApplyTransaction(changes []TextChange) TextDocumentChange {
-    let committed = applyTransaction(changes, true, nil, TextDocumentMutationKind.Normal, nil)
+    let committed = applyTransaction(changes, false, true, nil,
+      TextDocumentMutationKind.Normal, nil)
     return committed
   }
 
   internal func ApplyControllerTransaction(changes []TextChange,
-    historyGroup object) TextDocumentChange -> applyTransaction(changes, true, historyGroup, TextDocumentMutationKind.Normal, nil)
+    historyGroup object) TextDocumentChange -> applyTransaction(changes, true, true,
+      historyGroup, TextDocumentMutationKind.Normal, nil)
 
   /// Starts an undo group. Nested groups commit when the outer group ends.
   public func BeginUndoGroup() {
@@ -176,7 +178,7 @@ public class TextDocument {
     undoHistory.RemoveAt(index)
     for i in(entry.Transactions.Count - 1) ... -1 {
       let transaction = entry.Transactions[i]
-      applyTransaction(transaction.UndoChanges, false, nil,
+      applyTransaction(transaction.UndoChanges, true, false, nil,
         TextDocumentMutationKind.Undo, transaction)
     }
     redoHistory.Add(entry)
@@ -195,29 +197,31 @@ public class TextDocument {
     redoHistory.RemoveAt(index)
     for i in 0 ... entry.Transactions.Count {
       let transaction = entry.Transactions[i]
-      applyTransaction(transaction.ForwardChanges, false, nil,
+      applyTransaction(transaction.ForwardChanges, true, false, nil,
         TextDocumentMutationKind.Redo, transaction)
     }
     undoHistory.Add(entry)
     return true
   }
 
-  private func applyTransaction(changes []TextChange, recordHistory bool,
+  private func applyTransaction(changes []TextChange, ownChanges bool, recordHistory bool,
     historyGroup object?, mutationKind TextDocumentMutationKind,
     transaction TextHistoryTransaction?) TextDocumentChange{
       validateTextChanges(root, changes)
       if changes.Length == 0 || noTextChanges(changes) {
+        let committedChanges = if ownChanges { changes } else { copyTextChanges(changes) }
         return TextDocumentChange{
           BeforeVersion: version,
           AfterVersion: version,
-          Changes: freezeTextChanges(changes),
+          Changes: freezeTextChanges(committedChanges),
         }
       }
 
       let beforeRoot = root
       let beforeVersion = version
-      let forward = copyTextChanges(changes)
-      let undo = inverseTextChanges(beforeRoot, forward)
+      let forward = if ownChanges { changes } else { copyTextChanges(changes) }
+      let committedTransaction = if let current = transaction { current }
+      else { TextHistoryTransaction(forward, inverseTextChanges(beforeRoot, forward)) }
       var changedRoot = beforeRoot
       for i in(forward.Length - 1) ... -1 {
         changedRoot = replaceText(changedRoot, forward[i])
@@ -229,7 +233,6 @@ public class TextDocument {
         AfterVersion: version,
         Changes: freezeTextChanges(forward),
       }
-      let committedTransaction = transaction ?? TextHistoryTransaction(forward, undo)
       var discarded IReadOnlyList[TextHistoryTransaction]? = nil
       if recordHistory { discarded = record(committedTransaction, historyGroup) }
       let previousMutation = currentMutation

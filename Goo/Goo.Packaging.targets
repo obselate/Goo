@@ -3,11 +3,82 @@
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeGooImplementationAssemblies</TargetsForTfmSpecificBuildOutput>
     <BeforePack>BuildGooShaderEffectToolForPackage;$(BeforePack)</BeforePack>
     <GooVulkanShaderRoot>$(MSBuildProjectDirectory)/Shaders/Vulkan</GooVulkanShaderRoot>
-    <GooVulkanRuntimeRoot>$(MSBuildProjectDirectory)/Runtime/Vulkan</GooVulkanRuntimeRoot>
-    <GooVulkanEffectiveRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</GooVulkanEffectiveRid>
-    <GooVulkanEffectiveRid Condition="'$(GooVulkanEffectiveRid)' == '' and $([MSBuild]::IsOSPlatform('Linux'))">linux-x64</GooVulkanEffectiveRid>
-    <GooVulkanEffectiveRid Condition="'$(GooVulkanEffectiveRid)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">win-x64</GooVulkanEffectiveRid>
+    <GooNativeRuntimeRoot>$(MSBuildProjectDirectory)/Runtime/Vulkan</GooNativeRuntimeRoot>
+    <GooEffectiveRuntimeIdentifier Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</GooEffectiveRuntimeIdentifier>
+    <GooEffectiveRuntimeIdentifier Condition="'$(GooEffectiveRuntimeIdentifier)' == '' and '$(NETCoreSdkRuntimeIdentifier)' != ''">$(NETCoreSdkRuntimeIdentifier)</GooEffectiveRuntimeIdentifier>
   </PropertyGroup>
+  <ItemGroup>
+    <GooNativePayload Include="$(GooNativeRuntimeRoot)/linux-x64/libgoo-harfbuzz.so">
+      <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+      <TargetFileName>libgoo-harfbuzz.so</TargetFileName>
+      <Required>true</Required>
+    </GooNativePayload>
+    <GooNativePayload Include="$(GooNativeRuntimeRoot)/linux-x64/libgoo-harfbuzz-gpu.so">
+      <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+      <TargetFileName>libgoo-harfbuzz-gpu.so</TargetFileName>
+      <Required>true</Required>
+    </GooNativePayload>
+    <GooNativePayload Include="$(GooNativeRuntimeRoot)/linux-x64/text-native-build.json">
+      <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+      <TargetFileName>text-native-build.json</TargetFileName>
+      <Required>true</Required>
+    </GooNativePayload>
+    <GooNativePayload Include="$(GooNativeRuntimeRoot)/win-x64/goo-harfbuzz.dll">
+      <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+      <TargetFileName>goo-harfbuzz.dll</TargetFileName>
+      <Required>true</Required>
+    </GooNativePayload>
+    <GooNativePayload Include="$(GooNativeRuntimeRoot)/win-x64/goo-harfbuzz-gpu.dll">
+      <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+      <TargetFileName>goo-harfbuzz-gpu.dll</TargetFileName>
+      <Required>true</Required>
+    </GooNativePayload>
+    <GooNativePayload Include="$(GooNativeRuntimeRoot)/win-x64/text-native-build.json">
+      <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+      <TargetFileName>text-native-build.json</TargetFileName>
+      <Required>true</Required>
+    </GooNativePayload>
+    <GooNativePayload Include="$(GooLinuxSdlPath)"
+                      Condition="'$(GooLinuxSdlPath)' != '' and Exists('$(GooLinuxSdlPath)')">
+      <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+      <TargetFileName>libSDL3.so</TargetFileName>
+    </GooNativePayload>
+    <GooNativePayload Include="$(GooWindowsSdlPath)"
+                      Condition="'$(GooWindowsSdlPath)' != '' and Exists('$(GooWindowsSdlPath)')">
+      <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+      <TargetFileName>SDL3.dll</TargetFileName>
+    </GooNativePayload>
+    <GooNativePayload Include="$(GooMacOsArm64NativeRoot)/libSDL3.dylib"
+                      Condition="'$(GooMacOsArm64NativeRoot)' != ''">
+      <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
+      <TargetFileName>libSDL3.dylib</TargetFileName>
+      <Required>true</Required>
+    </GooNativePayload>
+    <GooNativePayload Include="$(GooMacOsArm64NativeRoot)/libMoltenVK.dylib"
+                      Condition="'$(GooMacOsArm64NativeRoot)' != ''">
+      <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
+      <TargetFileName>libMoltenVK.dylib</TargetFileName>
+      <Required>true</Required>
+    </GooNativePayload>
+    <GooNativePayload Include="$(GooMacOsArm64NativeRoot)/libgoo-harfbuzz.dylib"
+                      Condition="'$(GooMacOsArm64NativeRoot)' != ''">
+      <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
+      <TargetFileName>libgoo-harfbuzz.dylib</TargetFileName>
+      <Required>true</Required>
+    </GooNativePayload>
+    <GooNativePayload Include="$(GooMacOsArm64NativeRoot)/libgoo-harfbuzz-gpu.dylib"
+                      Condition="'$(GooMacOsArm64NativeRoot)' != ''">
+      <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
+      <TargetFileName>libgoo-harfbuzz-gpu.dylib</TargetFileName>
+      <Required>true</Required>
+    </GooNativePayload>
+    <GooNativePayload Include="$(GooMacOsArm64NativeRoot)/text-native-build.json"
+                      Condition="'$(GooMacOsArm64NativeRoot)' != ''">
+      <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
+      <TargetFileName>text-native-build.json</TargetFileName>
+      <Required>true</Required>
+    </GooNativePayload>
+  </ItemGroup>
   <ItemGroup>
     <!--
       nuget.org strips the raw HTML (the centered banner and badge markup) that
@@ -26,12 +97,14 @@
           Pack="true" PackagePath="tools/net10.0/any/Goo.ShaderEffectTool.deps.json" />
     <None Include="$(MSBuildProjectDirectory)/../tools/Goo.ShaderEffectTool/bin/$(Configuration)/net10.0/Goo.ShaderEffectTool.runtimeconfig.json"
           Pack="true" PackagePath="tools/net10.0/any/Goo.ShaderEffectTool.runtimeconfig.json" />
-    <None Include="$(GooLinuxSdlPath)"
-          Pack="true" PackagePath="runtimes/linux-x64/native/libSDL3.so"
-          Condition="'$(GooLinuxSdlPath)' != '' and Exists('$(GooLinuxSdlPath)')" />
-    <None Include="$(GooWindowsSdlPath)"
-          Pack="true" PackagePath="runtimes/win-x64/native/SDL3.dll"
-          Condition="'$(GooWindowsSdlPath)' != '' and Exists('$(GooWindowsSdlPath)')" />
+    <None Remove="@(GooNativePayload)" />
+    <None Include="@(GooNativePayload)"
+          Pack="true"
+          PackagePath="runtimes/%(RuntimeIdentifier)/native/%(TargetFileName)">
+      <Link Condition="'%(RuntimeIdentifier)' == '$(GooEffectiveRuntimeIdentifier)'">%(TargetFileName)</Link>
+      <CopyToOutputDirectory Condition="'%(RuntimeIdentifier)' == '$(GooEffectiveRuntimeIdentifier)'">PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory Condition="'%(RuntimeIdentifier)' == '$(GooEffectiveRuntimeIdentifier)'">Always</CopyToPublishDirectory>
+    </None>
 
     <None Update="$(GooVulkanShaderRoot)/*.spv"
           Pack="true"
@@ -58,24 +131,16 @@
           PackagePath="contentFiles/any/any/Vulkan/Shaders/Authoring/goo_effect.slang"
           PackageBuildAction="None"
           PackageCopyToOutput="false" />
-    <None Update="$(GooVulkanRuntimeRoot)/HarfBuzz-COPYING.txt"
+    <None Update="$(GooNativeRuntimeRoot)/HarfBuzz-COPYING.txt"
           Pack="true"
           PackagePath="contentFiles/any/any/Vulkan/Runtime/HarfBuzz-COPYING.txt"
           PackageBuildAction="None"
           PackageCopyToOutput="true" />
-
-    <None Update="$(GooVulkanRuntimeRoot)/linux-x64/*.so"
+    <None Update="$(GooNativeRuntimeRoot)/MoltenVK-LICENSE.txt"
           Pack="true"
-          PackagePath="runtimes/linux-x64/native/%(Filename)%(Extension)" />
-    <None Update="$(GooVulkanRuntimeRoot)/linux-x64/text-native-build.json"
-          Pack="true"
-          PackagePath="runtimes/linux-x64/native/text-native-build.json" />
-    <None Update="$(GooVulkanRuntimeRoot)/win-x64/*.dll"
-          Pack="true"
-          PackagePath="runtimes/win-x64/native/%(Filename)%(Extension)" />
-    <None Update="$(GooVulkanRuntimeRoot)/win-x64/text-native-build.json"
-          Pack="true"
-          PackagePath="runtimes/win-x64/native/text-native-build.json" />
+          PackagePath="contentFiles/any/any/Vulkan/Runtime/MoltenVK-LICENSE.txt"
+          PackageBuildAction="None"
+          PackageCopyToOutput="true" />
 
     <None Update="$(GooVulkanShaderRoot)/*.spv"
           Link="Vulkan/Shaders/%(Filename)%(Extension)"
@@ -89,34 +154,12 @@
           Link="Vulkan/Shaders/harfbuzz-14.3.1.provenance.json"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="Always" />
-    <None Update="$(GooVulkanRuntimeRoot)/HarfBuzz-COPYING.txt"
+    <None Update="$(GooNativeRuntimeRoot)/HarfBuzz-COPYING.txt"
           Link="Vulkan/Runtime/HarfBuzz-COPYING.txt"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="Always" />
-
-    <None Update="$(GooVulkanRuntimeRoot)/linux-x64/*.so"
-          Condition="'$(GooVulkanEffectiveRid)' == 'linux-x64'"
-          Link="%(Filename)%(Extension)"
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="Always" />
-    <None Update="$(GooVulkanRuntimeRoot)/linux-x64/text-native-build.json"
-          Condition="'$(GooVulkanEffectiveRid)' == 'linux-x64'"
-          Link="text-native-build.json"
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="Always" />
-    <None Update="$(GooVulkanRuntimeRoot)/win-x64/*.dll"
-          Condition="'$(GooVulkanEffectiveRid)' == 'win-x64'"
-          Link="%(Filename)%(Extension)"
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="Always" />
-    <None Update="$(GooVulkanRuntimeRoot)/win-x64/text-native-build.json"
-          Condition="'$(GooVulkanEffectiveRid)' == 'win-x64'"
-          Link="text-native-build.json"
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="Always" />
-    <None Include="$(GooWindowsSdlPath)"
-          Condition="'$(GooVulkanEffectiveRid)' == 'win-x64' and '$(GooWindowsSdlPath)' != '' and Exists('$(GooWindowsSdlPath)')"
-          Link="SDL3.dll"
+    <None Update="$(GooNativeRuntimeRoot)/MoltenVK-LICENSE.txt"
+          Link="Vulkan/Runtime/MoltenVK-LICENSE.txt"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="Always" />
   </ItemGroup>
@@ -144,16 +187,15 @@
            Text="Goo Vulkan shader-effect authoring include is missing." />
     <Error Condition="!Exists('$(MSBuildProjectDirectory)/Shaders/Authoring/goo_effect.slang')"
            Text="Goo Slang shader-effect authoring include is missing." />
-    <Error Condition="!Exists('$(GooVulkanRuntimeRoot)/linux-x64/libgoo-harfbuzz.so')"
-           Text="Goo Vulkan Linux HarfBuzz payload is missing." />
-    <Error Condition="!Exists('$(GooVulkanRuntimeRoot)/linux-x64/libgoo-harfbuzz-gpu.so')"
-           Text="Goo Vulkan Linux hb-gpu payload is missing." />
-    <Error Condition="!Exists('$(GooVulkanRuntimeRoot)/win-x64/goo-harfbuzz.dll')"
-           Text="Goo Vulkan Windows HarfBuzz payload is missing." />
-    <Error Condition="!Exists('$(GooVulkanRuntimeRoot)/win-x64/goo-harfbuzz-gpu.dll')"
-           Text="Goo Vulkan Windows hb-gpu payload is missing." />
-    <Error Condition="!Exists('$(GooVulkanRuntimeRoot)/HarfBuzz-COPYING.txt')"
+    <Error Condition="!Exists('$(GooNativeRuntimeRoot)/HarfBuzz-COPYING.txt')"
            Text="Goo Vulkan HarfBuzz license is missing." />
+    <Error Condition="!Exists('$(GooNativeRuntimeRoot)/MoltenVK-LICENSE.txt')"
+           Text="Goo MoltenVK license is missing." />
+  </Target>
+
+  <Target Name="ValidateGooNativePayloads" BeforeTargets="Build;Pack">
+    <Error Condition="'%(GooNativePayload.Required)' == 'true' and !Exists('%(GooNativePayload.FullPath)')"
+           Text="Required Goo native payload is missing: %(GooNativePayload.FullPath)" />
   </Target>
 
   <Target Name="ValidateGooLinuxSdlPackageAsset" BeforeTargets="Pack">
@@ -163,6 +205,20 @@
   <Target Name="ValidateGooWindowsSdlPackageAsset" BeforeTargets="Pack">
     <Error Condition="'$(GooWindowsSdlPath)' == '' or !Exists('$(GooWindowsSdlPath)')"
            Text="Packing Goo requires -p:GooWindowsSdlPath=/absolute/path/to/SDL3.dll from the pinned SDL release." />
+  </Target>
+  <Target Name="ValidateGooMacOsArm64PackageAssets" BeforeTargets="Pack">
+    <Error Condition="'$(GooMacOsArm64NativeRoot)' == ''"
+           Text="Packing Goo requires -p:GooMacOsArm64NativeRoot=/absolute/path/to/the pinned osx-arm64 native payloads." />
+    <Error Condition="'$(GooMacOsArm64NativeRoot)' != '' and !Exists('$(GooMacOsArm64NativeRoot)/libSDL3.dylib')"
+           Text="The pinned osx-arm64 SDL payload is missing." />
+    <Error Condition="'$(GooMacOsArm64NativeRoot)' != '' and !Exists('$(GooMacOsArm64NativeRoot)/libMoltenVK.dylib')"
+           Text="The pinned osx-arm64 MoltenVK payload is missing." />
+    <Error Condition="'$(GooMacOsArm64NativeRoot)' != '' and !Exists('$(GooMacOsArm64NativeRoot)/libgoo-harfbuzz.dylib')"
+           Text="The pinned osx-arm64 HarfBuzz payload is missing." />
+    <Error Condition="'$(GooMacOsArm64NativeRoot)' != '' and !Exists('$(GooMacOsArm64NativeRoot)/libgoo-harfbuzz-gpu.dylib')"
+           Text="The pinned osx-arm64 hb-gpu payload is missing." />
+    <Error Condition="'$(GooMacOsArm64NativeRoot)' != '' and !Exists('$(GooMacOsArm64NativeRoot)/text-native-build.json')"
+           Text="The pinned osx-arm64 text-native provenance is missing." />
   </Target>
   <Target Name="_PopulateGooDocFileItems"
           AfterTargets="CoreCompile"

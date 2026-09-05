@@ -126,8 +126,7 @@ float4 gooEffect(float2 uv, float4 source, float4 backdrop)
     float4 frame = gooParameter(0);
     float4 pointer = gooParameter(1);
     float4 controls = gooParameter(2);
-    float2 resolution = max(frame.yz, float2(1.0, 1.0));
-    float aspect = resolution.x / resolution.y;
+    const float aspect = 16.0 / 9.0;
     float yaw = controls.x + (pointer.x - 0.5) * 0.3;
     float pitch = clamp(controls.y + (pointer.y - 0.5) * 0.16, -1.05, 1.05);
     float roughness = clamp(controls.z, 0.0, 1.0);

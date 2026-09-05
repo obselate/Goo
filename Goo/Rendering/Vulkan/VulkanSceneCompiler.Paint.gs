@@ -5,26 +5,26 @@ import Facebook.Yoga
 
 internal partial class VulkanSceneCompiler {
   private func ValidateViewport(width float32, height float32) {
-    if !Finite(width) || !Finite(height) || width < 0.0F || height < 0.0F {
+    if !finiteVulkanSceneValue(width) || !finiteVulkanSceneValue(height) || width < 0.0F || height < 0.0F {
       throw ArgumentOutOfRangeException("viewport")
     }
   }
 
   private func NodeBounds(node Node) ConservativeBounds {
     let rect = node.Rect
-    let x = Finite(rect.X) ? rect.X : 0.0F
-    let y = Finite(rect.Y) ? rect.Y : 0.0F
-    let width = Finite(rect.W) && rect.W > 0.0F ? rect.W : 0.0F
-    let height = Finite(rect.H) && rect.H > 0.0F ? rect.H : 0.0F
+    let x = finiteVulkanSceneValue(rect.X) ? rect.X : 0.0F
+    let y = finiteVulkanSceneValue(rect.Y) ? rect.Y : 0.0F
+    let width = finiteVulkanSceneValue(rect.W) && rect.W > 0.0F ? rect.W : 0.0F
+    let height = finiteVulkanSceneValue(rect.H) && rect.H > 0.0F ? rect.H : 0.0F
     return ConservativeBounds{ X: x, Y: y, Width: width, Height: height }
   }
 
   private func EffectiveOpacity(parent float32, value float64) float32 {
-    if !Finite(parent) || Double.IsNaN(value) || Double.IsInfinity(value) {
+    if !finiteVulkanSceneValue(parent) || Double.IsNaN(value) || Double.IsInfinity(value) {
       return 0.0F
     }
     let local = float32(value)
-    if !Finite(local) {
+    if !finiteVulkanSceneValue(local) {
       return 0.0F
     }
     if local <= 0.0F || parent <= 0.0F {
@@ -166,8 +166,10 @@ internal partial class VulkanSceneCompiler {
       TextLayouts.ContentHeight(node))
     var stroke = node.TextStrokeWidth.Px > VulkanTextScene.MaximumStrokeWidth
       && !transparent(node.TextStrokeColor)
-    for line in layout.Lines {
-      for run in line.Runs {
+    for lineIndex in 0 ... layout.Lines.Count {
+      let line = layout.Lines[lineIndex]
+      for runIndex in 0 ... line.Runs.Count {
+        let run = line.Runs[runIndex]
         let style = run.Style
         if !stroke && style.StrokeWidth > VulkanTextScene.MaximumStrokeWidth
           && !transparent(style.StrokeColor) {
@@ -228,8 +230,10 @@ internal partial class VulkanSceneCompiler {
     } else if node.Kind == NodeKind.Editor {
       let layout = TextEditorLayouts.For(node, TextLayouts.ContentWidth(node),
         TextLayouts.ContentHeight(node))
-      for line in layout.Lines {
-        for run in line.Runs {
+      for lineIndex in 0 ... layout.Lines.Count {
+        let line = layout.Lines[lineIndex]
+        for runIndex in 0 ... line.Runs.Count {
+          let run = line.Runs[runIndex]
           let style = run.Style
           if !shadow && HasVisibleTextShadow(style.Shadows) {
             RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.TextShadows,
@@ -395,15 +399,16 @@ internal partial class VulkanSceneCompiler {
           return
         }
       guard let renderer = pathScene else { return }
-      let halfStroke = strokeWidth * 0.5F
+      let strokeInset = if node.ShapeStrokeInset { strokeWidth } else { 0.0F }
+      let halfStroke = strokeInset * 0.5F
       let paddingLeft = resolveEdgePadding(node, YGEdge.Left, bounds.Width)
       let paddingTop = resolveEdgePadding(node, YGEdge.Top, bounds.Width)
       let paddingRight = resolveEdgePadding(node, YGEdge.Right, bounds.Width)
       let paddingBottom = resolveEdgePadding(node, YGEdge.Bottom, bounds.Width)
       let contentLeft = bounds.X + paddingLeft + halfStroke
       let contentTop = bounds.Y + paddingTop + halfStroke
-      let contentWidth = bounds.Width - paddingLeft - paddingRight - strokeWidth
-      let contentHeight = bounds.Height - paddingTop - paddingBottom - strokeWidth
+      let contentWidth = bounds.Width - paddingLeft - paddingRight - strokeInset
+      let contentHeight = bounds.Height - paddingTop - paddingBottom - strokeInset
       if contentWidth <= 0.0F || contentHeight <= 0.0F {
         return
       }
@@ -532,10 +537,10 @@ internal partial class VulkanSceneCompiler {
           index = index - 1
           continue
         }
-        let validGeometry = Finite(shadow.OffsetX.Value)
-          && Finite(shadow.OffsetY.Value)
-          && Finite(shadow.Blur.Value)
-          && Finite(shadow.Spread.Value)
+        let validGeometry = finiteVulkanSceneValue(shadow.OffsetX.Value)
+          && finiteVulkanSceneValue(shadow.OffsetY.Value)
+          && finiteVulkanSceneValue(shadow.Blur.Value)
+          && finiteVulkanSceneValue(shadow.Spread.Value)
           && shadow.Blur.Value >= 0.0F
         let shadowBounds = insetOnly ? PaddingEdgeBounds(node, bounds) : bounds
         if !supportedOwner || !validGeometry {
@@ -586,15 +591,16 @@ internal partial class VulkanSceneCompiler {
         return
       }
       let strokeWidth = node.BorderLeftWidth.Px
-      let halfStroke = strokeWidth * 0.5F
+      let strokeInset = if node.ShapeStrokeInset { strokeWidth } else { 0.0F }
+      let halfStroke = strokeInset * 0.5F
       let paddingLeft = resolveEdgePadding(node, YGEdge.Left, bounds.Width)
       let paddingTop = resolveEdgePadding(node, YGEdge.Top, bounds.Width)
       let paddingRight = resolveEdgePadding(node, YGEdge.Right, bounds.Width)
       let paddingBottom = resolveEdgePadding(node, YGEdge.Bottom, bounds.Width)
       let contentLeft = bounds.X + paddingLeft + halfStroke
       let contentTop = bounds.Y + paddingTop + halfStroke
-      let contentWidth = bounds.Width - paddingLeft - paddingRight - strokeWidth
-      let contentHeight = bounds.Height - paddingTop - paddingBottom - strokeWidth
+      let contentWidth = bounds.Width - paddingLeft - paddingRight - strokeInset
+      let contentHeight = bounds.Height - paddingTop - paddingBottom - strokeInset
       if contentWidth <= 0.0F || contentHeight <= 0.0F {
         return
       }
@@ -611,7 +617,7 @@ internal partial class VulkanSceneCompiler {
       let fillVisible = (node.BackgroundColor.A > 0.0F
           || node.BackgroundGradient != nil
           || node.HasBackgroundImageState)
-        && shapePath.HasClosedContour
+        && PathGeometry.For(shapePath).HasFillContour
       let strokeVisible = strokeWidth > 0.0F && node.BorderLeftColor.A > 0.0F
       var fillPath VulkanPathRenderable{}
       if fillVisible {
@@ -632,10 +638,10 @@ internal partial class VulkanSceneCompiler {
           index = index - 1
           continue
         }
-        let validGeometry = Finite(shadow.OffsetX.Value)
-          && Finite(shadow.OffsetY.Value)
-          && Finite(shadow.Blur.Value)
-          && Finite(shadow.Spread.Value)
+        let validGeometry = finiteVulkanSceneValue(shadow.OffsetX.Value)
+          && finiteVulkanSceneValue(shadow.OffsetY.Value)
+          && finiteVulkanSceneValue(shadow.Blur.Value)
+          && finiteVulkanSceneValue(shadow.Spread.Value)
           && shadow.Blur.Value >= 0.0F
         if !validGeometry {
           RecordUnsupportedDetail(node, VulkanSceneUnsupportedField.BoxShadows,
@@ -847,16 +853,16 @@ internal partial class VulkanSceneCompiler {
       }
     let width = node.OutlineWidth.Px
     let offset = node.OutlineOffset.Px
-    if !Finite(width) || !Finite(offset) || width <= 0.0F {
+    if !finiteVulkanSceneValue(width) || !finiteVulkanSceneValue(offset) || width <= 0.0F {
       return ConservativeBounds{}
     }
     let amount = offset + width
-    if !Finite(amount) {
+    if !finiteVulkanSceneValue(amount) {
       return ConservativeBounds{}
     }
     let result = bounds.Inflate(amount)
-    if !Finite(result.X) || !Finite(result.Y)
-      || !Finite(result.Width) || !Finite(result.Height)
+    if !finiteVulkanSceneValue(result.X) || !finiteVulkanSceneValue(result.Y)
+      || !finiteVulkanSceneValue(result.Width) || !finiteVulkanSceneValue(result.Height)
       || result.IsEmpty{
         return ConservativeBounds{}
       }
@@ -869,7 +875,7 @@ internal partial class VulkanSceneCompiler {
     bounds ConservativeBounds,
     amount float32) float32{
       let radius = Radius(value, fallback, bounds) + amount
-      return radius > 0.0F && Finite(radius) ? radius : 0.0F
+      return radius > 0.0F && finiteVulkanSceneValue(radius) ? radius : 0.0F
     }
 
   private func ExpandedChunkBounds(
@@ -883,17 +889,17 @@ internal partial class VulkanSceneCompiler {
       var result = bounds
       let outlineBounds = OutlineBounds(node, bounds)
       if !outlineBounds.IsEmpty {
-        result = UnionBounds(result, outlineBounds)
+        result = unionVulkanSceneBounds(result, outlineBounds)
       }
       if eligible {
         var index int32 = 0
         while index < count {
           let shadow = boxShadowAt(node.BoxShadows, index)
           if !shadow.Inset && shadow.Color.A > 0.0F
-            && Finite(shadow.OffsetX.Value)
-            && Finite(shadow.OffsetY.Value)
-            && Finite(shadow.Blur.Value)
-            && Finite(shadow.Spread.Value)
+            && finiteVulkanSceneValue(shadow.OffsetX.Value)
+            && finiteVulkanSceneValue(shadow.OffsetY.Value)
+            && finiteVulkanSceneValue(shadow.Blur.Value)
+            && finiteVulkanSceneValue(shadow.Spread.Value)
             && shadow.Blur.Value >= 0.0F {
               let spread = shadow.Spread.Px > 0.0F ? shadow.Spread.Px : 0.0F
               let blur = shadow.Blur.Px
@@ -905,7 +911,7 @@ internal partial class VulkanSceneCompiler {
                 Width: bounds.Width + extent + extent,
                 Height: bounds.Height + extent + extent,
               }
-              result = UnionBounds(result, candidate)
+              result = unionVulkanSceneBounds(result, candidate)
             }
           index = index + 1
         }
@@ -930,12 +936,14 @@ internal partial class VulkanSceneCompiler {
     if node.Kind == NodeKind.Editor {
       let layout = TextEditorLayouts.For(node, TextLayouts.ContentWidth(node),
         TextLayouts.ContentHeight(node))
-      for line in layout.Lines {
+      for lineIndex in 0 ... layout.Lines.Count {
+        let line = layout.Lines[lineIndex]
         if let baseStyle = line.Paragraph.BaseStyle {
           let pad = textPaintPad(baseStyle.StrokeWidth, baseStyle.Shadows)
           if pad > result { result = pad }
         }
-        for run in line.Runs {
+        for runIndex in 0 ... line.Runs.Count {
+          let run = line.Runs[runIndex]
           let pad = textPaintPad(run.Style.StrokeWidth, run.Style.Shadows)
           if pad > result { result = pad }
         }
@@ -955,19 +963,6 @@ internal partial class VulkanSceneCompiler {
     || node.Kind == NodeKind.Text || node.Kind == NodeKind.Entry
     || node.Kind == NodeKind.Editor || node.Kind == NodeKind.Shape
     || node.Kind == NodeKind.Image
-
-  private func UnionBounds(left ConservativeBounds, right ConservativeBounds) ConservativeBounds {
-    let x = left.X < right.X ? left.X : right.X
-    let y = left.Y < right.Y ? left.Y : right.Y
-    let rightEdge = left.Right > right.Right ? left.Right : right.Right
-    let bottomEdge = left.Bottom > right.Bottom ? left.Bottom : right.Bottom
-    return ConservativeBounds{
-      X: x,
-      Y: y,
-      Width: rightEdge - x,
-      Height: bottomEdge - y,
-    }
-  }
 
   private func HasScrollBars(node Node) bool {
     if scrollbarAlpha(node) <= 0.0F { return false }
@@ -1213,12 +1208,12 @@ internal partial class VulkanSceneCompiler {
   }
 
   private func ResolveLength(value Length, basis float32) float32 {
-    if !value.HasMagnitude || !Finite(value.Value) {
+    if !value.HasMagnitude || !finiteVulkanSceneValue(value.Value) {
       return 0.0F
     }
     let resolved = value.Unit == LengthUnit.Percent
     ? basis * value.Value / 100.0F : value.Value
-    if !Finite(resolved) || resolved <= 0.0F {
+    if !finiteVulkanSceneValue(resolved) || resolved <= 0.0F {
       return 0.0F
     }
     return resolved
@@ -1231,5 +1226,4 @@ internal partial class VulkanSceneCompiler {
     return Color.FromNormalized(color.R, color.G, color.B, alpha).ToPackedRgba()
   }
 
-  private func Finite(value float32) bool -> !Single.IsNaN(value) && !Single.IsInfinity(value)
 }

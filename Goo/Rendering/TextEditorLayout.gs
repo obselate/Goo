@@ -19,9 +19,33 @@ internal class TextEditorResolvedSegment {
   internal prop SlotHeight float32{ get; init; }
   internal prop Style TextResolvedStyle{ get; init; }
 
-  internal init() {
-    Style = TextResolvedStyle()
-  }
+  internal init(source TextRange, displayStart int32, displayLength int32,
+    atomic bool, style TextResolvedStyle) {
+      Source = source
+      DisplayStart = displayStart
+      DisplayLength = displayLength
+      Atomic = atomic
+      Style = style
+    }
+
+  internal init(source TextRange, displayStart int32, displayLength int32,
+    compositionSelectionStart int32, compositionSelectionEnd int32,
+    atomic bool, composition bool, slot bool, blockSlot bool, slotKey string,
+    slotWidth float32, slotHeight float32, style TextResolvedStyle) {
+      Source = source
+      DisplayStart = displayStart
+      DisplayLength = displayLength
+      CompositionSelectionStart = compositionSelectionStart
+      CompositionSelectionEnd = compositionSelectionEnd
+      Atomic = atomic
+      Composition = composition
+      Slot = slot
+      BlockSlot = blockSlot
+      SlotKey = slotKey
+      SlotWidth = slotWidth
+      SlotHeight = slotHeight
+      Style = style
+    }
 }
 
 internal class TextEditorResolvedParagraph {
@@ -72,11 +96,23 @@ internal class TextEditorVisualLine {
   internal prop Slots List[TextEditorSlotGeometry]{ get; init; }
   internal prop StyleWidthCorrection float32{ get; set; }
 
-  internal init() {
-    Paragraph = TextEditorResolvedParagraph()
-    Runs = List[TextPaintRun]()
-    Slots = List[TextEditorSlotGeometry]()
-  }
+  internal init(paragraph TextEditorResolvedParagraph, displayStart int32,
+    displayLength int32, sourceStart int32, sourceEnd int32, top float32,
+    height float32, ascent float32, descent float32, shape ShapedText?) {
+      Paragraph = paragraph
+      DisplayStart = displayStart
+      DisplayLength = displayLength
+      SourceStart = sourceStart
+      SourceEnd = sourceEnd
+      Top = top
+      RelativeTop = top
+      Height = height
+      Ascent = ascent
+      Descent = descent
+      Shape = shape
+      Runs = List[TextPaintRun]()
+      Slots = List[TextEditorSlotGeometry]()
+    }
 
   internal prop Width float32{
     get {
@@ -1256,19 +1292,11 @@ internal class TextEditorLayouts {
         }
         let firstSource = SourceOffsetForDisplay(paragraph, displayStart, TextAffinity.Downstream)
         let lastSource = SourceOffsetForDisplay(paragraph, displayEnd, TextAffinity.Upstream)
-        let line = TextEditorVisualLine{
-          Paragraph: paragraph,
-          DisplayStart: displayStart,
-          DisplayLength: displayEnd - displayStart,
-          SourceStart: firstSource < lastSource ? firstSource : lastSource,
-          SourceEnd: firstSource > lastSource ? firstSource : lastSource,
-          Top: top,
-          RelativeTop: top,
-          Height: visualHeight,
-          Ascent: visualAscent,
-          Descent: visualDescent,
-          Shape: shape,
-        }
+        let line = TextEditorVisualLine(paragraph, displayStart,
+          displayEnd - displayStart,
+          firstSource < lastSource ? firstSource : lastSource,
+          firstSource > lastSource ? firstSource : lastSource,
+          top, visualHeight, visualAscent, visualDescent, shape)
         appendSlotGeometry(line, layout, paragraph, displayStart, displayEnd, shape)
         appendPaintRuns(line, n, paragraph, displayStart, displayEnd, shape)
         layout.Lines.Add(line)
@@ -1378,7 +1406,7 @@ internal class TextEditorLayouts {
           Style: style }
         if style.Decoration != TextDecoration.None && TextShaping.GlyphCount(run) > 0 {
           let segments = run.SelectionRects(0, end - start)
-          if segments.Length > 0 { TextPaintDecorations.Set(retained, segments) }
+          if segments.Length > 0 { retained.DecorationSegments = segments }
         }
         line.Runs.Add(retained)
         return run.Width - natural
@@ -1427,21 +1455,11 @@ internal class TextEditorLayouts {
             compositionSelectionEnd = transformedCompositionOffset(projection.Text,
               selectionEnd, style.Transform)
           }
-          result.Segments.Add(TextEditorResolvedSegment{
-            Source: projection.Range,
-            DisplayStart: displayStart,
-            DisplayLength: projectionText.Length,
-            CompositionSelectionStart: compositionSelectionStart,
-            CompositionSelectionEnd: compositionSelectionEnd,
-            Atomic: projection.Atomic,
-            Composition: projection.Composition,
-            Slot: projection.Slot,
-            BlockSlot: projection.BlockSlot,
-            SlotKey: projection.SlotKey,
-            SlotWidth: projection.SlotWidth,
-            SlotHeight: projection.SlotHeight,
-            Style: style,
-          })
+          result.Segments.Add(TextEditorResolvedSegment(projection.Range,
+            displayStart, projectionText.Length, compositionSelectionStart,
+            compositionSelectionEnd, projection.Atomic, projection.Composition,
+            projection.Slot, projection.BlockSlot, projection.SlotKey,
+            projection.SlotWidth, projection.SlotHeight, style))
         }
         if end > cursor { cursor = end }
         if cursor > sourceEnd { cursor = sourceEnd }
@@ -1512,13 +1530,9 @@ internal class TextEditorLayouts {
       atomic bool) {
         let displayStart = display.Length
         display = display + text
-        result.Segments.Add(TextEditorResolvedSegment{
-          Source: TextRange{ Start: sourceStart, Length: sourceLength },
-          DisplayStart: displayStart,
-          DisplayLength: text.Length,
-          Atomic: atomic,
-          Style: style,
-        })
+        result.Segments.Add(TextEditorResolvedSegment(
+          TextRange{ Start: sourceStart, Length: sourceLength },
+          displayStart, text.Length, atomic, style))
       }
 
     private func editorProjections(state TextEditorRenderState, width float32,
@@ -1876,6 +1890,17 @@ internal class TextEditorLayouts {
           required = shape.SelectionRectCount(start, end)
           return shape.CopySelectionRects(start, end, rectOffset, destination)
         }
+        return TraverseSelectionRects(line, start, end, rectOffset, destination, nil,
+          out required)
+      }
+
+    private func TraverseSelectionRects(line TextEditorVisualLine, start int32,
+      end int32, rectOffset int32, destination Span[float32], result List[float32]?,
+      out required int32) int32{
+        guard let shape = line.Shape else {
+          required = 0
+          return 0
+        }
         var cursor TextEditorSelectionCursor
         let values = stackalloc[64]float32
         if line.Runs.Count != 0 {
@@ -1897,7 +1922,7 @@ internal class TextEditorLayouts {
               var value int32 = 0
               while value + 1 < copied {
                 cursor = appendGeometryRect(cursor, values[value] + run.X,
-                  values[value + 1] + run.X, rectOffset, destination)
+                  values[value + 1] + run.X, rectOffset, destination, result)
                 value = value + 2
               }
               if copied == 0 { break }
@@ -1918,13 +1943,13 @@ internal class TextEditorLayouts {
                 if slot.NaturalRight <= left || slot.NaturalLeft >= right { continue }
                 if left < slot.NaturalLeft {
                   cursor = appendGeometryRect(cursor, expandedSlotX(line, left), slot.X,
-                    rectOffset, destination)
+                    rectOffset, destination, result)
                 }
                 left = slot.NaturalRight
               }
               if left < right {
                 cursor = appendGeometryRect(cursor, expandedSlotX(line, left),
-                  expandedSlotX(line, right), rectOffset, destination)
+                  expandedSlotX(line, right), rectOffset, destination, result)
               }
               value = value + 2
             }
@@ -1938,7 +1963,7 @@ internal class TextEditorLayouts {
           let slotStart = slot.DisplayStart - line.DisplayStart
           if start < slotEnd && end > slotStart {
             cursor = appendGeometryRect(cursor, slot.X, slot.X + slot.Width, rectOffset,
-              destination)
+              destination, result)
           }
         }
         required = cursor.Index
@@ -1946,12 +1971,18 @@ internal class TextEditorLayouts {
       }
 
     private func appendGeometryRect(cursor TextEditorSelectionCursor, left float32,
-      right float32, rectOffset int32, destination Span[float32]) TextEditorSelectionCursor{
+      right float32, rectOffset int32, destination Span[float32], result List[float32]?) TextEditorSelectionCursor{
         var written = cursor.Written
-        if cursor.Index >= rectOffset && written + 1 < destination.Length {
-          destination[written] = left
-          destination[written + 1] = right
-          written = written + 2
+        if cursor.Index >= rectOffset {
+          if let values = result {
+            values.Add(left)
+            values.Add(right)
+            written = written + 2
+          } else if written + 1 < destination.Length {
+            destination[written] = left
+            destination[written + 1] = right
+            written = written + 2
+          }
         }
         return TextEditorSelectionCursor{ Index: cursor.Index + 1, Written: written }
       }
@@ -1959,54 +1990,13 @@ internal class TextEditorLayouts {
     internal func SelectionRects(line TextEditorVisualLine, start int32,
       end int32) IReadOnlyList[float32]{
         guard let shape = line.Shape else { return []float32{} }
-        let source = if line.Runs.Count == 0 { shape.SelectionRects(start, end) } else { []float32{} }
-        if line.Slots.Count == 0 && line.Runs.Count == 0 { return source }
+        if line.Slots.Count == 0 && line.Runs.Count == 0 {
+          return shape.SelectionRects(start, end)
+        }
         let result = line.BeginSelectionRects()
-        if line.Runs.Count != 0 {
-          let absoluteStart = line.DisplayStart + start
-          let absoluteEnd = line.DisplayStart + end
-          for run in line.Runs {
-            guard let runShape = run.Shape else { continue }
-            let runEnd = run.DisplayStart + run.DisplayLength
-            let selectedStart = absoluteStart > run.DisplayStart ? absoluteStart : run.DisplayStart
-            let selectedEnd = absoluteEnd < runEnd ? absoluteEnd : runEnd
-            if selectedEnd <= selectedStart { continue }
-            let rects = runShape.SelectionRects(selectedStart - run.DisplayStart,
-              selectedEnd - run.DisplayStart)
-            var runIndex int32 = 0
-            while runIndex + 1 < rects.Length {
-              result.Add(run.X + rects[runIndex])
-              result.Add(run.X + rects[runIndex + 1])
-              runIndex = runIndex + 2
-            }
-          }
-        }
-        var i int32 = 0
-        while i + 1 < source.Length {
-          var left = source[i]
-          let right = source[i + 1]
-          for slot in line.Slots {
-            if slot.NaturalRight <= left || slot.NaturalLeft >= right { continue }
-            if left < slot.NaturalLeft {
-              result.Add(expandedSlotX(line, left))
-              result.Add(slot.X)
-            }
-            left = slot.NaturalRight
-          }
-          if left < right {
-            result.Add(expandedSlotX(line, left))
-            result.Add(expandedSlotX(line, right))
-          }
-          i = i + 2
-        }
-        for slot in line.Slots {
-          let slotEnd = slot.DisplayStart + slot.DisplayLength - line.DisplayStart
-          let slotStart = slot.DisplayStart - line.DisplayStart
-          if start < slotEnd && end > slotStart {
-            result.Add(slot.X)
-            result.Add(slot.X + slot.Width)
-          }
-        }
+        let empty = stackalloc[0]float32
+        var required int32
+        TraverseSelectionRects(line, start, end, 0, empty, result, out required)
         return result
       }
 

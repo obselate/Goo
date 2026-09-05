@@ -85,7 +85,7 @@ float4 gooEffect(float2 uv, float4 source, float4 backdrop)
     float turbulence = clamp(controls.y, 0.0, 1.0);
     float driftAmount = clamp(controls.z, -2.0, 2.0);
     float time = frame.x;
-    float2 screen = (uv - 0.5) * float2(1.35, 1.0);
+    float2 screen = (uv - 0.5) * float2(16.0 / 9.0, 1.0);
     float3 drift = float3(
         time * driftAmount * 0.18,
         time * driftAmount * -0.11,

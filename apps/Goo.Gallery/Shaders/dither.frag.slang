@@ -1,10 +1,23 @@
 #include "goo_effect.slang"
 
-float bayer4(int index)
+struct DitherField
+{
+    float distance;
+    int objectId;
+};
+
+struct DitherHit
+{
+    float distance;
+    int objectId;
+    bool hit;
+};
+
+float ditherBayer4(int index)
 {
     switch (index)
     {
-        case 0: return 0.0;
+        case 0: return 0.0 / 16.0;
         case 1: return 8.0 / 16.0;
         case 2: return 2.0 / 16.0;
         case 3: return 10.0 / 16.0;
@@ -23,131 +36,233 @@ float bayer4(int index)
     }
 }
 
-float bayer8(int index)
+float3 ditherRotate(float3 p, float2 rotation)
 {
-    switch (index)
+    float yawCos = cos(rotation.x);
+    float yawSin = sin(rotation.x);
+    float pitchCos = cos(rotation.y);
+    float pitchSin = sin(rotation.y);
+    float3 yawed = float3(
+        yawCos * p.x - yawSin * p.z,
+        p.y,
+        yawSin * p.x + yawCos * p.z);
+    return float3(
+        yawed.x,
+        pitchCos * yawed.y - pitchSin * yawed.z,
+        pitchSin * yawed.y + pitchCos * yawed.z);
+}
+
+float3 ditherUnrotate(float3 p, float2 rotation)
+{
+    float yawCos = cos(rotation.x);
+    float yawSin = sin(rotation.x);
+    float pitchCos = cos(rotation.y);
+    float pitchSin = sin(rotation.y);
+    float3 unpitched = float3(
+        p.x,
+        pitchCos * p.y + pitchSin * p.z,
+        -pitchSin * p.y + pitchCos * p.z);
+    return float3(
+        yawCos * unpitched.x + yawSin * unpitched.z,
+        unpitched.y,
+        -yawSin * unpitched.x + yawCos * unpitched.z);
+}
+
+void ditherAccumulateProjection(
+    float3 point,
+    float cameraZ,
+    float lens,
+    inout float2 lower,
+    inout float2 upper,
+    inout float2 lowerScale,
+    inout float2 upperScale)
+{
+    float scale = lens / max(cameraZ - point.z, 0.1);
+    float2 projection = point.xy * scale;
+    if (projection.x < lower.x)
     {
-        case 0: return 0.0 / 64.0;
-        case 1: return 32.0 / 64.0;
-        case 2: return 8.0 / 64.0;
-        case 3: return 40.0 / 64.0;
-        case 4: return 2.0 / 64.0;
-        case 5: return 34.0 / 64.0;
-        case 6: return 10.0 / 64.0;
-        case 7: return 42.0 / 64.0;
-        case 8: return 48.0 / 64.0;
-        case 9: return 16.0 / 64.0;
-        case 10: return 56.0 / 64.0;
-        case 11: return 25.0 / 64.0;
-        case 12: return 50.0 / 64.0;
-        case 13: return 18.0 / 64.0;
-        case 14: return 58.0 / 64.0;
-        case 15: return 26.0 / 64.0;
-        case 16: return 12.0 / 64.0;
-        case 17: return 44.0 / 64.0;
-        case 18: return 4.0 / 64.0;
-        case 19: return 36.0 / 64.0;
-        case 20: return 14.0 / 64.0;
-        case 21: return 46.0 / 64.0;
-        case 22: return 6.0 / 64.0;
-        case 23: return 38.0 / 64.0;
-        case 24: return 60.0 / 64.0;
-        case 25: return 28.0 / 64.0;
-        case 26: return 52.0 / 64.0;
-        case 27: return 20.0 / 64.0;
-        case 28: return 62.0 / 64.0;
-        case 29: return 30.0 / 64.0;
-        case 30: return 54.0 / 64.0;
-        case 31: return 22.0 / 64.0;
-        case 32: return 3.0 / 64.0;
-        case 33: return 35.0 / 64.0;
-        case 34: return 11.0 / 64.0;
-        case 35: return 43.0 / 64.0;
-        case 36: return 1.0 / 64.0;
-        case 37: return 33.0 / 64.0;
-        case 38: return 8.0 / 64.0;
-        case 39: return 41.0 / 64.0;
-        case 40: return 51.0 / 64.0;
-        case 41: return 19.0 / 64.0;
-        case 42: return 59.0 / 64.0;
-        case 43: return 27.0 / 64.0;
-        case 44: return 49.0 / 64.0;
-        case 45: return 17.0 / 64.0;
-        case 46: return 57.0 / 64.0;
-        case 47: return 25.0 / 64.0;
-        case 48: return 15.0 / 64.0;
-        case 49: return 47.0 / 64.0;
-        case 50: return 7.0 / 64.0;
-        case 51: return 39.0 / 64.0;
-        case 52: return 13.0 / 64.0;
-        case 53: return 45.0 / 64.0;
-        case 54: return 5.0 / 64.0;
-        case 55: return 37.0 / 64.0;
-        case 56: return 63.0 / 64.0;
-        case 57: return 31.0 / 64.0;
-        case 58: return 55.0 / 64.0;
-        case 59: return 23.0 / 64.0;
-        case 60: return 61.0 / 64.0;
-        case 61: return 29.0 / 64.0;
-        case 62: return 53.0 / 64.0;
-        default: return 21.0 / 64.0;
+        lower.x = projection.x;
+        lowerScale.x = scale;
+    }
+    if (projection.y < lower.y)
+    {
+        lower.y = projection.y;
+        lowerScale.y = scale;
+    }
+    if (projection.x > upper.x)
+    {
+        upper.x = projection.x;
+        upperScale.x = scale;
+    }
+    if (projection.y > upper.y)
+    {
+        upper.y = projection.y;
+        upperScale.y = scale;
     }
 }
 
+float2 ditherPyramidWorldOffset(float2 rotation, float halfHeight, float cameraZ, float lens)
+{
+    float base = halfHeight * 1.04;
+    float3 apex = ditherUnrotate(float3(0.0, halfHeight, 0.0), rotation);
+    float scale = lens / max(cameraZ - apex.z, 0.1);
+    float2 lower = apex.xy * scale;
+    float2 upper = lower;
+    float2 lowerScale = scale;
+    float2 upperScale = scale;
+    ditherAccumulateProjection(
+        ditherUnrotate(float3(-base, -halfHeight, -base), rotation),
+        cameraZ, lens, lower, upper, lowerScale, upperScale);
+    ditherAccumulateProjection(
+        ditherUnrotate(float3(base, -halfHeight, -base), rotation),
+        cameraZ, lens, lower, upper, lowerScale, upperScale);
+    ditherAccumulateProjection(
+        ditherUnrotate(float3(-base, -halfHeight, base), rotation),
+        cameraZ, lens, lower, upper, lowerScale, upperScale);
+    ditherAccumulateProjection(
+        ditherUnrotate(float3(base, -halfHeight, base), rotation),
+        cameraZ, lens, lower, upper, lowerScale, upperScale);
+    return -(lower + upper) / max(lowerScale + upperScale, float2(0.001, 0.001));
+}
+
+float ditherBox(float3 p, float3 halfSize)
+{
+    float3 q = abs(p) - halfSize;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+}
+
+float ditherPyramid(float3 p, float halfHeight)
+{
+    float radial = max(abs(p.x), abs(p.z));
+    float side = radial - (halfHeight - p.y) * 0.52;
+    return max(side, max(p.y - halfHeight, -p.y - halfHeight));
+}
+
+DitherField ditherScene(float3 p, float2 rotation, int shape, float3 center)
+{
+    float3 objectPoint = ditherRotate(p - center, rotation);
+    DitherField result;
+    result.objectId = shape + 1;
+    if (shape == 0)
+    {
+        result.distance = length(objectPoint) - 1.02;
+    }
+    else if (shape == 1)
+    {
+        result.distance = ditherBox(objectPoint, float3(0.78, 0.78, 0.78));
+    }
+    else
+    {
+        result.distance = ditherPyramid(objectPoint, 1.02);
+    }
+    return result;
+}
+
+DitherHit ditherTrace(
+    float3 origin,
+    float3 direction,
+    float2 rotation,
+    int shape,
+    float3 center)
+{
+    DitherHit result;
+    result.distance = 0.0;
+    result.objectId = 0;
+    result.hit = false;
+    for (int stepIndex = 0; stepIndex < 72; stepIndex++)
+    {
+        float3 point = origin + direction * result.distance;
+        DitherField field = ditherScene(point, rotation, shape, center);
+        if (field.distance < 0.0015)
+        {
+            result.objectId = field.objectId;
+            result.hit = true;
+            break;
+        }
+        result.distance += max(field.distance * 0.58, 0.003);
+        if (result.distance > 7.0)
+        {
+            break;
+        }
+    }
+    return result;
+}
+
+float3 ditherNormal(float3 p, float2 rotation, int shape, float3 center)
+{
+    const float epsilon = 0.002;
+    return normalize(float3(
+        ditherScene(p + float3(epsilon, 0.0, 0.0), rotation, shape, center).distance
+            - ditherScene(p - float3(epsilon, 0.0, 0.0), rotation, shape, center).distance,
+        ditherScene(p + float3(0.0, epsilon, 0.0), rotation, shape, center).distance
+            - ditherScene(p - float3(0.0, epsilon, 0.0), rotation, shape, center).distance,
+        ditherScene(p + float3(0.0, 0.0, epsilon), rotation, shape, center).distance
+            - ditherScene(p - float3(0.0, 0.0, epsilon), rotation, shape, center).distance));
+}
+
+float ditherQuantize(float value, float levels, float threshold)
+{
+    float scaled = saturate(value) * (levels - 1.0);
+    float lower = floor(scaled);
+    float upper = lower + step(threshold, frac(scaled));
+    return saturate(upper / max(levels - 1.0, 1.0));
+}
 
 float4 gooEffect(float2 uv, float4 source, float4 backdrop)
 {
-    GooPrimitiveRecord primitive = gooPrimitive();
-    float2 hostSize = max(primitive.rect.zw, float2(1.0, 1.0));
-    float2 pixel = floor(uv * hostSize);
-    int pixelX = int(pixel.x);
-    int pixelY = int(pixel.y);
+    float4 frame = gooParameter(0);
+    float4 pointer = gooParameter(1);
     float4 controls = gooParameter(2);
-    int matrix = int(clamp(floor(controls.x + 0.5), 0.0, 1.0));
-    float ordered;
-    if (matrix == 0)
+    float2 rotation = controls.xy;
+    int shape = int(clamp(floor(controls.z + 0.5), 0.0, 2.0));
+    float levels = clamp(floor(controls.w + 0.5), 2.0, 8.0);
+    const float aspect = 16.0 / 9.0;
+    const float cameraZ = 3.0;
+    const float lens = 2.0;
+    float2 screen = (uv * 2.0 - 1.0) * float2(aspect, -1.0);
+    float3 center = float3(0.0, 0.0, 0.0);
+    if (shape == 2)
     {
-        int column = pixelX - (pixelX / 4) * 4;
-        int row = pixelY - (pixelY / 4) * 4;
-        ordered = bayer4(column + row * 4);
+        center.xy = ditherPyramidWorldOffset(rotation, 1.02, cameraZ, lens);
     }
-    else
+    float3 rayOrigin = float3(0.0, 0.0, cameraZ);
+    float3 rayDirection = normalize(float3(screen, -lens));
+    DitherHit hit = ditherTrace(rayOrigin, rayDirection, rotation, shape, center);
+
+    float2 gridUv = abs(frac(screen * 3.0) - 0.5);
+    float grid = 1.0 - smoothstep(0.46, 0.49, max(gridUv.x, gridUv.y));
+    float2 vignetteUv = screen / float2(aspect, 1.0);
+    float vignette = saturate(1.0 - dot(vignetteUv, vignetteUv) * 0.46);
+    float3 color = lerp(float3(0.015, 0.020, 0.032), float3(0.035, 0.045, 0.064), vignette);
+    color += grid * float3(0.018, 0.024, 0.036);
+
+    if (hit.hit)
     {
-        int column = pixelX - (pixelX / 8) * 8;
-        int row = pixelY - (pixelY / 8) * 8;
-        ordered = bayer8(column + row * 8);
+        float3 point = rayOrigin + rayDirection * hit.distance;
+        float3 normal = ditherNormal(point, rotation, shape, center);
+        float3 lightPosition = float3(
+            (pointer.x - 0.5) * 3.2,
+            (0.5 - pointer.y) * 2.0 + 1.1,
+            2.4);
+        float3 lightDirection = normalize(lightPosition - point);
+        float diffuse = saturate(dot(normal, lightDirection));
+        float rim = pow(1.0 - saturate(dot(normal, -rayDirection)), 2.0);
+        float shade = 0.16 + diffuse * 0.74 + rim * 0.18;
+        int2 pixel = int2(floor(uv * max(frame.yz, float2(1.0, 1.0))));
+        int column = pixel.x - (pixel.x / 4) * 4;
+        int row = pixel.y - (pixel.y / 4) * 4;
+        float threshold = ditherBayer4(column + row * 4);
+        float quantized = ditherQuantize(shade, levels, threshold);
+        float3 material = hit.objectId == 1
+            ? float3(0.24, 0.78, 0.72)
+            : (hit.objectId == 2
+                ? float3(0.98, 0.43, 0.21)
+                : float3(0.62, 0.48, 0.96));
+        color = material * (0.10 + quantized * 0.96);
+        color += float3(0.95, 0.97, 1.0) * rim * quantized * 0.16;
     }
-    float alpha = clamp(source.a, 0.0, 1.0);
-    float3 retained = lerp(backdrop.rgb, source.rgb, alpha);
-    float3 unpremultiplied = retained / max(alpha, 0.0001);
-    float luminance = clamp(dot(unpremultiplied, float3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);
-    float bias = clamp(controls.y - 0.5, -0.5, 0.5);
-    float palette = clamp(controls.z, 0.0, 1.0);
-    float3 tone;
-    if (palette < 0.5)
-    {
-        float cut = clamp(ordered + bias, 0.0, 1.0);
-        tone = luminance >= cut
-            ? float3(0.92, 0.93, 0.9)
-            : float3(0.015, 0.017, 0.022);
-    }
-    else
-    {
-        float orderedLuminance = clamp(luminance + (ordered - 0.5) * 0.28, 0.0, 1.0);
-        float lower = clamp(0.34 + bias, 0.0, 1.0);
-        float upper = clamp(0.68 + bias, 0.0, 1.0);
-        if (orderedLuminance < lower)
-        {
-            tone = float3(0.015, 0.02, 0.03);
-        }
-        else if (orderedLuminance < upper)
-        {
-            tone = float3(0.8, 0.24, 0.08);
-        }
-        else
-        {
-            tone = float3(0.94, 0.95, 0.9);
-        }
-    }
-    return float4(tone * alpha, alpha);
+
+    color = lerp(color, source.rgb, 0.0001);
+    color = lerp(color, backdrop.rgb, 0.0001);
+    return float4(saturate(color), 1.0);
 }

@@ -312,9 +312,9 @@ func RunTextCullingSmoke() {
   Require(File.Exists(fontPath), "Retained text viewport font asset is missing")
   let font = FontSource("RetainedGateFont", 400, false, File.ReadAllBytes(fontPath))
   font.Register()
-  let shaderPath = Path.Combine(AppContext.BaseDirectory, "control_effect.frag.spv")
+  let shaderPath = Path.Combine(AppContext.BaseDirectory, "control_effect.frag.goo-effect")
   Require(File.Exists(shaderPath), "Retained text viewport shader effect asset is missing")
-  let effect = ShaderEffect(File.ReadAllBytes(shaderPath), true, 20.0F)
+  let effect = ShaderEffect(ShaderEffectProgram.Load(shaderPath), true, 20.0F)
   let root = TextCullingCullCell(effect)
   let capturedError = StringWriter()
   let originalError = Console.Error

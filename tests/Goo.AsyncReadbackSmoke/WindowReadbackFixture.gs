@@ -22,8 +22,11 @@ internal data struct VulkanSceneRetentionTestSnapshot {
   internal var ActiveAppliedSceneVersion uint64
   internal var ActivePendingSceneVersion uint64
   internal var AcquiredImageState bool
+  internal var SwapchainImageCount uint32
+  internal var InitializedImageCount uint32
+  internal var MinimumImageSceneVersion uint64
   internal var AppliedImageCount uint32
-  internal var PromotedImageCount uint32
+  internal var ActiveImagePromoted bool
   internal var PendingImageCount uint32
   internal var PendingSceneVersion uint64
   internal var DamageX int32
@@ -130,23 +133,37 @@ internal data struct VulkanPrimitiveFrameRetentionTestSnapshot {
   internal var ByteCount VkDeviceSize
   internal var Capacity VkDeviceSize
   internal var BufferGeneration uint64
-  internal var WrittenBytes VkDeviceSize
-  internal var SkippedBytes VkDeviceSize
+  internal var PlannedTransferBytes VkDeviceSize
+  internal var SkippedTransferBytes VkDeviceSize
   internal var DirtyRecordCount int32
   internal var UploadRangeCount int32
   internal var FullUpload bool
-  internal var MappedWrites uint64
-  internal var Flushes uint64
+  internal var CpuWriteOperations uint64
+  internal var NativeFlushCalls uint64
   internal var RetainedReuse uint64
   internal var LastUseSerial uint64
   internal var Prepared bool
-  internal var TotalWrittenBytes VkDeviceSize
-  internal var TotalSkippedBytes VkDeviceSize
+  internal var CpuWrittenBytes uint64
+  internal var TotalCpuWrittenBytes uint64
+  internal var CpuComparedBytes uint64
+  internal var TotalCpuComparedBytes uint64
+  internal var HistoryCopiedBytes uint64
+  internal var TotalHistoryCopiedBytes uint64
+  internal var FlushRequests uint64
+  internal var TotalFlushRequests uint64
+  internal var SubmittedTransferBytes uint64
+  internal var TotalSubmittedTransferBytes uint64
+  internal var RecordedCopyCommands uint64
+  internal var TotalRecordedCopyCommands uint64
+  internal var RecordedBarriers uint64
+  internal var TotalRecordedBarriers uint64
+  internal var TotalPlannedTransferBytes VkDeviceSize
+  internal var TotalSkippedTransferBytes VkDeviceSize
   internal var TotalDirtyRecordCount uint64
   internal var TotalUploadRangeCount uint64
   internal var TotalFullUploads uint64
-  internal var TotalMappedWrites uint64
-  internal var TotalFlushes uint64
+  internal var TotalCpuWriteOperations uint64
+  internal var TotalNativeFlushCalls uint64
   internal var TotalRetainedReuse uint64
 }
 internal data struct VulkanTextFrameRetentionTestSnapshot {
@@ -188,6 +205,31 @@ internal data struct VulkanTextFrameRetentionTestSnapshot {
 internal data struct VulkanFrameSubmissionTestSnapshot {
   internal var Slot0Serial uint64
   internal var Slot1Serial uint64
+}
+internal data struct VulkanGraphicsTimelineTestSnapshot {
+  internal var Available bool
+  internal var Timeline uint64
+  internal var RuntimeGeneration uint64
+  internal var LastEnqueuedSerial uint64
+  internal var CompletedSerial uint64
+  internal var CompletedResult VkResult
+  internal var PendingWindowSerial uint64
+  internal var ReadbackSerial uint64
+  internal var ReadbackPendingReconcile bool
+}
+internal data struct VulkanGraphicsTimelineValidationTestSnapshot {
+  internal var Threw bool
+  internal var MailboxIdle bool
+  internal var SerialBefore uint64
+  internal var SerialAfter uint64
+  internal var MailboxSerial uint64
+}
+internal data struct VulkanShaderEffectPipelineIdentityTestSnapshot {
+  internal var EntryCount int32
+  internal var UniquePipelineCount int32
+  internal var FirstPipeline uint64
+  internal var AllHandlesEqual bool
+  internal var SameObjectStable bool
 }
 internal data struct VulkanWindowFramebufferExtentTestSnapshot {
   internal var Width int32
@@ -247,8 +289,10 @@ internal partial class VulkanWindowTarget {
 
   internal func SceneRetentionSnapshotForTest() VulkanSceneRetentionTestSnapshot {
     let sceneVersion = activeSceneVersion
+    var swapchainImageCount uint32 = 0u
+    var initializedImageCount uint32 = 0u
+    var minimumImageSceneVersion uint64 = 0uL
     var appliedImageCount uint32 = 0u
-    var promotedImageCount uint32 = 0u
     var pendingImageCount uint32 = 0u
     var pendingSceneVersion uint64 = 0uL
     var activeImageIndexForSnapshot uint32 = 0u
@@ -259,13 +303,34 @@ internal partial class VulkanWindowTarget {
       activeImageIndexForSnapshot = lastPresentedImageIndex
       activeAppliedSceneVersionForSnapshot = lastPresentedAppliedSceneVersion
       activePendingSceneVersion = lastPresentedPendingSceneVersion
-      pendingSceneVersion = lastPresentedPendingSceneVersion
-      pendingImageCount = 1u
-      if lastPresentedAppliedSceneVersion != 0uL {
-        appliedImageCount = 1u
+    }
+    if let current = generation {
+      swapchainImageCount = current.ImageCount
+      minimumImageSceneVersion = uint64.MaxValue
+      var imageIndex uint32 = 0u
+      while imageIndex < swapchainImageCount {
+        let applied = current.AppliedSceneVersion(imageIndex)
+        let pending = current.PendingSceneVersion(imageIndex)
+        let known = applied > pending ? applied : pending
+        if applied != 0uL {
+          appliedImageCount = appliedImageCount + 1u
+        }
+        if pending != 0uL {
+          pendingImageCount = pendingImageCount + 1u
+          if pending > pendingSceneVersion {
+            pendingSceneVersion = pending
+          }
+        }
+        if applied != 0uL || pending != 0uL {
+          initializedImageCount = initializedImageCount + 1u
+        }
+        if known < minimumImageSceneVersion {
+          minimumImageSceneVersion = known
+        }
+        imageIndex = imageIndex + 1u
       }
-      if lastPresentedImagePromoted {
-        promotedImageCount = 1u
+      if swapchainImageCount == 0u {
+        minimumImageSceneVersion = 0uL
       }
     }
     var dirtyChunkCount uint32 = 0u
@@ -360,8 +425,11 @@ internal partial class VulkanWindowTarget {
       ActiveAppliedSceneVersion: activeAppliedSceneVersionForSnapshot,
       ActivePendingSceneVersion: activePendingSceneVersion,
       AcquiredImageState: acquiredImageState,
+      SwapchainImageCount: swapchainImageCount,
+      InitializedImageCount: initializedImageCount,
+      MinimumImageSceneVersion: minimumImageSceneVersion,
       AppliedImageCount: appliedImageCount,
-      PromotedImageCount: promotedImageCount,
+      ActiveImagePromoted: acquiredImageState && lastPresentedImagePromoted,
       PendingImageCount: pendingImageCount,
       PendingSceneVersion: pendingSceneVersion,
       DamageX: damage.X,
@@ -453,23 +521,37 @@ internal partial class VulkanWindowTarget {
       ByteCount: stats.ByteCount,
       Capacity: stats.Capacity,
       BufferGeneration: stats.BufferGeneration,
-      WrittenBytes: stats.WrittenBytes,
-      SkippedBytes: stats.SkippedBytes,
+      PlannedTransferBytes: stats.PlannedTransferBytes,
+      SkippedTransferBytes: stats.SkippedTransferBytes,
       DirtyRecordCount: stats.DirtyRecordCount,
       UploadRangeCount: stats.UploadRangeCount,
       FullUpload: stats.FullUpload,
-      MappedWrites: stats.MappedWrites,
-      Flushes: stats.Flushes,
+      CpuWriteOperations: stats.CpuWriteOperations,
+      NativeFlushCalls: stats.NativeFlushCalls,
       RetainedReuse: stats.RetainedReuse,
       LastUseSerial: stats.LastUseSerial,
       Prepared: stats.Prepared,
-      TotalWrittenBytes: stats.TotalWrittenBytes,
-      TotalSkippedBytes: stats.TotalSkippedBytes,
+      CpuWrittenBytes: stats.CpuWrittenBytes,
+      TotalCpuWrittenBytes: stats.TotalCpuWrittenBytes,
+      CpuComparedBytes: stats.CpuComparedBytes,
+      TotalCpuComparedBytes: stats.TotalCpuComparedBytes,
+      HistoryCopiedBytes: stats.HistoryCopiedBytes,
+      TotalHistoryCopiedBytes: stats.TotalHistoryCopiedBytes,
+      FlushRequests: stats.FlushRequests,
+      TotalFlushRequests: stats.TotalFlushRequests,
+      SubmittedTransferBytes: stats.SubmittedTransferBytes,
+      TotalSubmittedTransferBytes: stats.TotalSubmittedTransferBytes,
+      RecordedCopyCommands: stats.RecordedCopyCommands,
+      TotalRecordedCopyCommands: stats.TotalRecordedCopyCommands,
+      RecordedBarriers: stats.RecordedBarriers,
+      TotalRecordedBarriers: stats.TotalRecordedBarriers,
+      TotalPlannedTransferBytes: stats.TotalPlannedTransferBytes,
+      TotalSkippedTransferBytes: stats.TotalSkippedTransferBytes,
       TotalDirtyRecordCount: stats.TotalDirtyRecordCount,
       TotalUploadRangeCount: stats.TotalUploadRangeCount,
       TotalFullUploads: stats.TotalFullUploads,
-      TotalMappedWrites: stats.TotalMappedWrites,
-      TotalFlushes: stats.TotalFlushes,
+      TotalCpuWriteOperations: stats.TotalCpuWriteOperations,
+      TotalNativeFlushCalls: stats.TotalNativeFlushCalls,
       TotalRetainedReuse: stats.TotalRetainedReuse,
     }
   }
@@ -521,6 +603,68 @@ internal partial class VulkanWindowTarget {
     Slot1Serial: frameSlots.Slot(1u)?.SubmissionSerial ?? 0uL,
   }
 
+  internal func GraphicsTimelineForTest() VulkanGraphicsTimelineTestSnapshot {
+    guard let activeRuntime = runtime else {
+      return VulkanGraphicsTimelineTestSnapshot{}
+    }
+    var completed uint64
+    let completedResult = activeRuntime.GetCompletedGraphicsSubmissionSerial(out completed)
+    return VulkanGraphicsTimelineTestSnapshot{
+      Available: activeRuntime.GraphicsTimeline != 0uL,
+      Timeline: uint64(activeRuntime.GraphicsTimeline),
+      RuntimeGeneration: activeRuntime.Generation,
+      LastEnqueuedSerial: activeRuntime.QueueWorker.LastEnqueuedGraphicsSubmissionSerial,
+      CompletedSerial: completed,
+      CompletedResult: completedResult,
+      PendingWindowSerial: pendingGlobalSubmissionSerial,
+      ReadbackSerial: readbackRequest?.SubmissionSerial ?? 0uL,
+      ReadbackPendingReconcile: readbackRequest?.SubmissionPendingReconcile == true,
+    }
+  }
+
+  internal func PollGraphicsSubmissionForTest(serial uint64) VkResult {
+    guard let activeRuntime = runtime else {
+      return VkConstants.VK_NOT_READY
+    }
+    return activeRuntime.PollGraphicsSubmission(serial)
+  }
+
+  internal func WaitGraphicsSubmissionForTest(serial uint64, timeout uint64) VkResult {
+    guard let activeRuntime = runtime else {
+      return VkConstants.VK_NOT_READY
+    }
+    return activeRuntime.WaitGraphicsSubmission(serial, timeout)
+  }
+
+  internal func GraphicsTimelineValidationRollbackForTest()
+  VulkanGraphicsTimelineValidationTestSnapshot{
+    guard let activeRuntime = runtime else {
+      return VulkanGraphicsTimelineValidationTestSnapshot{}
+    }
+    let worker = activeRuntime.QueueWorker
+    let mailbox = worker.CreateMailbox(nil)
+    let serialBefore = worker.LastEnqueuedGraphicsSubmissionSerial
+    var threw = false
+    mailbox.PrepareSubmit(nint(0), 0uL, 0uL)
+    if !mailbox.BeginSubmit() {
+      throw InvalidOperationException("Timeline validation mailbox was not idle")
+    }
+    try {
+      activeRuntime.EnqueueGraphicsSubmission(mailbox, serial -> {
+        throw InvalidOperationException("timeline validation probe")
+      })
+    } catch (error InvalidOperationException) {
+      threw = true
+    }
+    return VulkanGraphicsTimelineValidationTestSnapshot{
+      Threw: threw,
+      MailboxIdle: mailbox.Phase == VulkanQueueMailboxPhase.Idle,
+      SerialBefore: serialBefore,
+      SerialAfter: worker.LastEnqueuedGraphicsSubmissionSerial,
+      MailboxSerial: mailbox.SubmitSerial,
+    }
+  }
+
   internal func SetForceFullRedrawForTest(value bool) {
     forceFullRedraw = value
   }
@@ -531,19 +675,26 @@ internal partial class VulkanWindowTarget {
 }
 
 public partial class Window {
+  private var suppressNativeEventPumpForTest bool
+
+  private func VulkanTargetForTest() VulkanWindowTarget ? ->
+  windowTarget as VulkanWindowTarget?
+
+  private func SdlHostForTest() SdlHost ? -> host as SdlHost?
+
   internal func MaterializePipelineCacheForTest() VulkanPipelineCacheMetrics {
-    guard let target = windowTarget else {
+    guard let target = VulkanTargetForTest() else {
       return VulkanPipelineCacheMetrics{}
     }
     return target.MaterializePipelineCacheForTest()
   }
 
   internal func RuntimeHoldNextQueueSubmitForTest() {
-    windowTarget?.HoldNextQueueSubmitForTest()
+    VulkanTargetForTest()?.HoldNextQueueSubmitForTest()
   }
 
   internal func RuntimeHoldNextQueuePresentForTest() {
-    windowTarget?.HoldNextQueuePresentForTest()
+    VulkanTargetForTest()?.HoldNextQueuePresentForTest()
   }
 
   internal func RuntimeDeferNextQueueEnqueueForTest() {
@@ -552,36 +703,42 @@ public partial class Window {
 
   internal func RuntimeWaitForHeldQueueCallForTest(timeoutMs int32) bool -> VulkanSharedRuntime.WaitForHeldQueueCallForTest(timeoutMs)
 
-  internal func RuntimeQueueWorkPendingForTest() bool -> windowTarget?.QueueWorkPending ?? false
+  internal func RuntimeQueueWorkPendingForTest() bool -> VulkanTargetForTest()?.QueueWorkPending ?? false
+
+  internal func SchedulerWaitMsForTest(nowTicks float64) int32 -> SchedulerWaitMs(nowTicks)
+
+  internal func DeferSchedulerFrameForTest(seconds float64) {
+    host?.DeferFrame(float64(Stopwatch.GetTimestamp()) + seconds * float64(Stopwatch.Frequency))
+  }
 
   internal func PollQueueCompletionForTest() bool {
-    let completed = windowTarget?.PollQueueCompletion() == true
+    let completed = VulkanTargetForTest()?.PollQueueCompletion() == true
     if completed {
       markFrameRendered()
-      host?.FramePacing.MarkFrame(float64(Stopwatch.GetTimestamp()))
+      SdlHostForTest()?.FramePacing.MarkFrame(float64(Stopwatch.GetTimestamp()))
     }
     return completed
   }
 
   internal func DiagnosticCountersSnapshotForTest() VulkanDiagnosticCounterSnapshot {
-    guard let target = windowTarget else {
+    guard let target = VulkanTargetForTest() else {
       return VulkanDiagnosticCounterSnapshot{}
     }
     return target.DiagnosticCountersSnapshotForTest()
   }
-  internal func TimestampSupportedForTest() bool -> windowTarget?.TimestampSupportedForTest() == true
+  internal func TimestampSupportedForTest() bool -> VulkanTargetForTest()?.TimestampSupportedForTest() == true
 
   internal func SetMainPassTimestampSinkForTest(
     sink Action[VulkanDiagnosticTimestampSnapshot]?) {
-      windowTarget?.SetMainPassTimestampSinkForTest(sink)
+      VulkanTargetForTest()?.SetMainPassTimestampSinkForTest(sink)
     }
   internal func SetAllTimestampSinkForTest(
     sink Action[VulkanDiagnosticTimestampSnapshot]?) {
-      windowTarget?.SetAllTimestampSinkForTest(sink)
+      VulkanTargetForTest()?.SetAllTimestampSinkForTest(sink)
     }
   internal func SetPresentationLatencySinkForTest(
     sink Action[VulkanPresentationLatencyTestSample]?) {
-      guard let target = windowTarget else {
+      guard let target = VulkanTargetForTest() else {
         return
       }
       guard let callback = sink else {
@@ -603,27 +760,59 @@ public partial class Window {
 
   internal func BeginPresentationLatencyForTest(
     token uint64, kind int32, startTimestamp int64) {
-      windowTarget?.BeginPresentationLatency(token, kind, startTimestamp)
+      VulkanTargetForTest()?.BeginPresentationLatency(token, kind, startTimestamp)
     }
 
-  internal func PresentFenceSupportedForTest() bool -> windowTarget?.PresentFenceSupported ?? false
+  internal func PresentFenceSupportedForTest() bool -> VulkanTargetForTest()?.PresentFenceSupported ?? false
 
-  internal func DiagnosticFrameIdForTest() uint64 -> windowTarget?.DiagnosticFrameIdForTest() ?? 0uL
-  internal func CaptureTargetForTest() VulkanWindowTarget ? -> windowTarget
+  internal func DiagnosticFrameIdForTest() uint64 -> VulkanTargetForTest()?.DiagnosticFrameIdForTest() ?? 0uL
+  internal func CaptureTargetForTest() VulkanWindowTarget ? -> VulkanTargetForTest()
 
   internal func ForceRenderForTest(dt float64) {
     requestRender()
     PumpScheduled(dt)
   }
 
+  internal func StabilizeNativeMetricsForTest() {
+    let quietTicks = int64(float64(Stopwatch.Frequency) * 0.05)
+    let timeoutTicks = int64(float64(Stopwatch.Frequency) * 1.0)
+    let start = Stopwatch.GetTimestamp()
+    var quietStart = start
+    var prior = CurrentWindowMetrics()
+    while Stopwatch.GetTimestamp() - start < timeoutTicks {
+      SdlRuntime.PumpEvents(Int32.MaxValue)
+      consumeNativeMetrics()
+      let current = CurrentWindowMetrics()
+      let changed = current.LogicalWidth != prior.LogicalWidth
+        || current.LogicalHeight != prior.LogicalHeight
+        || current.FramebufferWidth != prior.FramebufferWidth
+        || current.FramebufferHeight != prior.FramebufferHeight
+      let now = Stopwatch.GetTimestamp()
+      if changed {
+        prior = current
+        quietStart = now
+      } else if now - quietStart >= quietTicks {
+        return
+      }
+      Thread.Yield()
+    }
+    throw InvalidOperationException("Window metrics did not stabilize")
+  }
+
+  internal func SuppressNativeEventPumpForTest(value bool) {
+    suppressNativeEventPumpForTest = value
+  }
+
+  internal func NativeEventPumpSuppressedForTest() bool -> suppressNativeEventPumpForTest
+
   internal func PumpForTest(dt float64) {
     PumpScheduled(dt)
   }
 
   internal func RequestReadbackForTest(width uint32, height uint32)
-  VulkanReadbackRequestStatus{
-    guard let target = windowTarget else {
-      return VulkanReadbackRequestStatus.NotReady
+  WindowReadbackRequestStatus{
+    guard let target = VulkanTargetForTest() else {
+      return WindowReadbackRequestStatus.NotReady
     }
     let region = VulkanReadbackRegion{
       X: 0u,
@@ -634,13 +823,13 @@ public partial class Window {
     return target.RequestReadback(node, background, dpi, region)
   }
 
-  internal func RequestReadbackForTest() VulkanReadbackRequestStatus -> RequestReadbackForTest(64u, 64u)
+  internal func RequestReadbackForTest() WindowReadbackRequestStatus -> RequestReadbackForTest(64u, 64u)
 
   internal func CurrentWindowMetricsForTest() WindowMetrics -> CurrentWindowMetrics()
 
   internal func ApplyNativeResizeForTest(logicalWidth int32, logicalHeight int32,
     framebufferWidth int32, framebufferHeight int32) bool{
-      guard let target = windowTarget else {
+      guard let target = VulkanTargetForTest() else {
         return false
       }
       let previousGeneration = target.CurrentPresentGeneration
@@ -662,7 +851,7 @@ public partial class Window {
           actual = target.FramebufferExtentForTest()
           currentGeneration = target.CurrentPresentGeneration
         }
-      host?.SetMetricsForTest(logicalWidth, logicalHeight, actual.Width,
+      SdlHostForTest()?.SetMetricsForTest(logicalWidth, logicalHeight, actual.Width,
         actual.Height)
       this.framebufferWidth = actual.Width
       this.framebufferHeight = actual.Height
@@ -678,82 +867,103 @@ public partial class Window {
     handleFocusChanged(hasFocus)
   }
 
-  internal func SdlWindowIdForTest() uint32 -> host?.WindowIdForTest() ?? 0u
+  internal func SdlWindowIdForTest() uint32 -> SdlHostForTest()?.WindowIdForTest() ?? 0u
 
   internal func QueueTextForTest(value string) {
     input.QueueText(value)
   }
 
-  internal func CurrentPresentModeForTest() VkPresentModeKHR -> windowTarget?.CurrentPresentMode ?? VkPresentModeKHR(-1)
+  internal func CurrentPresentModeForTest() VkPresentModeKHR -> VulkanTargetForTest()?.CurrentPresentMode ?? VkPresentModeKHR(-1)
 
-  internal func CurrentPresentGenerationForTest() uint64 -> windowTarget?.CurrentPresentGeneration ?? 0uL
+  internal func CurrentPresentGenerationForTest() uint64 -> VulkanTargetForTest()?.CurrentPresentGeneration ?? 0uL
 
   internal func FrameSubmissionSerialsForTest() VulkanFrameSubmissionTestSnapshot {
-    guard let target = windowTarget else {
+    guard let target = VulkanTargetForTest() else {
       return VulkanFrameSubmissionTestSnapshot{}
     }
     return target.FrameSubmissionSerialsForTest()
   }
 
-  internal func PacingRefreshRateForTest() float64 -> host?.FramePacing.RefreshRate ?? 0.0
+  internal func GraphicsTimelineForTest() VulkanGraphicsTimelineTestSnapshot {
+    guard let target = VulkanTargetForTest() else {
+      return VulkanGraphicsTimelineTestSnapshot{}
+    }
+    return target.GraphicsTimelineForTest()
+  }
+
+  internal func PollGraphicsSubmissionForTest(serial uint64) VkResult ->
+  VulkanTargetForTest()?.PollGraphicsSubmissionForTest(serial) ?? VkConstants.VK_NOT_READY
+
+  internal func WaitGraphicsSubmissionForTest(serial uint64, timeout uint64) VkResult ->
+  VulkanTargetForTest()?.WaitGraphicsSubmissionForTest(serial, timeout) ?? VkConstants.VK_NOT_READY
+
+  internal func GraphicsTimelineValidationRollbackForTest()
+  VulkanGraphicsTimelineValidationTestSnapshot{
+    guard let target = VulkanTargetForTest() else {
+      return VulkanGraphicsTimelineValidationTestSnapshot{}
+    }
+    return target.GraphicsTimelineValidationRollbackForTest()
+  }
+
+  internal func PacingRefreshRateForTest() float64 -> SdlHostForTest()?.FramePacing.RefreshRate ?? 0.0
 
   internal func PollReadbackForTest() VkResult {
-    guard let target = windowTarget else {
+    guard let target = VulkanTargetForTest() else {
       return VkConstants.VK_NOT_READY
     }
     return target.PollReadback()
   }
 
   internal func TakeReadbackForTest() VulkanReadbackResult? {
-    guard let target = windowTarget else {
+    guard let target = VulkanTargetForTest() else {
       return nil
     }
     return target.TakeReadbackResult()
   }
 
   internal func ReadbackRequestCountForTest() uint64 {
-    guard let target = windowTarget else {
+    guard let target = VulkanTargetForTest() else {
       return 0uL
     }
     return target.ReadbackRequestCount
   }
 
   internal func ReadbackCompletionCountForTest() uint64 {
-    guard let target = windowTarget else {
+    guard let target = VulkanTargetForTest() else {
       return 0uL
     }
     return target.ReadbackCompletionCount
   }
 
-  internal func ReadbackSubmissionReadyForReconcileForTest() bool -> windowTarget?.ReadbackSubmissionReadyForReconcile == true
+  internal func ReadbackSubmissionReadyForReconcileForTest() bool -> VulkanTargetForTest()?.ReadbackSubmissionReadyForReconcile == true
 
   internal func ReadbackResidentResourceBytesForTest() uint64 {
-    guard let target = windowTarget else {
+    guard let target = VulkanTargetForTest() else {
       return 0uL
     }
     return uint64(target.ReadbackResidentResourceBytes)
   }
 
   internal func ReadbackTimingForTest() VulkanReadbackTimingSnapshot {
-    guard let target = windowTarget else {
+    guard let target = VulkanTargetForTest() else {
       return VulkanReadbackTimingSnapshot{}
     }
     return target.ReadbackTiming
   }
 
   internal func SceneRetentionSnapshotForTest() VulkanSceneRetentionTestSnapshot {
-    guard let target = windowTarget else {
+    guard let target = VulkanTargetForTest() else {
       return VulkanSceneRetentionTestSnapshot{}
     }
     return target.SceneRetentionSnapshotForTest()
   }
 
   internal func SetForceFullRedrawForTest(value bool) {
-    windowTarget?.SetForceFullRedrawForTest(value)
+    VulkanTargetForTest()?.SetForceFullRedrawForTest(value)
   }
 
   internal func SetExactTextClipCullForTest(value bool) {
-    windowTarget?.SetExactTextClipCullForTest(value)
+    VulkanTargetForTest()?.SetExactTextClipCullForTest(value)
   }
 
   internal func InputValidateInitialForTest(handle ElementHandle, source string) bool {
@@ -879,14 +1089,14 @@ public partial class Window {
 
   internal func PrimitiveFrameRetentionSnapshotForTest()
   VulkanPrimitiveFrameRetentionTestSnapshot{
-    guard let target = windowTarget else {
+    guard let target = VulkanTargetForTest() else {
       return VulkanPrimitiveFrameRetentionTestSnapshot{}
     }
     return target.PrimitiveFrameRetentionSnapshotForTest()
   }
   internal func TextFrameRetentionSnapshotForTest()
   VulkanTextFrameRetentionTestSnapshot{
-    guard let target = windowTarget else {
+    guard let target = VulkanTargetForTest() else {
       return VulkanTextFrameRetentionTestSnapshot{}
     }
     return target.TextFrameRetentionSnapshotForTest()
@@ -894,7 +1104,7 @@ public partial class Window {
 
   internal func ClipMaskRetentionSnapshotForTest()
   VulkanClipMaskRetentionTestSnapshot{
-    guard let target = windowTarget else {
+    guard let target = VulkanTargetForTest() else {
       return VulkanClipMaskRetentionTestSnapshot{}
     }
     let stats = target.LastClipMaskFrameStats
@@ -944,6 +1154,33 @@ internal partial class SdlHost {
 
 internal class WindowReadbackTestFixture {
   shared {
+    internal func AbortPrimitiveMetrics(window Window, finish bool) VulkanPrimitiveFrameStats ->
+    window.AbortPrimitiveMetricsForTest(finish)
+
+    internal func VerifyFlushMetrics(window Window) {
+      window.VerifyFlushMetricsForTest()
+    }
+
+    internal func ShaderEffectProgramId(effect ShaderEffect) uint64 -> effect.ProgramId
+
+    internal func ResolvePipelineIdentity(window Window, effects []ShaderEffect,
+      warmEffect ShaderEffect) VulkanShaderEffectPipelineIdentityTestSnapshot ->
+    window.ResolvePipelineIdentityForTest(effects, warmEffect)
+
+    internal func ResolveShaderEffectPipeline(window Window, effect ShaderEffect) uint64 ->
+    window.ResolveShaderEffectPipelineForTest(effect)
+
+    internal func ShaderEffectPipelineEntryCount(window Window) int32 ->
+    window.ShaderEffectPipelineEntryCountForTest()
+
+    internal func VerifyShaderEffectDigestCollision(window Window,
+      first ShaderEffectProgram, second ShaderEffectProgram) bool ->
+    window.VerifyShaderEffectDigestCollisionForTest(first, second)
+
+    internal func RejectShaderEffectWithoutVulkanArtifact(
+      window Window, effect ShaderEffect) bool ->
+    window.RejectShaderEffectWithoutVulkanArtifactForTest(effect)
+
     internal func MaterializePipelineCache(window Window) VulkanPipelineCacheMetrics ->
     window.MaterializePipelineCacheForTest()
 
@@ -967,6 +1204,10 @@ internal class WindowReadbackTestFixture {
     }
 
     internal func DiagnosticCounters(window Window) VulkanDiagnosticCounterSnapshot -> window.DiagnosticCountersSnapshotForTest()
+    internal func TargetDiagnosticCounters(target VulkanWindowTarget?) VulkanDiagnosticCounterSnapshot {
+      guard let active = target else { return VulkanDiagnosticCounterSnapshot{} }
+      return active.DiagnosticCountersSnapshotForTest()
+    }
     internal func CellDirty(cell Cell) bool -> cell.IsDirty()
 
     internal func CellMounted(cell Cell) bool -> cell.MountedNode() != nil
@@ -1004,7 +1245,9 @@ internal class WindowReadbackTestFixture {
         +int64(float64(Stopwatch.Frequency) * timeoutSeconds)
         var accepted = false
         while Stopwatch.GetTimestamp() < deadline {
-          SdlRuntime.PumpEvents(Int32.MaxValue)
+          if !window.NativeEventPumpSuppressedForTest() {
+            SdlRuntime.PumpEvents(Int32.MaxValue)
+          }
           window.PollQueueCompletionForTest()
           let current = window.FrameSubmissionSerialsForTest()
           accepted = current.Slot0Serial != baseline.Slot0Serial
@@ -1020,6 +1263,14 @@ internal class WindowReadbackTestFixture {
         }
         throw InvalidOperationException("WindowReadbackTestFixture.ForceRender did not accept and drain queue work")
       }
+
+    internal func StabilizeNativeMetrics(window Window) {
+      window.StabilizeNativeMetricsForTest()
+    }
+
+    internal func SuppressNativeEventPump(window Window, value bool) {
+      window.SuppressNativeEventPumpForTest(value)
+    }
 
     internal func ForceRenderNonblocking(window Window, dt float64) {
       window.ForceRenderForTest(dt)
@@ -1043,10 +1294,10 @@ internal class WindowReadbackTestFixture {
       window.SetExactTextClipCullForTest(value)
     }
 
-    internal func Request(window Window) VulkanReadbackRequestStatus -> window.RequestReadbackForTest()
+    internal func Request(window Window) WindowReadbackRequestStatus -> window.RequestReadbackForTest()
 
     internal func Request(window Window, width uint32, height uint32)
-    VulkanReadbackRequestStatus -> window.RequestReadbackForTest(width, height)
+    WindowReadbackRequestStatus -> window.RequestReadbackForTest(width, height)
 
     internal func Metrics(window Window) WindowMetrics -> window.CurrentWindowMetricsForTest()
     internal func Resize(window Window, logicalWidth int32, logicalHeight int32,
@@ -1075,6 +1326,19 @@ internal class WindowReadbackTestFixture {
     internal func PresentGeneration(window Window) uint64 -> window.CurrentPresentGenerationForTest()
 
     internal func FrameSubmissions(window Window) VulkanFrameSubmissionTestSnapshot -> window.FrameSubmissionSerialsForTest()
+
+    internal func GraphicsTimeline(window Window)
+    VulkanGraphicsTimelineTestSnapshot -> window.GraphicsTimelineForTest()
+
+    internal func PollGraphicsSubmission(window Window, serial uint64) VkResult ->
+    window.PollGraphicsSubmissionForTest(serial)
+
+    internal func WaitGraphicsSubmission(window Window, serial uint64,
+      timeout uint64) VkResult -> window.WaitGraphicsSubmissionForTest(serial, timeout)
+
+    internal func GraphicsTimelineValidationRollback(window Window)
+    VulkanGraphicsTimelineValidationTestSnapshot ->
+    window.GraphicsTimelineValidationRollbackForTest()
 
     internal func PacingRefreshRate(window Window) float64 -> window.PacingRefreshRateForTest()
 
@@ -1170,6 +1434,13 @@ internal class WindowReadbackTestFixture {
     }
 
     internal func RuntimeQueueWorkPending(window Window) bool -> window.RuntimeQueueWorkPendingForTest()
+
+    internal func SchedulerWaitMs(window Window, nowTicks float64) int32 ->
+    window.SchedulerWaitMsForTest(nowTicks)
+
+    internal func DeferSchedulerFrame(window Window, seconds float64) {
+      window.DeferSchedulerFrameForTest(seconds)
+    }
 
     internal func DrainWindowQueue(window Window, timeoutMs int32) {
       let timeoutTicks = int64(float64(Stopwatch.Frequency) * float64(timeoutMs) / 1000.0)
@@ -1328,4 +1599,198 @@ internal class WindowReadbackTestFixture {
     }
 
   }
+}
+
+internal unsafe partial class VulkanSharedPrimitiveFormatState {
+  internal func PipelineIdentityForTest(effects []ShaderEffect,
+    warmEffect ShaderEffect) VulkanShaderEffectPipelineIdentityTestSnapshot{
+      var firstPipeline VkPipeline
+      var allHandlesEqual = true
+      var uniquePipelineCount int32
+      for effect in effects {
+        let pipeline = ResolveShaderEffectPipeline(effect)
+        if firstPipeline == 0uL {
+          firstPipeline = pipeline
+          uniquePipelineCount = 1
+        } else if pipeline != firstPipeline {
+          allHandlesEqual = false
+          uniquePipelineCount++
+        }
+      }
+      let beforeWarm = shaderEffectPipelineCount
+      let warmPipeline = ResolveShaderEffectPipeline(warmEffect)
+      var warmIndex int32
+      var sameObjectStable = warmPipeline == firstPipeline
+      while warmIndex < 4096 {
+        sameObjectStable = sameObjectStable
+          && ResolveShaderEffectPipeline(warmEffect) == warmPipeline
+        warmIndex++
+      }
+      sameObjectStable = sameObjectStable
+        && shaderEffectPipelineCount == beforeWarm
+      return VulkanShaderEffectPipelineIdentityTestSnapshot{
+        EntryCount: shaderEffectPipelineCount,
+        UniquePipelineCount: uniquePipelineCount,
+        FirstPipeline: firstPipeline,
+        AllHandlesEqual: allHandlesEqual,
+        SameObjectStable: sameObjectStable,
+      }
+    }
+
+  internal func VerifyDigestCollisionForTest(
+    first ShaderEffectProgram, second ShaderEffectProgram) bool{
+      let firstDigest = first.VulkanSpirvDigest
+      let secondDigest = second.VulkanSpirvDigest
+      if firstDigest.Length != secondDigest.Length {
+        return false
+      }
+      Array.Copy(firstDigest, secondDigest, firstDigest.Length)
+      let before = shaderEffectPipelineCount
+      let firstPipeline = ResolveShaderEffectPipeline(ShaderEffect(first))
+      let secondPipeline = ResolveShaderEffectPipeline(ShaderEffect(second))
+      return firstPipeline != 0uL && secondPipeline != 0uL
+        && firstPipeline != secondPipeline
+        && shaderEffectPipelineCount == before + 1
+    }
+
+  internal func RejectMissingArtifactForTest(effect ShaderEffect) bool {
+    try {
+      ResolveShaderEffectPipeline(effect)
+      return false
+    } catch (error NotSupportedException) {
+      return true
+    }
+  }
+
+  internal prop ShaderEffectPipelineEntryCountForTest int32{
+    get -> shaderEffectPipelineCount
+  }
+}
+
+internal unsafe partial class VulkanPrimitiveRenderer {
+  internal func PipelineIdentityForTest(effects []ShaderEffect,
+    warmEffect ShaderEffect) VulkanShaderEffectPipelineIdentityTestSnapshot ->
+  primitivePipelines.PipelineIdentityForTest(effects, warmEffect)
+
+  internal func ResolveShaderEffectPipelineForTest(effect ShaderEffect) uint64 ->
+  primitivePipelines.ResolveShaderEffectPipeline(effect)
+
+  internal func VerifyShaderEffectDigestCollisionForTest(
+    first ShaderEffectProgram, second ShaderEffectProgram) bool ->
+  primitivePipelines.VerifyDigestCollisionForTest(first, second)
+
+  internal func RejectShaderEffectWithoutVulkanArtifactForTest(effect ShaderEffect) bool ->
+  primitivePipelines.RejectMissingArtifactForTest(effect)
+
+  internal prop ShaderEffectPipelineEntryCountForTest int32{
+    get -> primitivePipelines.ShaderEffectPipelineEntryCountForTest
+  }
+}
+
+internal unsafe partial class VulkanWindowTarget {
+  internal func PipelineIdentityForTest(effects []ShaderEffect,
+    warmEffect ShaderEffect) VulkanShaderEffectPipelineIdentityTestSnapshot{
+      guard let renderer = primitiveRenderer else {
+        throw InvalidOperationException("Pipeline identity fixture requires a renderer")
+      }
+      return renderer.PipelineIdentityForTest(effects, warmEffect)
+    }
+
+  internal func ResolveShaderEffectPipelineForTest(effect ShaderEffect) uint64 {
+    guard let renderer = primitiveRenderer else {
+      throw InvalidOperationException("Pipeline identity fixture requires a renderer")
+    }
+    return renderer.ResolveShaderEffectPipelineForTest(effect)
+  }
+
+  internal func VerifyShaderEffectDigestCollisionForTest(
+    first ShaderEffectProgram, second ShaderEffectProgram) bool{
+      guard let renderer = primitiveRenderer else {
+        throw InvalidOperationException("Pipeline identity fixture requires a renderer")
+      }
+      return renderer.VerifyShaderEffectDigestCollisionForTest(first, second)
+    }
+
+  internal func RejectShaderEffectWithoutVulkanArtifactForTest(effect ShaderEffect) bool {
+    guard let renderer = primitiveRenderer else {
+      throw InvalidOperationException("Pipeline identity fixture requires a renderer")
+    }
+    return renderer.RejectShaderEffectWithoutVulkanArtifactForTest(effect)
+  }
+
+  internal prop ShaderEffectPipelineEntryCountForTest int32{
+    get -> primitiveRenderer?.ShaderEffectPipelineEntryCountForTest ?? 0
+  }
+}
+
+internal unsafe partial class VulkanPrimitiveRenderer {
+  internal func AbortPrimitiveMetricsForTest(finish bool) VulkanPrimitiveFrameStats {
+    let data = primitiveFrameData
+    data.BeginPrepare(0, 1000uL, 8, 123uL, uint64.MaxValue)
+    var record VulkanPrimitiveGpuRecord{}
+    let count = finish ? 1000 : 1
+    for index in 0 ... count {
+      data.WriteRecord(index, *void(&record))
+    }
+    data.WriteEffectData([]uint8{ 1, 2, 3, 4, 5, 6, 7, 8 }, 8)
+    if finish { data.FinishPrepare() }
+    data.Abort(0)
+    return data.LastStats
+  }
+}
+
+internal unsafe partial class VulkanWindowTarget {
+  internal func AbortPrimitiveMetricsForTest(finish bool) VulkanPrimitiveFrameStats {
+    var attempts = 0
+    while !WaitForGpu() {
+      if attempts >= 1000 { throw InvalidOperationException("Metrics fixture requires completed queue work") }
+      Thread.Sleep(1)
+      attempts++
+    }
+    guard let renderer = primitiveRenderer else { throw InvalidOperationException("Renderer missing") }
+    return renderer.AbortPrimitiveMetricsForTest(finish)
+  }
+
+  internal func VerifyFlushMetricsForTest() {
+    guard let allocator = memoryAllocator else { throw InvalidOperationException("Allocator missing") }
+    let creation = VulkanBufferFactory.CreateMapped(device, dispatch, allocator, nil,
+      128uL, uint32(VkConstants.VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VulkanMemoryPolicy.HostVisibleCoherentCached)
+    let allocation = creation.Allocation
+    let coherent = allocation.hostCoherent
+    try {
+      allocation.hostCoherent = true
+      let skipped = allocator.FlushBeforeSubmit(allocation, 0uL, 128uL, out var skippedCall)
+      allocation.hostCoherent = false
+      let flushed = allocator.FlushBeforeSubmit(allocation, 0uL, 128uL, out var nativeCall)
+      if skipped != VkConstants.VK_SUCCESS || skippedCall
+        || flushed != VkConstants.VK_SUCCESS || !nativeCall{
+          throw InvalidOperationException("Native flush call accounting is incorrect")
+        }
+    } finally {
+      allocation.hostCoherent = coherent
+      let destroyBuffer = dispatch.vkDestroyBuffer
+      destroyBuffer(device, creation.Buffer, nil)
+      allocator.Release(allocation)
+    }
+  }
+}
+
+public partial class Window {
+  internal func AbortPrimitiveMetricsForTest(finish bool) VulkanPrimitiveFrameStats ->
+  VulkanTargetForTest()!!.AbortPrimitiveMetricsForTest(finish)
+  internal func VerifyFlushMetricsForTest() {
+    VulkanTargetForTest()!!.VerifyFlushMetricsForTest()
+  }
+  internal func ResolvePipelineIdentityForTest(effects []ShaderEffect,
+    warmEffect ShaderEffect) VulkanShaderEffectPipelineIdentityTestSnapshot ->
+  VulkanTargetForTest()!!.PipelineIdentityForTest(effects, warmEffect)
+  internal func ResolveShaderEffectPipelineForTest(effect ShaderEffect) uint64 ->
+  VulkanTargetForTest()!!.ResolveShaderEffectPipelineForTest(effect)
+  internal func ShaderEffectPipelineEntryCountForTest() int32 ->
+  VulkanTargetForTest()!!.ShaderEffectPipelineEntryCountForTest
+  internal func VerifyShaderEffectDigestCollisionForTest(
+    first ShaderEffectProgram, second ShaderEffectProgram) bool ->
+  VulkanTargetForTest()!!.VerifyShaderEffectDigestCollisionForTest(first, second)
+  internal func RejectShaderEffectWithoutVulkanArtifactForTest(effect ShaderEffect) bool ->
+  VulkanTargetForTest()!!.RejectShaderEffectWithoutVulkanArtifactForTest(effect)
 }

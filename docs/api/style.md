@@ -746,7 +746,7 @@ Sets the defensively copied front-to-back shadow stack. An empty array clears st
 
 ### `ClipPath`
 
-Sets a vector path with a closed contour that clips this element and its descendants.
+Sets a vector path with a contour that clips this element and its descendants.
 
 ### `ClipPathFillRule`
 

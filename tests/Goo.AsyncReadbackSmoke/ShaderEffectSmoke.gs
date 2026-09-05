@@ -71,6 +71,15 @@ class ShaderEffectCell : Cell {
         ShaderEffect: effect,
         BlendMode: BlendMode.Multiply,
       },
+      Text{
+        Content: "DPI",
+        Position: PositionType.Absolute,
+        Left: 80,
+        Top: 2,
+        FontFamily: "monospace",
+        FontSize: 16,
+        Color: Color.Rgb(4, 252, 4),
+      },
     },
   }
 }
@@ -87,14 +96,74 @@ func ShaderEffectSum(values []int64) int64 {
   return total
 }
 
+func ShaderEffectWaitForGraphics(window Window) {
+  let timeline = WindowReadbackTestFixture.GraphicsTimeline(window)
+  Require(timeline.Available && timeline.CompletedResult == VkConstants.VK_SUCCESS
+      && timeline.LastEnqueuedSerial > 0uL,
+    "ShaderEffect graphics timeline is unavailable")
+  Require(WindowReadbackTestFixture.WaitGraphicsSubmission(
+    window, timeline.LastEnqueuedSerial, VkConstants.VK_WHOLE_SIZE) == VkConstants.VK_SUCCESS,
+    "ShaderEffect graphics submission did not complete")
+}
+
+func ShaderEffectGreenTextMinX(frame VulkanReadbackResult) int32 {
+  var minimum = Int32.MaxValue
+  var y uint32
+  let maximumY = frame.Height < 40u ? frame.Height : 40u
+  while y < maximumY {
+    var x uint32
+    while x < frame.Width {
+      let index = int32((y * frame.Width + x) * 4u)
+      let red = int32(frame.Pixels[index])
+      let green = int32(frame.Pixels[index + 1])
+      let blue = int32(frame.Pixels[index + 2])
+      if green > 160 && green > red + 80 && green > blue + 80
+        && int32(x) < minimum{
+          minimum = int32(x)
+        }
+      x++
+    }
+    y++
+  }
+  return minimum
+}
+
+func ShaderEffectWarmRetainedResources(window Window) {
+  var stableSlots uint32
+  var attempt int32
+  while attempt < 32 && stableSlots != 3u {
+    let before = WindowReadbackTestFixture.DiagnosticCounters(window)
+    WindowReadbackTestFixture.ForceRender(window, 0.0166666666666667)
+    ShaderEffectWaitForGraphics(window)
+    let after = WindowReadbackTestFixture.DiagnosticCounters(window)
+    let primitive = WindowReadbackTestFixture.PrimitiveFrameRetention(window)
+    if ShaderEffectDelta(after.vulkanObjectAllocationCount,
+      before.vulkanObjectAllocationCount) == 0uL
+      && ShaderEffectDelta(after.vulkanDeviceMemoryAllocationCount,
+        before.vulkanDeviceMemoryAllocationCount) == 0uL
+      && ShaderEffectDelta(after.layerPoolCreateCount,
+        before.layerPoolCreateCount) == 0uL {
+          if primitive.SlotIndex == 0 {
+            stableSlots = stableSlots | 1u
+          } else if primitive.SlotIndex == 1 {
+            stableSlots = stableSlots | 2u
+          }
+        } else {
+          stableSlots = 0u
+        }
+    attempt++
+  }
+  Require(stableSlots == 3u,
+    "ShaderEffect retained resources did not stabilize across both frame slots")
+}
+
 func RunShaderEffectSmoke() {
   WindowReadbackTestFixture.ShaderEffectVerifyPresentationRetirement()
   Require(Environment.GetEnvironmentVariable("GOO_VK_DIAGNOSTICS") == "1",
     "GOO_VK_DIAGNOSTICS=1 is required")
-  let shaderPath = Path.Combine(AppContext.BaseDirectory, "control_effect.frag.spv")
+  let shaderPath = Path.Combine(AppContext.BaseDirectory, "control_effect.frag.goo-effect")
   Require(File.Exists(shaderPath), "Shader effect asset is missing")
-  let shaderBytes = File.ReadAllBytes(shaderPath)
-  let effect = ShaderEffect(shaderBytes, true, 20.0F)
+  let effect = ShaderEffect(ShaderEffectProgram.Load(shaderPath), true, 20.0F)
   var transferReleaseCount int32
   let data = ShaderEffectData.Transfer(BitConverter.GetBytes(1.0F),
     func() { transferReleaseCount++ })
@@ -153,7 +222,6 @@ func RunShaderEffectSmoke() {
     Require(cell.ClickCount == 1,
       "Shader effect changed the button hit target")
 
-    let dataCountersBefore = WindowReadbackTestFixture.DiagnosticCounters(opened)
     data.PublishTransferred(BitConverter.GetBytes(0.5F),
       func() { transferReleaseCount++ })
     Require(transferReleaseCount == 1,
@@ -165,18 +233,29 @@ func RunShaderEffectSmoke() {
     Require(int32(firstCenter[0]) > int32(dataCenter[0]) + 40,
       "ShaderEffect retained data mutation did not change output: "
       +PrimitivePixelText(dataCenter))
+    ShaderEffectWarmRetainedResources(opened)
+    let dataCountersBefore = WindowReadbackTestFixture.DiagnosticCounters(opened)
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+    ShaderEffectWaitForGraphics(opened)
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+    ShaderEffectWaitForGraphics(opened)
     let retainedDataFrame = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
     let dataCountersAfter = WindowReadbackTestFixture.DiagnosticCounters(opened)
-    Require(retainedDataFrame.WrittenBytes == 0uL
+    Require(retainedDataFrame.PlannedTransferBytes == 0uL
         && retainedDataFrame.RetainedReuse > 0uL,
       "ShaderEffect unchanged retained data was uploaded again")
-    Require(ShaderEffectDelta(dataCountersAfter.vulkanObjectAllocationCount,
-      dataCountersBefore.vulkanObjectAllocationCount) == 0uL
-        && ShaderEffectDelta(dataCountersAfter.vulkanDeviceMemoryAllocationCount,
-          dataCountersBefore.vulkanDeviceMemoryAllocationCount) == 0uL,
-      "ShaderEffect retained data frame created Vulkan resources")
+    let retainedDataObjectAllocations = ShaderEffectDelta(
+      dataCountersAfter.vulkanObjectAllocationCount,
+      dataCountersBefore.vulkanObjectAllocationCount)
+    let retainedDataMemoryAllocations = ShaderEffectDelta(
+      dataCountersAfter.vulkanDeviceMemoryAllocationCount,
+      dataCountersBefore.vulkanDeviceMemoryAllocationCount)
+    Require(retainedDataObjectAllocations == 0uL && retainedDataMemoryAllocations == 0uL,
+      "ShaderEffect retained data frame created Vulkan resources: objects="
+      +retainedDataObjectAllocations.ToString() + " memory="
+      +retainedDataMemoryAllocations.ToString() + " layers="
+      +ShaderEffectDelta(dataCountersAfter.layerPoolCreateCount,
+        dataCountersBefore.layerPoolCreateCount).ToString())
     let copiedData = BitConverter.GetBytes(1.0F)
     data.Publish(copiedData)
     var copiedDataIndex int32
@@ -200,7 +279,7 @@ func RunShaderEffectSmoke() {
     effect.SetParameter(0, Vector4(0.25F, 1.0F, 0.25F, 1.0F))
     let countersBefore = WindowReadbackTestFixture.DiagnosticCounters(opened)
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
-    let second = PrimitiveReadback(opened, metrics)
+    ShaderEffectWaitForGraphics(opened)
     let countersAfter = WindowReadbackTestFixture.DiagnosticCounters(opened)
     warmObjectAllocations = ShaderEffectDelta(countersAfter.vulkanObjectAllocationCount,
       countersBefore.vulkanObjectAllocationCount)
@@ -208,6 +287,7 @@ func RunShaderEffectSmoke() {
       countersBefore.vulkanDeviceMemoryAllocationCount)
     Require(warmObjectAllocations == 0uL && warmDeviceMemoryAllocations == 0uL,
       "ShaderEffect warm parameter frame created Vulkan resources")
+    let second = PrimitiveReadback(opened, metrics)
     let secondCenter = PrimitiveLogicalPixel(second.Pixels, second.Width, metrics, targetX, targetY)
     Require(int32(secondCenter[2]) > int32(secondCenter[0]) + 100
         && int32(secondCenter[2]) > int32(secondCenter[1]) + 60,
@@ -260,6 +340,19 @@ func RunShaderEffectSmoke() {
         && int32(resizedCenter[2]) > int32(resizedCenter[1]) + 60,
       "Shader effect output did not survive resize and display scaling: "
       +PrimitivePixelText(resizedCenter))
+    Require(WindowReadbackTestFixture.Resize(opened, 176, 120, 264, 180),
+      "Shader effect synthetic 1.5x resize failed")
+    let scaledMetrics = WindowReadbackTestFixture.Metrics(opened)
+    Require(Math.Abs(scaledMetrics.DisplayScaleX - 1.5) < 0.001
+        && Math.Abs(scaledMetrics.DisplayScaleY - 1.5) < 0.001,
+      "Shader effect synthetic display scale is incorrect")
+    WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+    let scaled = PrimitiveReadback(opened, scaledMetrics)
+    let scaledTextMinX = ShaderEffectGreenTextMinX(scaled)
+    Require(scaledTextMinX >= 110 && scaledTextMinX < 150,
+      "Shader effect readback did not scale retained text: x="
+      +scaledTextMinX.ToString())
+    resizedMetrics = scaledMetrics
 
     let recoveryBefore = WindowReadbackTestFixture.DiagnosticCounters(opened).deviceRecoveryCount
     VulkanSharedRuntime.FailNextGraphicsSubmissionForTest()
@@ -331,9 +424,9 @@ func RunShaderEffectBenchmark() {
   let warmup = EnvironmentCount("GOO_SHADER_EFFECT_WARMUP", 60, 300)
   let samples = EnvironmentCount("GOO_SHADER_EFFECT_SAMPLES", 240, 2000)
   Require(samples > 0, "GOO_SHADER_EFFECT_SAMPLES must be positive")
-  let shaderPath = Path.Combine(AppContext.BaseDirectory, "control_effect.frag.spv")
+  let shaderPath = Path.Combine(AppContext.BaseDirectory, "control_effect.frag.goo-effect")
   Require(File.Exists(shaderPath), "Shader effect asset is missing")
-  let effect = ShaderEffect(File.ReadAllBytes(shaderPath), true)
+  let effect = ShaderEffect(ShaderEffectProgram.Load(shaderPath), true)
   effect.SetParameter(0, Vector4(1.0F, 0.25F, 0.25F, 0.0F))
   let frameNs = [samples]int64
   let frameAllocations = [samples]int64

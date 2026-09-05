@@ -26,8 +26,9 @@ Goo uses Semantic Versioning.
 3. Add the dated release entry to `CHANGELOG.md`, then run
    `.github/scripts/validate-onboarding.py`.
 4. Push the release commit to `main` and require a green CI run.
-5. Confirm that the release-candidates artifact contains all five packages and
-   that the clean template and DevTools installation steps passed.
+5. Confirm that the release-candidates artifact contains all six packages,
+   the Linux and macOS arm64 bundles, and that the clean template and DevTools
+   installation steps passed.
 6. Create and push the annotated tag: `git tag -a vX.Y.Z -m "Goo X.Y.Z"`.
 7. The tag run rebuilds and validates the packages, publishes them to
    NuGet.org, and creates the GitHub Release.

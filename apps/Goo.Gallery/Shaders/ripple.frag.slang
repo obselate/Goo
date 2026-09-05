@@ -5,7 +5,7 @@ float2 ringDisplacement(float2 uv, float4 ring, float frequency, float decay)
     float2 ringPosition = clamp(ring.xy, 0.0, 1.0);
     float age = max(ring.z, 0.0);
     float amplitude = clamp(ring.w, -1.0, 1.0);
-    float2 delta = uv - ringPosition;
+    float2 delta = (uv - ringPosition) * float2(16.0 / 9.0, 1.0);
     float distance = length(delta);
     float phase = distance - age * (0.45 + frequency * 0.04);
     float wave = amplitude * exp(-decay * age * 0.32) * exp(-2.0 * distance)

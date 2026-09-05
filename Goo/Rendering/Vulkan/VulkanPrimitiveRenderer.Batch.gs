@@ -10,10 +10,15 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
   private var pendingPrimitiveClipSetIndex uint32
   private var pendingPrimitiveFirstRecord uint32
   private var pendingPrimitiveRecordCount uint32
+  private var pendingTextPipeline VkPipeline
+  private var pendingTextAtlasId ResourceId
+  private var pendingTextFirstInstance uint32
+  private var pendingTextInstanceCount uint32
   private var recordDrawCallCount uint64
 
   private func ResetPrimitiveBatching() {
     pendingPrimitiveRecordCount = 0u
+    pendingTextInstanceCount = 0u
     recordDrawCallCount = 0uL
   }
 
@@ -61,6 +66,11 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
     }
 
   private func FlushPendingPrimitiveDraw(commandBuffer VkCommandBuffer) {
+    FlushPendingPrimitiveBatch(commandBuffer)
+    FlushPendingTextDraw(commandBuffer)
+  }
+
+  private func FlushPendingPrimitiveBatch(commandBuffer VkCommandBuffer) {
     if pendingPrimitiveRecordCount == 0u {
       return
     }
@@ -73,6 +83,44 @@ internal unsafe partial class VulkanPrimitiveRenderer : IDisposable {
       uint32(firstVertex), 0u)
     recordDrawCallCount++
     pendingPrimitiveRecordCount = 0u
+  }
+
+  private func CanAppendTextDraw(
+    pipeline VkPipeline,
+    atlasId ResourceId,
+    firstInstance uint32) bool -> pendingTextInstanceCount > 0u
+    && pendingTextPipeline == pipeline
+    && SameResourceId(pendingTextAtlasId, atlasId)
+    && uint64(pendingTextFirstInstance) + uint64(pendingTextInstanceCount)
+  == uint64(firstInstance)
+
+  private func BeginTextDraw(
+    pipeline VkPipeline,
+    atlasId ResourceId,
+    firstInstance uint32,
+    instanceCount uint32) {
+      pendingTextPipeline = pipeline
+      pendingTextAtlasId = atlasId
+      pendingTextFirstInstance = firstInstance
+      pendingTextInstanceCount = instanceCount
+    }
+
+  private func AppendTextDraw(instanceCount uint32) {
+    if instanceCount > uint32.MaxValue - pendingTextInstanceCount {
+      throw OverflowException("Vulkan text batch instance count overflow")
+    }
+    pendingTextInstanceCount = pendingTextInstanceCount + instanceCount
+  }
+
+  private func FlushPendingTextDraw(commandBuffer VkCommandBuffer) {
+    if pendingTextInstanceCount == 0u {
+      return
+    }
+    let draw = dispatch.vkCmdDraw
+    draw(commandBuffer, 6u, pendingTextInstanceCount, 0u,
+      pendingTextFirstInstance)
+    recordDrawCallCount++
+    pendingTextInstanceCount = 0u
   }
 
   private func RecordImmediateDraw() {

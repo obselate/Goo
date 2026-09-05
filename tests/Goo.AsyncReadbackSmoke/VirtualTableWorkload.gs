@@ -858,7 +858,7 @@ func RunVirtualTableBenchmark() {
     +" retained_text_fallbacks=" + finalScene.RetainedTextFallbackCount.ToString()
     +" retained_text_invalidations=" + finalScene.RetainedTextInvalidationCount.ToString()
     +" primitive_records=" + finalPrimitive.RecordCount.ToString()
-    +" primitive_written=" + finalPrimitive.WrittenBytes.ToString()
-    +" primitive_skipped=" + finalPrimitive.SkippedBytes.ToString()
+    +" primitive_planned_transfer=" + finalPrimitive.PlannedTransferBytes.ToString()
+    +" primitive_skipped_transfer=" + finalPrimitive.SkippedTransferBytes.ToString()
     +" close=1")
 }

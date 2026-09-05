@@ -28,10 +28,10 @@ internal partial class PointerInput {
   private var activePositions List[Point]
   private var routePositions List[Point]
   private var routeDeltas List[Point]
-  private var hit Hit
+  private var diagnosticsHook((Node?, PointerEventKind, float32, float32, PointerButton) -> bool)?
   private var control PointerDispatchControl
   private var dispatchGeneration int64
-  private var wheelControl WheelDispatchControl
+  private var wheelControl InputDispatchControl
   private var wheelDispatchGeneration int64
   private var heldButtons PointerButtons
   private var canceledButtons PointerButtons
@@ -70,15 +70,14 @@ internal partial class PointerInput {
     activePositions = mouse.ActivePositions
     routePositions = List[Point]()
     routeDeltas = List[Point]()
-    hit = Hit()
     control = PointerDispatchControl()
-    wheelControl = WheelDispatchControl()
+    wheelControl = InputDispatchControl()
     lastPressT = -10.0
   }
 
   internal func SetDiagnosticsHook(value((Node?, PointerEventKind, float32, float32,
     PointerButton) -> bool)?) ->
-  InputDiagnostics.SetPointer(this, value)
+  diagnosticsHook = value
 
   private func storeCurrent() {
     current.PressChain = pressChain
@@ -256,30 +255,26 @@ internal partial class PointerInput {
     }
   }
 
-  internal func Bind(host SdlHost) {
-    host.PointerMoved += func(pointerId int64, device SdlHostPointerDevice, x float32, y float32,
-      buttons SdlHostPointerButtons, pressure float32, modifiers SdlHostModifiers) {
-        QueueMoveFromHost(pointerId, fromSdlPointerDevice(device), x, y,
-          fromSdlPointerButtons(buttons), pressure, fromSdlModifiers(modifiers))
+  internal func Bind(host WindowHost) {
+    host.PointerMoved += (pointerId int64, device PointerDevice, x float32, y float32,
+      buttons PointerButtons, pressure float32, modifiers KeyModifiers) -> {
+        QueueMoveFromHost(pointerId, device, x, y, buttons, pressure, modifiers)
       }
-    host.PointerPressed += func(pointerId int64, device SdlHostPointerDevice, x float32, y float32,
-      button SdlHostPointerButton, buttons SdlHostPointerButtons, pressure float32,
-      modifiers SdlHostModifiers) {
-        QueuePressFromHost(pointerId, fromSdlPointerDevice(device), x, y, fromSdlPointerButton(button),
-          fromSdlPointerButtons(buttons), pressure, fromSdlModifiers(modifiers))
+    host.PointerPressed += (pointerId int64, device PointerDevice, x float32, y float32,
+      button PointerButton, buttons PointerButtons, pressure float32,
+      modifiers KeyModifiers) -> {
+        QueuePressFromHost(pointerId, device, x, y, button, buttons, pressure, modifiers)
       }
-    host.PointerReleased += func(pointerId int64, device SdlHostPointerDevice, x float32, y float32,
-      button SdlHostPointerButton, buttons SdlHostPointerButtons, pressure float32,
-      modifiers SdlHostModifiers) {
-        QueueReleaseFromHost(pointerId, fromSdlPointerDevice(device), x, y,
-          fromSdlPointerButton(button), fromSdlPointerButtons(buttons), pressure,
-          fromSdlModifiers(modifiers))
+    host.PointerReleased += (pointerId int64, device PointerDevice, x float32, y float32,
+      button PointerButton, buttons PointerButtons, pressure float32,
+      modifiers KeyModifiers) -> {
+        QueueReleaseFromHost(pointerId, device, x, y, button, buttons, pressure, modifiers)
       }
-    host.PointerCanceled += func(pointerId int64, device SdlHostPointerDevice) {
-      QueueCancel(pointerId, fromSdlPointerDevice(device))
+    host.PointerCanceled += (pointerId int64, device PointerDevice) -> {
+      QueueCancel(pointerId, device)
     }
-    host.Wheel += func(x float32, y float32, dx float32, dy float32, modifiers SdlHostModifiers) {
-      QueueWheel(x, y, dx, dy, fromSdlModifiers(modifiers))
+    host.Wheel += (x float32, y float32, dx float32, dy float32, modifiers KeyModifiers) -> {
+      QueueWheel(x, y, dx, dy, modifiers)
     }
   }
 
@@ -319,7 +314,7 @@ internal partial class PointerInput {
             }
           } else if e.Kind == PointerEventKind.Cancel {
             var diagnosticsConsumed = false
-            if let hook = InputDiagnostics.PointerHook(this) {
+            if let hook = diagnosticsHook {
               diagnosticsConsumed = hook(root, PointerEventKind.Cancel, e.X, e.Y, e.Button)
             }
             if diagnosticsConsumed || cancelInteraction(resolver, text) {
@@ -697,14 +692,14 @@ internal partial class PointerInput {
     guard let tree = root else {
       return false
     }
-    return hit.DispatchClick(tree, x, y)
+    return hitDispatchClick(tree, x, y)
   }
 
   internal func HandleMove(root Node?, resolver Resolver, x float32, y float32) bool -> handleMove(root, resolver, x, y, true, true)
 
   internal func HandlePointerMove(root Node?, resolver Resolver, x float32, y float32,
     modifiers KeyModifiers) bool{
-      if let hook = InputDiagnostics.PointerHook(this) {
+      if let hook = diagnosticsHook {
         if hook(root, PointerEventKind.Move, x, y, PointerButton.None) { return true }
       }
       let delta = nextDelta(x, y)
@@ -730,7 +725,7 @@ internal partial class PointerInput {
       var changed = false
       if allowHover {
         scratchChain.Clear()
-        hit.ChainInto(tree, x, y, scratchChain)
+        hitChainInto(tree, x, y, scratchChain)
         if chainDisabled(scratchChain) {
           scratchChain.Clear()
         }
@@ -809,7 +804,7 @@ internal partial class PointerInput {
       dragEntry = nil
       dragEditor = nil
       dragEditorStarted = false
-      hit.ChainInto(tree, x, y, pressChain)
+      hitChainInto(tree, x, y, pressChain)
       if chainDisabled(pressChain) {
         pressChain.Clear()
         clickTarget = nil
@@ -901,7 +896,7 @@ internal partial class PointerInput {
   internal func HandlePointerPress(root Node?, resolver Resolver, text TextInput, timeS float64,
     x float32, y float32, button PointerButton, buttons PointerButtons, hasButtons bool,
     eventPressure float32, hasPressure bool, modifiers KeyModifiers) bool{
-      if let hook = InputDiagnostics.PointerHook(this) {
+      if let hook = diagnosticsHook {
         if hook(root, PointerEventKind.Press, x, y, button) { return true }
       }
       nextDelta(x, y)
@@ -931,7 +926,7 @@ internal partial class PointerInput {
         if let pressed = clickTarget {
           if let tree = root {
             scratchChain.Clear()
-            hit.ChainInto(tree, x, y, scratchChain)
+            hitChainInto(tree, x, y, scratchChain)
             if !chainDisabled(scratchChain) && containsNode(scratchChain, pressed) {
               target = pressed
             }
@@ -944,7 +939,7 @@ internal partial class PointerInput {
       dragEditor = nil
       dragEditorStarted = false
       clickTarget = nil
-      return if let activate = target { hit.Activate(root, activate) } else { false }
+      return if let activate = target { hitActivate(root, activate) } else { false }
     }
 
   internal func HandlePointerRelease(root Node?, resolver Resolver, x float32, y float32,
@@ -954,7 +949,7 @@ internal partial class PointerInput {
   internal func HandlePointerRelease(root Node?, resolver Resolver, x float32, y float32,
     button PointerButton, buttons PointerButtons, hasButtons bool, eventPressure float32,
     hasPressure bool, modifiers KeyModifiers) bool{
-      if let hook = InputDiagnostics.PointerHook(this) {
+      if let hook = diagnosticsHook {
         if hook(root, PointerEventKind.Release, x, y, button) { return true }
       }
       if (int32(canceledButtons) & int32(pointerButtonMask(button))) != 0 {
@@ -1002,7 +997,7 @@ internal partial class PointerInput {
     }
     var info InputHitInfo
     hitChain.Clear()
-    hit.ChainInto(tree, x, y, hitChain)
+    hitChainInto(tree, x, y, hitChain)
     if chainDisabled(hitChain) {
       hitChain.Clear()
       return info

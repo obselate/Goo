@@ -220,7 +220,7 @@ Gets the mutable child list. Give all siblings stable keys, or give no sibling a
 
 ### `HitTestSelf`
 
-Reports whether the container itself participates in pointer hit testing.
+Overrides whether this container participates in pointer hit testing. When omitted, Goo derives the value from authored interaction behavior.
 
 ### `PinToBottom`
 
@@ -616,19 +616,17 @@ Source:
 
 Defines a retained multiline text editor.
 
-### `new(TextDocument,TextEditorController)`
+### `new(TextEditorController)`
 
 Creates an editor without presentation layers.
 
-- `document`: The document to edit.
-- `controller`: The per-view controller bound to the document.
+- `controller`: The per-view controller that owns the edited document.
 
-### `new(TextDocument,TextEditorController,TextPresentationLayer[])`
+### `new(TextEditorController,TextPresentationLayer[])`
 
 Creates an editor with ordered presentation layers.
 
-- `document`: The document to edit.
-- `controller`: The per-view controller bound to the document.
+- `controller`: The per-view controller that owns the edited document.
 - `layers`: The ordered presentation layers.
 
 ### `CaretColor`
@@ -642,10 +640,6 @@ Gets the per-view editing controller.
 ### `CurrentLineColor`
 
 Gets the current-line highlight color.
-
-### `Document`
-
-Gets the edited document.
 
 ### `Layers`
 

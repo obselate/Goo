@@ -416,8 +416,11 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
     }
     if queuedUploadEnd > publishedWordPrefix
       && queuedUploadStart <= publishedWordPrefix{
-        publishedWordPrefix = queuedUploadEnd
+        publishedWordPrefix = Math.Min(queuedUploadEnd, nextWordOffset)
       }
+    if publishedWordPrefix > nextWordOffset {
+      publishedWordPrefix = nextWordOffset
+    }
     queuedWordPrefix = publishedWordPrefix
     queuedUploadSequence = 0uL
     uploadQueued = false
@@ -438,6 +441,9 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
     if uploadQueued || atlas.UploadPending {
       return
     }
+    if publishedWordPrefix > nextWordOffset {
+      publishedWordPrefix = nextWordOffset
+    }
     if nextWordOffset < publishedWordPrefix {
       throw InvalidOperationException("Vulkan path published word prefix is invalid")
     }
@@ -452,9 +458,11 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
         sourceWordOffset = dirtyWordStart
       }
       if dirtyWordEnd > sourceWordEnd {
-        sourceWordEnd = dirtyWordEnd
+        sourceWordEnd = Math.Min(dirtyWordEnd, nextWordOffset)
       }
     }
+    sourceWordOffset = Math.Min(sourceWordOffset, nextWordOffset)
+    sourceWordEnd = Math.Min(sourceWordEnd, nextWordOffset)
     if sourceWordEnd <= sourceWordOffset {
       throw InvalidOperationException("Vulkan path upload range is empty")
     }
@@ -1126,6 +1134,14 @@ internal unsafe sealed class VulkanPathResources : IDisposable {
             }
             if queuedWordPrefix > nextWordOffset {
               queuedWordPrefix = nextWordOffset
+            }
+            if dirtyWordsPending && dirtyWordEnd > nextWordOffset {
+              dirtyWordEnd = nextWordOffset
+              if dirtyWordStart >= nextWordOffset {
+                dirtyWordsPending = false
+                dirtyWordStart = 0u
+                dirtyWordEnd = 0u
+              }
             }
             tailReusePending = true
             freeWordCount = freeWordCount - freeRange.Count

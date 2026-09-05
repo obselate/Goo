@@ -26,30 +26,51 @@ internal class LinearTimed : Simulation {
   internal var duration float64
   internal var from float64
   internal var to float64
+  internal var easing Easing
 
-  internal init(duration float64, from float64, to float64) {
+  internal init(duration float64, from float64, to float64, easing Easing = Easing.Linear) {
     this.duration = duration
     this.from = from
     this.to = to
+    this.easing = easing
   }
 
   public override func Position(elapsed float64) float64 {
-    if elapsed <= 0.0 {
+    if elapsed < 0.0 {
       return from
     }
-    if duration <= 0.0 || Done(elapsed) {
+    if duration <= 0.0 {
+      return to
+    }
+    if elapsed == 0.0 {
+      return from
+    }
+    if Done(elapsed) {
       return to
     }
     let t = elapsed / duration
-    return from + (to - from) * t
+    return from + (to - from) * ease(easing, t)
   }
 
   public override func Velocity(elapsed float64) float64 {
     if duration <= 0.0 || elapsed < 0.0 || elapsed >= duration {
       return 0.0
     }
-    return (to - from) / duration
+    return (to - from) * tweenSlope(easing, elapsed / duration) / duration
   }
 
   public override func Done(elapsed float64) bool -> elapsed >= duration
+}
+
+private func tweenSlope(easing Easing, t float64) float64 {
+  if easing == Easing.EaseIn {
+    return 2.0 * t
+  }
+  if easing == Easing.EaseOut {
+    return 2.0 * (1.0 - t)
+  }
+  if easing == Easing.EaseInOut {
+    return t < 0.5 ? 4.0 * t : 4.0 * (1.0 - t)
+  }
+  return 1.0
 }

@@ -45,6 +45,24 @@ class PrimitiveUploadCell : Cell {
     }
   }
 
+  internal func Mutate(index int32) {
+    boxes[index].Color = Color.Rgb(231, 93, 41)
+    Rebuild()
+  }
+
+  internal func ApplyWorkload(workload string, frameOrdinal int32) {
+    if workload == "sparse" {
+      boxes[0].Color = PrimitiveUploadColor(0, frameOrdinal)
+    } else if workload == "full" {
+      var index int32 = 0
+      while index < BoxCount {
+        boxes[index].Color = PrimitiveUploadColor(index, frameOrdinal)
+        index = index + 1
+      }
+    }
+    Rebuild()
+  }
+
   override func Build() Blob {
     let children = List[Blob](BoxCount)
     var index int32 = 0
@@ -71,6 +89,18 @@ class PrimitiveUploadCell : Cell {
   }
 }
 
+func PrimitiveUploadColor(index int32, frameOrdinal int32) Color -> Color.Rgb(
+  (frameOrdinal + index * 17) % 256,
+  (frameOrdinal / 256 + index * 29) % 256,
+  32 + (frameOrdinal + index * 37) % 224)
+
+func PrimitiveUploadWorkload() string {
+  let value = Environment.GetEnvironmentVariable("GOO_PRIMITIVE_UPLOAD_WORKLOAD") ?? "unchanged"
+  Require(value == "unchanged" || value == "sparse" || value == "full",
+    "GOO_PRIMITIVE_UPLOAD_WORKLOAD must be unchanged, sparse, or full")
+  return value
+}
+
 func PrimitiveUploadSum(values []int64) int64 {
   var total int64 = 0L
   var index int32 = 0
@@ -88,11 +118,13 @@ func RunPrimitiveUploadBenchmark() {
   let warmup = EnvironmentCount("GOO_PRIMITIVE_UPLOAD_WARMUP", 300, 2000)
   let samples = EnvironmentCount("GOO_PRIMITIVE_UPLOAD_SAMPLES", 2000, 10000)
   Require(samples > 0, "GOO_PRIMITIVE_UPLOAD_SAMPLES must be positive")
+  let workload = PrimitiveUploadWorkload()
   let root = PrimitiveUploadCell{}
   let frameTicks = [samples]int64
   let frameAllocations = [samples]int64
   var sawSlot0 bool = false
   var sawSlot1 bool = false
+  var measuredStartPrimitive VulkanPrimitiveFrameRetentionTestSnapshot{}
   var finalPrimitive VulkanPrimitiveFrameRetentionTestSnapshot{}
   var window Window? = nil
   try {
@@ -109,7 +141,7 @@ func RunPrimitiveUploadBenchmark() {
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
     var warmIndex int32 = 0
     while warmIndex < warmup || !sawSlot0 || !sawSlot1 {
-      root.Rebuild()
+      root.ApplyWorkload(workload, warmIndex + 1)
       WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
       let warmPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
       if warmPrimitive.SlotIndex == 0 {
@@ -122,11 +154,12 @@ func RunPrimitiveUploadBenchmark() {
         throw InvalidOperationException("Retained primitive staging did not observe both frame slots")
       }
     }
+    measuredStartPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
     var sampleIndex int32 = 0
     while sampleIndex < samples {
       let beforeBytes = GC.GetAllocatedBytesForCurrentThread()
       let start = Stopwatch.GetTimestamp()
-      root.Rebuild()
+      root.ApplyWorkload(workload, warmIndex + sampleIndex + 1)
       WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
       let end = Stopwatch.GetTimestamp()
       let afterBytes = GC.GetAllocatedBytesForCurrentThread()
@@ -165,40 +198,84 @@ func RunPrimitiveUploadBenchmark() {
   }
   let allocationTotal = PrimitiveUploadSum(frameAllocations)
   let allocationPerFrame = allocationTotal / int64(samples)
+  let measuredCpuWrittenBytes = finalPrimitive.TotalCpuWrittenBytes
+  -measuredStartPrimitive.TotalCpuWrittenBytes
+  let measuredCpuComparedBytes = finalPrimitive.TotalCpuComparedBytes
+  -measuredStartPrimitive.TotalCpuComparedBytes
+  let measuredSubmittedTransferBytes = finalPrimitive.TotalSubmittedTransferBytes
+  -measuredStartPrimitive.TotalSubmittedTransferBytes
+  let measuredCpuWriteOperations = finalPrimitive.TotalCpuWriteOperations
+  -measuredStartPrimitive.TotalCpuWriteOperations
+  let measuredDirtyRecords = finalPrimitive.TotalDirtyRecordCount
+  -measuredStartPrimitive.TotalDirtyRecordCount
+  let expectedDirtyRecords = if workload == "unchanged" {
+    0uL
+  } else if workload == "sparse" {
+    uint64(samples)
+  } else {
+    uint64(samples) * uint64(PrimitiveUploadCell.BoxCount)
+  }
+  Require(measuredDirtyRecords == expectedDirtyRecords,
+    "Retained primitive staging measured an unexpected dirty record count "
+    +measuredDirtyRecords.ToString())
   let bothSlots = sawSlot0 && sawSlot1
   Console.WriteLine("retained-primitive-staging: samples=" + samples.ToString()
+    +" workload=" + workload
     +" record_count=" + finalPrimitive.RecordCount.ToString()
     +" byte_count=" + finalPrimitive.ByteCount.ToString()
     +" primitive_records=" + finalPrimitive.RecordCount.ToString()
     +" primitive_bytes=" + finalPrimitive.ByteCount.ToString()
     +" p50_ns=" + Percentile(frameNs, 0.50).ToString()
     +" p95_ns=" + Percentile(frameNs, 0.95).ToString()
+    +" p99_ns=" + Percentile(frameNs, 0.99).ToString()
     +" max_ns=" + Maximum(frameNs).ToString()
     +" alloc_B_frame=" + allocationPerFrame.ToString()
-    +" written=" + finalPrimitive.WrittenBytes.ToString()
-    +" skipped=" + finalPrimitive.SkippedBytes.ToString()
+    +" alloc_total_B=" + allocationTotal.ToString()
+    +" alloc_p50_B=" + Percentile(frameAllocations, 0.50).ToString()
+    +" alloc_p99_B=" + Percentile(frameAllocations, 0.99).ToString()
+    +" measured_cpu_written_B=" + measuredCpuWrittenBytes.ToString()
+    +" measured_cpu_compared_B=" + measuredCpuComparedBytes.ToString()
+    +" measured_submitted_transfer_B=" + measuredSubmittedTransferBytes.ToString()
+    +" measured_cpu_write_operations=" + measuredCpuWriteOperations.ToString()
+    +" measured_dirty_records=" + measuredDirtyRecords.ToString()
+    +" planned_transfer_B=" + finalPrimitive.PlannedTransferBytes.ToString()
+    +" skipped_transfer_B=" + finalPrimitive.SkippedTransferBytes.ToString()
     +" dirty=" + finalPrimitive.DirtyRecordCount.ToString()
     +" ranges=" + finalPrimitive.UploadRangeCount.ToString()
     +" full_upload=" + (finalPrimitive.FullUpload ? "1" : "0")
-    +" mapped_writes=" + finalPrimitive.MappedWrites.ToString()
-    +" flushes=" + finalPrimitive.Flushes.ToString()
+    +" cpu_write_operations=" + finalPrimitive.CpuWriteOperations.ToString()
+    +" native_flush_calls=" + finalPrimitive.NativeFlushCalls.ToString()
     +" retained_reuse=" + finalPrimitive.RetainedReuse.ToString()
-    +" primitive_written=" + finalPrimitive.WrittenBytes.ToString()
-    +" primitive_skipped=" + finalPrimitive.SkippedBytes.ToString()
+    +" primitive_planned_transfer=" + finalPrimitive.PlannedTransferBytes.ToString()
+    +" primitive_skipped_transfer=" + finalPrimitive.SkippedTransferBytes.ToString()
     +" primitive_dirty_records=" + finalPrimitive.DirtyRecordCount.ToString()
     +" primitive_upload_ranges=" + finalPrimitive.UploadRangeCount.ToString()
     +" primitive_full_upload=" + (finalPrimitive.FullUpload ? "1" : "0")
-    +" primitive_mapped_writes=" + finalPrimitive.MappedWrites.ToString()
-    +" primitive_flushes=" + finalPrimitive.Flushes.ToString()
+    +" primitive_cpu_write_operations=" + finalPrimitive.CpuWriteOperations.ToString()
+    +" primitive_native_flush_calls=" + finalPrimitive.NativeFlushCalls.ToString()
     +" primitive_retained_reuse=" + finalPrimitive.RetainedReuse.ToString()
-    +" total_written=" + finalPrimitive.TotalWrittenBytes.ToString()
-    +" total_skipped=" + finalPrimitive.TotalSkippedBytes.ToString()
+    +" total_planned_transfer_B=" + finalPrimitive.TotalPlannedTransferBytes.ToString()
+    +" total_skipped_transfer_B=" + finalPrimitive.TotalSkippedTransferBytes.ToString()
     +" total_dirty=" + finalPrimitive.TotalDirtyRecordCount.ToString()
     +" total_ranges=" + finalPrimitive.TotalUploadRangeCount.ToString()
     +" total_full_upload=" + finalPrimitive.TotalFullUploads.ToString()
-    +" total_mapped_writes=" + finalPrimitive.TotalMappedWrites.ToString()
-    +" total_flushes=" + finalPrimitive.TotalFlushes.ToString()
+    +" total_cpu_write_operations=" + finalPrimitive.TotalCpuWriteOperations.ToString()
+    +" total_native_flush_calls=" + finalPrimitive.TotalNativeFlushCalls.ToString()
     +" total_retained_reuse=" + finalPrimitive.TotalRetainedReuse.ToString()
+    +" cpu_written_bytes=" + finalPrimitive.CpuWrittenBytes.ToString()
+    +" total_cpu_written_bytes=" + finalPrimitive.TotalCpuWrittenBytes.ToString()
+    +" cpu_compared_bytes=" + finalPrimitive.CpuComparedBytes.ToString()
+    +" total_cpu_compared_bytes=" + finalPrimitive.TotalCpuComparedBytes.ToString()
+    +" history_copied_bytes=" + finalPrimitive.HistoryCopiedBytes.ToString()
+    +" total_history_copied_bytes=" + finalPrimitive.TotalHistoryCopiedBytes.ToString()
+    +" flush_requests=" + finalPrimitive.FlushRequests.ToString()
+    +" total_flush_requests=" + finalPrimitive.TotalFlushRequests.ToString()
+    +" submitted_transfer_bytes=" + finalPrimitive.SubmittedTransferBytes.ToString()
+    +" total_submitted_transfer_bytes=" + finalPrimitive.TotalSubmittedTransferBytes.ToString()
+    +" recorded_copy_commands=" + finalPrimitive.RecordedCopyCommands.ToString()
+    +" total_recorded_copy_commands=" + finalPrimitive.TotalRecordedCopyCommands.ToString()
+    +" recorded_barriers=" + finalPrimitive.RecordedBarriers.ToString()
+    +" total_recorded_barriers=" + finalPrimitive.TotalRecordedBarriers.ToString()
     +" slot0=" + (sawSlot0 ? "1" : "0")
     +" slot1=" + (sawSlot1 ? "1" : "0")
     +" both_slots=" + (bothSlots ? "1" : "0")

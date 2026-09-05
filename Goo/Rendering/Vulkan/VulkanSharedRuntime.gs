@@ -1,5 +1,6 @@
 package Goo
 
+import System
 import System.Threading
 
 internal data struct VulkanSharedDeviceFacts {
@@ -13,6 +14,8 @@ internal data struct VulkanSharedDeviceFacts {
   var TimestampComputeAndGraphics VkBool32
 }
 
+internal data struct VulkanGraphicsQueueCore(Timeline VkSemaphore, Worker VulkanQueueWorker) { }
+
 internal unsafe sealed class VulkanSharedRuntime : IDisposable {
   private let instance VkInstance
   private let instanceDispatch VkInstanceDispatch
@@ -21,6 +24,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
   private let dispatch VkDeviceDispatch
   private let graphicsQueue VkQueue
   private let presentQueue VkQueue
+  private let graphicsTimeline VkSemaphore
   private let queueWorker VulkanQueueWorker
   private let graphicsFamilyIndex uint32
   private let presentFamilyIndex uint32
@@ -47,7 +51,6 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
   private let instanceDestroyAvailable bool
   private let deviceDestroyAvailable bool
   private let generation uint64
-  private var nextGraphicsSubmissionSerial uint64
   private var references int32
   private var deviceLost bool
   private var terminal bool
@@ -64,6 +67,48 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     private var testFailNextDeviceIdle int32
     private var testFailNextGraphicsSubmission int32
     private var testDeviceIdleCallCount int64
+
+    private func CreateGraphicsQueueCore(device VkDevice, dispatch VkDeviceDispatch,
+      queue VkQueue, accounting VulkanObjectAccounting?) VulkanGraphicsQueueCore{
+        var timeline VkSemaphore
+        var accounted bool
+        var typeInfo = VkSemaphoreTypeCreateInfo{
+          sType: VkConstants.VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+          pNext: nil,
+          semaphoreType: VkConstants.VK_SEMAPHORE_TYPE_TIMELINE,
+          initialValue: 0uL,
+        }
+        var createInfo = VkSemaphoreCreateInfo{
+          sType: VkConstants.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+          pNext: *void(&typeInfo),
+          flags: 0u,
+        }
+        try {
+          let createSemaphore = dispatch.vkCreateSemaphore
+          let result = createSemaphore(device, &createInfo, nil, &timeline)
+          if result != VkConstants.VK_SUCCESS || timeline == 0uL {
+            throw InvalidOperationException("vkCreateSemaphore failed for graphics timeline: "
+              +result.ToString())
+          }
+          if let objects = accounting {
+            objects.Allocate()
+            accounted = true
+          }
+          return VulkanGraphicsQueueCore(timeline,
+            VulkanQueueWorker(queue, dispatch, timeline))
+        } catch (error Exception) {
+          if timeline != 0uL {
+            let destroySemaphore = dispatch.vkDestroySemaphore
+            try { destroySemaphore(device, timeline, nil) } catch (cleanup Exception) { }
+          }
+          if accounted {
+            if let objects = accounting {
+              try { objects.Release() } catch (cleanup Exception) { }
+            }
+          }
+          throw error
+        }
+      }
 
     internal prop DeviceIdleCallCountForTest int64{
       get -> Interlocked.Read(ref testDeviceIdleCallCount)
@@ -441,7 +486,10 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
       dispatch = nativeDispatch
       graphicsQueue = nativeGraphicsQueue
       presentQueue = nativePresentQueue
-      queueWorker = VulkanQueueWorker(nativeGraphicsQueue, nativeDispatch)
+      let queueCore = VulkanSharedRuntime.CreateGraphicsQueueCore(
+        nativeDevice, nativeDispatch, nativeGraphicsQueue, nativeSharedObjectAccounting)
+      graphicsTimeline = queueCore.Timeline
+      queueWorker = queueCore.Worker
       graphicsFamilyIndex = nativeGraphicsFamilyIndex
       presentFamilyIndex = nativePresentFamilyIndex
       deviceWaitIdleAddress = nativeDeviceWaitIdleAddress
@@ -467,7 +515,6 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
       instanceDestroyAvailable = nativeInstanceDestroyAvailable
       deviceDestroyAvailable = nativeDeviceDestroyAvailable
       generation = nativeGeneration
-      nextGraphicsSubmissionSerial = 1uL
       references = 1
     }
 
@@ -479,6 +526,7 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
   internal prop Dispatch VkDeviceDispatch{ get -> dispatch }
   internal prop GraphicsQueue VkQueue{ get -> graphicsQueue }
   internal prop PresentQueue VkQueue{ get -> presentQueue }
+  internal prop GraphicsTimeline VkSemaphore{ get -> graphicsTimeline }
   internal prop QueueWorker VulkanQueueWorker{ get -> queueWorker }
   internal prop GraphicsFamilyIndex uint32{ get -> graphicsFamilyIndex }
   internal prop PresentFamilyIndex uint32{ get -> presentFamilyIndex }
@@ -517,22 +565,66 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     }
   }
 
-  internal func ReserveGraphicsSubmissionSerial() uint64 {
+  internal func EnqueueGraphicsSubmission(mailbox VulkanQueueMailbox,
+    validate Action[uint64]) bool{
+      if Object.ReferenceEquals(validate, nil) { throw ArgumentNullException("validate") }
+      if disposed {
+        throw ObjectDisposedException("VulkanSharedRuntime")
+      }
+      if deviceLost {
+        throw InvalidOperationException("Vulkan shared runtime device is lost")
+      }
+      if terminal {
+        throw InvalidOperationException("Vulkan shared runtime is terminal after idle failure")
+      }
+      return queueWorker.EnqueueSubmit(mailbox, validate)
+    }
+
+  internal func GetCompletedGraphicsSubmissionSerial(out value uint64) VkResult {
+    value = 0uL
     if disposed {
-      throw ObjectDisposedException("VulkanSharedRuntime")
+      return VkConstants.VK_ERROR_INITIALIZATION_FAILED
     }
     if deviceLost {
-      throw InvalidOperationException("Vulkan shared runtime device is lost")
+      return VkConstants.VK_ERROR_DEVICE_LOST
     }
     if terminal {
-      throw InvalidOperationException("Vulkan shared runtime is terminal after idle failure")
+      return terminalIdleResult
     }
-    if nextGraphicsSubmissionSerial == uint64.MaxValue {
-      throw OverflowException("Vulkan graphics submission serial overflow")
+    let getCounter = dispatch.vkGetSemaphoreCounterValue
+    let result = getCounter(device, graphicsTimeline, &value)
+    if result == VkConstants.VK_ERROR_DEVICE_LOST {
+      MarkDeviceLost()
     }
-    let serial = nextGraphicsSubmissionSerial
-    nextGraphicsSubmissionSerial = nextGraphicsSubmissionSerial + 1uL
-    return serial
+    return result
+  }
+
+  internal func PollGraphicsSubmission(serial uint64) VkResult {
+    if serial == 0uL { throw ArgumentOutOfRangeException("serial") }
+    let result = GetCompletedGraphicsSubmissionSerial(out var completed)
+    if result != VkConstants.VK_SUCCESS { return result }
+    return if completed >= serial { VkConstants.VK_SUCCESS } else { VkConstants.VK_NOT_READY }
+  }
+
+  internal func WaitGraphicsSubmission(serial uint64, timeout uint64) VkResult {
+    if serial == 0uL { throw ArgumentOutOfRangeException("serial") }
+    if disposed { return VkConstants.VK_ERROR_INITIALIZATION_FAILED }
+    if deviceLost { return VkConstants.VK_ERROR_DEVICE_LOST }
+    if terminal { return terminalIdleResult }
+    var semaphore = graphicsTimeline
+    var value = serial
+    var waitInfo = VkSemaphoreWaitInfo{
+      sType: VkConstants.VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+      pNext: nil,
+      flags: 0u,
+      semaphoreCount: 1u,
+      pSemaphores: &semaphore,
+      pValues: &value,
+    }
+    let waitSemaphores = dispatch.vkWaitSemaphores
+    let result = waitSemaphores(device, &waitInfo, timeout)
+    if result == VkConstants.VK_ERROR_DEVICE_LOST { MarkDeviceLost() }
+    return result
   }
 
   private func AcquireLease() VulkanSharedLease {
@@ -672,6 +764,13 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
       logicalPathIdentityRegistry = nil
     }
     try { memoryAllocator.Dispose() } catch (cleanup Exception) { }
+    if graphicsTimeline != 0uL {
+      let destroySemaphore = dispatch.vkDestroySemaphore
+      try { destroySemaphore(device, graphicsTimeline, nil) } catch (cleanup Exception) { }
+      if let accounting = sharedObjectAccounting {
+        try { accounting.Release() } catch (cleanup Exception) { }
+      }
+    }
     if device != nint(0) && deviceDestroyAvailable {
       let destroyDevice = dispatch.vkDestroyDevice
       destroyDevice(device, nil)
@@ -714,6 +813,13 @@ internal unsafe sealed class VulkanSharedRuntime : IDisposable {
     try { pipelineCache.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
     try { imageResources.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
     try { memoryAllocator.Dispose() } catch (cleanup Exception) { }
+    if graphicsTimeline != 0uL {
+      let destroySemaphore = dispatch.vkDestroySemaphore
+      try { destroySemaphore(device, graphicsTimeline, nil) } catch (cleanup Exception) { }
+      if let accounting = sharedObjectAccounting {
+        try { accounting.Release() } catch (cleanup Exception) { }
+      }
+    }
     if device != nint(0) && deviceDestroyAvailable {
       let destroyDevice = dispatch.vkDestroyDevice
       destroyDevice(device, nil)
@@ -762,6 +868,7 @@ internal unsafe sealed class VulkanSharedLease : IDisposable {
   internal prop Dispatch VkDeviceDispatch{ get -> owner.Dispatch }
   internal prop GraphicsQueue VkQueue{ get -> owner.GraphicsQueue }
   internal prop PresentQueue VkQueue{ get -> owner.PresentQueue }
+  internal prop GraphicsTimeline VkSemaphore{ get -> owner.GraphicsTimeline }
   internal prop QueueWorker VulkanQueueWorker{ get -> owner.QueueWorker }
   internal prop GraphicsFamilyIndex uint32{ get -> owner.GraphicsFamilyIndex }
   internal prop PresentFamilyIndex uint32{ get -> owner.PresentFamilyIndex }
@@ -797,7 +904,17 @@ internal unsafe sealed class VulkanSharedLease : IDisposable {
     get -> owner.HasUnsubmittedRecordedSharedUpload
   }
 
-  internal func ReserveGraphicsSubmissionSerial() uint64 -> owner.ReserveGraphicsSubmissionSerial()
+  internal func EnqueueGraphicsSubmission(mailbox VulkanQueueMailbox,
+    validate Action[uint64]) bool -> owner.EnqueueGraphicsSubmission(mailbox, validate)
+
+  internal func GetCompletedGraphicsSubmissionSerial(out value uint64) VkResult ->
+  owner.GetCompletedGraphicsSubmissionSerial(out value)
+
+  internal func PollGraphicsSubmission(serial uint64) VkResult ->
+  owner.PollGraphicsSubmission(serial)
+
+  internal func WaitGraphicsSubmission(serial uint64, timeout uint64) VkResult ->
+  owner.WaitGraphicsSubmission(serial, timeout)
 
   internal func MarkDeviceLost() {
     owner.MarkDeviceLost()

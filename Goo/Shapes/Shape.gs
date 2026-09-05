@@ -56,6 +56,8 @@ public class Shape : Blob {
   /// Gets or sets the stroke dash pattern.
   public prop Dashes DashPattern? { get; init; }
 
+  internal prop StrokeInset bool{ get; init; }
+
   /// Creates a shape with default paint options.
   public init() {
     Path = VectorPath.Empty
@@ -63,6 +65,7 @@ public class Shape : Blob {
     FillRule = FillRule.NonZero
     StrokeCap = StrokeCap.Butt
     StrokeJoin = StrokeJoin.Miter
+    StrokeInset = true
     miterLimit = 4.0
   }
 }

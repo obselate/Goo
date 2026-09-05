@@ -4,7 +4,7 @@ import System
 import System.Collections.Generic
 import System.Threading
 
-/// Hosts a Goo tree in an SDL window.
+/// Hosts a Goo tree in a native window.
 public partial class Window {
   /// Queues an action for the UI thread.
   /// @param action action to run during the next Pump

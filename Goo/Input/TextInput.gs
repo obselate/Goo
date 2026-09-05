@@ -6,19 +6,19 @@ import System.Text
 
 internal class TextInput {
   private var focused Node?
-  private var host SdlHost?
+  private var host WindowHost?
   private var nativeTextInputActive bool
   private var clipFallback string
-  private var focusControl KeyboardDispatchControl
+  private var focusControl InputDispatchControl
   private var focusDispatchGeneration int64
   private var focusChangeGeneration int64
 
   internal init() {
     clipFallback = ""
-    focusControl = KeyboardDispatchControl()
+    focusControl = InputDispatchControl()
   }
 
-  internal func Attach(host SdlHost) {
+  internal func Attach(host WindowHost) {
     this.host = host
     syncNativeTextInput()
   }
@@ -116,8 +116,8 @@ internal class TextInput {
     }
     if target.Kind == NodeKind.Editor && !target.EditorReadOnly {
       if let controller = target.EditorController {
-        controller.SelectAll()
-        return controller.Insert(value)
+        controller.Execute(TextCommand{ Kind: TextCommandKind.SelectAll })
+        return controller.Execute(TextCommand{ Kind: TextCommandKind.Insert, Text: value })
       }
     }
     return false
@@ -327,7 +327,7 @@ internal class TextInput {
       if !n.EditorReadOnly {
         if let controller = n.EditorController {
           committed = controller.Composition != nil
-          ? controller.CommitComposition(value) : controller.Insert(value)
+          ? controller.CommitComposition(value) : controller.Execute(TextCommand{ Kind: TextCommandKind.Insert, Text: value })
           if committed {
             n.BlinkT = 0.0
             updateTextInputArea(n)
@@ -393,7 +393,7 @@ internal class TextInput {
     var canceled = false
     if n.Kind == NodeKind.Editor {
       if let controller = n.EditorController {
-        canceled = controller.CancelComposition()
+        canceled = controller.Execute(TextCommand{ Kind: TextCommandKind.CancelComposition })
         if canceled { updateTextInputArea(n) }
       }
     }
@@ -641,7 +641,7 @@ internal class TextInput {
     var handled = true
 
     if primary && key == Key.A {
-      controller.SelectAll()
+      controller.Execute(TextCommand{ Kind: TextCommandKind.SelectAll })
     } else if primary && key == Key.C {
       let copied = controller.Copy()
       if copied != "" { clipboardSet(copied) }
@@ -651,29 +651,44 @@ internal class TextInput {
         if copied != "" { clipboardSet(copied) }
       }
     } else if primary && key == Key.V {
-      if editable { controller.Paste(clipboardGet()) }
+      if editable {
+        controller.Execute(TextCommand{ Kind: TextCommandKind.Paste, Text: clipboardGet() })
+      }
     } else if primary && key == Key.Z {
       if editable {
-        if extend { controller.Redo() } else { controller.Undo() }
+        controller.Execute(TextCommand{ Kind: extend
+          ? TextCommandKind.Redo : TextCommandKind.Undo })
       }
     } else if primary && key == Key.Y {
-      if editable { controller.Redo() }
+      if editable { controller.Execute(TextCommand{ Kind: TextCommandKind.Redo }) }
     } else if primary && key == Key.Home {
       controller.Execute(TextCommand{ Kind: TextCommandKind.MoveDocumentStart, ExtendSelection: extend })
     } else if primary && key == Key.End {
       controller.Execute(TextCommand{ Kind: TextCommandKind.MoveDocumentEnd, ExtendSelection: extend })
     } else if key == Key.Left {
-      if word { controller.MoveWordLeft(extend) } else { controller.MoveLeft(extend) }
+      controller.Execute(TextCommand{
+        Kind: word ? TextCommandKind.MoveWordLeft : TextCommandKind.MoveLeft,
+        ExtendSelection: extend,
+      })
     } else if key == Key.Right {
-      if word { controller.MoveWordRight(extend) } else { controller.MoveRight(extend) }
+      controller.Execute(TextCommand{
+        Kind: word ? TextCommandKind.MoveWordRight : TextCommandKind.MoveRight,
+        ExtendSelection: extend,
+      })
     } else if key == Key.Up {
-      controller.MoveUp(extend)
+      controller.Execute(TextCommand{ Kind: TextCommandKind.MoveUp, ExtendSelection: extend })
     } else if key == Key.Down {
-      controller.MoveDown(extend)
+      controller.Execute(TextCommand{ Kind: TextCommandKind.MoveDown, ExtendSelection: extend })
     } else if key == Key.Home {
-      controller.MoveLineStart(extend)
+      controller.Execute(TextCommand{
+        Kind: TextCommandKind.MoveLineStart,
+        ExtendSelection: extend,
+      })
     } else if key == Key.End {
-      controller.MoveLineEnd(extend)
+      controller.Execute(TextCommand{
+        Kind: TextCommandKind.MoveLineEnd,
+        ExtendSelection: extend,
+      })
     } else if key == Key.PageUp {
       controller.Execute(TextCommand{ Kind: TextCommandKind.PageUp, ExtendSelection: extend })
     } else if key == Key.PageDown {
@@ -681,27 +696,28 @@ internal class TextInput {
     } else if key == Key.Backspace {
       if editable {
         if word { controller.Execute(TextCommand{ Kind: TextCommandKind.DeleteWordBackward }) }
-        else { controller.DeleteBackward() }
+        else { controller.Execute(TextCommand{ Kind: TextCommandKind.DeleteBackward }) }
       }
     } else if key == Key.Delete {
       if editable {
         if word { controller.Execute(TextCommand{ Kind: TextCommandKind.DeleteWordForward }) }
-        else { controller.DeleteForward() }
+        else { controller.Execute(TextCommand{ Kind: TextCommandKind.DeleteForward }) }
       }
     } else if key == Key.Tab {
       if editable {
-        if extend { controller.Outdent() } else { controller.Indent() }
+        controller.Execute(TextCommand{ Kind: extend
+          ? TextCommandKind.Outdent : TextCommandKind.Indent })
       }
     } else if key == Key.Insert {
       if editable { controller.Execute(TextCommand{ Kind: TextCommandKind.ToggleOverwrite }) }
     } else if key == Key.Enter || key == Key.KeypadEnter {
       if primary {
-        controller.Submit()
+        controller.Execute(TextCommand{ Kind: TextCommandKind.Submit })
       } else if editable {
-        controller.Insert("\n")
+        controller.Execute(TextCommand{ Kind: TextCommandKind.Insert, Text: "\n" })
       }
     } else if key == Key.Escape {
-      controller.CancelComposition()
+      controller.Execute(TextCommand{ Kind: TextCommandKind.CancelComposition })
     } else {
       handled = false
     }

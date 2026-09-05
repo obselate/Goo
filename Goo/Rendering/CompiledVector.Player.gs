@@ -45,7 +45,7 @@ private sealed class CompiledVectorMorphState {
 internal sealed class CompiledVectorMotionPlayer : MotionParticle {
   private const TransformEpsilon float32 = 0.0000001F
   private let owner Cell
-  private let asset CompiledVectorAsset
+  private let asset VectorAsset
   private let nodeHandles []ElementHandle?
   private let fillHandles []ElementHandle?
   private let strokeHandles []ElementHandle?
@@ -73,7 +73,7 @@ internal sealed class CompiledVectorMotionPlayer : MotionParticle {
   private var startTime float64
   private var disposed bool
 
-  internal init(owner Cell, asset CompiledVectorAsset, tree Container) {
+  internal init(owner Cell, asset VectorAsset, tree Container) {
     this.owner = owner
     this.asset = asset
     nodeHandles = [asset.NodeCount]ElementHandle?

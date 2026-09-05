@@ -27,7 +27,7 @@ internal class WindowDefaultTitle {
   }
 }
 
-/// Hosts a Goo tree in an SDL window.
+/// Hosts a Goo tree in a native window.
 public partial class Window {
   private func prepare() {
     if Width == 0 {
@@ -45,22 +45,22 @@ public partial class Window {
       guard let cell = Root else {
         return
       }
-      paintResourceHook = func() {
+      paintResourceHook = () -> {
         Interlocked.Exchange(&pendingPaintResourceInvalidation, 1)
         requestReconcile()
       }
-      shaderEffectInvalidatedHook = func() {
+      shaderEffectInvalidatedHook = () -> {
         enqueueRetainedInvalidation(ReconcileEffects.Paint)
       }
-      imageCompletionHook = func(n Node, token object) {
+      imageCompletionHook = (n Node, token object) -> {
         enqueueImageCompletion(n, token)
       }
-      retainedInvalidationHook = func(e ReconcileEffects) {
+      retainedInvalidationHook = (e ReconcileEffects) -> {
         enqueueRetainedInvalidation(e)
       }
       resolver.PaintResourceInvalidated = paintResourceHook
       resolver.ShaderEffectInvalidated = shaderEffectInvalidatedHook
-      cellHook = func(cell Cell) {
+      cellHook = (cell Cell) -> {
         submitCell(cell)
       }
       cell.SetRebuildSubmission(cellHook)

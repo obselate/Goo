@@ -544,13 +544,9 @@ internal class Resolver {
           n.BoxShadows = t >= 1.0 ? tr.TargetShadows : work
           recordResolvedChange(StyleField.BoxShadows)
         } else {
-          if writeDirectWithInvalidation(n, StyleEntry { Field: tr.Field,
-            A: tr.FromA + (tr.ToA - tr.FromA) * ft,
-            B: tr.FromB + (tr.ToB - tr.FromB) * ft,
-            C: tr.FromC + (tr.ToC - tr.FromC) * ft,
-            D: tr.FromD + (tr.ToD - tr.FromD) * ft }, PaintResourceInvalidated) {
-              recordResolvedChange(tr.Field)
-            }
+          if writeDirectWithInvalidation(n, interpolatedTransitionEntry(tr, ft), PaintResourceInvalidated) {
+            recordResolvedChange(tr.Field)
+          }
         }
         if inheritable(tr.Field) {
           propagateInherited(n, tr.Field)
@@ -563,6 +559,31 @@ internal class Resolver {
       }
       if list.Count == 0 { Animating.RemoveAt(ni - 1) }
     }
+  }
+
+  private func interpolatedTransitionEntry(tr Transition, t float32) StyleEntry {
+    if fieldKind(tr.Field) != FieldKind.KColor {
+      return StyleEntry{ Field: tr.Field,
+        A: tr.FromA + (tr.ToA - tr.FromA) * t,
+        B: tr.FromB + (tr.ToB - tr.FromB) * t,
+        C: tr.FromC + (tr.ToC - tr.FromC) * t,
+        D: tr.FromD + (tr.ToD - tr.FromD) * t }
+    }
+    let fromWeight = tr.FromD * (1.0F - t)
+    let toWeight = tr.ToD * t
+    let alpha = fromWeight + toWeight
+    if alpha <= 0.0F {
+      return StyleEntry{ Field: tr.Field,
+        A: tr.FromA + (tr.ToA - tr.FromA) * t,
+        B: tr.FromB + (tr.ToB - tr.FromB) * t,
+        C: tr.FromC + (tr.ToC - tr.FromC) * t,
+        D: 0.0F }
+    }
+    return StyleEntry{ Field: tr.Field,
+      A: (tr.FromA * fromWeight + tr.ToA * toWeight) / alpha,
+      B: (tr.FromB * fromWeight + tr.ToB * toWeight) / alpha,
+      C: (tr.FromC * fromWeight + tr.ToC * toWeight) / alpha,
+      D: alpha }
   }
 
   internal func propagateInherited(parent Node, f StyleField) {

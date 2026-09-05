@@ -4,17 +4,14 @@ import System
 import System.Collections.Generic
 import System.Threading
 
-/// Selects how a presentation projection replaces source text.
-public enum TextProjectionKind { Replacement; Hidden; InlineSlot; BlockSlot }
+internal enum TextProjectionKind { Replacement; Hidden; InlineSlot; BlockSlot }
 
-/// Specifies one text style span with a Key, Range, and Style.
-public data struct TextStyleSpan(Key string, Range TextRange, Style Style) { }
+internal data struct TextStyleSpan(Key string, Range TextRange, Style Style) { }
 
 internal data struct TextPresentationLayerChange(Range TextRange, All bool,
   SlotChildrenChanged bool) { }
 
-/// Describes one atomic source projection owned by a presentation layer.
-public class TextPresentationProjection {
+internal sealed class TextPresentationProjection {
   private var key string
   private var kind TextProjectionKind
   private var textRange TextRange
@@ -32,16 +29,11 @@ public class TextPresentationProjection {
     text = ""
   }
 
-  /// Gets the stable projection key within its presentation layer.
-  public prop Key string{ get -> key }
-  /// Gets the projection behavior.
-  public prop Kind TextProjectionKind{ get -> kind }
-  /// Gets the source range replaced or hidden by this projection.
-  public prop Range TextRange{ get -> textRange }
-  /// Gets replacement text, or an empty string for non-text projections.
-  public prop Text string{ get -> text }
-  /// Gets the retained Goo slot content, or nil for text projections.
-  public prop Content Blob? { get -> content }
+  internal prop Key string{ get -> key }
+  internal prop Kind TextProjectionKind{ get -> kind }
+  internal prop Range TextRange{ get -> textRange }
+  internal prop Text string{ get -> text }
+  internal prop Content Blob? { get -> content }
 
   internal func Update(nextKind TextProjectionKind, nextRange TextRange, nextText string, nextContent Blob?) {
     kind = nextKind
@@ -142,11 +134,6 @@ public class TextPresentationLayer : IDisposable {
   internal prop Identity int64{ get -> identity }
   /// Gets the monotonic revision of presentation-layer mutations.
   public prop Revision int64{ get -> revision }
-  /// Gets a snapshot of keyed style spans in layer order.
-  public prop StyleSpans []TextStyleSpan{ get -> copyStyleSpans(ReadStyleSpans()) }
-  /// Gets a snapshot of atomic projections in layer order.
-  public prop Projections []TextPresentationProjection{ get -> copyProjections(ReadProjections()) }
-
   /// Adds or updates a keyed style span.
   /// @param key The stable style-span key.
   /// @param textRange The source range to style.
@@ -730,18 +717,4 @@ private func rangeUnion(left TextRange, right TextRange) TextRange {
   let rightEnd = right.Start + right.Length
   let end = Math.Max(leftEnd, rightEnd)
   return TextRange{ Start: start, Length: end - start }
-}
-
-internal func copyStyleSpans(values []TextStyleSpan) []TextStyleSpan {
-  let result = [values.Length]TextStyleSpan
-  for i in 0 ... values.Length { result[i] = values[i] }
-  return result
-}
-
-internal func copyProjections(values []TextPresentationProjection) []TextPresentationProjection {
-  let result = [values.Length]TextPresentationProjection
-  for i in 0 ... values.Length {
-    result[i] = values[i]
-  }
-  return result
 }

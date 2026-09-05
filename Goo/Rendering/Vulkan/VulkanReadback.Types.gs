@@ -69,15 +69,6 @@ internal enum VulkanReadbackState {
   Abandoned;
 }
 
-internal enum VulkanReadbackRequestStatus {
-  Accepted;
-  Busy;
-  BudgetExceeded;
-  NotReady;
-  Failed;
-  DeviceLost;
-}
-
 internal data struct VulkanReadbackTimingSnapshot {
   internal var RequestStartTicks int64
   internal var RecordTicks int64
@@ -94,7 +85,7 @@ internal data struct VulkanReadbackTimingSnapshot {
   internal var GpuCopyNanoseconds uint64
 }
 
-internal sealed class VulkanReadbackResult {
+internal sealed class VulkanReadbackResult : WindowReadbackResult {
   private let pixels []uint8
   private let width uint32
   private let height uint32
@@ -103,16 +94,16 @@ internal sealed class VulkanReadbackResult {
   private let generation uint64
   private let submissionSerial uint64
 
-  internal prop Width uint32{ get -> width }
-  internal prop Height uint32{ get -> height }
-  internal prop RowBytes uint32{ get -> rowBytes }
+  public prop Width uint32{ get -> width }
+  public prop Height uint32{ get -> height }
+  public prop RowBytes uint32{ get -> rowBytes }
   internal prop Format VkFormat{ get -> format }
   internal prop Generation uint64{ get -> generation }
   internal prop SubmissionSerial uint64{ get -> submissionSerial }
-  internal prop Premultiplied bool{ get -> true }
-  internal prop OriginBottomLeft bool{ get -> false }
-  internal prop SrgbEncoded bool{ get -> true }
-  internal prop Pixels []uint8{
+  public prop Premultiplied bool{ get -> true }
+  public prop OriginBottomLeft bool{ get -> false }
+  public prop SrgbEncoded bool{ get -> true }
+  public prop Pixels []uint8{
     get {
       let copy = [pixels.Length]uint8
       Array.Copy(pixels, copy, pixels.Length)

@@ -5,16 +5,13 @@ using System.Text.Json.Serialization;
 internal sealed class EffectArtifact
 {
     [JsonPropertyName("schema")]
-    public int Schema { get; init; } = 1;
+    public int Schema { get; init; } = 2;
 
     [JsonPropertyName("abi")]
     public string Abi { get; init; } = EffectAbi.Id;
 
-    [JsonPropertyName("target")]
-    public EffectTarget Target { get; init; } = new();
-
-    [JsonPropertyName("artifact")]
-    public EffectBinary Binary { get; init; } = new();
+    [JsonPropertyName("artifacts")]
+    public IReadOnlyList<EffectBackendArtifact> Artifacts { get; init; } = [];
 
     [JsonPropertyName("validator")]
     public EffectValidatorIdentity Validator { get; init; } = new();
@@ -35,12 +32,18 @@ internal sealed class EffectArtifact
     {
         EffectArtifact manifest = new()
         {
-            Binary = new EffectBinary
-            {
-                Sha256 = Convert.ToHexString(SHA256.HashData(spirv)).ToLowerInvariant(),
-                Bytes = spirv.LongLength,
-                Capabilities = reflection.Capabilities
-            },
+            Artifacts =
+            [
+                new EffectBackendArtifact
+                {
+                    Binary = new EffectBinary
+                    {
+                        Sha256 = Convert.ToHexString(SHA256.HashData(spirv)).ToLowerInvariant(),
+                        Bytes = spirv.LongLength,
+                        Capabilities = reflection.Capabilities
+                    }
+                }
+            ],
             Compiler = compiler,
             Source = source
         };
@@ -53,6 +56,21 @@ internal sealed class EffectArtifact
     {
         WriteIndented = true
     };
+}
+
+internal sealed class EffectBackendArtifact
+{
+    [JsonPropertyName("backend")]
+    public string Backend { get; init; } = "vulkan";
+
+    [JsonPropertyName("format")]
+    public string Format { get; init; } = "spirv";
+
+    [JsonPropertyName("target")]
+    public EffectTarget Target { get; init; } = new();
+
+    [JsonPropertyName("binary")]
+    public EffectBinary Binary { get; init; } = new();
 }
 
 internal sealed class EffectTarget

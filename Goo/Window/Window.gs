@@ -74,7 +74,7 @@ public partial class Window {
   /// Reports whether the window is open.
   public prop IsOpen bool{ get; private set; }
   internal prop Tree Node? { get -> node }
-  internal prop DiagnosticsSession DevToolsSession? { get -> WindowDiagnostics.Session(this) }
+  internal prop DiagnosticsSession DevToolsSession? { get -> diagnosticsSession }
   /// Gets or sets per-window GPU presentation synchronization.
   /// True requests FIFO. Software Vulkan devices prefer Immediate, then Mailbox, then FIFO.
   /// False prefers Immediate, then Mailbox, then FIFO on every device.
@@ -178,7 +178,7 @@ public partial class Window {
       }
       state = v
       if let native = host {
-        native.SetState(toSdlState(v))
+        native.SetState(v)
       }
     }
   }
@@ -355,9 +355,10 @@ public partial class Window {
   private var timeS float64
 
   private var input InputCoordinator
+  private var diagnosticsSession DevToolsSession?
   private var accessibility AccessibilityManager?
-  private var host SdlHost?
-  private var windowTarget VulkanWindowTarget?
+  private var host WindowHost?
+  private var windowTarget WindowRenderTarget?
   private var dpi Vector2
 
   private var pendingMetrics bool
@@ -430,6 +431,7 @@ public partial class Window {
     motionPump.Wake = requestReconcile
 
     input = InputCoordinator()
+    diagnosticsSession = nil
     accessibility = nil
 
     dpi = Vector2(1.0F, 1.0F)
@@ -441,7 +443,7 @@ public partial class Window {
       return current
     }
     let session = DevToolsSession(this)
-    WindowDiagnostics.Set(this, session)
+    diagnosticsSession = session
     resolver.DebugOverrides = session.OverrideStore
     input.SetDiagnostics(
       func(root Node?, kind PointerEventKind, x float32, y float32, button PointerButton) bool {
@@ -462,7 +464,7 @@ public partial class Window {
     if DiagnosticsSession != session {
       return
     }
-    WindowDiagnostics.Clear(this, session)
+    diagnosticsSession = nil
     resolver.DebugOverrides = nil
     input.SetDiagnostics(nil, nil)
     requestRender()
@@ -477,18 +479,18 @@ public partial class Window {
     input.Reset(node, resolver)
   }
 
-  internal func RequestDiagnosticsCapture() VulkanReadbackRequestStatus {
-    guard let target = windowTarget else { return VulkanReadbackRequestStatus.NotReady }
-    return target.RequestReadback(node, Background, dpi)
+  internal func RequestDiagnosticsCapture() WindowReadbackRequestStatus {
+    guard let target = windowTarget else { return WindowReadbackRequestStatus.NotReady }
+    return target.RequestCapture(node, Background, dpi)
   }
 
-  internal func PollDiagnosticsCapture() VulkanReadbackResult? {
+  internal func PollDiagnosticsCapture() WindowReadbackResult? {
     guard let target = windowTarget else { return nil }
-    let result = target.PollReadback()
-    if result != VkConstants.VK_SUCCESS && result != VkConstants.VK_NOT_READY {
-      throw InvalidOperationException("Goo capture readback failed: " + result.ToString())
+    let result = target.PollCapture()
+    if result == WindowReadbackPollStatus.Failed {
+      throw InvalidOperationException("Goo capture readback failed")
     }
-    return target.TakeReadbackResult()
+    return target.TakeCaptureResult()
   }
 
   internal func RequestDiagnosticsRebuild() {

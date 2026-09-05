@@ -220,8 +220,8 @@ func PaddingEdgeReadback(window Window, metrics WindowMetrics) VulkanReadbackRes
   let deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 10L
   var status = WindowReadbackTestFixture.Request(window,
     uint32(metrics.FramebufferWidth), uint32(metrics.FramebufferHeight))
-  while status == VulkanReadbackRequestStatus.Busy
-    || status == VulkanReadbackRequestStatus.NotReady{
+  while status == WindowReadbackRequestStatus.Busy
+    || status == WindowReadbackRequestStatus.NotReady{
       if Stopwatch.GetTimestamp() >= deadline {
         throw InvalidOperationException(
           "Padding-edge readback request did not become accepted")
@@ -231,7 +231,7 @@ func PaddingEdgeReadback(window Window, metrics WindowMetrics) VulkanReadbackRes
       status = WindowReadbackTestFixture.Request(window,
         uint32(metrics.FramebufferWidth), uint32(metrics.FramebufferHeight))
     }
-  Require(status == VulkanReadbackRequestStatus.Accepted,
+  Require(status == WindowReadbackRequestStatus.Accepted,
     "Padding-edge readback was not accepted: " + status.ToString())
   ReadbackAwaitReadbackReady(window, 10000)
   let result = ReadbackTakeReadback(window)

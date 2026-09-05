@@ -47,10 +47,10 @@ internal class DiagnosticCaptureTracker {
 
   internal prop NeedsRequest bool{ get -> phase != DiagnosticCapturePhase.Accepted }
 
-  internal func Observe(status VulkanReadbackRequestStatus) {
-    if status == VulkanReadbackRequestStatus.Accepted {
+  internal func Observe(status WindowReadbackRequestStatus) {
+    if status == WindowReadbackRequestStatus.Accepted {
       phase = DiagnosticCapturePhase.Accepted
-    } else if status == VulkanReadbackRequestStatus.NotReady {
+    } else if status == WindowReadbackRequestStatus.NotReady {
       phase = DiagnosticCapturePhase.WaitingForFrame
     }
   }
@@ -176,7 +176,7 @@ internal class DevToolsSession : IDisposable {
       pending = true
       return false
     }
-    let target = Hit().Topmost(tree, float32(x), float32(y))
+    let target = hitTopmost(tree, float32(x), float32(y))
     selected = target
     clickLocked = true
     pending = true
@@ -279,7 +279,7 @@ internal class DevToolsSession : IDisposable {
   internal func MetadataUpdated() {
     if disposed { return }
     try {
-      owner.Post(func() {
+      owner.Post(() -> {
         if disposed { return }
         clearOverrides()
         identity.Invalidate()
@@ -301,13 +301,13 @@ internal class DevToolsSession : IDisposable {
     if disposed { throw ObjectDisposedException("DevToolsSession") }
     if captureTracker.NeedsRequest {
       let status = owner.RequestDiagnosticsCapture()
-      if status != VulkanReadbackRequestStatus.Accepted
-        && status != VulkanReadbackRequestStatus.NotReady{
+      if status != WindowReadbackRequestStatus.Accepted
+        && status != WindowReadbackRequestStatus.NotReady{
           captureTracker.Reset()
           throw InvalidOperationException("Goo capture request was not accepted: " + status.ToString())
         }
       captureTracker.Observe(status)
-      if status == VulkanReadbackRequestStatus.NotReady {
+      if status == WindowReadbackRequestStatus.NotReady {
         owner.RequestDiagnosticsFrame()
         return "{\"command\":\"capture\",\"pending\":true}"
       }
@@ -446,7 +446,7 @@ internal class DevToolsSession : IDisposable {
       }
       return
     }
-    let next = Hit().Topmost(tree, x, y)
+    let next = hitTopmost(tree, x, y)
     if hovered == next { return }
     hovered = next
     pending = true

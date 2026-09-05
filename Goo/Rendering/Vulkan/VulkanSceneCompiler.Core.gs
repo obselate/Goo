@@ -236,7 +236,7 @@ internal partial class VulkanSceneCompiler {
       textScene?.ResetCompileCounters()
       imageScene?.BeginCompile()
       pathScene?.BeginCompile()
-      frameVersion = NextVersion(frameVersion)
+      frameVersion = nextVulkanSceneVersion(frameVersion)
       frame.ResetForReuse()
       visibleNodeCount = 0
       emittedNodeCount = 0
@@ -304,26 +304,10 @@ internal partial class VulkanSceneCompiler {
       lastResult.UnsupportedDetailCount = unsupportedDetailCount
       lastResult.UnsupportedDetailDropped = unsupportedDetailDropped
       lastResult.BackgroundDrawn = backgroundDrawn
-      lastResult.RetainedLeafHitCount = retainedLeafHitCount
-      lastResult.RetainedLeafRebuildCount = retainedLeafRebuildCount
-      lastResult.RetainedLeafFallbackCount = retainedLeafFallbackCount
-      lastResult.RetainedLeafInvalidationCount = retainedLeafInvalidationCount
-      lastResult.RetainedLeafTotalCount = retainedLeafTotalCount
-      lastResult.RetainedBorderHitCount = retainedBorderHitCount
-      lastResult.RetainedBorderRebuildCount = retainedBorderRebuildCount
-      lastResult.RetainedBorderFallbackCount = retainedBorderFallbackCount
-      lastResult.RetainedBorderInvalidationCount = retainedBorderInvalidationCount
-      lastResult.RetainedBorderTotalCount = retainedBorderTotalCount
-      lastResult.RetainedParentBoxHitCount = retainedParentBoxHitCount
-      lastResult.RetainedParentBoxRebuildCount = retainedParentBoxRebuildCount
-      lastResult.RetainedParentBoxFallbackCount = retainedParentBoxFallbackCount
-      lastResult.RetainedParentBoxInvalidationCount = retainedParentBoxInvalidationCount
-      lastResult.RetainedParentBoxTotalCount = retainedParentBoxTotalCount
-      lastResult.RetainedTextHitCount = retainedTextHitCount
-      lastResult.RetainedTextRebuildCount = retainedTextRebuildCount
-      lastResult.RetainedTextFallbackCount = retainedTextFallbackCount
-      lastResult.RetainedTextInvalidationCount = retainedTextInvalidationCount
-      lastResult.RetainedTextTotalCount = retainedTextTotalCount
+      lastResult.RetainedLeaf = retainedLeaf
+      lastResult.RetainedBorder = retainedBorder
+      lastResult.RetainedParentBox = retainedParentBox
+      lastResult.RetainedText = retainedText
       lastResult.ExactTextClipCandidateCount = exactTextClipCandidateCount
       lastResult.ExactTextClipCullCount = exactTextClipCullCount
       lastResult.CachedTextPaintCullCount = cachedTextPaintCullCount
@@ -461,9 +445,9 @@ internal partial class VulkanSceneCompiler {
         && node.Width.Unit == LengthUnit.Px
         && node.Height.Unit == LengthUnit.Px
         && node.FontSize.Unit == LengthUnit.Px
-        && Finite(fontSize) && fontSize > 0.0F
-        && Finite(lineHeight) && lineHeight > 0.0F
-        && Finite(contentHeight) && contentHeight >= lineHeight
+        && finiteVulkanSceneValue(fontSize) && fontSize > 0.0F
+        && finiteVulkanSceneValue(lineHeight) && lineHeight > 0.0F
+        && finiteVulkanSceneValue(contentHeight) && contentHeight >= lineHeight
         && !node.HasTextShadowState
         && !node.HasTextStrokeState
         && node.TextDecoration == TextDecoration.None
@@ -529,8 +513,8 @@ internal partial class VulkanSceneCompiler {
     preflight VulkanRectOverflowClipPreflight) bool{
       if node.Kind != NodeKind.Text || node.Children.Count != 0
         || !exactCullContextSafe
-        || !Finite(bounds.X) || !Finite(bounds.Y)
-        || !Finite(bounds.Width) || !Finite(bounds.Height)
+        || !finiteVulkanSceneValue(bounds.X) || !finiteVulkanSceneValue(bounds.Y)
+        || !finiteVulkanSceneValue(bounds.Width) || !finiteVulkanSceneValue(bounds.Height)
         || bounds.IsEmpty
         || node.OverflowX != Overflow.Hidden
         || node.OverflowY != Overflow.Hidden
@@ -540,7 +524,7 @@ internal partial class VulkanSceneCompiler {
         || node.Width.Unit != LengthUnit.Px
         || node.Height.Unit != LengthUnit.Px
         || node.FontSize.Unit != LengthUnit.Px
-        || !Finite(node.FontSize.Px) || node.FontSize.Px <= 0.0F
+        || !finiteVulkanSceneValue(node.FontSize.Px) || node.FontSize.Px <= 0.0F
         || node.TextWrap != TextWrap.NoWrap
         || node.TextTrimming != TextTrimming.Ellipsis
         || node.HasTextShadowState
@@ -650,7 +634,7 @@ internal partial class VulkanSceneCompiler {
         if result.IsEmpty {
           result = child
         } else if !child.IsEmpty {
-          result = UnionBounds(result, child)
+          result = unionVulkanSceneBounds(result, child)
         }
         index = index + 1
       }
@@ -835,9 +819,9 @@ internal partial class VulkanSceneCompiler {
       }
       var retainedLeafEligible = false
       var retainedTextEligible = false
-      if node.Kind == NodeKind.Text {
+      if node.Kind == NodeKind.Text || node.Kind == NodeKind.Entry {
         InvalidateRetainedBox(owner)
-        IncrementRetainedTextTotal()
+        IncrementSaturated(ref retainedText.Total)
         retainedTextEligible = RetainedTextEligible(node, owner, bounds, opacity,
           parentTransformIndex, parentClipIndex, parentOpacity, parentAxisAligned,
           parentClipDepth, parentPathClipChainId, activeClipBounds)
@@ -850,13 +834,13 @@ internal partial class VulkanSceneCompiler {
             }
         } else {
           InvalidateRetainedText(owner)
-          IncrementRetainedTextFallback()
+          IncrementSaturated(ref retainedText.Fallback)
         }
       } else if node.Children.Count == 0 {
         InvalidateRetainedText(owner)
         let retainedBorderCandidate = RetainedBorderCandidate(node, bounds)
         if retainedBorderCandidate {
-          IncrementRetainedBorderTotal()
+          IncrementSaturated(ref retainedBorder.Total)
           var retainedBorderRecord PerEdgeBorderRecord
           let retainedBorderEligible = RetainedBorderEligible(node, bounds, opacity,
             parentTransformIndex, parentClipIndex, parentOpacity, parentAxisAligned,
@@ -874,9 +858,9 @@ internal partial class VulkanSceneCompiler {
             return
           }
           InvalidateRetainedBox(owner)
-          IncrementRetainedBorderFallback()
+          IncrementSaturated(ref retainedBorder.Fallback)
         } else {
-          IncrementRetainedLeafTotal()
+          IncrementSaturated(ref retainedLeaf.Total)
           retainedLeafEligible = RetainedLeafEligible(node, bounds, opacity,
             parentTransformIndex, parentClipIndex, parentOpacity, parentAxisAligned,
             parentClipDepth, parentPathClipChainId, parentIsolated, activeClipBounds)
@@ -888,7 +872,7 @@ internal partial class VulkanSceneCompiler {
             InvalidateRetainedBox(owner)
           } else {
             InvalidateRetainedBox(owner)
-            IncrementRetainedLeafFallback()
+            IncrementSaturated(ref retainedLeaf.Fallback)
           }
           if retainedLeafEligible {
             AppendRetainedLeafRebuild(node, owner, ownerId, bounds, opacity)
@@ -901,7 +885,7 @@ internal partial class VulkanSceneCompiler {
           parentTransformIndex, parentClipIndex, parentOpacity, parentAxisAligned,
           parentClipDepth, parentPathClipChainId, parentIsolated, activeClipBounds)
         if retainedParentBoxEligible {
-          IncrementRetainedParentBoxTotal()
+          IncrementSaturated(ref retainedParentBox.Total)
           if TryAppendRetainedBox(node, owner, ownerId, bounds, opacity, false) {
             emittedNodeCount = emittedNodeCount + 1
             CompileRetainedParentChildren(node, parentTransformIndex,
@@ -920,7 +904,7 @@ internal partial class VulkanSceneCompiler {
         }
         if owner.RetainedLeafValid && !owner.RetainedBoxIsLeaf {
           InvalidateRetainedBox(owner)
-          IncrementRetainedParentBoxFallback()
+          IncrementSaturated(ref retainedParentBox.Fallback)
         } else if owner.RetainedLeafValid {
           InvalidateRetainedBox(owner)
         }
@@ -1107,10 +1091,10 @@ internal partial class VulkanSceneCompiler {
           StoreRetainedTextFingerprint(node, owner, bounds, opacity,
             parentTransformIndex, parentClipDepth, activeClipBounds)
           frame.Chunks[chunk].RetentionState = SceneChunkRetentionState.ExactLeafRebuild
-          IncrementRetainedTextRebuild()
+          IncrementSaturated(ref retainedText.Rebuild)
         } else {
           InvalidateRetainedText(owner)
-          IncrementRetainedTextFallback()
+          IncrementSaturated(ref retainedText.Fallback)
         }
       }
       emittedNodeCount = emittedNodeCount + 1
@@ -1234,15 +1218,16 @@ internal partial class VulkanSceneCompiler {
         return VulkanScenePathClipResult{}
       }
       let strokeWidth = node.BorderLeftWidth.Px
-      let halfStroke = strokeWidth * 0.5F
+      let strokeInset = if node.ShapeStrokeInset { strokeWidth } else { 0.0F }
+      let halfStroke = strokeInset * 0.5F
       let paddingLeft = resolveEdgePadding(node, YGEdge.Left, bounds.Width)
       let paddingTop = resolveEdgePadding(node, YGEdge.Top, bounds.Width)
       let paddingRight = resolveEdgePadding(node, YGEdge.Right, bounds.Width)
       let paddingBottom = resolveEdgePadding(node, YGEdge.Bottom, bounds.Width)
       let contentLeft = bounds.X + paddingLeft + halfStroke
       let contentTop = bounds.Y + paddingTop + halfStroke
-      let contentWidth = bounds.Width - paddingLeft - paddingRight - strokeWidth
-      let contentHeight = bounds.Height - paddingTop - paddingBottom - strokeWidth
+      let contentWidth = bounds.Width - paddingLeft - paddingRight - strokeInset
+      let contentHeight = bounds.Height - paddingTop - paddingBottom - strokeInset
       let mapping = PathGeometry.Map(node.ShapePath, node.ShapeFit,
         contentLeft, contentTop, contentWidth, contentHeight)
       let shapePath = if mapping.Valid {
@@ -1255,7 +1240,7 @@ internal partial class VulkanSceneCompiler {
         uint32(node.ShapeFillRule), bounds, transformIndex)
       let geometry = PathGeometry.For(shapePath)
       let closedBounds = ClosedPathBounds(geometry)
-      if !geometry.HasClosedContour || closedBounds.IsEmpty {
+      if !geometry.HasFillContour || closedBounds.IsEmpty {
         let chain = frame.AddZeroClipChain(parentChainId, stableId, contentKey)
         clipChainCount = frame.ClipChainCount - 1
         return VulkanScenePathClipResult{ Emitted: true, ChainIndex: chain }
@@ -1462,7 +1447,7 @@ internal partial class VulkanSceneCompiler {
       }
       let geometry = PathGeometry.For(clipPath)
       let closedBounds = ClosedPathBounds(geometry)
-      if !geometry.HasClosedContour || closedBounds.IsEmpty {
+      if !geometry.HasFillContour || closedBounds.IsEmpty {
         let chain = frame.AddZeroClipChain(parentChainId, stableId, contentKey)
         clipChainCount = frame.ClipChainCount - 1
         return VulkanScenePathClipResult{ Emitted: true, ChainIndex: chain }
@@ -1520,9 +1505,10 @@ internal partial class VulkanSceneCompiler {
         let maximum = MathF.Max(MathF.Max(topLeft.Y, topRight.Y),
           MathF.Max(bottomLeft.Y, bottomRight.Y))
         let height = maximum - minimum + MixedOverflowMargin * 2.0F
-        if !Finite(minimum) || !Finite(maximum) || !Finite(height) || height <= 0.0F {
-          return ConservativeBounds{}
-        }
+        if !finiteVulkanSceneValue(minimum) || !finiteVulkanSceneValue(maximum)
+          || !finiteVulkanSceneValue(height) || height <= 0.0F {
+            return ConservativeBounds{}
+          }
         return ConservativeBounds{
           X: bounds.X,
           Y: minimum - MixedOverflowMargin,
@@ -1535,9 +1521,10 @@ internal partial class VulkanSceneCompiler {
       let maximum = MathF.Max(MathF.Max(topLeft.X, topRight.X),
         MathF.Max(bottomLeft.X, bottomRight.X))
       let width = maximum - minimum + MixedOverflowMargin * 2.0F
-      if !Finite(minimum) || !Finite(maximum) || !Finite(width) || width <= 0.0F {
-        return ConservativeBounds{}
-      }
+      if !finiteVulkanSceneValue(minimum) || !finiteVulkanSceneValue(maximum)
+        || !finiteVulkanSceneValue(width) || width <= 0.0F {
+          return ConservativeBounds{}
+        }
       return ConservativeBounds{
         X: minimum - MixedOverflowMargin,
         Y: bounds.Y,
@@ -1594,7 +1581,7 @@ internal partial class VulkanSceneCompiler {
       let stableId = OwnerId(node)
       let geometry = PathGeometry.For(clip.Path)
       let closedBounds = ClosedPathBounds(geometry)
-      if !geometry.HasClosedContour || closedBounds.IsEmpty {
+      if !geometry.HasFillContour || closedBounds.IsEmpty {
         let chain = frame.AddZeroClipChain(parentChainId, stableId, contentKey)
         clipChainCount = frame.ClipChainCount - 1
         return VulkanScenePathClipResult{ Emitted: true, ChainIndex: chain }
@@ -1680,9 +1667,10 @@ internal partial class VulkanSceneCompiler {
       if edge.Y1 > maximumY { maximumY = edge.Y1 }
       index = index + 1
     }
-    if !Finite(minimumX) || !Finite(minimumY) || !Finite(maximumX) || !Finite(maximumY) {
-      return ConservativeBounds{}
-    }
+    if !finiteVulkanSceneValue(minimumX) || !finiteVulkanSceneValue(minimumY)
+      || !finiteVulkanSceneValue(maximumX) || !finiteVulkanSceneValue(maximumY) {
+        return ConservativeBounds{}
+      }
     return ConservativeBounds{
       X: minimumX,
       Y: minimumY,
@@ -1716,6 +1704,9 @@ internal partial class VulkanSceneCompiler {
       hash = MixPathHash(hash, path.GeometryRevision)
       hash = MixPathHash(hash, uint64(int32(fit)))
       hash = MixPathHash(hash, uint64(fillRule))
+      if node.Kind == NodeKind.Shape {
+        hash = MixPathHash(hash, node.ShapeStrokeInset ? 1uL : 0uL)
+      }
       hash = HashPathBounds(hash, bounds)
       var index = transformIndex
       var guardCount int32 = 0
@@ -1765,13 +1756,6 @@ internal partial class VulkanSceneCompiler {
   }
 
   private func OwnerId(node Node) uint64 -> Owner(node).Value
-
-  private func NextVersion(value uint64) uint64 {
-    if value == uint64.MaxValue {
-      return 1uL
-    }
-    return value + 1uL
-  }
 
   private func MarkUnsupportedNode(node Node) {
     switch node.Kind {

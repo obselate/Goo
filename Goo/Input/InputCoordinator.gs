@@ -7,7 +7,7 @@ internal class InputCoordinator {
   private var keyboard KeyboardInput
   private var pointer PointerInput
   private var text TextInput
-  private var attachedHost SdlHost?
+  private var attachedHost WindowHost?
   private var disposed bool
 
   internal init() {
@@ -23,7 +23,7 @@ internal class InputCoordinator {
       keyboard.SetDiagnosticsHook(keyboardHook)
     }
 
-  internal func Attach(host SdlHost) {
+  internal func Attach(host WindowHost) {
     if disposed { throw ObjectDisposedException("InputCoordinator") }
     if attachedHost == host {
       return
@@ -35,17 +35,17 @@ internal class InputCoordinator {
     text.Attach(host)
     pointer.Bind(host)
     keyboard.Bind(host)
-    host.TextEntered += func(value string) {
+    host.TextEntered += (value string) -> {
       QueueText(value)
     }
-    host.TextEditing += func(value string, selectionStart int32, selectionLength int32) {
+    host.TextEditing += (value string, selectionStart int32, selectionLength int32) -> {
       QueueComposition(value, selectionStart, selectionLength)
     }
-    host.TextEditingCandidates += func(candidates IReadOnlyList[string], selected int32,
-      horizontal bool) {
+    host.TextEditingCandidates += (candidates IReadOnlyList[string], selected int32,
+      horizontal bool) -> {
         QueueCompositionCandidates(candidates, selected, horizontal)
       }
-    host.TextCompositionCanceled += func() {
+    host.TextCompositionCanceled += () -> {
       QueueCompositionCancel()
     }
   }

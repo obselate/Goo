@@ -211,7 +211,7 @@ internal class TextEditorInputCell : Cell {
     Controller = controller
   }
 
-  override func Build() Blob -> TextEditor(Document, Controller) {
+  override func Build() Blob -> TextEditor(Controller) {
     Key = "editor",
     Width = 300.0,
     Height = 100.0,
@@ -234,7 +234,7 @@ internal class TextEditorInputReadOnlyCell : Cell {
     Height: 120.0,
     FlexDirection: FlexDirection.Row,
     Children: {
-      TextEditor(Document, Controller) {
+      TextEditor(Controller) {
         Key = "editor",
         Width = 250.0,
         Height = 100.0,

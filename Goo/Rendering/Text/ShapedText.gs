@@ -17,28 +17,6 @@ internal sealed class ShapedText : IDisposable {
   internal prop InkTop float32{ get; set; }
   internal prop InkBottom float32{ get; set; }
   internal prop Runs IReadOnlyList[ShapedRun]{ get -> runs }
-  internal prop Families []string{
-    get {
-      let result = [runs.Count]string
-      var i int32 = 0
-      for run in runs {
-        result[i] = run.Family
-        i++
-      }
-      return result
-    }
-  }
-  internal prop Texts []string{
-    get {
-      let result = [runs.Count]string
-      var i int32 = 0
-      for run in runs {
-        result[i] = run.Text
-        i++
-      }
-      return result
-    }
-  }
   internal prop HasMissingGlyph bool{
     get {
       for run in runs {
@@ -87,7 +65,12 @@ internal sealed class ShapedText : IDisposable {
     return ShapedText(text, selected, Width, Ascent, Descent, RightToLeft)
   }
 
-  internal func CaretX(index int32, affinity int32) float32 -> Geometry().CaretX(index, affinity)
+  internal func CaretX(index int32, affinity int32) float32 {
+    lock (this) {
+      if let current = geometry { return current.CaretX(index, affinity) }
+      return TextGeometry.CaretX(text, runs, Width, RightToLeft, index, affinity)
+    }
+  }
 
   internal func HitTest(x float32) TextHit -> Geometry().HitTest(x)
 

@@ -2,7 +2,7 @@ package Goo
 
 import System.Threading
 
-/// Hosts a Goo tree in an SDL window.
+/// Hosts a Goo tree in a native window.
 public partial class Window {
   private func acceptRetainedInvalidations() {
     lock retainedInvalidationGate {

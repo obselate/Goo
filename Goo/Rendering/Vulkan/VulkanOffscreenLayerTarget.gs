@@ -460,6 +460,8 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
       throw ArgumentOutOfRangeException("extent")
     }
     Collect(completedSerial)
+    var reusableIndex int32 = -1
+    var reusableLastUse uint64 = uint64.MaxValue
     var index int32 = 0
     while index < targets.Length {
       if !leased[index] {
@@ -468,18 +470,32 @@ internal unsafe sealed class VulkanOffscreenLayerPool : IDisposable {
           let sameCommand = inFrame[index]
           if extent.width == width && extent.height == height
             && (sameCommand || target.LastUseSerial <= completedSerial) {
-              leased[index] = true
-              if !sameCommand {
-                inFrame[index] = true
-                target.BeginLease()
+              if sameCommand {
+                reusableIndex = index
+                break
               }
-              RecordReuse(target, sameCommand)
-              PublishStats()
-              return target
+              if reusableIndex < 0 || target.LastUseSerial < reusableLastUse {
+                reusableIndex = index
+                reusableLastUse = target.LastUseSerial
+              }
             }
         }
       }
       index++
+    }
+    if reusableIndex >= 0 {
+      guard let target = targets[reusableIndex] else {
+        throw InvalidOperationException("Vulkan layer pool reusable target is unavailable")
+      }
+      let sameCommand = inFrame[reusableIndex]
+      leased[reusableIndex] = true
+      if !sameCommand {
+        inFrame[reusableIndex] = true
+        target.BeginLease()
+      }
+      RecordReuse(target, sameCommand)
+      PublishStats()
+      return target
     }
     if uint64(width) > uint64.MaxValue / 4uL {
       RecordFailure(uint64(width), uint64(height))

@@ -220,8 +220,11 @@ AxisRoots solveHorizontalRoots(QuadraticCurve curve, float2 point)
     {
         float discriminant = max(b.y * b.y - a.y * first.y, 0.0);
         float root = sqrt(discriminant);
-        result.first = (b.y - root) / a.y;
-        result.second = (b.y + root) / a.y;
+        float q = b.y + (b.y < 0.0 ? -root : root);
+        float nearRoot = q == 0.0 ? 0.0 : first.y / q;
+        float farRoot = q / a.y;
+        result.first = b.y < 0.0 ? farRoot : nearRoot;
+        result.second = b.y < 0.0 ? nearRoot : farRoot;
     }
     else if (abs(b.y) > tolerance)
     {
@@ -253,8 +256,11 @@ AxisRoots solveVerticalRoots(QuadraticCurve curve, float2 point)
     {
         float discriminant = max(b.x * b.x - a.x * first.x, 0.0);
         float root = sqrt(discriminant);
-        result.first = (b.x - root) / a.x;
-        result.second = (b.x + root) / a.x;
+        float q = b.x + (b.x < 0.0 ? -root : root);
+        float nearRoot = q == 0.0 ? 0.0 : first.x / q;
+        float farRoot = q / a.x;
+        result.first = b.x < 0.0 ? farRoot : nearRoot;
+        result.second = b.x < 0.0 ? nearRoot : farRoot;
     }
     else if (abs(b.x) > tolerance)
     {

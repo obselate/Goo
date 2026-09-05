@@ -2,7 +2,6 @@ package Goo
 
 import System
 import System.Collections.Generic
-import System.Runtime.CompilerServices
 import Facebook.Yoga
 
 internal class TextLine {
@@ -20,26 +19,10 @@ internal class TextLine {
   }
 }
 
-internal class TextRichLayouts {
-  shared {
-    private let values ConditionalWeakTable[TextLayout, TextRichLayout] =
-    ConditionalWeakTable[TextLayout, TextRichLayout]()
-
-    internal func Get(layout TextLayout) TextRichLayout? {
-      if values.TryGetValue(layout, out var value) { return value }
-      return nil
-    }
-
-    internal func Set(layout TextLayout, value TextRichLayout?) {
-      values.Remove(layout)
-      if let retained = value {
-        values.Add(layout, retained)
-      }
-    }
-  }
-}
-
 internal class TextLayout {
+  private var rich TextRichLayout?
+  private var geometry TextLayoutGeometry?
+
   internal prop Content string{ get; init; }
   internal prop FontFamily string{ get; init; }
   internal prop FontSize float32{ get; init; }
@@ -51,8 +34,12 @@ internal class TextLayout {
   internal prop LineHeight float64{ get; init; }
   internal prop MaxWidth float32{ get; init; }
   internal prop Rich TextRichLayout? {
-    get -> TextRichLayouts.Get(this)
-    set -> TextRichLayouts.Set(this, value)
+    get -> rich
+    set -> rich = value
+  }
+  internal prop Geometry TextLayoutGeometry? {
+    get -> geometry
+    set -> geometry = value
   }
   internal prop Lines List[TextLine]{ get; init; }
   internal prop Ascent float32{ get; set; }
@@ -79,27 +66,6 @@ internal class TextLayoutGeometry {
 
   internal init() {
     Lines = List[TextGeometryLine]()
-  }
-}
-
-internal class TextLayoutGeometries {
-  shared {
-    private let values ConditionalWeakTable[TextLayout, TextLayoutGeometry] =
-    ConditionalWeakTable[TextLayout, TextLayoutGeometry]()
-
-    internal func Get(layout TextLayout) TextLayoutGeometry? {
-      if values.TryGetValue(layout, out var value) { return value }
-      return nil
-    }
-
-    internal func Add(layout TextLayout, geometry TextLayoutGeometry) {
-      values.Remove(layout)
-      values.Add(layout, geometry)
-    }
-
-    internal func Remove(layout TextLayout) {
-      values.Remove(layout)
-    }
   }
 }
 
@@ -250,7 +216,7 @@ internal class TextLayouts {
       || f == StyleField.Direction
 
     internal func dispose(layout TextLayout) {
-      TextLayoutGeometries.Remove(layout)
+      layout.Geometry = nil
       for line in layout.Lines {
         line.Shape?.Dispose()
       }
@@ -261,11 +227,11 @@ internal class TextLayouts {
 
     internal func RemoveGeometry(n Node) {
       if let layout = n.TextLayout {
-        TextLayoutGeometries.Remove(layout)
+        layout.Geometry = nil
       }
       if let cache = n.TextLayoutCache {
         for layout in cache {
-          TextLayoutGeometries.Remove(layout)
+          layout.Geometry = nil
         }
       }
     }
@@ -397,7 +363,7 @@ internal class TextLayouts {
         result.Height = float32(result.Lines.Count) * resolvedLineHeight(n)
       }
       if let retained = geometry {
-        TextLayoutGeometries.Add(result, retained)
+        result.Geometry = retained
         warmGeometry(result)
       }
       return result
@@ -553,7 +519,7 @@ internal class TextLayouts {
         let retained = TextPaintRun{ Shape: slice, X: x, DisplayStart: absolute,
           DisplayLength: end - cursor, Style: style }
         if let segments = decorationSegments {
-          TextPaintDecorations.Set(retained, segments)
+          retained.DecorationSegments = segments
         }
         result.Runs.Add(retained)
         if ownsGlyphs {

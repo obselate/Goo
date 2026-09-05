@@ -462,7 +462,7 @@ internal class NativeTextInputLifecycleCell : Cell {
       OnTextInput: (value string) -> {},
     })
     root.Children.Add(TextEntry{ Key: "entry", Handle: Entry, Width: 80, Height: 20 })
-    let editor = TextEditor(Document, Controller) {
+    let editor = TextEditor(Controller) {
       Key = "editor", Handle = Editor, Width = 80, Height = 20,
     }
     root.Children.Add(editor)

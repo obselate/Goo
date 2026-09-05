@@ -728,11 +728,7 @@ internal partial class SceneFrame {
     if required <= chunks.Length { return }
     let next = GrowthCapacity(chunks.Length, required)
     let expanded = [next]SceneChunk
-    var index int32 = 0
-    while index < chunkCount {
-      expanded[index] = chunks[index]
-      index = index + 1
-    }
+    Array.Copy(chunks, expanded, chunkCount)
     chunks = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -741,11 +737,7 @@ internal partial class SceneFrame {
     if required <= drawRefs.Length { return }
     let next = GrowthCapacity(drawRefs.Length, required)
     let expanded = [next]DrawRef
-    var index int32 = 0
-    while index < drawRefCount {
-      expanded[index] = drawRefs[index]
-      index = index + 1
-    }
+    Array.Copy(drawRefs, expanded, drawRefCount)
     drawRefs = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -754,11 +746,7 @@ internal partial class SceneFrame {
     if required <= resourceRefs.Length { return }
     let next = GrowthCapacity(resourceRefs.Length, required)
     let expanded = [next]ResourceId
-    var index int32 = 0
-    while index < resourceRefCount {
-      expanded[index] = resourceRefs[index]
-      index = index + 1
-    }
+    Array.Copy(resourceRefs, expanded, resourceRefCount)
     resourceRefs = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -767,11 +755,7 @@ internal partial class SceneFrame {
     if required <= solidBoxes.Length { return }
     let next = GrowthCapacity(solidBoxes.Length, required)
     let expanded = [next]SolidBoxRecord
-    var index int32 = 0
-    while index < solidBoxCount {
-      expanded[index] = solidBoxes[index]
-      index = index + 1
-    }
+    Array.Copy(solidBoxes, expanded, solidBoxCount)
     solidBoxes = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -780,11 +764,7 @@ internal partial class SceneFrame {
     if required <= roundedBoxes.Length { return }
     let next = GrowthCapacity(roundedBoxes.Length, required)
     let expanded = [next]RoundedBoxRecord
-    var index int32 = 0
-    while index < roundedBoxCount {
-      expanded[index] = roundedBoxes[index]
-      index = index + 1
-    }
+    Array.Copy(roundedBoxes, expanded, roundedBoxCount)
     roundedBoxes = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -793,11 +773,7 @@ internal partial class SceneFrame {
     if required <= perEdgeBorders.Length { return }
     let next = GrowthCapacity(perEdgeBorders.Length, required)
     let expanded = [next]PerEdgeBorderRecord
-    var index int32 = 0
-    while index < perEdgeBorderCount {
-      expanded[index] = perEdgeBorders[index]
-      index = index + 1
-    }
+    Array.Copy(perEdgeBorders, expanded, perEdgeBorderCount)
     perEdgeBorders = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -806,11 +782,7 @@ internal partial class SceneFrame {
     if required <= gradientStops.Length { return }
     let next = GrowthCapacity(gradientStops.Length, required)
     let expanded = [next]GradientStopRecord
-    var index int32 = 0
-    while index < gradientStopCount {
-      expanded[index] = gradientStops[index]
-      index = index + 1
-    }
+    Array.Copy(gradientStops, expanded, gradientStopCount)
     gradientStops = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -819,11 +791,7 @@ internal partial class SceneFrame {
     if required <= linearGradients.Length { return }
     let next = GrowthCapacity(linearGradients.Length, required)
     let expanded = [next]LinearGradientRecord
-    var index int32 = 0
-    while index < linearGradientCount {
-      expanded[index] = linearGradients[index]
-      index = index + 1
-    }
+    Array.Copy(linearGradients, expanded, linearGradientCount)
     linearGradients = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -832,11 +800,7 @@ internal partial class SceneFrame {
     if required <= radialGradients.Length { return }
     let next = GrowthCapacity(radialGradients.Length, required)
     let expanded = [next]RadialGradientRecord
-    var index int32 = 0
-    while index < radialGradientCount {
-      expanded[index] = radialGradients[index]
-      index = index + 1
-    }
+    Array.Copy(radialGradients, expanded, radialGradientCount)
     radialGradients = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -845,11 +809,7 @@ internal partial class SceneFrame {
     if required <= cachedImages.Length { return }
     let next = GrowthCapacity(cachedImages.Length, required)
     let expanded = [next]CachedImageRefRecord
-    var index int32 = 0
-    while index < cachedImageCount {
-      expanded[index] = cachedImages[index]
-      index = index + 1
-    }
+    Array.Copy(cachedImages, expanded, cachedImageCount)
     cachedImages = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -858,11 +818,7 @@ internal partial class SceneFrame {
     if required <= cachedTextSegments.Length { return }
     let next = GrowthCapacity(cachedTextSegments.Length, required)
     let expanded = [next]CachedTextSegmentRefRecord
-    var index int32 = 0
-    while index < cachedTextSegmentCount {
-      expanded[index] = cachedTextSegments[index]
-      index = index + 1
-    }
+    Array.Copy(cachedTextSegments, expanded, cachedTextSegmentCount)
     cachedTextSegments = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -871,11 +827,7 @@ internal partial class SceneFrame {
     if required <= analyticPathBands.Length { return }
     let next = GrowthCapacity(analyticPathBands.Length, required)
     let expanded = [next]AnalyticPathBandRecord
-    var index int32 = 0
-    while index < analyticPathBandCount {
-      expanded[index] = analyticPathBands[index]
-      index = index + 1
-    }
+    Array.Copy(analyticPathBands, expanded, analyticPathBandCount)
     analyticPathBands = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -884,11 +836,7 @@ internal partial class SceneFrame {
     if required <= transforms.Length { return }
     let next = GrowthCapacity(transforms.Length, required)
     let expanded = [next]TransformRecord
-    var index int32 = 0
-    while index < transformCount {
-      expanded[index] = transforms[index]
-      index = index + 1
-    }
+    Array.Copy(transforms, expanded, transformCount)
     transforms = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -897,11 +845,7 @@ internal partial class SceneFrame {
     if required <= rectClips.Length { return }
     let next = GrowthCapacity(rectClips.Length, required)
     let expanded = [next]RectClipRecord
-    var index int32 = 0
-    while index < rectClipCount {
-      expanded[index] = rectClips[index]
-      index = index + 1
-    }
+    Array.Copy(rectClips, expanded, rectClipCount)
     rectClips = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -910,11 +854,7 @@ internal partial class SceneFrame {
     if required <= clipMasks.Length { return }
     let next = GrowthCapacity(clipMasks.Length, required)
     let expanded = [next]ClipMaskRecord
-    var index int32 = 0
-    while index < clipMaskCount {
-      expanded[index] = clipMasks[index]
-      index = index + 1
-    }
+    Array.Copy(clipMasks, expanded, clipMaskCount)
     clipMasks = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -923,11 +863,7 @@ internal partial class SceneFrame {
     if required <= clipChains.Length { return }
     let next = GrowthCapacity(clipChains.Length, required)
     let expanded = [next]ClipChainRecord
-    var index int32 = 0
-    while index < clipChainCount {
-      expanded[index] = clipChains[index]
-      index = index + 1
-    }
+    Array.Copy(clipChains, expanded, clipChainCount)
     clipChains = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -936,11 +872,7 @@ internal partial class SceneFrame {
     if required <= shadows.Length { return }
     let next = GrowthCapacity(shadows.Length, required)
     let expanded = [next]ShadowRecord
-    var index int32 = 0
-    while index < shadowCount {
-      expanded[index] = shadows[index]
-      index = index + 1
-    }
+    Array.Copy(shadows, expanded, shadowCount)
     shadows = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -949,11 +881,7 @@ internal partial class SceneFrame {
     if required <= underlines.Length { return }
     let next = GrowthCapacity(underlines.Length, required)
     let expanded = [next]UnderlineRecord
-    var index int32 = 0
-    while index < underlineCount {
-      expanded[index] = underlines[index]
-      index = index + 1
-    }
+    Array.Copy(underlines, expanded, underlineCount)
     underlines = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -962,11 +890,7 @@ internal partial class SceneFrame {
     if required <= lavas.Length { return }
     let next = GrowthCapacity(lavas.Length, required)
     let expanded = [next]LavaRecord
-    var index int32 = 0
-    while index < lavaCount {
-      expanded[index] = lavas[index]
-      index = index + 1
-    }
+    Array.Copy(lavas, expanded, lavaCount)
     lavas = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -975,11 +899,7 @@ internal partial class SceneFrame {
     if required <= customMeshes.Length { return }
     let next = GrowthCapacity(customMeshes.Length, required)
     let expanded = [next]CustomMeshRecord
-    var index int32 = 0
-    while index < customMeshCount {
-      expanded[index] = customMeshes[index]
-      index = index + 1
-    }
+    Array.Copy(customMeshes, expanded, customMeshCount)
     customMeshes = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -988,11 +908,7 @@ internal partial class SceneFrame {
     if required <= layers.Length { return }
     let next = GrowthCapacity(layers.Length, required)
     let expanded = [next]LayerRecord
-    var index int32 = 0
-    while index < layerCount {
-      expanded[index] = layers[index]
-      index = index + 1
-    }
+    Array.Copy(layers, expanded, layerCount)
     layers = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -1001,11 +917,7 @@ internal partial class SceneFrame {
     if required <= shaderEffects.Length { return }
     let next = GrowthCapacity(shaderEffects.Length, required)
     let expanded = [next]ShaderEffectRecord
-    var index int32 = 0
-    while index < shaderEffectCount {
-      expanded[index] = shaderEffects[index]
-      index = index + 1
-    }
+    Array.Copy(shaderEffects, expanded, shaderEffectCount)
     shaderEffects = expanded
     growthOperations = growthOperations + 1uL
   }
@@ -1062,9 +974,9 @@ internal partial class SceneFrame {
         || Single.IsNaN(value.foreground_w)
         || Single.IsInfinity(value.foreground_w)
         || value.foreground_w < 0.0F || value.foreground_w > 1.0F
-        || Single.IsNaN(value.effectParams_x)
-        || Single.IsInfinity(value.effectParams_x)
-        || value.effectParams_x < 0.0F {
+        || Single.IsNaN(BitConverter.Int32BitsToSingle(int32(value.glyphInput_w)))
+        || Single.IsInfinity(BitConverter.Int32BitsToSingle(int32(value.glyphInput_w)))
+        || BitConverter.Int32BitsToSingle(int32(value.glyphInput_w)) < 0.0F {
           throw ArgumentException("cached text segment instance is invalid")
         }
     }

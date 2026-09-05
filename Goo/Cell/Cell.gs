@@ -239,25 +239,53 @@ public open class Cell {
   /// @param initial initial value
   /// @returns an animation bridge owned by this component
   public func Animate(initial float64) Anim[float64] ->
-  registerAnim[float64](AnimCore[float64](initial, MotionConverters.Float64, Rebuild))
+  registerAnim[float64](Anim[float64](initial, MotionConverters.Float64, Rebuild, nil))
+
+  /// Creates a number animation that reports values without rebuilding this component.
+  /// @param initial initial value
+  /// @param onChange receives values from Set and each motion tick
+  /// @returns an animation bridge owned by this component
+  public func Animate(initial float64, onChange Action[float64]) Anim[float64] ->
+  registerCallbackAnim[float64](initial, MotionConverters.Float64, onChange)
 
   /// Creates a point animated by this component.
   /// @param initial initial value
   /// @returns an animation bridge owned by this component
   public func Animate(initial Point) Anim[Point] ->
-  registerAnim[Point](AnimCore[Point](initial, MotionConverters.Point, Rebuild))
+  registerAnim[Point](Anim[Point](initial, MotionConverters.Point, Rebuild, nil))
+
+  /// Creates a point animation that reports values without rebuilding this component.
+  /// @param initial initial value
+  /// @param onChange receives values from Set and each motion tick
+  /// @returns an animation bridge owned by this component
+  public func Animate(initial Point, onChange Action[Point]) Anim[Point] ->
+  registerCallbackAnim[Point](initial, MotionConverters.Point, onChange)
 
   /// Creates a color animated by this component.
   /// @param initial initial value
   /// @returns an animation bridge owned by this component
   public func Animate(initial Color) Anim[Color] ->
-  registerAnim[Color](AnimCore[Color](initial, MotionConverters.Color, Rebuild))
+  registerAnim[Color](Anim[Color](initial, MotionConverters.Color, Rebuild, nil))
+
+  /// Creates a color animation that reports values without rebuilding this component.
+  /// @param initial initial value
+  /// @param onChange receives values from Set and each motion tick
+  /// @returns an animation bridge owned by this component
+  public func Animate(initial Color, onChange Action[Color]) Anim[Color] ->
+  registerCallbackAnim[Color](initial, MotionConverters.Color, onChange)
 
   /// Creates a fixed-unit length animated by this component.
   /// @param initial pixel or percentage initial value
   /// @returns an animation bridge owned by this component
   public func Animate(initial Length) Anim[Length] ->
-  registerAnim[Length](AnimCore[Length](initial, MotionConverters.ForLength(initial), Rebuild))
+  registerAnim[Length](Anim[Length](initial, MotionConverters.ForLength(initial), Rebuild, nil))
+
+  /// Creates a fixed-unit length animation that reports values without rebuilding this component.
+  /// @param initial pixel or percentage initial value
+  /// @param onChange receives values from Set and each motion tick
+  /// @returns an animation bridge owned by this component
+  public func Animate(initial Length, onChange Action[Length]) Anim[Length] ->
+  registerCallbackAnim[Length](initial, MotionConverters.ForLength(initial), onChange)
 
   /// Creates a value animated by this component with custom coordinates.
   /// @typeparam T animated value type
@@ -265,7 +293,23 @@ public open class Cell {
   /// @param converter maps values to scalar simulation coordinates
   /// @returns an animation bridge owned by this component
   public func Animate[T](initial T, converter MotionConverter[T]) Anim[T] ->
-  registerAnim[T](AnimCore[T](initial, converter, Rebuild))
+  registerAnim[T](Anim[T](initial, converter, Rebuild, nil))
+
+  /// Creates a custom-coordinate animation that reports values without rebuilding this component.
+  /// @typeparam T animated value type
+  /// @param initial initial value
+  /// @param converter maps values to scalar simulation coordinates
+  /// @param onChange receives values from Set and each motion tick
+  /// @returns an animation bridge owned by this component
+  public func Animate[T](initial T, converter MotionConverter[T], onChange Action[T]) Anim[T] ->
+  registerCallbackAnim[T](initial, converter, onChange)
+
+  private func registerCallbackAnim[T](initial T, converter MotionConverter[T], onChange Action[T]) Anim[T] {
+    if onChange == nil {
+      throw ArgumentNullException("onChange")
+    }
+    return registerAnim[T](Anim[T](initial, converter, nil, onChange))
+  }
 
   private func registerAnim[T](a Anim[T]) Anim[T] {
     if let list = anims {

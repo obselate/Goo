@@ -5,10 +5,13 @@ namespace Goo.SvgCompiler;
 
 internal static class SvgPathParser
 {
+    private const int MaxCurves = 262144;
+
     internal static SvgPath Parse(string value, XElement owner)
     {
         var scanner = new PathScanner(value, owner);
         var path = new SvgPath();
+        var curveCount = 0;
         SvgContour? contour = null;
         var current = new SvgPoint(0, 0);
         var start = current;
@@ -27,7 +30,7 @@ internal static class SvgPathParser
                 {
                     if (contour is not null)
                     {
-                        if (!Same(current, start)) AddLine(contour, current, start);
+                        if (!Same(current, start)) AddLine(contour, current, start, ref curveCount);
                         contour.Closed = true;
                         current = start;
                     }
@@ -72,7 +75,7 @@ internal static class SvgPathParser
                 {
                     EnsureContour(ref contour, current);
                     var point = ReadPoint(scanner, owner, command is 'l', current);
-                    AddLine(contour!, current, point);
+                    AddLine(contour!, current, point, ref curveCount);
                     current = point;
                     previousCommand = command;
                     hasPreviousCubic = false;
@@ -85,7 +88,7 @@ internal static class SvgPathParser
                     EnsureContour(ref contour, current);
                     var x = scanner.ReadNumber();
                     var point = new SvgPoint(command == 'h' ? current.X + x : x, current.Y);
-                    AddLine(contour!, current, point);
+                    AddLine(contour!, current, point, ref curveCount);
                     current = point;
                     previousCommand = command;
                     hasPreviousCubic = false;
@@ -98,7 +101,7 @@ internal static class SvgPathParser
                     EnsureContour(ref contour, current);
                     var y = scanner.ReadNumber();
                     var point = new SvgPoint(current.X, command == 'v' ? current.Y + y : y);
-                    AddLine(contour!, current, point);
+                    AddLine(contour!, current, point, ref curveCount);
                     current = point;
                     previousCommand = command;
                     hasPreviousCubic = false;
@@ -112,7 +115,7 @@ internal static class SvgPathParser
                     var first = ReadPoint(scanner, owner, command is 'c', current);
                     var second = ReadPoint(scanner, owner, command is 'c', current);
                     var end = ReadPoint(scanner, owner, command is 'c', current);
-                    AddCubic(contour!, current, first, second, end);
+                    AddCubic(contour!, current, first, second, end, ref curveCount);
                     current = end;
                     previousCubicControl = second;
                     hasPreviousCubic = true;
@@ -129,7 +132,7 @@ internal static class SvgPathParser
                         : current;
                     var second = ReadPoint(scanner, owner, command is 's', current);
                     var end = ReadPoint(scanner, owner, command is 's', current);
-                    AddCubic(contour!, current, first, second, end);
+                    AddCubic(contour!, current, first, second, end, ref curveCount);
                     current = end;
                     previousCubicControl = second;
                     hasPreviousCubic = true;
@@ -143,7 +146,7 @@ internal static class SvgPathParser
                     EnsureContour(ref contour, current);
                     var control = ReadPoint(scanner, owner, command is 'q', current);
                     var end = ReadPoint(scanner, owner, command is 'q', current);
-                    AddQuadratic(contour!, current, control, end);
+                    AddQuadratic(contour!, current, control, end, ref curveCount);
                     current = end;
                     previousQuadraticControl = control;
                     hasPreviousQuadratic = true;
@@ -159,7 +162,7 @@ internal static class SvgPathParser
                         ? Reflect(previousQuadraticControl, current)
                         : current;
                     var end = ReadPoint(scanner, owner, command is 't', current);
-                    AddQuadratic(contour!, current, control, end);
+                    AddQuadratic(contour!, current, control, end, ref curveCount);
                     current = end;
                     previousQuadraticControl = control;
                     hasPreviousQuadratic = true;
@@ -182,7 +185,7 @@ internal static class SvgPathParser
                         throw Fail(owner, "arc flags must be zero or one");
                     }
                     AddArc(contour!, current, Math.Abs(rx), Math.Abs(ry), rotation,
-                        largeArc != 0, sweep != 0, end);
+                        largeArc != 0, sweep != 0, end, ref curveCount);
                     current = end;
                     hasPreviousCubic = false;
                     hasPreviousQuadratic = false;
@@ -204,7 +207,12 @@ internal static class SvgPathParser
         var x = scanner.ReadNumber();
         var y = scanner.ReadNumber();
         var point = new SvgPoint(x, y);
-        return relative ? new SvgPoint(current.X + point.X, current.Y + point.Y) : point;
+        var result = relative ? new SvgPoint(current.X + point.X, current.Y + point.Y) : point;
+        if (!result.IsFinite)
+        {
+            throw Fail(owner, "path coordinate is not finite");
+        }
+        return result;
     }
 
     private static void EnsureContour(ref SvgContour? contour, SvgPoint current)
@@ -215,33 +223,41 @@ internal static class SvgPathParser
     private static SvgPoint Reflect(SvgPoint point, SvgPoint around) => new(2 * around.X - point.X, 2 * around.Y - point.Y);
     private static bool Same(SvgPoint left, SvgPoint right) => left.X == right.X && left.Y == right.Y;
 
-    private static void AddLine(SvgContour contour, SvgPoint from, SvgPoint to)
+    private static void AddLine(SvgContour contour, SvgPoint from, SvgPoint to, ref int curveCount)
     {
-        contour.Curves.Add(new SvgQuadratic(from.X, from.Y, (from.X + to.X) / 2, (from.Y + to.Y) / 2, to.X, to.Y));
+        AddCurve(contour, new SvgQuadratic(from.X, from.Y, (from.X + to.X) / 2,
+            (from.Y + to.Y) / 2, to.X, to.Y), ref curveCount);
     }
 
-    private static void AddQuadratic(SvgContour contour, SvgPoint from, SvgPoint control, SvgPoint to)
+    private static void AddQuadratic(SvgContour contour, SvgPoint from, SvgPoint control,
+        SvgPoint to, ref int curveCount)
     {
-        contour.Curves.Add(new SvgQuadratic(from.X, from.Y, control.X, control.Y, to.X, to.Y));
+        AddCurve(contour, new SvgQuadratic(from.X, from.Y, control.X, control.Y, to.X, to.Y),
+            ref curveCount);
     }
 
-    private static void AddCubic(SvgContour contour, SvgPoint from, SvgPoint first, SvgPoint second, SvgPoint to)
+    private static void AddCubic(SvgContour contour, SvgPoint from, SvgPoint first,
+        SvgPoint second, SvgPoint to, ref int curveCount)
     {
-        AddCubicRecursive(contour, from, first, second, to, 0);
+        AddCubicRecursive(contour, from, first, second, to, 0, ref curveCount);
     }
 
-    private static void AddCubicRecursive(SvgContour contour, SvgPoint p0, SvgPoint p1, SvgPoint p2, SvgPoint p3, int depth)
+    private static void AddCubicRecursive(SvgContour contour, SvgPoint p0, SvgPoint p1,
+        SvgPoint p2, SvgPoint p3, int depth, ref int curveCount)
     {
         var control = new SvgPoint(
             (3 * (p1.X + p2.X) - p0.X - p3.X) / 4,
             (3 * (p1.Y + p2.Y) - p0.Y - p3.Y) / 4);
-        var cubicMid = Cubic(p0, p1, p2, p3, 0.5);
-        var quadraticMid = Quadratic(p0, control, p3, 0.5);
-        var error = Math.Sqrt((cubicMid.X - quadraticMid.X) * (cubicMid.X - quadraticMid.X)
-            + (cubicMid.Y - quadraticMid.Y) * (cubicMid.Y - quadraticMid.Y));
+        var deltaX = p3.X - 3 * p2.X + 3 * p1.X - p0.X;
+        var deltaY = p3.Y - 3 * p2.Y + 3 * p1.Y - p0.Y;
+        var error = Math.Sqrt(deltaX * deltaX + deltaY * deltaY) * Math.Sqrt(3) / 36;
+        if (!control.IsFinite || !double.IsFinite(error))
+        {
+            throw new SvgCompileException("path cubic contains non-finite geometry");
+        }
         if (error <= 0.0001 || depth >= 10)
         {
-            AddQuadratic(contour, p0, control, p3);
+            AddQuadratic(contour, p0, control, p3, ref curveCount);
             return;
         }
         var p01 = Midpoint(p0, p1);
@@ -250,33 +266,34 @@ internal static class SvgPathParser
         var p012 = Midpoint(p01, p12);
         var p123 = Midpoint(p12, p23);
         var middle = Midpoint(p012, p123);
-        AddCubicRecursive(contour, p0, p01, p012, middle, depth + 1);
-        AddCubicRecursive(contour, middle, p123, p23, p3, depth + 1);
+        AddCubicRecursive(contour, p0, p01, p012, middle, depth + 1, ref curveCount);
+        AddCubicRecursive(contour, middle, p123, p23, p3, depth + 1, ref curveCount);
+    }
+
+    private static void AddCurve(SvgContour contour, SvgQuadratic curve, ref int curveCount)
+    {
+        if (!double.IsFinite(curve.X0) || !double.IsFinite(curve.Y0)
+            || !double.IsFinite(curve.CX) || !double.IsFinite(curve.CY)
+            || !double.IsFinite(curve.X1) || !double.IsFinite(curve.Y1))
+        {
+            throw new SvgCompileException("path contains non-finite geometry");
+        }
+        if (curveCount >= MaxCurves)
+        {
+            throw new SvgCompileException($"path curve count exceeds {MaxCurves}");
+        }
+        contour.Curves.Add(curve);
+        curveCount++;
     }
 
     private static SvgPoint Midpoint(SvgPoint left, SvgPoint right) => new((left.X + right.X) / 2, (left.Y + right.Y) / 2);
-    private static SvgPoint Cubic(SvgPoint p0, SvgPoint p1, SvgPoint p2, SvgPoint p3, double t)
-    {
-        var u = 1 - t;
-        return new SvgPoint(
-            u * u * u * p0.X + 3 * u * u * t * p1.X + 3 * u * t * t * p2.X + t * t * t * p3.X,
-            u * u * u * p0.Y + 3 * u * u * t * p1.Y + 3 * u * t * t * p2.Y + t * t * t * p3.Y);
-    }
-
-    private static SvgPoint Quadratic(SvgPoint p0, SvgPoint control, SvgPoint p1, double t)
-    {
-        var u = 1 - t;
-        return new SvgPoint(u * u * p0.X + 2 * u * t * control.X + t * t * p1.X,
-            u * u * p0.Y + 2 * u * t * control.Y + t * t * p1.Y);
-    }
-
     private static void AddArc(SvgContour contour, SvgPoint from, double radiusX, double radiusY,
-        double rotation, bool largeArc, bool sweep, SvgPoint to)
+        double rotation, bool largeArc, bool sweep, SvgPoint to, ref int curveCount)
     {
         if (Same(from, to)) return;
         if (radiusX == 0 || radiusY == 0)
         {
-            AddLine(contour, from, to);
+            AddLine(contour, from, to, ref curveCount);
             return;
         }
         var angle = rotation * Math.PI / 180;
@@ -319,7 +336,7 @@ internal static class SvgPathParser
             var p3 = EllipsePoint(centerX, centerY, radiusX, radiusY, cosine, sine, nextAngle);
             var c1 = EllipsePoint(centerX, centerY, radiusX, radiusY, cosine, sine, currentAngle, tangent, true);
             var c2 = EllipsePoint(centerX, centerY, radiusX, radiusY, cosine, sine, nextAngle, tangent, false);
-            AddCubic(contour, p0, c1, c2, p3);
+            AddCubic(contour, p0, c1, c2, p3, ref curveCount);
             currentAngle = nextAngle;
         }
     }

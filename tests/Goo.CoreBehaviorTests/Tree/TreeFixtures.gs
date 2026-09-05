@@ -199,7 +199,7 @@ internal class TreeFixtures {
     hidden.Children.Add(Node{ Kind: NodeKind.Container, Rect: Rect{ X: 0.0F, Y: 0.0F, W: 100.0F, H: 100.0F }, OnClick: func() { hiddenHits = hiddenHits + 1 } })
     root.Children.Add(visible)
     root.Children.Add(hidden)
-    return Hit().DispatchClick(root, 25.0F, 25.0F) && visibleHits == 1 && hiddenHits == 0
+    return hitDispatchClick(root, 25.0F, 25.0F) && visibleHits == 1 && hiddenHits == 0
   }
 
   func DisplayNoneFocusContract() bool {
@@ -260,7 +260,7 @@ internal class TreeFixtures {
       OnClick: () -> { hiddenHits++ } })
     root.Children.Add(visible)
     root.Children.Add(hidden)
-    return Hit().DispatchClick(root, 25.0F, 25.0F) && visibleHits == 1 && hiddenHits == 0
+    return hitDispatchClick(root, 25.0F, 25.0F) && visibleHits == 1 && hiddenHits == 0
   }
 
   func VisibilityFocusContract() bool {

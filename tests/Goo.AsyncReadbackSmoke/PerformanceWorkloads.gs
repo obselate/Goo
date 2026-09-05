@@ -439,6 +439,41 @@ open class PerformanceTopologyCell : Cell[PerformanceTopologyCellInput] {
   }
 }
 
+func PerformanceBox(index int32, color Color, key string? = nil) Blob {
+  let row = index / 25
+  let column = index % 25
+  return Container{
+    Key: key,
+    Position: PositionType.Absolute,
+    Left: float64(column) * 40.0,
+    Top: float64(row) * 16.0,
+    Width: 40.0,
+    Height: 16.0,
+    BorderRadius: if (index & 1) == 0 { 0.0 } else { 3.0 },
+    BackgroundColor: color,
+  }
+}
+
+class PerformanceBoxCell : Cell {
+  private var index int32
+  private var color Color
+
+  func Initialize(boxIndex int32, initialColor Color) {
+    index = boxIndex
+    color = initialColor
+  }
+
+  func SetColor(value Color) {
+    if color == value {
+      return
+    }
+    color = value
+    Rebuild()
+  }
+
+  override func Build() Blob -> PerformanceBox(index, color)
+}
+
 class PerformanceBoxesRoot : Cell {
   shared {
     const PerformanceBoxes int32 = 1000
@@ -447,6 +482,7 @@ class PerformanceBoxesRoot : Cell {
   private let seed uint64
   private let full bool
   private let keys []string
+  private let cells []PerformanceBoxCell?
   private var generation int32
   private var changedIndex int32
 
@@ -458,11 +494,21 @@ class PerformanceBoxesRoot : Cell {
   prop Width int32 { get -> 1000 }
   prop Height int32 { get -> 640 }
   prop MutationCount int32 { get -> if full { PerformanceBoxes } else { 1 } }
+  prop RetainedChildUpdates bool { get -> !full }
+  prop DirtyCell Cell {
+    get {
+      if changedIndex >= 0 {
+        if let current = cells[changedIndex] { return current }
+      }
+      return this
+    }
+  }
 
   init(initialSeed uint64, mutateAll bool) {
     seed = initialSeed
     full = mutateAll
     keys = [PerformanceBoxes]string
+    cells = [PerformanceBoxes]PerformanceBoxCell?
     var index int32 = 0
     while index < PerformanceBoxes {
       keys[index] = "perf-box-" + index.ToString()
@@ -473,9 +519,23 @@ class PerformanceBoxesRoot : Cell {
   }
 
   func Advance(frame int32) {
+    let previous = changedIndex
     generation = generation + 1
     changedIndex = if full { -1 } else { (frame * 17 + int32(seed % 997uL)) % PerformanceBoxes }
-    Rebuild()
+    if full {
+      return
+    }
+    if previous >= 0 && previous != changedIndex {
+      SetBoxColor(previous)
+    }
+    SetBoxColor(changedIndex)
+  }
+
+  private func SetBoxColor(index int32) {
+    guard let cell = cells[index] else {
+      throw InvalidOperationException("Performance box cell is not mounted")
+    }
+    cell.SetColor(BoxColor(index))
   }
 
   private func BoxColor(index int32) Color {
@@ -495,18 +555,146 @@ class PerformanceBoxesRoot : Cell {
     let children = List[Blob](PerformanceBoxes)
     var index int32 = 0
     while index < PerformanceBoxes {
-      let row = index / 25
-      let column = index % 25
-      children.Add(Container{
-        Key: keys[index],
-        Position: PositionType.Absolute,
-        Left: float64(column) * 40.0,
-        Top: float64(row) * 16.0,
-        Width: 40.0,
-        Height: 16.0,
-        BorderRadius: if (index & 1) == 0 { 0.0 } else { 3.0 },
-        BackgroundColor: BoxColor(index),
-      })
+      if full {
+        children.Add(PerformanceBox(index, BoxColor(index), keys[index]))
+      } else {
+        let boxIndex = index
+        let initialColor = BoxColor(index)
+        children.Add(Cell.MountSeeded[PerformanceBoxCell](keys[index],
+          (cell PerformanceBoxCell) -> {
+            cell.Initialize(boxIndex, initialColor)
+            cells[boxIndex] = cell
+          }, nil))
+      }
+      index = index + 1
+    }
+    return Container{
+      Width: 1000,
+      Height: 640,
+      Position: PositionType.Relative,
+      BackgroundColor: Color.Transparent,
+      Children: children,
+    }
+  }
+}
+
+class PerformanceTextEditorCell : Cell, IDisposable {
+  private let controller TextEditorController
+  private var index int32
+  private var color Color
+
+  init() {
+    controller = TextEditorController(TextDocument("x"))
+  }
+
+  func Initialize(editorIndex int32, initialColor Color) {
+    index = editorIndex
+    color = initialColor
+  }
+
+  func SetColor(value Color) {
+    if color == value {
+      return
+    }
+    color = value
+    Rebuild()
+  }
+
+  override func Build() Blob {
+    let row = index / 25
+    let column = index % 25
+    return TextEditor(controller) {
+      Position = PositionType.Absolute,
+      Left = float64(column) * 40.0,
+      Top = float64(row) * 16.0,
+      Width = 40.0,
+      Height = 16.0,
+      FontSize = 10.0,
+      LineHeight = 1.0,
+      TextWrap = TextWrap.NoWrap,
+      BackgroundColor = color,
+      Color = Color.Rgb(224, 232, 244),
+      OverscanLines = 0,
+    }
+  }
+
+  /// Releases the editor controller.
+  public func Dispose() {
+    controller.Dispose()
+  }
+}
+
+class PerformanceTextEditorsRoot : Cell {
+  shared {
+    const PerformanceTextEditors int32 = 1000
+  }
+
+  private let seed uint64
+  private let cells []PerformanceTextEditorCell?
+  private var generation int32
+  private var changedIndex int32
+
+  prop LogicalCount int64 { get -> int64(PerformanceTextEditors) }
+  prop VisibleCount int32 { get -> PerformanceTextEditors }
+  prop MountedCount int32 { get -> PerformanceTextEditors }
+  prop MountedBound int32 { get -> PerformanceTextEditors }
+  prop Width int32 { get -> 1000 }
+  prop Height int32 { get -> 640 }
+  prop MutationCount int32 { get -> 1 }
+  prop DirtyCell Cell {
+    get {
+      if changedIndex >= 0 {
+        if let current = cells[changedIndex] { return current }
+      }
+      return this
+    }
+  }
+
+  init(initialSeed uint64) {
+    seed = initialSeed
+    cells = [PerformanceTextEditors]PerformanceTextEditorCell?
+    changedIndex = -1
+  }
+
+  func Advance(frame int32) {
+    let previous = changedIndex
+    generation = generation + 1
+    changedIndex = (frame * 17 + int32(seed % 997uL)) % PerformanceTextEditors
+    if previous >= 0 && previous != changedIndex {
+      SetEditorColor(previous)
+    }
+    SetEditorColor(changedIndex)
+  }
+
+  private func SetEditorColor(index int32) {
+    guard let cell = cells[index] else {
+      throw InvalidOperationException("Performance text editor cell is not mounted")
+    }
+    cell.SetColor(EditorColor(index))
+  }
+
+  private func EditorColor(index int32) Color {
+    if changedIndex == index {
+      return Color.Rgb(
+        (48 + generation * 13 + index) % 160 + 48,
+        (72 + generation * 7 + index * 3) % 128 + 72,
+        (112 + generation * 5 + index * 5) % 112 + 112)
+    }
+    return Color.Rgb(8, 13, 22)
+  }
+
+  override func Build() Blob {
+    let children = List[Blob](PerformanceTextEditors)
+    var index int32 = 0
+    while index < PerformanceTextEditors {
+      let editorIndex = index
+      let initialColor = EditorColor(index)
+      children.Add(Cell.MountSeeded[PerformanceTextEditorCell](
+        "perf-text-editor-" + index.ToString(),
+        (cell PerformanceTextEditorCell) -> {
+          cell.Initialize(editorIndex, initialColor)
+          cells[editorIndex] = cell
+        }, nil))
       index = index + 1
     }
     return Container{
@@ -525,6 +713,7 @@ class PerformanceScenario : Cell {
   private var table PerformanceTableRoot?
   private var topology PerformanceTopologyRoot?
   private var boxes PerformanceBoxesRoot?
+  private var textEditors PerformanceTextEditorsRoot?
   private var smallAnimation PerformanceSmallAnimationRoot?
   private var textEditing PerformanceTextEditingRoot?
   private var imageEffects PerformanceImageEffectsRoot?
@@ -540,11 +729,21 @@ class PerformanceScenario : Cell {
   }
   prop Seed uint64 { get -> seed }
   prop Root Cell { get -> this }
+  prop DirtyCell Cell {
+    get {
+      if let current = boxes {
+        if current.RetainedChildUpdates { return current.DirtyCell }
+      }
+      if let current = textEditors { return current.DirtyCell }
+      return this
+    }
+  }
   prop LogicalCount int64 {
     get {
       if let current = table { return current.LogicalCount }
       if let current = topology { return current.LogicalCount }
       if let current = boxes { return current.LogicalCount }
+      if let current = textEditors { return current.LogicalCount }
       if let current = smallAnimation { return current.LogicalCount }
       if let current = textEditing { return current.LogicalCount }
       if let current = imageEffects { return current.LogicalCount }
@@ -574,6 +773,7 @@ class PerformanceScenario : Cell {
       if let current = table { return current.VisibleCount }
       if let current = topology { return current.VisibleCount }
       if let current = boxes { return current.VisibleCount }
+      if let current = textEditors { return current.VisibleCount }
       if let current = smallAnimation { return current.VisibleCount }
       if let current = textEditing { return current.VisibleCount }
       if let current = imageEffects { return current.VisibleCount }
@@ -586,6 +786,7 @@ class PerformanceScenario : Cell {
       if let current = table { return current.MountedCount }
       if let current = topology { return current.MountedCount }
       if let current = boxes { return current.MountedCount }
+      if let current = textEditors { return current.MountedCount }
       if let current = smallAnimation { return current.MountedCount }
       if let current = textEditing { return current.MountedCount }
       if let current = imageEffects { return current.MountedCount }
@@ -598,6 +799,7 @@ class PerformanceScenario : Cell {
       if let current = table { return current.MountedBound }
       if let current = topology { return current.MountedBound }
       if let current = boxes { return current.MountedBound }
+      if let current = textEditors { return current.MountedBound }
       if let current = smallAnimation { return current.MountedBound }
       if let current = textEditing { return current.MountedBound }
       if let current = imageEffects { return current.MountedBound }
@@ -610,6 +812,7 @@ class PerformanceScenario : Cell {
       if let current = table { return current.MutationCount }
       if let current = topology { return current.MutationCount }
       if let current = boxes { return current.MutationCount }
+      if let current = textEditors { return current.MutationCount }
       if let current = smallAnimation { return current.MutationCount }
       if let current = textEditing { return current.MutationCount }
       if let current = imageEffects { return current.MutationCount }
@@ -622,6 +825,7 @@ class PerformanceScenario : Cell {
       if let current = table { return current.Width }
       if let current = topology { return current.Width }
       if let current = boxes { return current.Width }
+      if let current = textEditors { return current.Width }
       if let current = smallAnimation { return current.Width }
       if let current = textEditing { return current.Width }
       if let current = imageEffects { return current.Width }
@@ -634,6 +838,7 @@ class PerformanceScenario : Cell {
       if let current = table { return current.Height }
       if let current = topology { return current.Height }
       if let current = boxes { return current.Height }
+      if let current = textEditors { return current.Height }
       if let current = smallAnimation { return current.Height }
       if let current = textEditing { return current.Height }
       if let current = imageEffects { return current.Height }
@@ -651,7 +856,7 @@ class PerformanceScenario : Cell {
       2246822519uL
     } else if selected == "small-animation" {
       1103515245uL
-    } else if selected == "text-editing" {
+    } else if selected == "text-editor-sparse" || selected == "text-editing" {
       3266489917uL
     } else if selected == "image-effects" {
       668265263uL
@@ -672,6 +877,9 @@ class PerformanceScenario : Cell {
     } else if selected == "boxes-full" {
       let value = PerformanceBoxesRoot(seed, true)
       boxes = value
+    } else if selected == "text-editor-sparse" {
+      let value = PerformanceTextEditorsRoot(seed)
+      textEditors = value
     } else if selected == "small-animation" {
       let value = PerformanceSmallAnimationRoot(seed)
       smallAnimation = value
@@ -697,6 +905,8 @@ class PerformanceScenario : Cell {
       current.Advance(frame)
     } else if let current = boxes {
       current.Advance(frame)
+    } else if let current = textEditors {
+      current.Advance(frame)
     } else if let current = smallAnimation {
       current.Advance(frame)
     } else if let current = textEditing {
@@ -707,7 +917,16 @@ class PerformanceScenario : Cell {
       current.Advance(frame)
     }
     revision = revision + 1
-    Rebuild()
+    var rebuildScenario = true
+    if let current = boxes {
+      rebuildScenario = !current.RetainedChildUpdates
+    }
+    if textEditors != nil {
+      rebuildScenario = false
+    }
+    if rebuildScenario {
+      Rebuild()
+    }
   }
 
   func PrepareWindow(window Window, frame int32) {
@@ -752,6 +971,7 @@ class PerformanceScenario : Cell {
     if let current = table { return current.Build() }
     if let current = topology { return current.Build() }
     if let current = boxes { return current.Build() }
+    if let current = textEditors { return current.Build() }
     if let current = smallAnimation { return current.Build() }
     if let current = textEditing { return current.Build() }
     if let current = imageEffects { return current.Build() }
@@ -818,17 +1038,20 @@ func PerformanceGpuStats(values []int64, count int32) PerformanceGpuStats -> Per
 }
 
 func PerformanceWorkload() string {
-  let value = Environment.GetEnvironmentVariable("GOO_PERF_WORKLOAD")
+  guard let value = Environment.GetEnvironmentVariable("GOO_PERF_WORKLOAD") else {
+    throw InvalidOperationException(
+      "GOO_PERF_WORKLOAD must select a retained performance workload")
+  }
   if value == "table" || value == "topology" || value == "boxes-sparse"
     || value == "boxes-full" || value == "small-animation"
-    || value == "text-editing" || value == "image-effects"
+    || value == "text-editor-sparse" || value == "text-editing" || value == "image-effects"
     || value == "resize-dpi" || value == "three-window"
     || value == "true-idle" {
-      return value!!
+      return value
     }
   throw InvalidOperationException(
     "GOO_PERF_WORKLOAD must be table, topology, boxes-sparse, boxes-full, "
-    +"small-animation, text-editing, image-effects, resize-dpi, "
+    +"small-animation, text-editor-sparse, text-editing, image-effects, resize-dpi, "
     +"three-window, or true-idle")
 }
 
@@ -990,7 +1213,7 @@ func RunPerformanceBenchmark() {
       let start = Stopwatch.GetTimestamp()
       scenario.AdvanceForWindow(warmup + sampleIndex, opened)
 
-      Require(WindowReadbackTestFixture.CellDirty(scenario),
+      Require(WindowReadbackTestFixture.CellDirty(scenario.DirtyCell),
         "Retained performance scenario root was not dirtied")
       var counters = WindowReadbackTestFixture.DiagnosticCounters(opened)
       var end int64 = 0L
@@ -1108,6 +1331,14 @@ func RunPerformanceBenchmark() {
   let allocationP99 = PerformancePercentileCount(frameAllocations, samples, 0.99)
   let allocationP999 = PerformancePercentileCount(frameAllocations, samples, 0.999)
   let allocationWorst = PerformanceMaxCount(frameAllocations, samples)
+  if workload == "boxes-sparse" && warmup > 0 {
+    Require(allocationP95 <= 2048L,
+      "Retained sparse boxes exceeded the 2 KiB managed allocation budget")
+  }
+  if workload == "text-editor-sparse" && warmup > 0 {
+    Require(allocationP95 <= 4096L,
+      "Retained sparse text editors exceeded the 4 KiB managed allocation budget")
+  }
   let planDelta = PerformanceDelta(finalCounters.planCompileCount, beforeCounters.planCompileCount)
   let recordDelta = PerformanceDelta(finalCounters.recordCount, beforeCounters.recordCount)
   let drawDelta = PerformanceDelta(finalCounters.drawCount, beforeCounters.drawCount)
@@ -1180,13 +1411,13 @@ func RunPerformanceBenchmark() {
     +" damage_y=" + finalScene.DamageY.ToString()
     +" damage_width=" + finalScene.DamageWidth.ToString()
     +" damage_height=" + finalScene.DamageHeight.ToString()
-    +" primitive_written_B=" + finalPrimitive.TotalWrittenBytes.ToString()
-    +" primitive_skipped_B=" + finalPrimitive.TotalSkippedBytes.ToString()
+    +" primitive_planned_transfer_B=" + finalPrimitive.TotalPlannedTransferBytes.ToString()
+    +" primitive_skipped_transfer_B=" + finalPrimitive.TotalSkippedTransferBytes.ToString()
     +" primitive_dirty=" + finalPrimitive.TotalDirtyRecordCount.ToString()
     +" primitive_ranges=" + finalPrimitive.TotalUploadRangeCount.ToString()
     +" primitive_full_uploads=" + finalPrimitive.TotalFullUploads.ToString()
-    +" primitive_mapped_writes=" + finalPrimitive.TotalMappedWrites.ToString()
-    +" primitive_flushes=" + finalPrimitive.TotalFlushes.ToString()
+    +" primitive_cpu_write_operations=" + finalPrimitive.TotalCpuWriteOperations.ToString()
+    +" primitive_native_flush_calls=" + finalPrimitive.TotalNativeFlushCalls.ToString()
     +" primitive_retained_reuse=" + finalPrimitive.TotalRetainedReuse.ToString()
     +" text_written_B=" + finalText.TotalWrittenBytes.ToString()
     +" text_skipped_B=" + finalText.TotalSkippedBytes.ToString()
@@ -1315,6 +1546,8 @@ func RunGpuTimestampSmoke() {
     while sampleIndex < samples {
       WindowReadbackTestFixture.PumpNativeEvents()
       let countersBefore = WindowReadbackTestFixture.DiagnosticCounters(opened)
+      let primitiveBefore = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
+      let textBefore = WindowReadbackTestFixture.TextFrameRetention(opened)
       let submissionsBefore = countersBefore.submitCount
       let presentsBefore = countersBefore.presentCount
       var counters = countersBefore
@@ -1333,9 +1566,51 @@ func RunGpuTimestampSmoke() {
         "Retained performance stage timestamp frame did not submit exactly once")
       Require(counters.presentCount == presentsBefore + 1uL,
         "Retained performance stage timestamp frame did not present exactly once")
-      Require(PerformanceDelta(counters.vulkanObjectAllocationCount,
-        countersBefore.vulkanObjectAllocationCount) == 0uL,
-        "Retained performance stage timestamp frame created a Vulkan object")
+      let primitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
+      let text = WindowReadbackTestFixture.TextFrameRetention(opened)
+      let objectAllocationDelta = PerformanceDelta(
+        counters.vulkanObjectAllocationCount,
+        countersBefore.vulkanObjectAllocationCount)
+      if objectAllocationDelta != 0uL {
+        originalError.Write(capturedError.ToString())
+        Require(false,
+          "Retained performance stage timestamp frame created a Vulkan object at sample "
+          +sampleIndex.ToString() + ": allocation_delta="
+          +objectAllocationDelta.ToString() + " live_before="
+          +countersBefore.vulkanObjectCount.ToString() + " live_after="
+          +counters.vulkanObjectCount.ToString() + " device_memory_allocation_delta="
+          +PerformanceDelta(counters.vulkanDeviceMemoryAllocationCount,
+            countersBefore.vulkanDeviceMemoryAllocationCount).ToString()
+          +" layer_create_delta="
+          +PerformanceDelta(counters.layerPoolCreateCount,
+            countersBefore.layerPoolCreateCount).ToString() + " layer_reuse_delta="
+          +PerformanceDelta(counters.layerPoolReuseCount,
+            countersBefore.layerPoolReuseCount).ToString() + " layer_resident_before="
+          +countersBefore.layerPoolResidentBytes.ToString() + " layer_resident_after="
+          +counters.layerPoolResidentBytes.ToString() + " layer_targets_before="
+          +countersBefore.layerPoolTargetCount.ToString() + " layer_targets_after="
+          +counters.layerPoolTargetCount.ToString() + " layer_leased_before="
+          +countersBefore.layerPoolLeasedCount.ToString() + " layer_leased_after="
+          +counters.layerPoolLeasedCount.ToString() + " clip_generation_before="
+          +countersBefore.clipFrameBufferGeneration.ToString()
+          +" clip_generation_after=" + counters.clipFrameBufferGeneration.ToString()
+          +" clip_capacity_before=" + countersBefore.clipFrameCapacity.ToString()
+          +" clip_capacity_after=" + counters.clipFrameCapacity.ToString()
+          +" primitive_slot=" + primitive.SlotIndex.ToString()
+          +" primitive_generation_before=" + primitiveBefore.BufferGeneration.ToString()
+          +" primitive_generation_after=" + primitive.BufferGeneration.ToString()
+          +" primitive_capacity_before=" + primitiveBefore.Capacity.ToString()
+          +" primitive_capacity_after=" + primitive.Capacity.ToString()
+          +" primitive_last_use_before=" + primitiveBefore.LastUseSerial.ToString()
+          +" primitive_last_use_after=" + primitive.LastUseSerial.ToString()
+          +" text_slot=" + text.SlotIndex.ToString() + " text_generation_before="
+          +textBefore.BufferGeneration.ToString() + " text_generation_after="
+          +text.BufferGeneration.ToString() + " text_capacity_before="
+          +textBefore.Capacity.ToString() + " text_capacity_after="
+          +text.Capacity.ToString() + " text_last_use_before="
+          +textBefore.LastUseSerial.ToString() + " text_last_use_after="
+          +text.LastUseSerial.ToString())
+      }
       Require(PerformanceDelta(counters.vulkanDeviceMemoryAllocationCount,
         countersBefore.vulkanDeviceMemoryAllocationCount) == 0uL,
         "Retained performance stage timestamp frame allocated Vulkan device memory")

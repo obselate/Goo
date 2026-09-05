@@ -18,7 +18,8 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
   private let device VkDevice
   private let dispatch VkDeviceDispatch
   private let queue VkQueue
-  private let queueWorker VulkanQueueWorker
+  private let sharedLease VulkanSharedLease
+  private let validateGraphicsSubmission Action[uint64]
   private let queueMailbox VulkanQueueMailbox
   private let graphicsFamilyIndex uint32
   private let allocator VulkanMemoryAllocator
@@ -50,7 +51,6 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
   private var stagingAllocation VulkanMemoryAllocation? = nil
   private var commandBuffer VkCommandBuffer
   private var commandPool VkCommandPool
-  private var completionFence VkFence
   private var timestampQueryPool VkQueryPool
   private var imageLayout VkImageLayout
   private var state VulkanOffscreenState
@@ -61,7 +61,6 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
   private var imageAccounted bool
   private var imageViewAccounted bool
   private var stagingBufferAccounted bool
-  private var completionFenceAccounted bool
   private var commandPoolAccounted bool
   private var timestampQueryPoolAccounted bool
   private var clipMaskSubmissionSerial uint64
@@ -78,7 +77,6 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
   private var disposed bool
   private var queuePending bool
   private var pendingSubmissionSerial uint64
-  private var sharedLeaseForDeviceLoss VulkanSharedLease? = nil
   private var primitiveRenderer VulkanPrimitiveRenderer? = nil
   private var layerPool VulkanOffscreenLayerPool? = nil
 
@@ -86,17 +84,14 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
   internal prop ImageView VkImageView{ get -> imageView }
   internal prop StagingBuffer VkBuffer{ get -> stagingBuffer }
   internal prop CommandBuffer VkCommandBuffer{ get -> commandBuffer }
-  internal prop CommandPool VkCommandPool{ get -> commandPool }
-  internal prop CompletionFence VkFence{ get -> completionFence }
+  internal prop PendingSubmissionSerial uint64{ get -> pendingSubmissionSerial }
   internal prop Extent VkExtent2D{ get -> extent }
   internal prop ImageByteSize VkDeviceSize{ get -> imageByteSize }
   internal prop StagingByteSize VkDeviceSize{ get -> stagingByteSize }
   internal prop ResourceByteSize VkDeviceSize{ get -> resourceByteSize }
   internal prop ReadbackByteSize VkDeviceSize{ get -> readbackByteSize }
-  internal prop ReadbackRegion VulkanReadbackRegion{ get -> readbackRegion }
   internal prop TargetFormat VkFormat{ get -> targetFormat }
   internal prop ResourceGeneration uint64{ get -> resourceGeneration }
-  internal prop ClipMaskAtlas VulkanClipMaskAtlas{ get -> clipMaskAtlas }
   internal prop State VulkanOffscreenState{ get -> state }
   internal prop SubmissionPendingReconcile bool{ get -> queuePending }
   internal prop SubmissionReadyForReconcile bool{
@@ -110,18 +105,11 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
         || allocator.LastResult == VkConstants.VK_ERROR_DEVICE_LOST
     }
   }
-  internal prop UnsafeTeardown bool{ get -> unsafeTeardown }
   internal prop ReadbackReady bool{ get -> state == VulkanOffscreenState.Complete }
   internal prop GpuTimingAvailable bool{ get -> gpuTimingAvailable }
   internal prop GpuSceneReplayNanoseconds uint64{ get -> gpuSceneReplayNanoseconds }
   internal prop GpuCopyNanoseconds uint64{ get -> gpuCopyNanoseconds }
 
-  internal func BindSharedLeaseForDeviceLoss(lease VulkanSharedLease) {
-    if lease == nil {
-      throw ArgumentNullException("lease")
-    }
-    sharedLeaseForDeviceLoss = lease
-  }
   internal prop LiveObjectCount uint32{
     get {
       var count uint32 = 0u
@@ -130,7 +118,6 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       if stagingBuffer != 0uL { count = count + 1u }
       if commandBuffer != nint(0) { count = count + 1u }
       if commandPool != 0uL { count = count + 1u }
-      if completionFence != 0uL { count = count + 1u }
       if timestampQueryPool != 0uL { count = count + 1u }
       if let renderer = primitiveRenderer {
         count = count + renderer.LiveObjectCount
@@ -179,7 +166,7 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
     nativeDiagnostics VulkanDiagnostics?,
     nativeTimestampState VulkanDiagnosticTimestampState?,
     nativeQueueMailbox VulkanQueueMailbox,
-    nativeQueueWorker VulkanQueueWorker) {
+    nativeSharedLease VulkanSharedLease) {
       if nativeDevice == nint(0) {
         throw ArgumentException("Vulkan device is null", "nativeDevice")
       }
@@ -225,8 +212,8 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       if nativeQueueMailbox == nil {
         throw ArgumentNullException("nativeQueueMailbox")
       }
-      if nativeQueueWorker == nil {
-        throw ArgumentNullException("nativeQueueWorker")
+      if nativeSharedLease == nil {
+        throw ArgumentNullException("nativeSharedLease")
       }
       if nativePathAtlas == nil {
         throw ArgumentNullException("nativePathAtlas")
@@ -239,13 +226,16 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       }
       if expectedGeneration == 0uL
         || sharedImages.Generation != expectedGeneration
-        || sharedState.Generation != expectedGeneration{
+        || sharedState.Generation != expectedGeneration
+        || nativeSharedLease.Generation != expectedGeneration
+        || nativeSharedLease.Device != nativeDevice{
           throw ArgumentOutOfRangeException("expectedGeneration")
         }
       device = nativeDevice
       dispatch = nativeDispatch
       queue = nativeQueue
-      queueWorker = nativeQueueWorker
+      sharedLease = nativeSharedLease
+      validateGraphicsSubmission = (serial uint64) -> { ValidateGraphicsSubmission(serial) }
       queueMailbox = nativeQueueMailbox
       graphicsFamilyIndex = nativeGraphicsFamilyIndex
       allocator = nativeAllocator
@@ -442,121 +432,129 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
     if commandResult != VkConstants.VK_SUCCESS {
       return commandResult
     }
-    let resetFences = dispatch.vkResetFences
-    let fenceResult = resetFences(device, 1u, &completionFence)
-    NoteResult(fenceResult)
-    if fenceResult == VkConstants.VK_SUCCESS {
-      readbackRegion = requestedRegion
-      readbackByteSize = plan.ByteSize
-      gpuTimingAvailable = false
-      gpuSceneReplayNanoseconds = 0uL
-      gpuCopyNanoseconds = 0uL
-      if let renderer = primitiveRenderer {
-        renderer.Collect(clipMaskSubmissionSerial)
-      }
-      layerPool?.Collect(clipMaskSubmissionSerial)
-      clipFrameSubmissionReconcilePending = false
-      primitiveFrameSubmissionReconcilePending = false
-      layerSubmissionReconcilePending = false
-      state = VulkanOffscreenState.Prepared
-    }
-    return fenceResult
+    var completed uint64
+    let completionResult = sharedLease.GetCompletedGraphicsSubmissionSerial(out completed)
+    NoteResult(completionResult)
+    if completionResult != VkConstants.VK_SUCCESS { return completionResult }
+    readbackRegion = requestedRegion
+    readbackByteSize = plan.ByteSize
+    gpuTimingAvailable = false
+    gpuSceneReplayNanoseconds = 0uL
+    gpuCopyNanoseconds = 0uL
+    primitiveRenderer?.Collect(completed)
+    layerPool?.Collect(completed)
+    clipFrameSubmissionReconcilePending = false
+    primitiveFrameSubmissionReconcilePending = false
+    layerSubmissionReconcilePending = false
+    state = VulkanOffscreenState.Prepared
+    return VkConstants.VK_SUCCESS
   }
 
-  internal func RecordScene(frame SceneFrame, clearColor VkClearColorValue) {
-    EnsureOpen()
-    if state != VulkanOffscreenState.Prepared {
-      throw InvalidOperationException("PrepareSubmit must precede RecordScene")
+  internal func RecordScene(frame SceneFrame, clearColor VkClearColorValue,
+    textScaleX float32, textScaleY float32) {
+      EnsureOpen()
+      if state != VulkanOffscreenState.Prepared {
+        throw InvalidOperationException("PrepareSubmit must precede RecordScene")
+      }
+      if frame == nil {
+        throw ArgumentNullException("frame")
+      }
+      if frame.ActiveChunk >= 0 {
+        throw InvalidOperationException("Vulkan offscreen recording requires a closed scene frame")
+      }
+      let previousLayout = imageLayout
+      var renderingActive = false
+      try {
+        ReserveImageReferences(frame)
+        guard let renderer = primitiveRenderer else {
+          throw InvalidOperationException("Vulkan offscreen primitive renderer is unavailable")
+        }
+        renderer.SetPathAtlas(pathResources.Atlas)
+        renderer.PrepareClipMasks(frame, extent, ClipFrameSlot, clipMaskSubmissionSerial)
+        renderer.SetPrimitiveFrameSlot(0)
+        renderer.PreparePrimitiveFrame(frame, extent, textScaleX, textScaleY,
+          clipMaskSubmissionSerial)
+        BeginRecord()
+        renderer.RecordPrimitiveFrameUpload(commandBuffer)
+        renderer.RecordClipMasks(commandBuffer, extent)
+        BeginRendering(clearColor)
+        renderingActive = true
+        renderer.ConfigureLayerFrame(commandBuffer, image, imageView, extent, clipMaskSubmissionSerial)
+        renderer.ClearTimestampRecording()
+        renderer.RecordInsideRendering(commandBuffer, frame, extent)
+        renderer.ClearTimestampRecording()
+        EndRendering()
+        renderingActive = false
+        WriteTimestamp(VkConstants.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, 1u)
+        FinishRecord()
+        let endCommandBuffer = dispatch.vkEndCommandBuffer
+        let endResult = endCommandBuffer(commandBuffer)
+        NoteResult(endResult)
+        if endResult != VkConstants.VK_SUCCESS {
+          throw InvalidOperationException("vkEndCommandBuffer failed: " + endResult.ToString())
+        }
+        renderer.CompleteClipFrameRecording()
+        state = VulkanOffscreenState.Recorded
+      } catch (error Exception) {
+        if renderingActive {
+          try { EndRendering() } catch (cleanup Exception) { }
+        }
+        let resetCommandBuffer = dispatch.vkResetCommandBuffer
+        let resetResult = resetCommandBuffer(commandBuffer, VkCommandBufferResetFlags(0u))
+        NoteResult(resetResult)
+        if resetResult != VkConstants.VK_SUCCESS {
+          throw InvalidOperationException("vkResetCommandBuffer failed while aborting offscreen record: "
+            +resetResult.ToString())
+        }
+        imageLayout = previousLayout
+        try { clipMaskAtlas.InvalidateRecordedLayouts() } catch (cleanup Exception) { }
+        if let renderer = primitiveRenderer {
+          try { renderer.Abort(ClipFrameSlot) } catch (cleanup Exception) { }
+        }
+        layerPool?.Abort()
+        ReleaseReservedImageReferences()
+        state = VulkanOffscreenState.Idle
+        throw error
+      }
     }
-    if frame == nil {
-      throw ArgumentNullException("frame")
-    }
-    if frame.ActiveChunk >= 0 {
-      throw InvalidOperationException("Vulkan offscreen recording requires a closed scene frame")
-    }
-    let previousLayout = imageLayout
-    var renderingActive = false
-    try {
-      ReserveImageReferences(frame)
-      guard let renderer = primitiveRenderer else {
-        throw InvalidOperationException("Vulkan offscreen primitive renderer is unavailable")
-      }
-      renderer.SetPathAtlas(pathResources.Atlas)
-      renderer.PrepareClipMasks(frame, extent, ClipFrameSlot, clipMaskSubmissionSerial)
-      renderer.SetPrimitiveFrameSlot(0)
-      renderer.PreparePrimitiveFrame(frame, extent, 1.0F, 1.0F, clipMaskSubmissionSerial)
-      BeginRecord()
-      renderer.RecordPrimitiveFrameUpload(commandBuffer)
-      renderer.RecordClipMasks(commandBuffer, extent)
-      BeginRendering(clearColor)
-      renderingActive = true
-      renderer.ConfigureLayerFrame(commandBuffer, image, imageView, extent, clipMaskSubmissionSerial)
-      renderer.ClearTimestampRecording()
-      renderer.RecordInsideRendering(commandBuffer, frame, extent)
-      renderer.ClearTimestampRecording()
-      EndRendering()
-      renderingActive = false
-      WriteTimestamp(VkConstants.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, 1u)
-      FinishRecord()
-      let endCommandBuffer = dispatch.vkEndCommandBuffer
-      let endResult = endCommandBuffer(commandBuffer)
-      NoteResult(endResult)
-      if endResult != VkConstants.VK_SUCCESS {
-        throw InvalidOperationException("vkEndCommandBuffer failed: " + endResult.ToString())
-      }
-      renderer.CompleteClipFrameRecording()
-      state = VulkanOffscreenState.Recorded
-    } catch (error Exception) {
-      if renderingActive {
-        try { EndRendering() } catch (cleanup Exception) { }
-      }
-      let resetCommandBuffer = dispatch.vkResetCommandBuffer
-      let resetResult = resetCommandBuffer(commandBuffer, VkCommandBufferResetFlags(0u))
-      NoteResult(resetResult)
-      if resetResult != VkConstants.VK_SUCCESS {
-        throw InvalidOperationException("vkResetCommandBuffer failed while aborting offscreen record: "
-          +resetResult.ToString())
-      }
-      imageLayout = previousLayout
-      try { clipMaskAtlas.InvalidateRecordedLayouts() } catch (cleanup Exception) { }
-      if let renderer = primitiveRenderer {
-        try { renderer.Abort(ClipFrameSlot) } catch (cleanup Exception) { }
-      }
-      layerPool?.Abort()
-      ReleaseReservedImageReferences()
-      state = VulkanOffscreenState.Idle
-      throw error
-    }
-  }
 
-  internal func Submit(submissionSerial uint64) VkResult {
+  internal func Submit() VkResult {
     EnsureOpen()
     if state != VulkanOffscreenState.Recorded {
       throw InvalidOperationException("Vulkan offscreen commands are not recorded")
-    }
-    if submissionSerial == 0uL || submissionSerial <= clipMaskSubmissionSerial {
-      throw ArgumentOutOfRangeException("submissionSerial")
     }
     guard let renderer = primitiveRenderer else {
       throw InvalidOperationException("Vulkan offscreen primitive renderer is unavailable")
     }
     let primitiveFlushResult = renderer.FlushPrimitiveFrameBeforeSubmit()
     if primitiveFlushResult != VkConstants.VK_SUCCESS {
-      return MarkSubmitted(primitiveFlushResult, submissionSerial)
+      NoteResult(primitiveFlushResult)
+      if primitiveFlushResult == VkConstants.VK_ERROR_DEVICE_LOST {
+        sharedLease.MarkDeviceLost()
+      }
+      return primitiveFlushResult
     }
-    renderer.ValidateClipFrameSubmission(ClipFrameSlot, submissionSerial)
-    queueMailbox.PrepareSubmit(commandBuffer, 0uL, 0uL, completionFence)
-    if !queueMailbox.BeginSubmit() {
-      return VkConstants.VK_NOT_READY
-    }
-    if !queueWorker.Enqueue(queueMailbox) {
+    queueMailbox.PrepareSubmit(commandBuffer, 0uL, 0uL)
+    if !queueMailbox.BeginSubmit() { return VkConstants.VK_NOT_READY }
+    if !sharedLease.EnqueueGraphicsSubmission(queueMailbox, validateGraphicsSubmission) {
       queueMailbox.CancelSubmit()
       try { AbortPrepared() } catch (cleanup Exception) { }
       return VkConstants.VK_NOT_READY
     }
-    pendingSubmissionSerial = submissionSerial
     queuePending = true
     return VkConstants.VK_SUCCESS
+  }
+
+  private func ValidateGraphicsSubmission(serial uint64) {
+    if serial == 0uL || serial <= clipMaskSubmissionSerial {
+      throw ArgumentOutOfRangeException("serial")
+    }
+    guard let renderer = primitiveRenderer else {
+      throw InvalidOperationException("Vulkan offscreen primitive renderer is unavailable")
+    }
+    imageResources.ValidateUploadSubmission(commandBuffer, serial, resourceGeneration)
+    renderer.ValidateClipFrameSubmission(ClipFrameSlot, serial)
+    pendingSubmissionSerial = serial
   }
 
   internal func MarkSubmitted(result VkResult, submissionSerial uint64) VkResult {
@@ -597,7 +595,7 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       return result
     }
     if result == VkConstants.VK_ERROR_DEVICE_LOST {
-      sharedLeaseForDeviceLoss?.MarkDeviceLost()
+      sharedLease.MarkDeviceLost()
       try { AbandonAfterDeviceLoss() } catch (cleanup Exception) { }
       return result
     }
@@ -676,7 +674,7 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       }
       queuePending = false
       if submitResult != VkConstants.VK_SUCCESS {
-        sharedLeaseForDeviceLoss?.MarkDeviceLost()
+        sharedLease.MarkDeviceLost()
       }
       var marked VkResult = VkConstants.VK_NOT_READY
       try {
@@ -696,8 +694,11 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       lastResult = VkConstants.VK_NOT_READY
       return VkConstants.VK_NOT_READY
     }
-    let getFenceStatus = dispatch.vkGetFenceStatus
-    let status = getFenceStatus(device, completionFence)
+    var completed uint64
+    let queryResult = sharedLease.GetCompletedGraphicsSubmissionSerial(out completed)
+    let status = if queryResult != VkConstants.VK_SUCCESS { queryResult }
+    else if completed < clipMaskSubmissionSerial { VkConstants.VK_NOT_READY }
+    else { VkConstants.VK_SUCCESS }
     NoteResult(status)
     if status != VkConstants.VK_SUCCESS {
       if status != VkConstants.VK_NOT_READY {
@@ -716,14 +717,14 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
     ResolveGpuTiming()
     ReconcileSubmittedBookkeeping()
     if let renderer = primitiveRenderer {
-      renderer.Collect(clipMaskSubmissionSerial)
+      renderer.Collect(completed)
     }
-    layerPool?.Collect(clipMaskSubmissionSerial)
-    imageResources.Collect(clipMaskSubmissionSerial)
+    layerPool?.Collect(completed)
+    imageResources.Collect(completed)
     if let atlases = textAtlases {
-      atlases.Collect(clipMaskSubmissionSerial)
+      atlases.Collect(completed)
     }
-    pathResources.Collect(clipMaskSubmissionSerial)
+    pathResources.Collect(completed)
     state = VulkanOffscreenState.Complete
     if let currentDiagnostics = diagnostics {
       currentDiagnostics.AddReadback(1uL)
@@ -761,7 +762,22 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       return
     }
     ReleaseReservedImageReferences()
-    AbandonTimestampQueryPool()
+    if timestampQueryPool != 0uL {
+      let staleQueryPool = timestampQueryPool
+      timestampQueryPool = 0uL
+      let destroyQueryPool = dispatch.vkDestroyQueryPool
+      try { destroyQueryPool(device, staleQueryPool, nil) } catch (cleanup Exception) { }
+    }
+    if timestampQueryPoolAccounted {
+      if let accounting = objectAccounting {
+        try { accounting.Release() } catch (cleanup Exception) { }
+      }
+      timestampQueryPoolAccounted = false
+    }
+    timestampEnabled = false
+    gpuTimingAvailable = false
+    gpuSceneReplayNanoseconds = 0uL
+    gpuCopyNanoseconds = 0uL
     if let renderer = primitiveRenderer {
       try { renderer.DisposeAfterDeviceLoss() } catch (cleanup Exception) { }
       primitiveRenderer = nil
@@ -771,17 +787,11 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
     if let pool = staleLayerPool {
       try { pool.AbandonAfterDeviceLoss() } catch (cleanup Exception) { }
     }
-    if completionFence != 0uL {
-      completionFence = 0uL
-      if completionFenceAccounted {
-        if let accounting = objectAccounting {
-          try { accounting.Release() } catch (cleanup Exception) { }
-        }
-        completionFenceAccounted = false
-      }
-    }
     if stagingBuffer != 0uL {
+      let staleStagingBuffer = stagingBuffer
       stagingBuffer = 0uL
+      let destroyBuffer = dispatch.vkDestroyBuffer
+      try { destroyBuffer(device, staleStagingBuffer, nil) } catch (cleanup Exception) { }
       if stagingBufferAccounted {
         if let accounting = objectAccounting {
           try { accounting.Release() } catch (cleanup Exception) { }
@@ -789,8 +799,15 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
         stagingBufferAccounted = false
       }
     }
+    if let staleStagingAllocation = stagingAllocation {
+      try { allocator.Release(staleStagingAllocation) } catch (cleanup Exception) { }
+      stagingAllocation = nil
+    }
     if imageView != 0uL {
+      let staleImageView = imageView
       imageView = 0uL
+      let destroyImageView = dispatch.vkDestroyImageView
+      try { destroyImageView(device, staleImageView, nil) } catch (cleanup Exception) { }
       if imageViewAccounted {
         if let accounting = objectAccounting {
           try { accounting.Release() } catch (cleanup Exception) { }
@@ -799,7 +816,10 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       }
     }
     if image != 0uL {
+      let staleImage = image
       image = 0uL
+      let destroyImage = dispatch.vkDestroyImage
+      try { destroyImage(device, staleImage, nil) } catch (cleanup Exception) { }
       if imageAccounted {
         if let accounting = objectAccounting {
           try { accounting.Release() } catch (cleanup Exception) { }
@@ -807,10 +827,25 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
         imageAccounted = false
       }
     }
-    imageAllocation = nil
-    stagingAllocation = nil
-    commandBuffer = nint(0)
-    commandPool = 0uL
+    if let staleImageAllocation = imageAllocation {
+      try { allocator.Release(staleImageAllocation) } catch (cleanup Exception) { }
+      imageAllocation = nil
+    }
+    if commandBuffer != nint(0) {
+      var staleCommandBuffer = commandBuffer
+      commandBuffer = nint(0)
+      if commandPool != 0uL {
+        let freeCommandBuffers = dispatch.vkFreeCommandBuffers
+        try { freeCommandBuffers(device, commandPool, 1u, &staleCommandBuffer) }
+        catch (cleanup Exception) { }
+      }
+    }
+    if commandPool != 0uL {
+      let staleCommandPool = commandPool
+      commandPool = 0uL
+      let destroyCommandPool = dispatch.vkDestroyCommandPool
+      try { destroyCommandPool(device, staleCommandPool, nil) } catch (cleanup Exception) { }
+    }
     if commandPoolAccounted {
       if let accounting = objectAccounting {
         try { accounting.Release() } catch (cleanup Exception) { }
@@ -841,7 +876,7 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       return
     }
     if unsafeTeardown {
-      throw InvalidOperationException("Vulkan offscreen target cannot safely tear down after a failed fence operation: "
+      throw InvalidOperationException("Vulkan offscreen target cannot safely tear down after a failed completion operation: "
         +lastResult.ToString())
     }
     while queuePending {
@@ -853,13 +888,12 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       }
     }
     if state == VulkanOffscreenState.Pending {
-      let waitForFences = dispatch.vkWaitForFences
-      let waitResult = waitForFences(device, 1u, &completionFence,
-        VkConstants.VK_TRUE, VkConstants.VK_WHOLE_SIZE)
+      let waitResult = sharedLease.WaitGraphicsSubmission(
+        clipMaskSubmissionSerial, VkConstants.VK_WHOLE_SIZE)
       NoteResult(waitResult)
       if waitResult != VkConstants.VK_SUCCESS {
         unsafeTeardown = true
-        throw InvalidOperationException("vkWaitForFences failed for Vulkan offscreen submission: "
+        throw InvalidOperationException("Vulkan timeline wait failed for offscreen submission: "
           +waitResult.ToString())
       }
       let completion = PollCompletion()
@@ -872,7 +906,7 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       AbortPrepared()
     }
     if unsafeTeardown {
-      throw InvalidOperationException("Vulkan offscreen target cannot safely tear down after a failed fence operation: "
+      throw InvalidOperationException("Vulkan offscreen target cannot safely tear down after a failed completion operation: "
         +lastResult.ToString())
     }
     ReleaseReservedImageReferences()
@@ -885,15 +919,6 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
     if let pool = layerPool {
       pool.Dispose()
       layerPool = nil
-    }
-    if completionFence != 0uL {
-      let destroyFence = dispatch.vkDestroyFence
-      destroyFence(device, completionFence, nil)
-      completionFence = 0uL
-      if completionFenceAccounted {
-        if let accounting = objectAccounting { accounting.Release() }
-        completionFenceAccounted = false
-      }
     }
     if stagingBuffer != 0uL {
       let destroyBuffer = dispatch.vkDestroyBuffer
@@ -1376,27 +1401,6 @@ internal unsafe sealed class VulkanOffscreenTarget : IDisposable {
       NoteResult(mapResult)
       if mapResult != VkConstants.VK_SUCCESS {
         throw InvalidOperationException("vkMapMemory failed: " + mapResult.ToString())
-      }
-
-      var fenceCreateInfo = VkFenceCreateInfo{}
-      fenceCreateInfo.sType = VkConstants.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
-      fenceCreateInfo.flags = uint32(VkConstants.VK_FENCE_CREATE_SIGNALED_BIT)
-      let createFence = dispatch.vkCreateFence
-      let fenceResult = createFence(device, &fenceCreateInfo, nil, &completionFence)
-      NoteResult(fenceResult)
-      if fenceResult != VkConstants.VK_SUCCESS || completionFence == 0uL {
-        throw InvalidOperationException("vkCreateFence failed: " + fenceResult.ToString())
-      }
-      try {
-        if let accounting = objectAccounting {
-          accounting.Allocate()
-          completionFenceAccounted = true
-        }
-      } catch (error Exception) {
-        let destroyFence = dispatch.vkDestroyFence
-        destroyFence(device, completionFence, nil)
-        completionFence = 0uL
-        throw error
       }
 
       let commandBuffers * VkCommandBuffer = stackalloc[1]VkCommandBuffer

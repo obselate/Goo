@@ -99,6 +99,12 @@ internal unsafe partial class VulkanWindowTarget {
     let destroySemaphore = ResolveDeviceProc("vkDestroySemaphore") as (unmanaged[Cdecl](VkDevice, VkSemaphore, *VkAllocationCallbacks) -> void)?
     if destroySemaphore == nil { throw InvalidOperationException("vkDestroySemaphore is unavailable") }
     dispatch.vkDestroySemaphore = destroySemaphore!!
+    let getSemaphoreCounterValue = ResolveDeviceProc("vkGetSemaphoreCounterValue") as (unmanaged[Cdecl](VkDevice, VkSemaphore, *uint64) -> VkResult)?
+    if getSemaphoreCounterValue == nil { throw InvalidOperationException("vkGetSemaphoreCounterValue is unavailable") }
+    dispatch.vkGetSemaphoreCounterValue = getSemaphoreCounterValue!!
+    let waitSemaphores = ResolveDeviceProc("vkWaitSemaphores") as (unmanaged[Cdecl](VkDevice, *VkSemaphoreWaitInfo, uint64) -> VkResult)?
+    if waitSemaphores == nil { throw InvalidOperationException("vkWaitSemaphores is unavailable") }
+    dispatch.vkWaitSemaphores = waitSemaphores!!
     let createFence = ResolveDeviceProc("vkCreateFence") as (unmanaged[Cdecl](VkDevice, *VkFenceCreateInfo, *VkAllocationCallbacks, *VkFence) -> VkResult)?
     if createFence == nil { throw InvalidOperationException("vkCreateFence is unavailable") }
     dispatch.vkCreateFence = createFence!!

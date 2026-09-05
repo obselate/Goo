@@ -3,20 +3,18 @@ package Goo
 import System
 import System.Numerics
 import System.Runtime.CompilerServices
-import System.Threading
 import System.Diagnostics
 
 public sealed class ShaderEffect {
-  private const MaximumByteCount int32 = 1048576
   private const MaximumBackdropOutset float32 = 256.0F
   private const ParameterCount int32 = 8
   private const DataInputCount int32 = 4
   private let gate object
-  private let code []uint8
+  private let program ShaderEffectProgram
   private let parameters []Vector4
   private let dataSources []ShaderEffectData?
   private let dataChanged Action
-  private var changedCallbacks([]Action)?
+  private let changedObservers ShaderEffectObservers
   private let programId uint64
   private let samplesBackdrop bool
   private let backdropOutset float32
@@ -25,52 +23,27 @@ public sealed class ShaderEffect {
   private var elapsedSeconds float64
   private var playbackTimestamp int64
 
-  shared {
-    private var nextProgramId int64
-
-    private func allocateProgramId() uint64 {
-      let value = Interlocked.Increment(ref nextProgramId)
-      if value <= 0L {
-        throw OverflowException("Shader effect program identity overflow")
+  public init(program ShaderEffectProgram, samplesBackdrop bool = false,
+    backdropOutset float32 = 0.0F) {
+      if Object.ReferenceEquals(program, nil) { throw ArgumentNullException("program") }
+      if !finite(backdropOutset) || backdropOutset < 0.0F
+        || backdropOutset > MaximumBackdropOutset{
+          throw ArgumentOutOfRangeException("backdropOutset")
+        }
+      if !samplesBackdrop && backdropOutset != 0.0F {
+        throw ArgumentException("Backdrop outset requires backdrop sampling", "backdropOutset")
       }
-      return uint64(value)
+      gate = Object()
+      changedObservers = ShaderEffectObservers()
+      this.program = program
+      parameters = [ParameterCount]Vector4
+      dataSources = [DataInputCount]ShaderEffectData?
+      dataChanged = () -> { OnDataChanged() }
+      programId = program.ProgramId
+      this.samplesBackdrop = samplesBackdrop
+      this.backdropOutset = backdropOutset
+      version = 1uL
     }
-  }
-
-  public init(fragmentSpirv []uint8, samplesBackdrop bool = false, backdropOutset float32 = 0.0F) {
-    if Object.ReferenceEquals(fragmentSpirv, nil) {
-      throw ArgumentNullException("fragmentSpirv")
-    }
-    if fragmentSpirv.Length < 20 || fragmentSpirv.Length > MaximumByteCount
-      || (fragmentSpirv.Length & 3) != 0 {
-        throw ArgumentOutOfRangeException("fragmentSpirv")
-      }
-    if readWord(fragmentSpirv, 0) != 0x07230203u {
-      throw ArgumentException("Shader effect is not SPIR-V", "fragmentSpirv")
-    }
-    let spirvVersion = readWord(fragmentSpirv, 4)
-    if spirvVersion < 0x00010000u || spirvVersion > 0x00010600u
-      || readWord(fragmentSpirv, 12) == 0u || readWord(fragmentSpirv, 16) != 0u {
-        throw ArgumentException("Shader effect SPIR-V header is invalid", "fragmentSpirv")
-      }
-    if !finite(backdropOutset) || backdropOutset < 0.0F
-      || backdropOutset > MaximumBackdropOutset{
-        throw ArgumentOutOfRangeException("backdropOutset")
-      }
-    if !samplesBackdrop && backdropOutset != 0.0F {
-      throw ArgumentException("Backdrop outset requires backdrop sampling", "backdropOutset")
-    }
-    gate = Object()
-    code = [fragmentSpirv.Length]uint8
-    Array.Copy(fragmentSpirv, code, fragmentSpirv.Length)
-    parameters = [ParameterCount]Vector4
-    dataSources = [DataInputCount]ShaderEffectData?
-    dataChanged = func() { OnDataChanged() }
-    programId = allocateProgramId()
-    this.samplesBackdrop = samplesBackdrop
-    this.backdropOutset = backdropOutset
-    version = 1uL
-  }
 
   public func SetParameter(slot int32, value Vector4) bool {
     if slot < 0 || slot >= ParameterCount {
@@ -86,12 +59,10 @@ public sealed class ShaderEffect {
         parameters[slot] = value
         AdvanceVersion()
         changed = true
-        callbacks = changedCallbacks
+        callbacks = changedObservers.Snapshot()
       }
     }
-    if let current = callbacks {
-      for callback in current { callback.Invoke() }
-    }
+    changedObservers.Notify(callbacks)
     return changed
   }
 
@@ -117,9 +88,9 @@ public sealed class ShaderEffect {
         if !valueAlreadyUsed { nextSource.AddChanged(dataChanged) }
       }
       AdvanceVersion()
-      callbacks = changedCallbacks
+      callbacks = changedObservers.Snapshot()
     }
-    Notify(callbacks)
+    changedObservers.Notify(callbacks)
     return true
   }
 
@@ -138,9 +109,9 @@ public sealed class ShaderEffect {
         }
         playing = v
         playbackTimestamp = v ? Stopwatch.GetTimestamp() : 0L
-        callbacks = changedCallbacks
+        callbacks = changedObservers.Snapshot()
       }
-      Notify(callbacks)
+      changedObservers.Notify(callbacks)
     }
   }
 
@@ -158,59 +129,22 @@ public sealed class ShaderEffect {
         if elapsedAt(Stopwatch.GetTimestamp()) == v { return }
         elapsedSeconds = v
         playbackTimestamp = playing ? Stopwatch.GetTimestamp() : 0L
-        callbacks = changedCallbacks
+        callbacks = changedObservers.Snapshot()
       }
-      Notify(callbacks)
+      changedObservers.Notify(callbacks)
     }
   }
 
   internal func AddChanged(callback Action) {
-    lock gate {
-      if let current = changedCallbacks {
-        let expanded = [current.Length + 1]Action
-        var index int32
-        while index < current.Length {
-          expanded[index] = current[index]
-          index++
-        }
-        expanded[current.Length] = callback
-        changedCallbacks = expanded
-      } else {
-        changedCallbacks = []Action{ callback }
-      }
-    }
+    lock gate { changedObservers.Add(callback) }
   }
 
   internal func RemoveChanged(callback Action) {
-    lock gate {
-      guard let current = changedCallbacks else { return }
-      var removeIndex = -1
-      var index int32
-      while index < current.Length {
-        if Object.ReferenceEquals(current[index], callback) { removeIndex = index }
-        index++
-      }
-      if removeIndex < 0 { return }
-      if current.Length == 1 {
-        changedCallbacks = nil
-        return
-      }
-      let reduced = [current.Length - 1]Action
-      index = 0
-      var output int32
-      while index < current.Length {
-        if index != removeIndex {
-          reduced[output] = current[index]
-          output++
-        }
-        index++
-      }
-      changedCallbacks = reduced
-    }
+    lock gate { changedObservers.Remove(callback) }
   }
 
   internal prop ProgramId uint64{ get -> programId }
-  internal prop FragmentSpirv []uint8{ get -> code }
+  internal prop Program ShaderEffectProgram{ get -> program }
   internal prop SamplesBackdrop bool{ get -> samplesBackdrop }
   internal prop BackdropOutset float32{ get -> backdropOutset }
 
@@ -247,9 +181,9 @@ public sealed class ShaderEffect {
     var callbacks([]Action)?
     lock gate {
       AdvanceVersion()
-      callbacks = changedCallbacks
+      callbacks = changedObservers.Snapshot()
     }
-    Notify(callbacks)
+    changedObservers.Notify(callbacks)
   }
 
   private func ContainsDataSource(value ShaderEffectData?, exceptSlot int32) bool {
@@ -282,18 +216,8 @@ public sealed class ShaderEffect {
     return elapsedSeconds + float64(timestamp - playbackTimestamp) / float64(Stopwatch.Frequency)
   }
 
-  private func Notify(callbacks([]Action)?) {
-    if let current = callbacks {
-      for callback in current { callback.Invoke() }
-    }
-  }
-
   private func finite(value float32) bool -> !Single.IsNaN(value) && !Single.IsInfinity(value)
 
-  private func readWord(bytes []uint8, offset int32) uint32 -> uint32(bytes[offset])
-  | (uint32(bytes[offset + 1]) << 8)
-  | (uint32(bytes[offset + 2]) << 16)
-  | (uint32(bytes[offset + 3]) << 24)
 }
 
 internal data struct ShaderEffectSnapshot {
@@ -382,7 +306,7 @@ internal sealed class ShaderEffectBinding : IDisposable {
     node = n
     Effect = effect
     Invalidated = invalidated
-    changed = func() {
+    changed = () -> {
       if !disposed && !node.Retired { Invalidated?.Invoke() }
     }
     effect.AddChanged(changed)

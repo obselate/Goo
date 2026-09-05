@@ -71,7 +71,7 @@ internal sealed class PathBandEncoder {
     }
 
     private func BuildScratch(path PathGeometry) bool {
-      if path == nil || !path.HasClosedContour || path.QuadraticCount == 0 { return false }
+      if path == nil || path.QuadraticCount == 0 { return false }
       curveScratch.Clear()
       horizontalBandScratch.Clear()
       verticalBandScratch.Clear()
@@ -83,22 +83,23 @@ internal sealed class PathBandEncoder {
       scratchMaximumY = Single.NegativeInfinity
       for contourIndex in 0 ... path.ContourCount {
         let contour = path.Contours[contourIndex]
-        if !contour.Closed { continue }
+        if contour.End <= contour.Start { continue }
         for quadraticIndex in contour.Start ... contour.End {
-          let quadratic = path.Quadratics[quadraticIndex]
-          if !finiteQuadratic(quadratic) { continue }
-          curveScratch.Add(PathAnalyticCurve{
-            X0: quadratic.X0,
-            Y0: quadratic.Y0,
-            CX: quadratic.CX,
-            CY: quadratic.CY,
-            X1: quadratic.X1,
-            Y1: quadratic.Y1,
-            Flags: 0u,
-            Reserved: 0u,
-          })
-          includeQuadraticBounds(ref scratchMinimumX, ref scratchMinimumY,
-            ref scratchMaximumX, ref scratchMaximumY, quadratic)
+          appendScratchQuadratic(path.Quadratics[quadraticIndex])
+        }
+        if !contour.Closed {
+          let first = path.Quadratics[contour.Start]
+          let last = path.Quadratics[contour.End - 1]
+          if last.X1 != first.X0 || last.Y1 != first.Y0 {
+            appendScratchQuadratic(PathQuadratic{
+              X0: last.X1,
+              Y0: last.Y1,
+              CX: (last.X1 + first.X0) * 0.5F,
+              CY: (last.Y1 + first.Y0) * 0.5F,
+              X1: first.X0,
+              Y1: first.Y0,
+            })
+          }
         }
       }
       if curveScratch.Count == 0 || !finite(scratchMinimumX) || !finite(scratchMinimumY)
@@ -120,6 +121,22 @@ internal sealed class PathBandEncoder {
       buildBands(curveScratch, scratchMinimumX, scratchMaximumX, verticalCount, false,
         scratchMinimumY, scratchMaximumY, verticalBandScratch, verticalIndexScratch)
       return true
+    }
+
+    private func appendScratchQuadratic(quadratic PathQuadratic) {
+      if !finiteQuadratic(quadratic) { return }
+      curveScratch.Add(PathAnalyticCurve{
+        X0: quadratic.X0,
+        Y0: quadratic.Y0,
+        CX: quadratic.CX,
+        CY: quadratic.CY,
+        X1: quadratic.X1,
+        Y1: quadratic.Y1,
+        Flags: 0u,
+        Reserved: 0u,
+      })
+      includeQuadraticBounds(ref scratchMinimumX, ref scratchMinimumY,
+        ref scratchMaximumX, ref scratchMaximumY, quadratic)
     }
 
     private func chooseBandCount(curveCount int32) int32 {

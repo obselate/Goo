@@ -179,7 +179,7 @@ internal class VulkanSceneDamageJournal {
         region = FullRegion(extentWidth, extentHeight)
         return true
       }
-      var expected = NextVersion(appliedVersion)
+      var expected = nextVulkanSceneVersion(appliedVersion)
       var index int32 = 0
       var hasDamage = false
       var bounds ConservativeBounds{}
@@ -258,21 +258,12 @@ internal class VulkanSceneDamageJournal {
   private func Union(left ConservativeBounds, right ConservativeBounds) ConservativeBounds {
     if left.IsEmpty { return right }
     if right.IsEmpty { return left }
-    let x = MathF.Min(left.X, right.X)
-    let y = MathF.Min(left.Y, right.Y)
-    let rightEdge = MathF.Max(left.Right, right.Right)
-    let bottomEdge = MathF.Max(left.Bottom, right.Bottom)
-    return ConservativeBounds{
-      X: x,
-      Y: y,
-      Width: rightEdge - x,
-      Height: bottomEdge - y,
-    }
+    return unionVulkanSceneBounds(left, right)
   }
 
   private func ToRegion(bounds ConservativeBounds, scaleX float32, scaleY float32,
     extentWidth uint32, extentHeight uint32) VulkanDamageRegion{
-      if bounds.IsEmpty || !Finite(scaleX) || !Finite(scaleY)
+      if bounds.IsEmpty || !finiteVulkanSceneValue(scaleX) || !finiteVulkanSceneValue(scaleY)
         || scaleX <= 0.0F || scaleY <= 0.0F {
           return VulkanDamageRegion{}
         }
@@ -304,12 +295,4 @@ internal class VulkanSceneDamageJournal {
     Height: int32(extentHeight),
   }
 
-  private func NextVersion(value uint64) uint64 {
-    if value == uint64.MaxValue {
-      return 1uL
-    }
-    return value + 1uL
-  }
-
-  private func Finite(value float32) bool -> !Single.IsNaN(value) && !Single.IsInfinity(value)
 }

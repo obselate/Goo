@@ -1,7 +1,6 @@
 package Goo
 
 import System
-import System.Collections.Generic
 import System.Diagnostics
 import System.Globalization
 import System.IO
@@ -11,8 +10,6 @@ import System.Threading
 internal class DiagnosticEndpointDiscovery {
   shared {
     private let gate object = Object()
-    private let references Dictionary[string, int32] =
-    Dictionary[string, int32]()
     private var nextWindowId int64
 
     internal func Create(window Window) DiagnosticEndpoint {
@@ -32,8 +29,6 @@ internal class DiagnosticEndpointDiscovery {
       lock gate {
         Directory.CreateDirectory(root)
         secureDirectory(root)
-        let count = if references.TryGetValue(descriptorPath, out var prior) { prior } else { 0 }
-        references[descriptorPath] = count + 1
         writeDescriptor(endpoint, window.Title)
       }
       return endpoint
@@ -41,14 +36,6 @@ internal class DiagnosticEndpointDiscovery {
 
     internal func Release(endpoint DiagnosticEndpoint) {
       lock gate {
-        if !references.TryGetValue(endpoint.DescriptorPath, out var prior) {
-          return
-        }
-        if prior > 1 {
-          references[endpoint.DescriptorPath] = prior - 1
-          return
-        }
-        references.Remove(endpoint.DescriptorPath)
         try {
           if File.Exists(endpoint.DescriptorPath) { File.Delete(endpoint.DescriptorPath) }
         } catch (_ Exception) {

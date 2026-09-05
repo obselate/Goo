@@ -12,8 +12,8 @@ VulkanReadbackResult{
   let deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 10L
   var status = WindowReadbackTestFixture.Request(window,
     uint32(metrics.FramebufferWidth), uint32(metrics.FramebufferHeight))
-  while status == VulkanReadbackRequestStatus.Busy
-    || status == VulkanReadbackRequestStatus.NotReady{
+  while status == WindowReadbackRequestStatus.Busy
+    || status == WindowReadbackRequestStatus.NotReady{
       if Stopwatch.GetTimestamp() >= deadline {
         throw InvalidOperationException(
           "Clip capture readback request did not become accepted")
@@ -23,7 +23,7 @@ VulkanReadbackResult{
       status = WindowReadbackTestFixture.Request(window,
         uint32(metrics.FramebufferWidth), uint32(metrics.FramebufferHeight))
     }
-  Require(status == VulkanReadbackRequestStatus.Accepted,
+  Require(status == WindowReadbackRequestStatus.Accepted,
     "Clip capture readback was not accepted: " + status.ToString())
   ReadbackAwaitReadbackReady(window, 10000)
   let result = ReadbackTakeReadback(window)
@@ -62,13 +62,13 @@ func RunClipCaptureSmoke() {
     let first = ClipCaptureReadback(opened, metrics)
     let staged = WindowReadbackTestFixture.Request(opened,
       uint32(metrics.FramebufferWidth), uint32(metrics.FramebufferHeight))
-    Require(staged == VulkanReadbackRequestStatus.NotReady,
+    Require(staged == WindowReadbackRequestStatus.NotReady,
       "Clip capture second prerequisite frame was not staged: " + staged.ToString())
     WindowReadbackTestFixture.DrainWindowQueue(opened, 10000)
 
     let accepted = WindowReadbackTestFixture.Request(opened,
       uint32(metrics.FramebufferWidth), uint32(metrics.FramebufferHeight))
-    Require(accepted == VulkanReadbackRequestStatus.Accepted,
+    Require(accepted == WindowReadbackRequestStatus.Accepted,
       "Clip capture second readback was not accepted: " + accepted.ToString())
     let submissionDeadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 2L
     while !WindowReadbackTestFixture.SubmissionReadyForReconcile(opened)

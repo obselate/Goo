@@ -27,9 +27,52 @@ internal data struct TransformBounds {
 internal class TransformGeometry {
   shared {
     internal func Matrix(n Node) Affine2D {
-      guard let value = Transforming.Get(n) else {
-        return Affine2D{ A: 1.0F, D: 1.0F }
+      let state = Transforming.Get(n)
+      let authored = if let value = state { authoredMatrix(n, value) }
+      else { Affine2D{ A: 1.0F, D: 1.0F } }
+      guard let value = state, let viewport = value.Viewport else { return authored }
+      guard let parent = n.Parent else { return authored }
+      let nativeWidth = float32(viewport.NativeWidth)
+      let nativeHeight = float32(viewport.NativeHeight)
+      let destinationWidth = parent.Rect.W
+      let destinationHeight = parent.Rect.H
+      if !finite(nativeWidth) || !finite(nativeHeight)
+        || nativeWidth <= 0.0F || nativeHeight <= 0.0F
+        || !finite(destinationWidth) || !finite(destinationHeight)
+        || destinationWidth <= 0.0F || destinationHeight <= 0.0F {
+          return Affine2D{}
+        }
+      var scaleX = destinationWidth / nativeWidth
+      var scaleY = destinationHeight / nativeHeight
+      switch viewport.Fit {
+        case ShapeFit.Contain {
+          let scale = scaleX < scaleY ? scaleX : scaleY
+          scaleX = scale
+          scaleY = scale
+        }
+        case ShapeFit.Cover {
+          let scale = scaleX > scaleY ? scaleX : scaleY
+          scaleX = scale
+          scaleY = scale
+        }
+        case ShapeFit.None {
+          scaleX = 1.0F
+          scaleY = 1.0F
+        }
+        default { }
       }
+      let offsetX = parent.Rect.X + (destinationWidth - nativeWidth * scaleX) * 0.5F
+      let offsetY = parent.Rect.Y + (destinationHeight - nativeHeight * scaleY) * 0.5F
+      let viewportTransform = Affine2D{
+        A: scaleX,
+        D: scaleY,
+        TX: offsetX - scaleX * n.Rect.X,
+        TY: offsetY - scaleY * n.Rect.Y,
+      }
+      return compose(viewportTransform, authored)
+    }
+
+    private func authoredMatrix(n Node, value TransformValue) Affine2D {
       // Fixed pipeline: scale, then skew, then rotation (translation applies last).
       let sx = value.Scale * value.ScaleX
       let sy = value.Scale * value.ScaleY
@@ -46,6 +89,15 @@ internal class TransformGeometry {
         TX: ox + tx - a * ox - b * oy,
         TY: oy + ty - c * ox - d * oy,
       }
+    }
+
+    private func compose(outer Affine2D, inner Affine2D) Affine2D -> Affine2D {
+      A: outer.A * inner.A + outer.B * inner.C,
+      B: outer.A * inner.B + outer.B * inner.D,
+      C: outer.C * inner.A + outer.D * inner.C,
+      D: outer.C * inner.B + outer.D * inner.D,
+      TX: outer.A * inner.TX + outer.B * inner.TY + outer.TX,
+      TY: outer.C * inner.TX + outer.D * inner.TY + outer.TY,
     }
 
     internal func Unmap(n Node, x float32, y float32) TransformPoint {

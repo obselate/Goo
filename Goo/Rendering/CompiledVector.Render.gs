@@ -1,21 +1,27 @@
 package Goo
 
-internal sealed class CompiledVectorDisplayCell : Cell[CompiledVectorAsset] {
-  private var asset CompiledVectorAsset?
+internal data struct VectorAssetRenderInput {
+  internal let Asset VectorAsset
+  internal let Fit ShapeFit
+}
+
+internal sealed class VectorAssetDisplayCell : Cell[VectorAssetRenderInput] {
+  private var asset VectorAsset?
+  private var fit ShapeFit
   private var tree Container?
   private var player CompiledVectorMotionPlayer?
 
-  override func Build(input CompiledVectorAsset) Blob {
+  override func Build(input VectorAssetRenderInput) Blob {
     if let current = asset {
-      if current == input {
+      if current == input.Asset && fit == input.Fit {
         if let existing = tree {
           return existing
         }
       }
     }
-    let nextTree = input.BuildStaticTree()
-    let nextPlayer CompiledVectorMotionPlayer? = if input.HasPlaybackTracks {
-      CompiledVectorMotionPlayer(this, input, nextTree)
+    let nextTree = input.Asset.BuildStaticTree(input.Fit)
+    let nextPlayer CompiledVectorMotionPlayer? = if input.Asset.HasPlaybackTracks {
+      CompiledVectorMotionPlayer(this, input.Asset, nextTree)
     } else {
       nil
     }
@@ -23,7 +29,8 @@ internal sealed class CompiledVectorDisplayCell : Cell[CompiledVectorAsset] {
       previous.Dispose()
       ReleaseMotionParticle(previous)
     }
-    asset = input
+    asset = input.Asset
+    fit = input.Fit
     tree = nextTree
     player = nextPlayer
     if let created = nextPlayer {

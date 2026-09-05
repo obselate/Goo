@@ -1,6 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
 <doc>
   <members>
+    <member name="M:Goo.VectorNodeStyle.#ctor">
+      <summary>Creates vector node options with unit opacity and nonzero winding.</summary>
+    </member>
+    <member name="T:Goo.VectorAsset">
+      <summary>Owns an immutable vector document shared by authored, runtime SVG, and compiled assets.</summary>
+    </member>
+    <member name="M:Goo.VectorAsset.#ctor(System.Double,System.Double,System.Double,System.Double,Goo.VectorNode[])">
+      <summary>Snapshots a vector document whose paths use the supplied view-box coordinate space.</summary>
+    </member>
+    <member name="M:Goo.VectorAsset.Load(System.Byte[])">
+      <summary>Decodes a validated compiled vector document.</summary>
+    </member>
+    <member name="M:Goo.VectorAsset.TryLoad(System.Byte[])">
+      <summary>Decodes a compiled vector document or returns nil when the bytes are invalid.</summary>
+    </member>
+    <member name="M:Goo.VectorAsset.NodeAt(System.Int32)">
+      <summary>Returns the immutable node at a flattened document index.</summary>
+    </member>
+    <member name="M:Goo.VectorAsset.PathForNode(System.Int32)">
+      <summary>Returns a node path in the document coordinate space.</summary>
+    </member>
+    <member name="M:Goo.VectorAsset.Render">
+      <summary>Creates a retained vector display fitted within its parent.</summary>
+    </member>
+    <member name="M:Goo.VectorAsset.Render(System.String)">
+      <summary>Creates a keyed retained vector display fitted within its parent.</summary>
+    </member>
+    <member name="P:Goo.VectorAsset.Version"><summary>Gets the source format version, or zero for authored documents.</summary></member>
+    <member name="P:Goo.VectorAsset.Flags"><summary>Gets source format flags, or zero for authored documents.</summary></member>
+    <member name="P:Goo.VectorAsset.ByteCount"><summary>Gets the encoded source byte count, or zero for authored documents.</summary></member>
+    <member name="P:Goo.VectorAsset.ViewBoxX"><summary>Gets the view-box x origin.</summary></member>
+    <member name="P:Goo.VectorAsset.ViewBoxY"><summary>Gets the view-box y origin.</summary></member>
+    <member name="P:Goo.VectorAsset.ViewBoxWidth"><summary>Gets the view-box width.</summary></member>
+    <member name="P:Goo.VectorAsset.ViewBoxHeight"><summary>Gets the view-box height.</summary></member>
+    <member name="P:Goo.VectorAsset.Nodes"><summary>Gets the immutable flattened node sequence.</summary></member>
+    <member name="P:Goo.VectorAsset.NodeCount"><summary>Gets the node count.</summary></member>
+    <member name="P:Goo.VectorAsset.ContourCount"><summary>Gets the contour count.</summary></member>
+    <member name="P:Goo.VectorAsset.CurveCount"><summary>Gets the quadratic curve count.</summary></member>
+    <member name="P:Goo.VectorAsset.MorphCurveCount"><summary>Gets the morph curve count.</summary></member>
+    <member name="P:Goo.VectorAsset.PaintCount"><summary>Gets the paint count.</summary></member>
+    <member name="P:Goo.VectorAsset.StrokeCount"><summary>Gets the stroke count.</summary></member>
+    <member name="P:Goo.VectorAsset.ClipCount"><summary>Gets the clip count.</summary></member>
+    <member name="P:Goo.VectorAsset.TrackCount"><summary>Gets the animation track count.</summary></member>
+    <member name="P:Goo.VectorAsset.KeyframeCount"><summary>Gets the animation keyframe count.</summary></member>
     <member name="T:Goo.CompiledVectorAsset">
       <summary>Loads, caches, and renders a validated compiled vector asset.</summary>
     </member>
@@ -160,13 +204,25 @@
       <summary>Sets the fill rule used by ClipPath.</summary>
     </member>
     <member name="T:Goo.ShaderEffect">
-      <summary>Owns one precompiled fragment SPIR-V program and its retained parameter state.</summary>
+      <summary>Owns retained parameter state for one backend-neutral shader effect program.</summary>
     </member>
-    <member name="M:Goo.ShaderEffect.#ctor(System.Byte[],System.Boolean,System.Single)">
+    <member name="M:Goo.ShaderEffect.#ctor(Goo.ShaderEffectProgram,System.Boolean,System.Single)">
       <summary>Creates a retained fragment effect with optional bounded backdrop sampling.</summary>
-      <param name="fragmentSpirv">The complete fragment shader module bytes.</param>
+      <param name="program">The compiled shader effect program.</param>
       <param name="samplesBackdrop">Whether Goo copies the existing target behind the element for shader sampling.</param>
       <param name="backdropOutset">The finite nonnegative logical-pixel distance captured around the element, up to 256.</param>
+    </member>
+    <member name="T:Goo.ShaderEffectProgram">
+      <summary>Owns one immutable compiled shader effect program with backend-specific artifacts.</summary>
+    </member>
+    <member name="M:Goo.ShaderEffectProgram.#ctor(System.Byte[])">
+      <summary>Loads and validates a compiled shader effect program from memory.</summary>
+      <param name="program">The complete Goo shader effect program bytes.</param>
+    </member>
+    <member name="M:Goo.ShaderEffectProgram.Load(System.String)">
+      <summary>Loads and validates a compiled shader effect program from a file.</summary>
+      <param name="path">The program file path.</param>
+      <returns>The immutable compiled program.</returns>
     </member>
     <member name="M:Goo.ShaderEffect.SetParameter(System.Int32,System.Numerics.Vector4)">
       <summary>Updates one retained shader parameter slot without allocating on the warm path.</summary>

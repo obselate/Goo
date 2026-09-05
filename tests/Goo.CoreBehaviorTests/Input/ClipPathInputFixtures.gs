@@ -9,8 +9,8 @@ internal class ClipPathInputFixtures {
     guard let tree = driver.Window.Tree else { return false }
     guard let fallback = find(tree, "fallback") else { return false }
     guard let clipped = find(tree, "clipped") else { return false }
-    if Hit().Topmost(tree, 90.0F, 25.0F) != fallback
-      || Hit().Topmost(tree, 20.0F, 25.0F) != clipped{
+    if hitTopmost(tree, 90.0F, 25.0F) != fallback
+      || hitTopmost(tree, 20.0F, 25.0F) != clipped{
         return false
       }
 
@@ -44,9 +44,9 @@ internal class ClipPathInputFixtures {
     guard let tree = driver.Window.Tree else { return false }
     guard let fallback = find(tree, "fallback") else { return false }
     guard let clipped = find(tree, "clipped") else { return false }
-    return Hit().Topmost(tree, 20.0F, 50.0F) == clipped
-      && Hit().Topmost(tree, 60.0F, 50.0F) == fallback
-      && Hit().Topmost(tree, 90.0F, 50.0F) == fallback
+    return hitTopmost(tree, 20.0F, 50.0F) == clipped
+      && hitTopmost(tree, 60.0F, 50.0F) == fallback
+      && hitTopmost(tree, 90.0F, 50.0F) == fallback
   }
 
   func TransformedClipPathUsesMappedCoordinates() bool {
@@ -54,8 +54,8 @@ internal class ClipPathInputFixtures {
     guard let tree = driver.Window.Tree else { return false }
     guard let fallback = find(tree, "fallback") else { return false }
     guard let clipped = find(tree, "clipped") else { return false }
-    return Hit().Topmost(tree, 120.0F, 50.0F) == clipped
-      && Hit().Topmost(tree, 170.0F, 50.0F) == fallback
+    return hitTopmost(tree, 120.0F, 50.0F) == clipped
+      && hitTopmost(tree, 170.0F, 50.0F) == fallback
   }
 
   func CaptureContinuesOutsideClipUntilRelease() bool {

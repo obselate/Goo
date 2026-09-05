@@ -241,6 +241,142 @@ Selects the join style for stroked paths.
 - `Round`
 - `Bevel`
 
+## `VectorNode`
+
+Source:
+
+- [`VectorAssetModel.gs`](../../Goo/Shapes/VectorAssetModel.gs)
+
+Describes one immutable vector node and its composed children.
+
+### `new(VectorNode[])`
+
+Creates a group node with children.
+
+### `new(VectorPath)`
+
+Creates a path node with no paint or children.
+
+### `new(VectorPath,VectorNodeStyle)`
+
+Creates a path node with immutable style options.
+
+### `new(VectorPath,VectorNodeStyle,VectorNode[])`
+
+Creates a path node with immutable style options.
+
+### `Children`
+
+Gets the immutable child sequence.
+
+### `ClipPath`
+
+Gets this node's optional clip path.
+
+### `ClipPathFillRule`
+
+Gets this node's clip fill rule.
+
+### `Fill`
+
+Gets this node's optional fill paint.
+
+### `FillRule`
+
+Gets this node's fill rule.
+
+### `Key`
+
+Gets the stable key used for this node when rendered.
+
+### `Opacity`
+
+Gets this node's local opacity.
+
+### `Path`
+
+Gets this node's path.
+
+### `Stroke`
+
+Gets this node's optional stroke.
+
+### `Style`
+
+Gets the immutable node options.
+
+### `Transform`
+
+Gets this node's local transform.
+
+## `VectorNodeStyle`
+
+Source:
+
+- [`VectorAssetModel.gs`](../../Goo/Shapes/VectorAssetModel.gs)
+
+Describes immutable paint and composition options for a vector node.
+
+### `new`
+
+Creates vector node options with unit opacity and nonzero winding.
+
+### `ClipPath`
+
+Gets this node's optional clip path.
+
+### `ClipPathFillRule`
+
+Gets this node's clip fill rule.
+
+### `Fill`
+
+Gets this node's optional fill paint.
+
+### `FillRule`
+
+Gets this node's fill rule.
+
+### `Key`
+
+Gets the stable key used for this node when rendered.
+
+### `Opacity`
+
+Gets this node's local opacity.
+
+### `Stroke`
+
+Gets this node's optional stroke.
+
+### `Transform`
+
+Gets this node's local transform.
+
+## `VectorPaint`
+
+Source:
+
+- [`VectorAssetModel.gs`](../../Goo/Shapes/VectorAssetModel.gs)
+
+Describes one immutable vector fill paint.
+
+### `new(Color)`
+
+Creates a solid vector paint.
+
+### `new(Gradient)`
+
+Creates a gradient vector paint.
+
+### `Color`
+
+Gets the solid color, or transparent when this paint is a gradient.
+
+### `Gradient`
+
+Gets the gradient, or nil for a solid paint.
+
 ## `VectorPath`
 
 Source:
@@ -268,3 +404,47 @@ Gets the view-box left coordinate.
 ### `ViewBoxY`
 
 Gets the view-box top coordinate.
+
+## `VectorStroke`
+
+Source:
+
+- [`VectorAssetModel.gs`](../../Goo/Shapes/VectorAssetModel.gs)
+
+Describes one immutable vector stroke.
+
+### `new(float64,Color)`
+
+Creates a solid-color stroke with default cap, join, and miter settings.
+
+### `new(float64,VectorPaint)`
+
+Creates a stroke with default cap, join, and miter settings.
+
+### `new(float64,VectorPaint,StrokeCap,StrokeJoin,float64,DashPattern)`
+
+Creates a fully specified immutable stroke.
+
+### `Cap`
+
+Gets the line cap style.
+
+### `Dashes`
+
+Gets the optional dash pattern.
+
+### `Join`
+
+Gets the line join style.
+
+### `MiterLimit`
+
+Gets the finite miter limit.
+
+### `Paint`
+
+Gets the stroke paint.
+
+### `Width`
+
+Gets the non-negative stroke width in view-box units.

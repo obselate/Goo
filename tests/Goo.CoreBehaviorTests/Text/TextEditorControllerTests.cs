@@ -13,12 +13,12 @@ public sealed class TextEditorControllerTests
             Selection = Selection(1, 2),
         };
 
-        Assert.True(controller.Insert("XY"));
+        Assert.True(controller.Execute(Command(TextCommandKind.Insert, "XY")));
         Assert.Equal("aXY", document.GetText());
         Assert.Equal(3, controller.Selection.Active.Offset);
-        Assert.True(controller.Undo());
+        Assert.True(controller.Execute(Command(TextCommandKind.Undo)));
         Assert.Equal("ab", document.GetText());
-        Assert.True(controller.Redo());
+        Assert.True(controller.Execute(Command(TextCommandKind.Redo)));
         Assert.Equal("aXY", document.GetText());
     }
 
@@ -29,7 +29,7 @@ public sealed class TextEditorControllerTests
         using var controller = new TextEditorController(document);
         controller.OnCommand = args => args.Cancel = args.Command.Kind == TextCommandKind.Insert;
 
-        Assert.False(controller.Insert("!"));
+        Assert.False(controller.Execute(Command(TextCommandKind.Insert, "!")));
         Assert.Equal("text", document.GetText());
     }
 
@@ -38,7 +38,7 @@ public sealed class TextEditorControllerTests
     [InlineData(TextCommandKind.PageDown)]
     [InlineData(TextCommandKind.MoveDocumentStart)]
     [InlineData(TextCommandKind.MoveDocumentEnd)]
-    public void AdditionalMovementWrappersDispatchSemanticCommands(TextCommandKind kind)
+    public void MovementCommandsDispatchSemanticCommands(TextCommandKind kind)
     {
         using var controller = new TextEditorController(new TextDocument("one\ntwo"));
         TextCommand? observed = null;
@@ -48,14 +48,7 @@ public sealed class TextEditorControllerTests
             args.Cancel = true;
         };
 
-        var handled = kind switch
-        {
-            TextCommandKind.PageUp => controller.PageUp(true),
-            TextCommandKind.PageDown => controller.PageDown(true),
-            TextCommandKind.MoveDocumentStart => controller.MoveDocumentStart(true),
-            TextCommandKind.MoveDocumentEnd => controller.MoveDocumentEnd(true),
-            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
-        };
+        var handled = controller.Execute(Command(kind, extendSelection: true));
 
         Assert.False(handled);
         Assert.Equal(kind, observed!.Value.Kind);
@@ -71,7 +64,7 @@ public sealed class TextEditorControllerTests
             Selection = Selection(1, 2),
         };
 
-        Assert.True(controller.BeginComposition());
+        Assert.True(controller.Execute(Command(TextCommandKind.BeginComposition)));
         Assert.True(controller.UpdateComposition("XY", 0, 2));
         Assert.Equal("ab", document.GetText());
         Assert.Equal("XY", controller.Composition!.Value.Text);
@@ -101,7 +94,7 @@ public sealed class TextEditorControllerTests
         document.Apply(Change(0, 0, "x"));
         Assert.Equal(3, controller.Selection.Active.Offset);
 
-        controller.BeginComposition();
+        controller.Execute(Command(TextCommandKind.BeginComposition));
         document.Apply(Change(0, 0, "!"));
 
         Assert.Equal(4, controller.Composition!.Value.Range.Start);
@@ -117,9 +110,9 @@ public sealed class TextEditorControllerTests
             Selection = Caret(document.Length),
         };
 
-        Assert.True(controller.MoveLeft(false));
+        Assert.True(controller.Execute(Command(TextCommandKind.MoveLeft)));
         Assert.Equal(3, controller.Selection.Active.Offset);
-        Assert.True(controller.MoveLeft(false));
+        Assert.True(controller.Execute(Command(TextCommandKind.MoveLeft)));
         Assert.Equal(1, controller.Selection.Active.Offset);
         Assert.ThrowsAny<ArgumentException>(() => controller.Selection = Caret(2));
     }
@@ -135,7 +128,7 @@ public sealed class TextEditorControllerTests
         };
 
         var before = GC.GetAllocatedBytesForCurrentThread();
-        Assert.True(controller.MoveWordLeft(false));
+        Assert.True(controller.Execute(Command(TextCommandKind.MoveWordLeft)));
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         Assert.Equal(source.LastIndexOf("word", StringComparison.Ordinal),
@@ -152,7 +145,7 @@ public sealed class TextEditorControllerTests
             Selection = Caret(3),
         })
         {
-            Assert.True(backward.DeleteBackward());
+            Assert.True(backward.Execute(Command(TextCommandKind.DeleteBackward)));
             Assert.Equal("ab", backwardDocument.GetText());
             Assert.Equal(1, backward.Selection.Active.Offset);
         }
@@ -162,7 +155,7 @@ public sealed class TextEditorControllerTests
         {
             Selection = Caret(1),
         };
-        Assert.True(forward.DeleteForward());
+        Assert.True(forward.Execute(Command(TextCommandKind.DeleteForward)));
         Assert.Equal("ab", forwardDocument.GetText());
         Assert.Equal(1, forward.Selection.Active.Offset);
     }
@@ -173,20 +166,20 @@ public sealed class TextEditorControllerTests
         var document = new TextDocument();
         using var controller = new TextEditorController(document);
 
-        controller.Insert("a");
-        controller.Insert("b");
+        controller.Execute(Command(TextCommandKind.Insert, "a"));
+        controller.Execute(Command(TextCommandKind.Insert, "b"));
         document.Apply(Change(2, 0, "!"));
-        controller.Paste("P");
-        controller.Insert("c");
+        controller.Execute(Command(TextCommandKind.Paste, "P"));
+        controller.Execute(Command(TextCommandKind.Insert, "c"));
 
         Assert.Equal("ab!Pc", document.GetText());
-        Assert.True(controller.Undo());
+        Assert.True(controller.Execute(Command(TextCommandKind.Undo)));
         Assert.Equal("ab!P", document.GetText());
-        Assert.True(controller.Undo());
+        Assert.True(controller.Execute(Command(TextCommandKind.Undo)));
         Assert.Equal("ab!", document.GetText());
-        Assert.True(controller.Undo());
+        Assert.True(controller.Execute(Command(TextCommandKind.Undo)));
         Assert.Equal("ab", document.GetText());
-        Assert.True(controller.Undo());
+        Assert.True(controller.Execute(Command(TextCommandKind.Undo)));
         Assert.Equal("", document.GetText());
     }
 
@@ -196,12 +189,12 @@ public sealed class TextEditorControllerTests
         var document = new TextDocument();
         using var controller = new TextEditorController(document);
 
-        controller.Paste("a");
-        controller.Paste("b");
+        controller.Execute(Command(TextCommandKind.Paste, "a"));
+        controller.Execute(Command(TextCommandKind.Paste, "b"));
 
-        Assert.True(controller.Undo());
+        Assert.True(controller.Execute(Command(TextCommandKind.Undo)));
         Assert.Equal("a", document.GetText());
-        Assert.True(controller.Undo());
+        Assert.True(controller.Execute(Command(TextCommandKind.Undo)));
         Assert.Equal("", document.GetText());
     }
 
@@ -215,7 +208,8 @@ public sealed class TextEditorControllerTests
         var document = new TextDocument();
         using var controller = new TextEditorController(document);
         using var layer = new TextPresentationLayer(document);
-        Assert.Throws<ArgumentNullException>(() => controller.Insert(null!));
+        Assert.Throws<ArgumentNullException>(() =>
+            controller.Execute(Command(TextCommandKind.Insert, null!)));
         Assert.Throws<ArgumentNullException>(() => layer.SetReplacement("x", new TextRange(), null!));
         Assert.Throws<ArgumentNullException>(() => layer.SetStyle("x", new TextRange(), null!));
     }
@@ -230,4 +224,7 @@ public sealed class TextEditorControllerTests
 
     private static TextChange Change(int start, int length, string text) => new(
         new TextRange(start, length), text);
+
+    private static TextCommand Command(TextCommandKind kind, string text = "",
+        bool extendSelection = false) => new(kind, text, extendSelection);
 }

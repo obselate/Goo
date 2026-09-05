@@ -13,6 +13,7 @@ EXPECTED_PACKAGE_IDS = {
     "Goo",
     "Goo.DevTools",
     "Goo.DevTools.App",
+    "Goo.Svg",
     "Goo.SvgCompiler",
     "Goo.Templates",
 }

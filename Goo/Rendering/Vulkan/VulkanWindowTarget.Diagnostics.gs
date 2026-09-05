@@ -36,7 +36,7 @@ internal unsafe partial class VulkanWindowTarget {
           uint64(int32(stage)),
           DiagnosticQueueValue(),
           DiagnosticSubmissionValue(),
-          DiagnosticFenceValue(),
+          0uL,
           0uL,
           eventId,
           VulkanDiagnosticCategories.Timing,
@@ -93,16 +93,6 @@ internal unsafe partial class VulkanWindowTarget {
     }
     if let slot = activeFrameSlot {
       return slot.SubmissionSerial
-    }
-    return 0uL
-  }
-
-  private func DiagnosticFenceValue() uint64 {
-    if diagnostics == nil {
-      return 0uL
-    }
-    if let slot = activeFrameSlot {
-      return uint64(slot.SubmissionFence)
     }
     return 0uL
   }
@@ -178,7 +168,8 @@ internal unsafe partial class VulkanWindowTarget {
     sample: 0uL,
     queue: DiagnosticQueueValue(),
     submission: slot.NextSubmissionSerial,
-    fence: uint64(slot.SubmissionFence),
+    fence: 0uL,
+    completionSerial: 0uL,
   }
 
   private func DiagnosticTimestampSubmittedContext(slot VulkanFrameSlot)
@@ -191,7 +182,8 @@ internal unsafe partial class VulkanWindowTarget {
     sample: 0uL,
     queue: DiagnosticQueueValue(),
     submission: slot.SubmissionSerial,
-    fence: uint64(slot.SubmissionFence),
+    fence: 0uL,
+    completionSerial: slot.GlobalSubmissionSerial,
   }
 
   private func DiagnosticTimestampCompletedContext(slot VulkanFrameSlot)
@@ -204,7 +196,8 @@ internal unsafe partial class VulkanWindowTarget {
     sample: 0uL,
     queue: DiagnosticQueueValue(),
     submission: slot.LastCompletedSerial,
-    fence: uint64(slot.SubmissionFence),
+    fence: 0uL,
+    completionSerial: slot.LastCompletedGlobalSubmissionSerial,
   }
 
   private func ResetDiagnosticTimestamp(slot VulkanFrameSlot) {
@@ -349,7 +342,7 @@ internal unsafe partial class VulkanWindowTarget {
             0uL,
             DiagnosticQueueValue(),
             DiagnosticSubmissionValue(),
-            DiagnosticFenceValue(),
+            0uL,
             0uL,
             eventId,
             category,
@@ -373,7 +366,7 @@ internal unsafe partial class VulkanWindowTarget {
           activeFrameId,
           DiagnosticQueueValue(),
           DiagnosticSubmissionValue(),
-          DiagnosticFenceValue())
+          0uL)
       }
     } catch (cleanup Exception) { }
   }
@@ -394,7 +387,7 @@ internal unsafe partial class VulkanWindowTarget {
           0uL,
           DiagnosticQueueValue(),
           DiagnosticSubmissionValue(),
-          DiagnosticFenceValue(),
+          0uL,
           eventId,
           category,
           start,
@@ -430,7 +423,7 @@ internal unsafe partial class VulkanWindowTarget {
             0uL,
             DiagnosticQueueValue(),
             DiagnosticSubmissionValue(),
-            DiagnosticFenceValue(),
+            0uL,
             0uL,
             VulkanDiagnosticEventIds.PlanCompile,
             VulkanDiagnosticCategories.FramePlan,
@@ -450,7 +443,7 @@ internal unsafe partial class VulkanWindowTarget {
               detail.OwnerId,
               DiagnosticQueueValue(),
               DiagnosticSubmissionValue(),
-              DiagnosticFenceValue(),
+              0uL,
               0uL,
               VulkanDiagnosticEventIds.SceneUnsupported,
               VulkanDiagnosticCategories.FramePlan,
@@ -470,7 +463,7 @@ internal unsafe partial class VulkanWindowTarget {
               0uL,
               DiagnosticQueueValue(),
               DiagnosticSubmissionValue(),
-              DiagnosticFenceValue(),
+              0uL,
               0uL,
               VulkanDiagnosticEventIds.SceneUnsupportedDropped,
               VulkanDiagnosticCategories.FramePlan,
@@ -502,7 +495,7 @@ internal unsafe partial class VulkanWindowTarget {
           0uL,
           DiagnosticQueueValue(),
           DiagnosticSubmissionValue(),
-          DiagnosticFenceValue(),
+          0uL,
           0uL,
           VulkanDiagnosticEventIds.DamageBuild,
           VulkanDiagnosticCategories.FramePlan,
@@ -545,7 +538,7 @@ internal unsafe partial class VulkanWindowTarget {
             0uL,
             DiagnosticQueueValue(),
             DiagnosticSubmissionValue(),
-            DiagnosticFenceValue(),
+            0uL,
             0uL,
             VulkanDiagnosticEventIds.CommandRecord,
             VulkanDiagnosticCategories.FramePlan,
@@ -568,7 +561,7 @@ internal unsafe partial class VulkanWindowTarget {
           VulkanDiagnosticCategories.Timing, start)
         if let slot = activeFrameSlot {
           current.CaptureSubmission(slot.SubmissionSerial, DiagnosticQueueValue(),
-            uint64(slot.SubmissionFence))
+            0uL)
         }
         CaptureDiagnosticResources()
       }
@@ -733,7 +726,7 @@ internal unsafe partial class VulkanWindowTarget {
         CaptureDiagnosticResources()
         if let slot = activeFrameSlot {
           current.CaptureSubmission(slot.SubmissionSerial, DiagnosticQueueValue(),
-            uint64(slot.SubmissionFence))
+            0uL)
         }
         current.CaptureFatal(code, value)
       }

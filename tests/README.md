@@ -29,6 +29,89 @@ Shader and text proof build:
 dotnet build tests/Goo.VulkanProof/Goo.VulkanProof.gsproj -c Release
 ```
 
+## Native queue wake regression
+
+The native queue wake regression check runs the normal window scheduler while
+deliberately deferring the next frame. Both submit and present completions must
+be processed before the frame deadline or idle timeout, and a held worker must
+still allow a blocking wait:
+
+```sh
+dotnet build tests/Goo.AsyncReadbackSmoke/Goo.AsyncReadbackSmoke.gsproj -c Release
+GOO_QUEUE_WAKE_SMOKE=1 dotnet tests/Goo.AsyncReadbackSmoke/bin/Release/net10.0/Goo.AsyncReadbackSmoke.dll
+```
+
+CI runs this gate in the portable Vulkan checks through the headless Wayland wrapper.
+`PathIdentityTests` in the core behavior suite also checks allocation-free repeated
+source lookup, structural equality under hash collisions, and mutable path revisions.
+
+## Timeline completion
+
+Run the shared graphics timeline completion gate with diagnostics:
+
+```sh
+dotnet build tests/Goo.AsyncReadbackSmoke/Goo.AsyncReadbackSmoke.gsproj -c Release
+GOO_VK_DIAGNOSTICS=1 GOO_TIMELINE_COMPLETION_SMOKE=1 \
+  dotnet tests/Goo.AsyncReadbackSmoke/bin/Release/net10.0/Goo.AsyncReadbackSmoke.dll
+```
+
+The gate checks that validation exception rollback and deferred enqueue consume no serial,
+held-window and offscreen submissions receive consecutive accepted FIFO serials,
+and poll or zero-time waits do not report held work complete. Shared GPU timeline
+completion must still reconcile each CPU mailbox. The gate also validates offscreen
+pixels and closes both windows without Vulkan validation, fatal, or object leaks.
+Linux native CI runs it through the headless Wayland wrapper.
+
+## Primitive upload metrics
+
+`GOO_PRIMITIVE_METRICS_SMOKE=1` runs the native full, unchanged, sparse, abort,
+effect-tail, and flush-call accounting gate in `Goo.AsyncReadbackSmoke`.
+Linux native CI runs it through the headless Wayland wrapper.
+
+`GOO_PRIMITIVE_UPLOAD_BENCHMARK=1` runs the fixed 1,000-box benchmark. Select
+`GOO_PRIMITIVE_UPLOAD_WORKLOAD=unchanged|sparse|full` and configure the existing
+`GOO_PRIMITIVE_UPLOAD_WARMUP` and `GOO_PRIMITIVE_UPLOAD_SAMPLES` counts. Output
+includes frame P50/P95/P99/max, allocation measurements, and measured-interval
+cumulative CPU-written, CPU-compared, CPU-write-operation, and submitted-transfer
+counters.
+See [counter definitions and commands](../docs/perf/primitive-upload-metrics.md).
+
+## All Blob benchmark
+
+`GOO_ALL_BLOB_BENCHMARK=1` runs an optional 1,000-cell retained benchmark for
+`container`, `text`, `image`, `shape`, `button`, `text-entry`, or `text-editor`.
+Select the kind with `GOO_ALL_BLOB_KIND` and select `unchanged`, `sparse`, or
+`full` with `GOO_ALL_BLOB_MODE`. Configure up to 300 warm frames with
+`GOO_ALL_BLOB_WARMUP` and up to 2,000 measured frames with
+`GOO_ALL_BLOB_SAMPLES`.
+
+The root builds once. Each measured update changes only leaf opacity between
+1.0 and 0.75: zero leaves for unchanged, one leaf for sparse, and all 1,000
+leaves for full. The output reports host frame wall time, managed allocation,
+process and managed-memory samples, Goo allocation counters, and Vulkan
+timestamp stages. Main is the outer render-pass scope and upload is separate.
+Effects and offscreen scopes can nest inside main, so stage times must not be
+summed. Two cold update frames are measured after the initial untimed render
+and before warmup. These are not application startup or first-paint times.
+Allocation output includes P50, P95, and P99. On Linux, a post-GC snapshot pairs
+managed retained bytes with RSS and PSS from one `/proc/self/smaps_rollup` read.
+This diagnostic benchmark is not run automatically by CI.
+
+## Pipeline identity
+
+Run the native pipeline identity gate with diagnostics:
+
+```sh
+dotnet build tests/Goo.AsyncReadbackSmoke/Goo.AsyncReadbackSmoke.gsproj -c Release
+GOO_VK_DIAGNOSTICS=1 GOO_PIPELINE_IDENTITY_SMOKE=1 \
+  dotnet tests/Goo.AsyncReadbackSmoke/bin/Release/net10.0/Goo.AsyncReadbackSmoke.dll
+```
+
+The gate checks that separately loaded identical shader programs share a pipeline,
+distinct bytes remain distinct under hash collisions, effect parameters and data stay
+independent, rendered pixels remain correct, and close/reopen releases resources.
+Linux native CI runs it through the headless Wayland wrapper.
+
 ## Project map
 
 | Project | Purpose |
@@ -66,13 +149,14 @@ absent.
 
 The complete package flow is defined in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). It:
 
-1. Builds a glibc-compatible SDL3 library.
+1. Builds pinned Linux x64 and macOS arm64 native payloads.
 2. Builds Goo and verification projects with warnings as errors.
-3. Runs portable Vulkan proofs.
+3. Runs portable Vulkan proofs and the M1 MoltenVK window smoke.
 4. Runs API and behavior tests.
-5. Packs Goo and the SVG compiler.
-6. Publishes a clean package consumer.
-7. Validates native dependencies, checksums, and the bundle size limit.
+5. Packs Goo and the SVG compiler with all runtime assets.
+6. Publishes clean managed and NativeAOT package consumers.
+7. Stages signed macOS and Linux bundles.
+8. Validates native dependencies, checksums, and the bundle size limit.
 
 That workflow is the authoritative source for native environment variables and exact release commands.
 

@@ -40,7 +40,7 @@ class TextEditorSmokeCell : Cell {
     Position: PositionType.Relative,
     BackgroundColor: Color.Rgb(12, 20, 32),
     Children: {
-      TextEditor(Document, Controller, []TextPresentationLayer{ presentation }) {
+      TextEditor(Controller, []TextPresentationLayer{ presentation }) {
         Handle = TextEditorSmokeCell.Editor,
         Position = PositionType.Absolute,
         Left = 24,

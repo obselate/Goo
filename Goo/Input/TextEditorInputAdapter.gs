@@ -39,7 +39,7 @@ internal class TextEditorInputAdapter {
       return true
     }
 
-    internal func UpdateImeArea(host SdlHost, n Node) {
+    internal func UpdateImeArea(host WindowHost, n Node) {
       guard let controller = n.EditorController else {
         return
       }
@@ -53,7 +53,7 @@ internal class TextEditorInputAdapter {
       setImeArea(host, n, left, top, caret.W, caret.H)
     }
 
-    internal func ApplyImeArea(host SdlHost, p0 TransformPoint, p1 TransformPoint,
+    internal func ApplyImeArea(host WindowHost, p0 TransformPoint, p1 TransformPoint,
       p2 TransformPoint, p3 TransformPoint) {
         if !p0.Valid || !p1.Valid || !p2.Valid || !p3.Valid {
           return
@@ -99,7 +99,7 @@ internal class TextEditorInputAdapter {
       }
     }
 
-    private func setImeArea(host SdlHost, n Node, x float32, y float32, width float32,
+    private func setImeArea(host WindowHost, n Node, x float32, y float32, width float32,
       height float32) {
         let p0 = TransformGeometry.NodeToWindow(n, x, y)
         let p1 = TransformGeometry.NodeToWindow(n, x + width, y)

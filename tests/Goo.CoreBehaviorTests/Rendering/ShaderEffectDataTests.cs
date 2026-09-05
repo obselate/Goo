@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using Goo;
 using Xunit;
 
@@ -49,7 +50,7 @@ public sealed class ShaderEffectDataTests
     [Fact]
     public void ShaderEffectsBindFourFixedDataSlotsIdempotently()
     {
-        var effect = new ShaderEffect(MinimalSpirv);
+        var effect = new ShaderEffect(new ShaderEffectProgram(Program(MinimalSpirv)));
         using var data = new ShaderEffectData(new byte[] { 1, 2, 3, 4 });
 
         Assert.True(effect.SetData(0, data));
@@ -58,5 +59,17 @@ public sealed class ShaderEffectDataTests
         Assert.True(effect.SetData(0, null));
         Assert.Throws<ArgumentOutOfRangeException>(() => effect.SetData(-1, data));
         Assert.Throws<ArgumentOutOfRangeException>(() => effect.SetData(4, data));
+    }
+
+    private static byte[] Program(byte[] spirv)
+    {
+        byte[] result = new byte[20 + spirv.Length];
+        BinaryPrimitives.WriteUInt32LittleEndian(result.AsSpan(0, 4), 0x46464547);
+        BinaryPrimitives.WriteUInt32LittleEndian(result.AsSpan(4, 4), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(result.AsSpan(8, 4), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(result.AsSpan(12, 4), 0x56505356);
+        BinaryPrimitives.WriteUInt32LittleEndian(result.AsSpan(16, 4), (uint)spirv.Length);
+        spirv.CopyTo(result, 20);
+        return result;
     }
 }

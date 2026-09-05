@@ -10,7 +10,7 @@ internal unsafe data struct SdlVulkanExtensionPointer {
 }
 
 internal unsafe partial class SdlHost {
-  internal func LoadVulkanLibrary() bool {
+  public func LoadVulkanLibrary() bool {
     ThrowIfDisposed()
     if vulkanOwned {
       return true
@@ -22,12 +22,12 @@ internal unsafe partial class SdlHost {
     return loaded
   }
 
-  internal func GetVulkanGetInstanceProcAddr() nint {
+  public func GetVulkanGetInstanceProcAddr() nint {
     ThrowIfDisposed()
     return SdlRuntime.GetVulkanGetInstanceProcAddress()
   }
 
-  internal func UnloadVulkanLibrary() {
+  public func UnloadVulkanLibrary() {
     ThrowIfDisposed()
     if !vulkanOwned {
       return
@@ -36,12 +36,12 @@ internal unsafe partial class SdlHost {
     SdlRuntime.ReleaseVulkan()
   }
 
-  internal func GetVulkanInstanceExtensions() []string {
+  public func GetVulkanInstanceExtensions() []string {
     ThrowIfDisposed()
     return SdlRuntime.GetVulkanInstanceExtensions()
   }
 
-  internal func CreateVulkanSurface(instance nint, out surface uint64) bool {
+  public func CreateVulkanSurface(instance nint, out surface uint64) bool {
     ThrowIfDisposed()
     var nativeSurface = Hexa.NET.SDL3.VkSurfaceKHR.Null
     if !SDL.VulkanCreateSurface(
@@ -56,7 +56,7 @@ internal unsafe partial class SdlHost {
     return true
   }
 
-  internal func DestroyVulkanSurface(instance nint, surface uint64) {
+  public func DestroyVulkanSurface(instance nint, surface uint64) {
     ThrowIfDisposed()
     if surface == 0uL {
       return

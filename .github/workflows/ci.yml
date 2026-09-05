@@ -50,6 +50,9 @@ jobs:
       - name: Build Goo with warnings as errors
         run: dotnet build Goo/Goo.gsproj -c Release -p:TreatWarningsAsErrors=true
 
+      - name: Build optional runtime SVG library
+        run: dotnet build Goo.Svg/Goo.Svg.csproj -c Release -p:TreatWarningsAsErrors=true
+
       - name: Regenerate API documentation
         run: |
           dotnet run --project tools/Goo.ApiDocs/Goo.ApiDocs.csproj -c Release
@@ -60,8 +63,94 @@ jobs:
           dotnet test tests/Goo.ApiContractTests/Goo.ApiContractTests.csproj \
             -c Release -p:TreatWarningsAsErrors=true
 
-  linux-x64:
+      - name: Run focused runtime SVG tests
+        run: |
+          dotnet test tests/Goo.Svg.Tests/Goo.Svg.Tests.csproj \
+            -c Release -p:TreatWarningsAsErrors=true
+
+  macos-arm64:
     needs: quality
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Load release version
+        run: echo "GOO_VERSION=$(python3 .github/scripts/release_version.py --print)" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install native build tools
+        run: brew install meson ninja
+
+      - name: Build pinned macOS arm64 native payloads
+        run: |
+          native="$PWD/artifacts/macos-candidate/native"
+          mkdir -p "$native"
+          .github/scripts/build-sdl-macos-arm64.sh "$native/libSDL3.dylib"
+          .github/scripts/fetch-moltenvk-macos-arm64.sh "$native/libMoltenVK.dylib"
+          .github/scripts/build-text-native-macos-arm64.sh "$native"
+
+      - name: Publish NativeAOT macOS smoke app
+        run: |
+          dotnet publish tests/Goo.PackageSmoke/Goo.PackageSmoke.gsproj \
+            -c Release -r osx-arm64 --self-contained true \
+            -p:PublishAot=true \
+            -p:TreatWarningsAsErrors=true \
+            -p:GooUseProjectReference=true \
+            -p:GooMacOsArm64NativeRoot="$PWD/artifacts/macos-candidate/native" \
+            -o artifacts/publish-macos-smoke
+
+      - name: Stage, sign, and run macOS smoke bundle
+        run: |
+          .github/scripts/stage-macos-arm64.sh \
+            artifacts/publish-macos-smoke \
+            artifacts/macos-candidate/Goo.PackageSmoke.app \
+            artifacts/macos-candidate/symbols \
+            Goo.PackageSmoke \
+            tests/Goo.PackageSmoke/Info.plist
+          GOO_WINDOW_SMOKE=1 GOO_VK_DIAGNOSTICS=1 \
+            artifacts/macos-candidate/Goo.PackageSmoke.app/Contents/MacOS/Goo.PackageSmoke
+
+      - name: Bundle Goo Gallery for testers
+        run: |
+          dotnet publish apps/Goo.Gallery/Goo.Gallery.gsproj \
+            -c Release -r osx-arm64 --self-contained true \
+            -p:PublishAot=true \
+            -p:TreatWarningsAsErrors=true \
+            -p:GooMacOsArm64NativeRoot="$PWD/artifacts/macos-candidate/native" \
+            -o artifacts/publish-macos-gallery
+          .github/scripts/stage-macos-arm64.sh \
+            artifacts/publish-macos-gallery \
+            "artifacts/macos-candidate/Goo Gallery.app" \
+            artifacts/macos-candidate/symbols \
+            Goo.Gallery \
+            apps/Goo.Gallery/Info.plist
+          (
+            cd artifacts/macos-candidate
+            COPYFILE_DISABLE=1 tar -czf Goo.Gallery-macos-arm64.tar.gz \
+              "Goo Gallery.app"
+            shasum -a 256 Goo.Gallery-macos-arm64.tar.gz \
+              >Goo.Gallery-macos-arm64.tar.gz.sha256
+          )
+          install -m0755 apps/Goo.Gallery/install-macos.sh \
+            artifacts/macos-candidate/install-goo-gallery-macos.sh
+
+      - name: Upload macOS release candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: goo-macos-arm64-candidate
+          if-no-files-found: error
+          path: |
+            artifacts/macos-candidate/
+
+  linux-x64:
+    needs:
+      - quality
+      - macos-arm64
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -70,6 +159,12 @@ jobs:
 
       - name: Load release version
         run: echo "GOO_VERSION=$(python3 .github/scripts/release_version.py --print)" >> "$GITHUB_ENV"
+
+      - name: Download macOS release candidate
+        uses: actions/download-artifact@v8
+        with:
+          name: goo-macos-arm64-candidate
+          path: artifacts/macos-candidate
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -191,6 +286,8 @@ jobs:
           dotnet build Goo/Goo.gsproj -c Release -p:TreatWarningsAsErrors=true
           dotnet build tools/Goo.SvgCompiler/Goo.SvgCompiler.csproj \
             -c Release -p:TreatWarningsAsErrors=true
+          dotnet build Goo.Svg/Goo.Svg.csproj \
+            -c Release -p:TreatWarningsAsErrors=true
           dotnet build tests/Goo.VulkanAbiSmoke/Goo.VulkanAbiSmoke.csproj \
             -c Release -p:TreatWarningsAsErrors=true \
             -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so"
@@ -224,6 +321,24 @@ jobs:
           run_vulkan_proof_lane GOO_VK_TEXT_PAINT_E2E
           run_vulkan_proof_lane GOO_VK_TEXT_EFFECT_READBACK
           run_vulkan_proof_lane GOO_VK_TEXT_PAINT_READBACK
+
+          .github/scripts/with-headless-wayland.sh env \
+            GOO_QUEUE_WAKE_SMOKE=1 \
+            dotnet tests/Goo.AsyncReadbackSmoke/bin/Release/net10.0/Goo.AsyncReadbackSmoke.dll
+
+          .github/scripts/with-headless-wayland.sh env \
+            GOO_VK_DIAGNOSTICS=1 \
+            GOO_TIMELINE_COMPLETION_SMOKE=1 \
+            dotnet tests/Goo.AsyncReadbackSmoke/bin/Release/net10.0/Goo.AsyncReadbackSmoke.dll
+
+          .github/scripts/with-headless-wayland.sh env \
+            GOO_PRIMITIVE_METRICS_SMOKE=1 \
+            dotnet tests/Goo.AsyncReadbackSmoke/bin/Release/net10.0/Goo.AsyncReadbackSmoke.dll
+
+          .github/scripts/with-headless-wayland.sh env \
+            GOO_VK_DIAGNOSTICS=1 \
+            GOO_PIPELINE_IDENTITY_SMOKE=1 \
+            dotnet tests/Goo.AsyncReadbackSmoke/bin/Release/net10.0/Goo.AsyncReadbackSmoke.dll
 
           .github/scripts/with-headless-wayland.sh env \
             GOO_VK_DIAGNOSTICS=1 \
@@ -262,12 +377,21 @@ jobs:
             -p:ContinuousIntegrationBuild=true \
             -p:RepositoryCommit="$GITHUB_SHA" \
             -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so" \
-            -p:GooWindowsSdlPath="$PWD/artifacts/native/win-x64/SDL3.dll"
+            -p:GooWindowsSdlPath="$PWD/artifacts/native/win-x64/SDL3.dll" \
+            -p:GooMacOsArm64NativeRoot="$PWD/artifacts/macos-candidate/native"
           dotnet pack tools/Goo.SvgCompiler/Goo.SvgCompiler.csproj \
             -c Release -o artifacts/packages \
             -p:TreatWarningsAsErrors=true \
             -p:ContinuousIntegrationBuild=true \
             -p:RepositoryCommit="$GITHUB_SHA"
+          dotnet pack Goo.Svg/Goo.Svg.csproj \
+            -c Release -o artifacts/packages \
+            -p:TreatWarningsAsErrors=true \
+            -p:ContinuousIntegrationBuild=true \
+            -p:RepositoryCommit="$GITHUB_SHA" \
+            -p:GooLinuxSdlPath="$PWD/artifacts/native/libSDL3.so" \
+            -p:GooWindowsSdlPath="$PWD/artifacts/native/win-x64/SDL3.dll" \
+            -p:GooMacOsArm64NativeRoot="$PWD/artifacts/macos-candidate/native"
 
       - name: Pack Goo DevTools and template
         run: |
@@ -399,6 +523,7 @@ jobs:
           if-no-files-found: error
           path: |
             artifacts/packages/Goo.${{ env.GOO_VERSION }}.nupkg
+            artifacts/packages/Goo.Svg.${{ env.GOO_VERSION }}.nupkg
             artifacts/packages/Goo.SvgCompiler.${{ env.GOO_VERSION }}.nupkg
             artifacts/linux-x64/
             artifacts/reports/
@@ -420,12 +545,16 @@ jobs:
           path: |
             artifacts/packages/Goo.${{ env.GOO_VERSION }}.nupkg
             artifacts/packages/Goo.${{ env.GOO_VERSION }}.snupkg
+            artifacts/packages/Goo.Svg.${{ env.GOO_VERSION }}.nupkg
             artifacts/packages/Goo.SvgCompiler.${{ env.GOO_VERSION }}.nupkg
             artifacts/packages/Goo.DevTools.${{ env.GOO_VERSION }}.nupkg
             artifacts/packages/Goo.DevTools.App.${{ env.GOO_VERSION }}.nupkg
             artifacts/packages/Goo.Templates.${{ env.GOO_VERSION }}.nupkg
             artifacts/Goo.${{ env.GOO_VERSION }}-linux-x64.tar.gz
             artifacts/Goo.${{ env.GOO_VERSION }}-linux-x64.tar.gz.sha256
+            artifacts/macos-candidate/Goo.Gallery-macos-arm64.tar.gz
+            artifacts/macos-candidate/Goo.Gallery-macos-arm64.tar.gz.sha256
+            artifacts/macos-candidate/install-goo-gallery-macos.sh
 
   release-goo:
     if: github.repository == 'obselate/goo' && startsWith(github.ref, 'refs/tags/v')
@@ -489,6 +618,10 @@ jobs:
             --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
+          dotnet nuget push "artifacts/packages/Goo.Svg.$GOO_VERSION.nupkg" \
+            --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
           dotnet nuget push "artifacts/packages/Goo.DevTools.$GOO_VERSION.nupkg" \
             --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" \
             --source https://api.nuget.org/v3/index.json \
@@ -513,12 +646,16 @@ jobs:
           assets=(
             "artifacts/packages/Goo.$GOO_VERSION.nupkg"
             "artifacts/packages/Goo.$GOO_VERSION.snupkg"
+            "artifacts/packages/Goo.Svg.$GOO_VERSION.nupkg"
             "artifacts/packages/Goo.SvgCompiler.$GOO_VERSION.nupkg"
             "artifacts/packages/Goo.DevTools.$GOO_VERSION.nupkg"
             "artifacts/packages/Goo.DevTools.App.$GOO_VERSION.nupkg"
             "artifacts/packages/Goo.Templates.$GOO_VERSION.nupkg"
             "artifacts/Goo.$GOO_VERSION-linux-x64.tar.gz"
             "artifacts/Goo.$GOO_VERSION-linux-x64.tar.gz.sha256"
+            "artifacts/macos-candidate/Goo.Gallery-macos-arm64.tar.gz"
+            "artifacts/macos-candidate/Goo.Gallery-macos-arm64.tar.gz.sha256"
+            "artifacts/macos-candidate/install-goo-gallery-macos.sh"
           )
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber

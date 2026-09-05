@@ -1,5 +1,5 @@
 using System.Globalization;
-using System.Reflection;
+using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -288,6 +288,7 @@ internal sealed class SvgCompiler
     private readonly List<SvgContour> contours = [];
     private readonly List<SvgQuadratic> curves = [];
     private readonly List<SvgClip> clipRecords = [];
+    private int reservedCurveCount;
     private double viewBoxX;
     private double viewBoxY;
     private double viewBoxWidth;
@@ -312,6 +313,78 @@ internal sealed class SvgCompiler
         {
             throw new SvgCompileException($"cannot read '{path}': {exception.Message}");
         }
+        return CompileBytes(bytes, path);
+    }
+
+    internal static byte[] CompileText(string text)
+    {
+        if (text is null)
+        {
+            throw new SvgCompileException("input text is null");
+        }
+        if (Encoding.UTF8.GetByteCount(text) > MaxInputBytes)
+        {
+            throw new SvgCompileException($"input exceeds {MaxInputBytes} bytes");
+        }
+        try
+        {
+            using var source = new StringReader(text);
+            using var reader = XmlReader.Create(source, CreateXmlSettings(), "<string>");
+            return CompileDocument(reader, "<string>");
+        }
+        catch (SvgCompileException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new SvgCompileException(exception.Message);
+        }
+    }
+
+    internal static byte[] CompileStream(Stream stream, string sourceName)
+    {
+        if (stream is null)
+        {
+            throw new SvgCompileException("input stream is null");
+        }
+        if (string.IsNullOrWhiteSpace(sourceName))
+        {
+            sourceName = "<stream>";
+        }
+        try
+        {
+            using var copy = new MemoryStream();
+            var buffer = new byte[81920];
+            var total = 0;
+            while (true)
+            {
+                var read = stream.Read(buffer, 0, buffer.Length);
+                if (read == 0)
+                {
+                    break;
+                }
+                if (total > MaxInputBytes - read)
+                {
+                    throw new SvgCompileException($"input exceeds {MaxInputBytes} bytes");
+                }
+                copy.Write(buffer, 0, read);
+                total += read;
+            }
+            return CompileBytes(copy.ToArray(), sourceName);
+        }
+        catch (SvgCompileException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new SvgCompileException($"cannot read '{sourceName}': {exception.Message}");
+        }
+    }
+
+    private static byte[] CompileBytes(byte[] bytes, string sourceName)
+    {
         if (bytes.Length > MaxInputBytes)
         {
             throw new SvgCompileException($"input exceeds {MaxInputBytes} bytes");
@@ -319,16 +392,23 @@ internal sealed class SvgCompiler
         try
         {
             using var stream = new MemoryStream(bytes, writable: false);
-            var settings = new XmlReaderSettings
-            {
-                DtdProcessing = DtdProcessing.Prohibit,
-                XmlResolver = null,
-                MaxCharactersInDocument = MaxXmlCharacters,
-                MaxCharactersFromEntities = 0,
-                IgnoreComments = true,
-                IgnoreWhitespace = false
-            };
-            using var reader = XmlReader.Create(stream, settings, path);
+            using var reader = XmlReader.Create(stream, CreateXmlSettings(), sourceName);
+            return CompileDocument(reader, sourceName);
+        }
+        catch (SvgCompileException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new SvgCompileException(exception.Message);
+        }
+    }
+
+    private static byte[] CompileDocument(XmlReader reader, string sourceName)
+    {
+        try
+        {
             var document = XDocument.Load(reader, LoadOptions.SetLineInfo);
             if (document.Root is null)
             {
@@ -346,8 +426,21 @@ internal sealed class SvgCompiler
         }
         catch (Exception exception)
         {
-            throw new SvgCompileException(exception.Message);
+            throw new SvgCompileException($"{sourceName}: {exception.Message}");
         }
+    }
+
+    private static XmlReaderSettings CreateXmlSettings()
+    {
+        return new XmlReaderSettings
+        {
+            DtdProcessing = DtdProcessing.Prohibit,
+            XmlResolver = null,
+            MaxCharactersInDocument = MaxXmlCharacters,
+            MaxCharactersFromEntities = 0,
+            IgnoreComments = true,
+            IgnoreWhitespace = false
+        };
     }
 
     private byte[] Compile(XElement root)
@@ -1102,6 +1195,7 @@ internal sealed class SvgCompiler
 
     private SvgShape BuildShape(XElement element, SvgPath path, SvgStyle style)
     {
+        ReserveCurves(path);
         var bounds = path.Bounds();
         var fill = ParsePaint(style.Fill, style.FillOpacity, bounds, element);
         SvgStroke? stroke = null;
@@ -1168,6 +1262,7 @@ internal sealed class SvgCompiler
                 {
                     var nestedPath = ParseGeometry(nested);
                     var mapped = TransformPath(nestedPath, nestedTransform);
+                    ReserveCurves(mapped);
                     clip.Contours.AddRange(mapped.Contours);
                     var rule = ResolveStyle(nested, new SvgStyle()).ClipRule;
                     if (!foundRule)
@@ -1189,6 +1284,7 @@ internal sealed class SvgCompiler
             var path = ParseGeometry(child);
             var transform = ParseTransform((string?)child.Attribute("transform"), child);
             var mappedPath = TransformPath(path, transform);
+            ReserveCurves(mappedPath);
             clip.Contours.AddRange(mappedPath.Contours);
             var clipRule = ResolveStyle(child, new SvgStyle()).ClipRule;
             if (!foundRule)
@@ -2058,7 +2154,7 @@ internal sealed class SvgCompiler
                 foreach (var contour in shape.Path.Contours)
                 {
                     var curveStart = curves.Count;
-                    curves.AddRange(contour.Curves);
+                    AppendCurves(contour.Curves);
                     contourBytes.WriteU32((uint)curveStart);
                     contourBytes.WriteU32((uint)contour.Curves.Count);
                     contourBytes.WriteU32(contour.Closed ? 1u : 0u);
@@ -2344,7 +2440,7 @@ internal sealed class SvgCompiler
         foreach (var contour in clip.Contours)
         {
             var curveStart = curves.Count;
-            curves.AddRange(contour.Curves);
+            AppendCurves(contour.Curves);
             contourBytes.WriteU32((uint)curveStart);
             contourBytes.WriteU32((uint)contour.Curves.Count);
             contourBytes.WriteU32(contour.Closed ? 1u : 0u);
@@ -2362,6 +2458,33 @@ internal sealed class SvgCompiler
     }
 
     private static SvgPath TransformPath(SvgPath path, SvgMatrix transform, bool unused = false) => TransformPath(path, transform);
+
+    private void ReserveCurves(SvgPath path)
+    {
+        var count = 0;
+        foreach (var contour in path.Contours)
+        {
+            if (contour.Curves.Count > MaxCurves - count)
+            {
+                throw new SvgCompileException($"curve count exceeds {MaxCurves}");
+            }
+            count += contour.Curves.Count;
+        }
+        if (count > MaxCurves - reservedCurveCount)
+        {
+            throw new SvgCompileException($"curve count exceeds {MaxCurves}");
+        }
+        reservedCurveCount += count;
+    }
+
+    private void AppendCurves(IReadOnlyCollection<SvgQuadratic> source)
+    {
+        if (source.Count > MaxCurves - curves.Count)
+        {
+            throw new SvgCompileException($"curve count exceeds {MaxCurves}");
+        }
+        curves.AddRange(source);
+    }
 
     private static void AddLine(SvgContour contour, SvgPoint from, SvgPoint to)
     {
@@ -2383,10 +2506,13 @@ internal sealed class SvgCompiler
         var control = new SvgPoint(
             (3 * (p1.X + p2.X) - p0.X - p3.X) / 4,
             (3 * (p1.Y + p2.Y) - p0.Y - p3.Y) / 4);
-        var cubicMid = Cubic(p0, p1, p2, p3, 0.5);
-        var quadraticMid = Quadratic(p0, control, p3, 0.5);
-        var error = Math.Sqrt((cubicMid.X - quadraticMid.X) * (cubicMid.X - quadraticMid.X)
-            + (cubicMid.Y - quadraticMid.Y) * (cubicMid.Y - quadraticMid.Y));
+        var deltaX = p3.X - 3 * p2.X + 3 * p1.X - p0.X;
+        var deltaY = p3.Y - 3 * p2.Y + 3 * p1.Y - p0.Y;
+        var error = Math.Sqrt(deltaX * deltaX + deltaY * deltaY) * Math.Sqrt(3) / 36;
+        if (!control.IsFinite || !double.IsFinite(error))
+        {
+            throw new SvgCompileException("cubic curve contains non-finite geometry");
+        }
         if (error <= QuadraticTolerance || depth >= 10)
         {
             AddQuadratic(contour, p0, control, p3);
@@ -2403,20 +2529,6 @@ internal sealed class SvgCompiler
     }
 
     private static SvgPoint Midpoint(SvgPoint left, SvgPoint right) => new((left.X + right.X) / 2, (left.Y + right.Y) / 2);
-    private static SvgPoint Cubic(SvgPoint p0, SvgPoint p1, SvgPoint p2, SvgPoint p3, double t)
-    {
-        var u = 1 - t;
-        return new SvgPoint(
-            u * u * u * p0.X + 3 * u * u * t * p1.X + 3 * u * t * t * p2.X + t * t * t * p3.X,
-            u * u * u * p0.Y + 3 * u * u * t * p1.Y + 3 * u * t * t * p2.Y + t * t * t * p3.Y);
-    }
-
-    private static SvgPoint Quadratic(SvgPoint p0, SvgPoint control, SvgPoint p1, double t)
-    {
-        var u = 1 - t;
-        return new SvgPoint(u * u * p0.X + 2 * u * t * control.X + t * t * p1.X,
-            u * u * p0.Y + 2 * u * t * control.Y + t * t * p1.Y);
-    }
 
     private static string LocalName(XElement element) => element.Name.LocalName;
     private static void RequireName(XElement element, string name)
@@ -3316,50 +3428,4 @@ internal sealed class Gcv1Reader
     private static ushort ReadU16(byte[] bytes, int offset) => (ushort)(bytes[offset] | bytes[offset + 1] << 8);
     private static uint ReadU32(byte[] bytes, int offset) => (uint)(bytes[offset] | bytes[offset + 1] << 8 | bytes[offset + 2] << 16 | bytes[offset + 3] << 24);
     private static float ReadF32(byte[] bytes, int offset) => BitConverter.Int32BitsToSingle((int)ReadU32(bytes, offset));
-}
-
-internal readonly record struct GooAssetCounts(int ByteCount, int Nodes, int Contours, int Curves,
-    int Paints, int Strokes, int Clips, int Tracks, int Keyframes, int MorphCurves);
-
-internal static class GooRuntimeGate
-{
-    internal static GooAssetCounts Read(string assemblyPath, byte[] bytes)
-    {
-        if (!File.Exists(assemblyPath))
-        {
-            throw new SvgCompileException($"Goo assembly '{assemblyPath}' was not found");
-        }
-        var assembly = Assembly.LoadFrom(Path.GetFullPath(assemblyPath));
-        var assetType = assembly.GetType("Goo.CompiledVectorAsset", throwOnError: true)!;
-        var load = assetType.GetMethod("Load", BindingFlags.Public | BindingFlags.Static)
-            ?? throw new SvgCompileException("Goo.CompiledVectorAsset.Load was not found");
-        object asset;
-        try
-        {
-            asset = load.Invoke(null, [bytes])
-                ?? throw new SvgCompileException("Goo.CompiledVectorAsset.Load returned null");
-        }
-        catch (TargetInvocationException exception)
-        {
-            throw new SvgCompileException(exception.InnerException?.Message ?? exception.Message);
-        }
-        return new GooAssetCounts(
-            ReadProperty(assetType, asset, "ByteCount"),
-            ReadProperty(assetType, asset, "NodeCount"),
-            ReadProperty(assetType, asset, "ContourCount"),
-            ReadProperty(assetType, asset, "CurveCount"),
-            ReadProperty(assetType, asset, "PaintCount"),
-            ReadProperty(assetType, asset, "StrokeCount"),
-            ReadProperty(assetType, asset, "ClipCount"),
-            ReadProperty(assetType, asset, "TrackCount"),
-            ReadProperty(assetType, asset, "KeyframeCount"),
-            ReadProperty(assetType, asset, "MorphCurveCount"));
-    }
-
-    private static int ReadProperty(Type assetType, object asset, string name)
-    {
-        var property = assetType.GetProperty(name, BindingFlags.Public | BindingFlags.Instance)
-            ?? throw new SvgCompileException($"Goo.CompiledVectorAsset.{name} was not found");
-        return Convert.ToInt32(property.GetValue(asset), CultureInfo.InvariantCulture);
-    }
 }

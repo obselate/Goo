@@ -47,13 +47,15 @@ internal class PathGeometry {
   internal var EdgeCount int32
   internal var GeometryRevision uint64
   internal var HasClosedContour bool
+  internal var HasFillContour bool
   internal var MinX float32
   internal var MinY float32
   internal var MaxX float32
   internal var MaxY float32
 
   internal init(quadratics []PathQuadratic, contours []PathContour, edges []PathEdge,
-    hasClosedContour bool, minX float32, minY float32, maxX float32, maxY float32) {
+    hasClosedContour bool, hasFillContour bool, minX float32, minY float32,
+    maxX float32, maxY float32) {
       Quadratics = quadratics
       Contours = contours
       Edges = edges
@@ -62,6 +64,7 @@ internal class PathGeometry {
       EdgeCount = edges.Length
       GeometryRevision = 1uL
       HasClosedContour = hasClosedContour
+      HasFillContour = hasFillContour
       MinX = minX
       MinY = minY
       MaxX = maxX
@@ -77,6 +80,7 @@ internal class PathGeometry {
     EdgeCount = 0
     GeometryRevision = 0uL
     HasClosedContour = false
+    HasFillContour = false
     MinX = 0.0F
     MinY = 0.0F
     MaxX = 0.0F
@@ -98,7 +102,8 @@ internal class PathGeometry {
     ConditionalWeakTable[VectorPathData, PathGeometry]()
     private let PathGeometryCacheLock object = Object()
     private let emptyGeometry PathGeometry = PathGeometry(
-      []PathQuadratic{}, []PathContour{}, []PathEdge{}, false, 0.0F, 0.0F, 0.0F, 0.0F)
+      []PathQuadratic{}, []PathContour{}, []PathEdge{}, false, false,
+      0.0F, 0.0F, 0.0F, 0.0F)
 
     internal func For(path VectorPath) PathGeometry {
       guard let source = path.payload else { return emptyGeometry }
@@ -234,12 +239,26 @@ internal class PathGeometry {
     internal func Create(quadratics []PathQuadratic, contours []PathContour) PathGeometry {
       let edges = List[PathEdge]()
       var hasClosed = false
+      var hasFill = false
       for i in 0 ... contours.Length {
         let contour = contours[i]
-        if !contour.Closed { continue }
-        hasClosed = true
+        if contour.End <= contour.Start { continue }
+        hasFill = true
+        if contour.Closed { hasClosed = true }
         for j in contour.Start ... contour.End {
           appendEdges(quadratics[j], edges)
+        }
+        if !contour.Closed {
+          let first = quadratics[contour.Start]
+          let last = quadratics[contour.End - 1]
+          appendEdges(PathQuadratic{
+            X0: last.X1,
+            Y0: last.Y1,
+            CX: (last.X1 + first.X0) * 0.5F,
+            CY: (last.Y1 + first.Y0) * 0.5F,
+            X1: first.X0,
+            Y1: first.Y0,
+          }, edges)
         }
       }
 
@@ -257,7 +276,7 @@ internal class PathGeometry {
         maxX = 0.0F
         maxY = 0.0F
       }
-      return PathGeometry(quadratics, contours, edges.ToArray(), hasClosed,
+      return PathGeometry(quadratics, contours, edges.ToArray(), hasClosed, hasFill,
         minX, minY, maxX, maxY)
     }
 
@@ -313,6 +332,7 @@ internal class PathGeometry {
     QuadraticCount = owner.QuadraticCount
     ContourCount = owner.ContourCount
     HasClosedContour = false
+    HasFillContour = false
     var minX = 0.0F
     var minY = 0.0F
     var maxX = 0.0F
@@ -328,13 +348,29 @@ internal class PathGeometry {
     index = 0
     while index < ContourCount {
       let contour = Contours[index]
+      if contour.End <= contour.Start {
+        index++
+        continue
+      }
+      HasFillContour = true
+      var curveIndex = contour.Start
+      while curveIndex < contour.End {
+        appendOwnerEdges(Quadratics[curveIndex])
+        curveIndex++
+      }
       if contour.Closed {
         HasClosedContour = true
-        var curveIndex = contour.Start
-        while curveIndex < contour.End {
-          appendOwnerEdges(Quadratics[curveIndex])
-          curveIndex++
-        }
+      } else {
+        let first = Quadratics[contour.Start]
+        let last = Quadratics[contour.End - 1]
+        appendOwnerEdges(PathQuadratic{
+          X0: last.X1,
+          Y0: last.Y1,
+          CX: (last.X1 + first.X0) * 0.5F,
+          CY: (last.Y1 + first.Y0) * 0.5F,
+          X1: first.X0,
+          Y1: first.Y0,
+        })
       }
       index++
     }
@@ -411,7 +447,7 @@ internal class PathGeometry {
   }
 
   internal func Contains(x float32, y float32, rule FillRule) bool {
-    if !HasClosedContour || !finitePoint(x) || !finitePoint(y)
+    if !HasFillContour || EdgeCount == 0 || !finitePoint(x) || !finitePoint(y)
       || x < MinX || x > MaxX || y < MinY || y > MaxY{
         return false
       }

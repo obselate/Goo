@@ -6,133 +6,38 @@ internal partial class VulkanSceneCompiler {
   private var retentionProofs VulkanSceneRetentionProofStore? = nil
   private var partialRedrawSafe bool
   private var damageJournal VulkanSceneDamageJournal? = nil
-  private var retainedLeafHitCount uint64
-  private var retainedLeafRebuildCount uint64
-  private var retainedLeafFallbackCount uint64
-  private var retainedLeafInvalidationCount uint64
-  private var retainedLeafTotalCount uint64
-  private var retainedBorderHitCount uint64
-  private var retainedBorderRebuildCount uint64
-  private var retainedBorderFallbackCount uint64
-  private var retainedBorderInvalidationCount uint64
-  private var retainedBorderTotalCount uint64
-  private var retainedParentBoxHitCount uint64
-  private var retainedParentBoxRebuildCount uint64
-  private var retainedParentBoxFallbackCount uint64
-  private var retainedParentBoxInvalidationCount uint64
-  private var retainedParentBoxTotalCount uint64
+  private var retainedLeaf VulkanRetentionCounters
+  private var retainedBorder VulkanRetentionCounters
+  private var retainedParentBox VulkanRetentionCounters
+  private var retainedText VulkanRetentionCounters
 
-  internal prop RetainedLeafHitCount uint64{ get -> retainedLeafHitCount }
-  internal prop RetainedLeafRebuildCount uint64{ get -> retainedLeafRebuildCount }
-  internal prop RetainedLeafFallbackCount uint64{ get -> retainedLeafFallbackCount }
-  internal prop RetainedLeafInvalidationCount uint64{ get -> retainedLeafInvalidationCount }
-  internal prop RetainedLeafTotalCount uint64{ get -> retainedLeafTotalCount }
-  internal prop RetainedBorderHitCount uint64{ get -> retainedBorderHitCount }
-  internal prop RetainedBorderRebuildCount uint64{ get -> retainedBorderRebuildCount }
-  internal prop RetainedBorderFallbackCount uint64{ get -> retainedBorderFallbackCount }
+  internal prop RetainedLeafHitCount uint64{ get -> retainedLeaf.Hit }
+  internal prop RetainedLeafRebuildCount uint64{ get -> retainedLeaf.Rebuild }
+  internal prop RetainedLeafFallbackCount uint64{ get -> retainedLeaf.Fallback }
+  internal prop RetainedLeafInvalidationCount uint64{ get -> retainedLeaf.Invalidation }
+  internal prop RetainedLeafTotalCount uint64{ get -> retainedLeaf.Total }
+  internal prop RetainedBorderHitCount uint64{ get -> retainedBorder.Hit }
+  internal prop RetainedBorderRebuildCount uint64{ get -> retainedBorder.Rebuild }
+  internal prop RetainedBorderFallbackCount uint64{ get -> retainedBorder.Fallback }
   internal prop RetainedBorderInvalidationCount uint64{
-    get -> retainedBorderInvalidationCount
+    get -> retainedBorder.Invalidation
   }
-  internal prop RetainedBorderTotalCount uint64{ get -> retainedBorderTotalCount }
-  internal prop RetainedParentBoxHitCount uint64{ get -> retainedParentBoxHitCount }
+  internal prop RetainedBorderTotalCount uint64{ get -> retainedBorder.Total }
+  internal prop RetainedParentBoxHitCount uint64{ get -> retainedParentBox.Hit }
   internal prop RetainedParentBoxRebuildCount uint64{
-    get -> retainedParentBoxRebuildCount
+    get -> retainedParentBox.Rebuild
   }
   internal prop RetainedParentBoxFallbackCount uint64{
-    get -> retainedParentBoxFallbackCount
+    get -> retainedParentBox.Fallback
   }
   internal prop RetainedParentBoxInvalidationCount uint64{
-    get -> retainedParentBoxInvalidationCount
+    get -> retainedParentBox.Invalidation
   }
-  internal prop RetainedParentBoxTotalCount uint64{ get -> retainedParentBoxTotalCount }
+  internal prop RetainedParentBoxTotalCount uint64{ get -> retainedParentBox.Total }
 
-  private func IncrementRetainedLeafHit() {
-    if retainedLeafHitCount != uint64.MaxValue {
-      retainedLeafHitCount = retainedLeafHitCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedLeafRebuild() {
-    if retainedLeafRebuildCount != uint64.MaxValue {
-      retainedLeafRebuildCount = retainedLeafRebuildCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedLeafFallback() {
-    if retainedLeafFallbackCount != uint64.MaxValue {
-      retainedLeafFallbackCount = retainedLeafFallbackCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedLeafInvalidation() {
-    if retainedLeafInvalidationCount != uint64.MaxValue {
-      retainedLeafInvalidationCount = retainedLeafInvalidationCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedLeafTotal() {
-    if retainedLeafTotalCount != uint64.MaxValue {
-      retainedLeafTotalCount = retainedLeafTotalCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedBorderHit() {
-    if retainedBorderHitCount != uint64.MaxValue {
-      retainedBorderHitCount = retainedBorderHitCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedBorderRebuild() {
-    if retainedBorderRebuildCount != uint64.MaxValue {
-      retainedBorderRebuildCount = retainedBorderRebuildCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedBorderFallback() {
-    if retainedBorderFallbackCount != uint64.MaxValue {
-      retainedBorderFallbackCount = retainedBorderFallbackCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedBorderInvalidation() {
-    if retainedBorderInvalidationCount != uint64.MaxValue {
-      retainedBorderInvalidationCount = retainedBorderInvalidationCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedBorderTotal() {
-    if retainedBorderTotalCount != uint64.MaxValue {
-      retainedBorderTotalCount = retainedBorderTotalCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedParentBoxHit() {
-    if retainedParentBoxHitCount != uint64.MaxValue {
-      retainedParentBoxHitCount = retainedParentBoxHitCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedParentBoxRebuild() {
-    if retainedParentBoxRebuildCount != uint64.MaxValue {
-      retainedParentBoxRebuildCount = retainedParentBoxRebuildCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedParentBoxFallback() {
-    if retainedParentBoxFallbackCount != uint64.MaxValue {
-      retainedParentBoxFallbackCount = retainedParentBoxFallbackCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedParentBoxInvalidation() {
-    if retainedParentBoxInvalidationCount != uint64.MaxValue {
-      retainedParentBoxInvalidationCount = retainedParentBoxInvalidationCount + 1uL
-    }
-  }
-
-  private func IncrementRetainedParentBoxTotal() {
-    if retainedParentBoxTotalCount != uint64.MaxValue {
-      retainedParentBoxTotalCount = retainedParentBoxTotalCount + 1uL
+  private func IncrementSaturated(ref value uint64) {
+    if value != uint64.MaxValue {
+      value = value + 1uL
     }
   }
 
@@ -145,12 +50,12 @@ internal partial class VulkanSceneCompiler {
     owner.ClearRetainedLeaf()
     if isLeaf {
       if kind == SceneDrawKind.PerEdgeBorder {
-        IncrementRetainedBorderInvalidation()
+        IncrementSaturated(ref retainedBorder.Invalidation)
       } else {
-        IncrementRetainedLeafInvalidation()
+        IncrementSaturated(ref retainedLeaf.Invalidation)
       }
     } else {
-      IncrementRetainedParentBoxInvalidation()
+      IncrementSaturated(ref retainedParentBox.Invalidation)
     }
   }
 
@@ -192,11 +97,11 @@ internal partial class VulkanSceneCompiler {
       if (node.Kind != NodeKind.Container && node.Kind != NodeKind.Button)
         || (requireNoChildren && node.Children.Count != 0)
         || bounds.IsEmpty
-        || !Finite(opacity)
+        || !finiteVulkanSceneValue(opacity)
         || opacity <= 0.0F
         || Double.IsNaN(node.Opacity) || Double.IsInfinity(node.Opacity)
-        || !Finite(node.BackgroundColor.R) || !Finite(node.BackgroundColor.G)
-        || !Finite(node.BackgroundColor.B) || !Finite(node.BackgroundColor.A)
+        || !finiteVulkanSceneValue(node.BackgroundColor.R) || !finiteVulkanSceneValue(node.BackgroundColor.G)
+        || !finiteVulkanSceneValue(node.BackgroundColor.B) || !finiteVulkanSceneValue(node.BackgroundColor.A)
         || node.BackgroundGradient != nil
         || node.HasBackgroundImageState
         || node.HasOutlineState
@@ -266,14 +171,22 @@ internal partial class VulkanSceneCompiler {
       return topVisible || rightVisible || bottomVisible || leftVisible
     }
 
-  private func RetainedBorderColorsFinite(node Node) bool -> Finite(node.BorderTopColor.R) && Finite(node.BorderTopColor.G)
-    && Finite(node.BorderTopColor.B) && Finite(node.BorderTopColor.A)
-    && Finite(node.BorderRightColor.R) && Finite(node.BorderRightColor.G)
-    && Finite(node.BorderRightColor.B) && Finite(node.BorderRightColor.A)
-    && Finite(node.BorderBottomColor.R) && Finite(node.BorderBottomColor.G)
-    && Finite(node.BorderBottomColor.B) && Finite(node.BorderBottomColor.A)
-    && Finite(node.BorderLeftColor.R) && Finite(node.BorderLeftColor.G)
-    && Finite(node.BorderLeftColor.B) && Finite(node.BorderLeftColor.A)
+  private func RetainedBorderColorsFinite(node Node) bool -> finiteVulkanSceneValue(node.BorderTopColor.R)
+    && finiteVulkanSceneValue(node.BorderTopColor.G)
+    && finiteVulkanSceneValue(node.BorderTopColor.B)
+    && finiteVulkanSceneValue(node.BorderTopColor.A)
+    && finiteVulkanSceneValue(node.BorderRightColor.R)
+    && finiteVulkanSceneValue(node.BorderRightColor.G)
+    && finiteVulkanSceneValue(node.BorderRightColor.B)
+    && finiteVulkanSceneValue(node.BorderRightColor.A)
+    && finiteVulkanSceneValue(node.BorderBottomColor.R)
+    && finiteVulkanSceneValue(node.BorderBottomColor.G)
+    && finiteVulkanSceneValue(node.BorderBottomColor.B)
+    && finiteVulkanSceneValue(node.BorderBottomColor.A)
+    && finiteVulkanSceneValue(node.BorderLeftColor.R)
+    && finiteVulkanSceneValue(node.BorderLeftColor.G)
+    && finiteVulkanSceneValue(node.BorderLeftColor.B)
+    && finiteVulkanSceneValue(node.BorderLeftColor.A)
 
   private func RetainedBorderCandidate(node Node, bounds ConservativeBounds) bool -> node.Kind == NodeKind.Container || node.Kind == NodeKind.Button
   ? node.Children.Count == 0
@@ -373,9 +286,9 @@ internal partial class VulkanSceneCompiler {
         frame.AppendRetainedSolidLeaf(ownerId, frameVersion, bounds, record, true)
         owner.RetainedBoxIsLeaf = isLeaf
         if isLeaf {
-          IncrementRetainedLeafHit()
+          IncrementSaturated(ref retainedLeaf.Hit)
         } else {
-          IncrementRetainedParentBoxHit()
+          IncrementSaturated(ref retainedParentBox.Hit)
         }
         return true
       }
@@ -401,9 +314,9 @@ internal partial class VulkanSceneCompiler {
         frame.AppendRetainedRoundedLeaf(ownerId, frameVersion, bounds, record, true)
         owner.RetainedBoxIsLeaf = isLeaf
         if isLeaf {
-          IncrementRetainedLeafHit()
+          IncrementSaturated(ref retainedLeaf.Hit)
         } else {
-          IncrementRetainedParentBoxHit()
+          IncrementSaturated(ref retainedParentBox.Hit)
         }
         return true
       }
@@ -452,7 +365,7 @@ internal partial class VulkanSceneCompiler {
       }
       frame.AppendRetainedBorderLeaf(ownerId, frameVersion, bounds, record, true)
       owner.RetainedBoxIsLeaf = true
-      IncrementRetainedBorderHit()
+      IncrementSaturated(ref retainedBorder.Hit)
       return true
     }
 
@@ -503,9 +416,9 @@ internal partial class VulkanSceneCompiler {
       owner.RetainedLeafValid = true
       owner.RetainedBoxIsLeaf = isLeaf
       if isLeaf {
-        IncrementRetainedLeafRebuild()
+        IncrementSaturated(ref retainedLeaf.Rebuild)
       } else {
-        IncrementRetainedParentBoxRebuild()
+        IncrementSaturated(ref retainedParentBox.Rebuild)
       }
       emittedNodeCount = emittedNodeCount + 1
     }
@@ -524,7 +437,7 @@ internal partial class VulkanSceneCompiler {
       owner.RetainedLeafBorder = record
       owner.RetainedLeafValid = true
       owner.RetainedBoxIsLeaf = true
-      IncrementRetainedBorderRebuild()
+      IncrementSaturated(ref retainedBorder.Rebuild)
       emittedNodeCount = emittedNodeCount + 1
     }
 
@@ -743,6 +656,10 @@ internal partial class VulkanSceneCompiler {
           || value.TransformIndex != -1 {
             return true
           }
+      } else if kind == SceneDrawKind.CachedImage {
+        if frame.CachedImages[reference.Index].TransformIndex != -1 {
+          return true
+        }
       } else if kind != SceneDrawKind.SolidBox && kind != SceneDrawKind.RoundedBox
         && kind != SceneDrawKind.CachedTextSegment{
           return true
@@ -782,7 +699,9 @@ internal partial class VulkanSceneCompiler {
       let draws = proofs.Draws
       let resources = proofs.Resources
       let cachedTextSegments = proofs.CachedTextSegments
+      let cachedImages = proofs.CachedImages
       let textProof = proofs.TextProofs[index]
+      let imageProof = proofs.ImageProofs[index]
       if textProof.HasText {
         if textProof.CachedTextSegmentStart < 0
           || textProof.CachedTextSegmentCount < 0
@@ -792,7 +711,17 @@ internal partial class VulkanSceneCompiler {
           return false
         }
       }
+      if imageProof.HasImage {
+        if imageProof.CachedImageStart < 0
+          || imageProof.CachedImageCount < 0
+          || imageProof.CachedImageStart > proofs.CachedImageCount
+          || imageProof.CachedImageCount > proofs.CachedImageCount
+        -imageProof.CachedImageStart{
+          return false
+        }
+      }
       var segmentProofIndex int32 = 0
+      var imageProofIndex int32 = 0
       var drawIndex int32 = 0
       while drawIndex < current.DrawCount {
         let reference = frame.DrawRefs[current.FirstDraw + drawIndex]
@@ -813,6 +742,14 @@ internal partial class VulkanSceneCompiler {
           if !ExactBorder(frame.PerEdgeBorders[reference.Index], retained.Border) {
             return false
           }
+        } else if reference.Kind == SceneDrawKind.CachedImage {
+          if !imageProof.HasImage
+            || imageProofIndex >= imageProof.CachedImageCount
+            || !ExactCachedImage(frame.CachedImages[reference.Index],
+              cachedImages[imageProof.CachedImageStart + imageProofIndex]) {
+                return false
+              }
+          imageProofIndex = imageProofIndex + 1
         } else if reference.Kind == SceneDrawKind.CachedTextSegment {
           if !textProof.HasText
             || segmentProofIndex >= textProof.CachedTextSegmentCount
@@ -829,6 +766,10 @@ internal partial class VulkanSceneCompiler {
       }
       if textProof.HasText
         && segmentProofIndex != textProof.CachedTextSegmentCount{
+          return false
+        }
+      if imageProof.HasImage
+        && imageProofIndex != imageProof.CachedImageCount{
           return false
         }
       var resourceIndex int32 = 0
@@ -881,6 +822,17 @@ internal partial class VulkanSceneCompiler {
     && left.GlyphCount == right.GlyphCount
     && left.ClipChainId == right.ClipChainId
     && Object.ReferenceEquals(left.Segment, right.Segment)
+
+  private func ExactCachedImage(
+    left CachedImageRefRecord,
+    right VulkanSceneCachedImageProof) bool -> ExactBounds(left.Bounds, right.Bounds)
+    && ExactFloat(left.SourceX, right.SourceX)
+    && ExactFloat(left.SourceY, right.SourceY)
+    && ExactFloat(left.SourceWidth, right.SourceWidth)
+    && ExactFloat(left.SourceHeight, right.SourceHeight)
+    && ExactFloat(left.Opacity, right.Opacity)
+    && left.Sampling == right.Sampling
+    && left.TransformIndex == right.TransformIndex
 
   private func ExactResource(left ResourceId, right ResourceId) bool -> left.Kind == right.Kind && left.LogicalId == right.LogicalId
     && left.Version == right.Version

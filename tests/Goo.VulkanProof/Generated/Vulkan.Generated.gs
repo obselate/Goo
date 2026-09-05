@@ -154,6 +154,9 @@ type VkSamplerCreateFlags = VkFlags
 type VkSamplerMipmapMode = int32
 type VkSemaphore = uint64
 type VkSemaphoreCreateFlags = VkFlags
+type VkSemaphoreType = int32
+type VkSemaphoreWaitFlagBits = int32
+type VkSemaphoreWaitFlags = VkFlags
 type VkShaderModule = uint64
 type VkShaderModuleCreateFlags = VkFlags
 type VkShaderStageFlagBits = int32
@@ -590,9 +593,14 @@ class VkConstants {
     const VK_IMAGE_VIEW_TYPE_CUBE VkImageViewType = 3
     const VK_IMAGE_VIEW_TYPE_CUBE_ARRAY VkImageViewType = 6
     const VK_INCOMPLETE VkResult = 5
+    const VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR VkInstanceCreateFlagBits = 1
     const VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE VkInternalAllocationType = 0
     const VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME string = "VK_KHR_get_surface_capabilities2"
     const VK_KHR_GET_SURFACE_CAPABILITIES_2_SPEC_VERSION int32 = 1
+    const VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME string = "VK_KHR_portability_enumeration"
+    const VK_KHR_PORTABILITY_ENUMERATION_SPEC_VERSION int32 = 1
+    const VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME string = "VK_KHR_portability_subset"
+    const VK_KHR_PORTABILITY_SUBSET_SPEC_VERSION int32 = 1
     const VK_KHR_SURFACE_EXTENSION_NAME string = "VK_KHR_surface"
     const VK_KHR_SURFACE_SPEC_VERSION int32 = 25
     const VK_KHR_SWAPCHAIN_EXTENSION_NAME string = "VK_KHR_swapchain"
@@ -776,6 +784,9 @@ class VkConstants {
     const VK_SAMPLE_COUNT_4_BIT VkSampleCountFlagBits = 4
     const VK_SAMPLE_COUNT_64_BIT VkSampleCountFlagBits = 64
     const VK_SAMPLE_COUNT_8_BIT VkSampleCountFlagBits = 8
+    const VK_SEMAPHORE_TYPE_BINARY VkSemaphoreType = 0
+    const VK_SEMAPHORE_TYPE_TIMELINE VkSemaphoreType = 1
+    const VK_SEMAPHORE_WAIT_ANY_BIT VkSemaphoreWaitFlagBits = 1
     const VK_SHADER_INDEX_UNUSED_AMDX uint32 = 4294967295u
     const VK_SHADER_STAGE_ALL VkShaderStageFlagBits = 2147483647
     const VK_SHADER_STAGE_ALL_GRAPHICS VkShaderStageFlagBits = 31
@@ -851,6 +862,8 @@ class VkConstants {
     const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 VkStructureType = 1000059000
     const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT VkStructureType = 1000237000
     const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 VkStructureType = 1000059006
+    const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR VkStructureType = 1000163000
+    const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_KHR VkStructureType = 1000163001
     const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT VkStructureType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR
     const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR VkStructureType = 1000275000
     const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES VkStructureType = 51
@@ -877,6 +890,8 @@ class VkConstants {
     const VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO VkStructureType = 31
     const VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO VkStructureType = 9
     const VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO VkStructureType = 1000314005
+    const VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO VkStructureType = 1000207002
+    const VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO VkStructureType = 1000207004
     const VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO VkStructureType = 16
     const VK_STRUCTURE_TYPE_SUBMIT_INFO VkStructureType = 4
     const VK_STRUCTURE_TYPE_SUBMIT_INFO_2 VkStructureType = 1000314004
@@ -2103,6 +2118,24 @@ unsafe struct VkSemaphoreSubmitInfo {
 }
 
 @StructLayout(LayoutKind.Sequential)
+unsafe struct VkSemaphoreTypeCreateInfo {
+  var sType VkStructureType
+  var pNext * void
+  var semaphoreType VkSemaphoreType
+  var initialValue uint64
+}
+
+@StructLayout(LayoutKind.Sequential)
+unsafe struct VkSemaphoreWaitInfo {
+  var sType VkStructureType
+  var pNext * void
+  var flags VkSemaphoreWaitFlags
+  var semaphoreCount uint32
+  var pSemaphores * VkSemaphore
+  var pValues * uint64
+}
+
+@StructLayout(LayoutKind.Sequential)
 unsafe struct VkShaderModuleCreateInfo {
   var sType VkStructureType
   var pNext * void
@@ -2280,6 +2313,8 @@ unsafe struct VkDeviceDispatch {
   var vkResetCommandBuffer unmanaged[Cdecl](VkCommandBuffer, VkCommandBufferResetFlags) -> VkResult
   var vkCreateSemaphore unmanaged[Cdecl](VkDevice, *VkSemaphoreCreateInfo, *VkAllocationCallbacks, *VkSemaphore) -> VkResult
   var vkDestroySemaphore unmanaged[Cdecl](VkDevice, VkSemaphore, *VkAllocationCallbacks) -> void
+  var vkGetSemaphoreCounterValue unmanaged[Cdecl](VkDevice, VkSemaphore, *uint64) -> VkResult
+  var vkWaitSemaphores unmanaged[Cdecl](VkDevice, *VkSemaphoreWaitInfo, uint64) -> VkResult
   var vkCreateFence unmanaged[Cdecl](VkDevice, *VkFenceCreateInfo, *VkAllocationCallbacks, *VkFence) -> VkResult
   var vkDestroyFence unmanaged[Cdecl](VkDevice, VkFence, *VkAllocationCallbacks) -> void
   var vkWaitForFences unmanaged[Cdecl](VkDevice, uint32, *VkFence, VkBool32, uint64) -> VkResult

@@ -8,6 +8,23 @@ internal struct VulkanSceneTextChunkProof {
   internal var CachedTextSegmentCount int32
 }
 
+internal struct VulkanSceneImageChunkProof {
+  internal var HasImage bool
+  internal var CachedImageStart int32
+  internal var CachedImageCount int32
+}
+
+internal struct VulkanSceneCachedImageProof {
+  internal var Bounds ConservativeBounds
+  internal var SourceX float32
+  internal var SourceY float32
+  internal var SourceWidth float32
+  internal var SourceHeight float32
+  internal var Opacity float32
+  internal var Sampling uint32
+  internal var TransformIndex int32
+}
+
 internal class VulkanSceneRetentionProofStore {
   private var chunks []VulkanSceneChunkIdentity
   private var draws []VulkanSceneDrawIdentity
@@ -16,12 +33,17 @@ internal class VulkanSceneRetentionProofStore {
   private var nextResources []ResourceId
   private var textProofs []VulkanSceneTextChunkProof
   private var nextTextProofs []VulkanSceneTextChunkProof
+  private var imageProofs []VulkanSceneImageChunkProof
+  private var nextImageProofs []VulkanSceneImageChunkProof
   private var cachedTextSegments []CachedTextSegmentRefRecord
   private var nextCachedTextSegments []CachedTextSegmentRefRecord
+  private var cachedImages []VulkanSceneCachedImageProof
+  private var nextCachedImages []VulkanSceneCachedImageProof
   private var chunkCount int32
   private var drawCount int32
   private var resourceCount int32
   private var cachedTextSegmentCount int32
+  private var cachedImageCount int32
   private var ready bool
 
   internal init(capacity int32) {
@@ -35,8 +57,12 @@ internal class VulkanSceneRetentionProofStore {
     nextResources = [capacity]ResourceId
     textProofs = [capacity]VulkanSceneTextChunkProof
     nextTextProofs = [capacity]VulkanSceneTextChunkProof
+    imageProofs = [capacity]VulkanSceneImageChunkProof
+    nextImageProofs = [capacity]VulkanSceneImageChunkProof
     cachedTextSegments = [capacity]CachedTextSegmentRefRecord
     nextCachedTextSegments = [capacity]CachedTextSegmentRefRecord
+    cachedImages = [capacity]VulkanSceneCachedImageProof
+    nextCachedImages = [capacity]VulkanSceneCachedImageProof
   }
 
   internal prop Ready bool{
@@ -71,12 +97,16 @@ internal class VulkanSceneRetentionProofStore {
     get -> cachedTextSegmentCount
   }
 
-  internal func Reset() {
-    chunkCount = 0
-    drawCount = 0
-    resourceCount = 0
-    cachedTextSegmentCount = 0
-    ready = false
+  internal prop ImageProofs []VulkanSceneImageChunkProof{
+    get -> imageProofs
+  }
+
+  internal prop CachedImages []VulkanSceneCachedImageProof{
+    get -> cachedImages
+  }
+
+  internal prop CachedImageCount int32{
+    get -> cachedImageCount
   }
 
   internal func EnsureFor(frame SceneFrame) {
@@ -84,9 +114,47 @@ internal class VulkanSceneRetentionProofStore {
       throw ArgumentNullException("frame")
     }
     EnsureChunkCapacity(frame.ChunkCount)
-    EnsureDrawCapacity(frame.DrawRefCount)
-    EnsureResourceCapacity(frame.ResourceRefCount)
-    EnsureSegmentCapacity(frame.CachedTextSegmentCount)
+    var requiredDraws int64 = 0L
+    var requiredResources int64 = 0L
+    var requiredSegments int64 = 0L
+    var requiredImages int64 = 0L
+    var chunkIndex int32 = 0
+    while chunkIndex < frame.ChunkCount {
+      let chunk = frame.Chunks[chunkIndex]
+      if chunk.RetentionState == SceneChunkRetentionState.Generic {
+        if chunk.FirstDraw < 0 || chunk.DrawCount < 0
+          || chunk.FirstDraw > frame.DrawRefCount
+          || chunk.DrawCount > frame.DrawRefCount - chunk.FirstDraw
+          || chunk.FirstResource < 0 || chunk.ResourceCount < 0
+          || chunk.FirstResource > frame.ResourceRefCount
+          || chunk.ResourceCount > frame.ResourceRefCount - chunk.FirstResource{
+            throw InvalidOperationException("Vulkan retained scene chunk range is invalid")
+          }
+        requiredDraws = requiredDraws + int64(chunk.DrawCount)
+        requiredResources = requiredResources + int64(chunk.ResourceCount)
+        var drawIndex int32 = 0
+        while drawIndex < chunk.DrawCount {
+          let kind = frame.DrawRefs[chunk.FirstDraw + drawIndex].Kind
+          if kind == SceneDrawKind.CachedTextSegment {
+            requiredSegments = requiredSegments + 1L
+          } else if kind == SceneDrawKind.CachedImage {
+            requiredImages = requiredImages + 1L
+          }
+          drawIndex = drawIndex + 1
+        }
+      }
+      chunkIndex = chunkIndex + 1
+    }
+    if requiredDraws > int64(Int32.MaxValue)
+      || requiredResources > int64(Int32.MaxValue)
+      || requiredSegments > int64(Int32.MaxValue)
+      || requiredImages > int64(Int32.MaxValue) {
+        throw InvalidOperationException("Vulkan retained scene proof capacity is exhausted")
+      }
+    EnsureDrawCapacity(int32(requiredDraws))
+    EnsureResourceCapacity(int32(requiredResources))
+    EnsureSegmentCapacity(int32(requiredSegments))
+    EnsureImageCapacity(int32(requiredImages))
   }
 
   internal func Capture(frame SceneFrame) {
@@ -94,6 +162,7 @@ internal class VulkanSceneRetentionProofStore {
     var drawCursor int32 = 0
     var resourceCursor int32 = 0
     var segmentCursor int32 = 0
+    var imageCursor int32 = 0
     var index int32 = 0
     while index < frame.ChunkCount {
       let current = frame.Chunks[index]
@@ -104,6 +173,11 @@ internal class VulkanSceneRetentionProofStore {
         HasText: false,
         CachedTextSegmentStart: -1,
         CachedTextSegmentCount: 0,
+      }
+      var imageProof = VulkanSceneImageChunkProof{
+        HasImage: false,
+        CachedImageStart: -1,
+        CachedImageCount: 0,
       }
       if current.RetentionState == SceneChunkRetentionState.Generic {
         proofDrawStart = drawCursor
@@ -126,6 +200,24 @@ internal class VulkanSceneRetentionProofStore {
             retained.Rounded = frame.RoundedBoxes[reference.Index]
           } else if reference.Kind == SceneDrawKind.PerEdgeBorder {
             retained.Border = frame.PerEdgeBorders[reference.Index]
+          } else if reference.Kind == SceneDrawKind.CachedImage {
+            if !imageProof.HasImage {
+              imageProof.HasImage = true
+              imageProof.CachedImageStart = imageCursor
+            }
+            let currentImage = frame.CachedImages[reference.Index]
+            nextCachedImages[imageCursor] = VulkanSceneCachedImageProof{
+              Bounds: currentImage.Bounds,
+              SourceX: currentImage.SourceX,
+              SourceY: currentImage.SourceY,
+              SourceWidth: currentImage.SourceWidth,
+              SourceHeight: currentImage.SourceHeight,
+              Opacity: currentImage.Opacity,
+              Sampling: currentImage.Sampling,
+              TransformIndex: currentImage.TransformIndex,
+            }
+            imageCursor = imageCursor + 1
+            imageProof.CachedImageCount = imageProof.CachedImageCount + 1
           } else if reference.Kind == SceneDrawKind.CachedTextSegment {
             if !textProof.HasText {
               textProof.HasText = true
@@ -152,6 +244,7 @@ internal class VulkanSceneRetentionProofStore {
         }
       }
       nextTextProofs[index] = textProof
+      nextImageProofs[index] = imageProof
       var exactLeafKind SceneDrawKind = SceneDrawKind.SolidBox
       if current.RetentionState != SceneChunkRetentionState.Generic
         && current.DrawCount == 1 {
@@ -182,13 +275,20 @@ internal class VulkanSceneRetentionProofStore {
     let previousTextProofs = textProofs
     textProofs = nextTextProofs
     nextTextProofs = previousTextProofs
+    let previousImageProofs = imageProofs
+    imageProofs = nextImageProofs
+    nextImageProofs = previousImageProofs
     let previousSegments = cachedTextSegments
     cachedTextSegments = nextCachedTextSegments
     nextCachedTextSegments = previousSegments
+    let previousImages = cachedImages
+    cachedImages = nextCachedImages
+    nextCachedImages = previousImages
     chunkCount = frame.ChunkCount
     drawCount = drawCursor
     resourceCount = resourceCursor
     cachedTextSegmentCount = segmentCursor
+    cachedImageCount = imageCursor
     ready = true
   }
 
@@ -207,6 +307,14 @@ internal class VulkanSceneRetentionProofStore {
     }
     if capacity > nextTextProofs.Length {
       nextTextProofs = [capacity]VulkanSceneTextChunkProof
+    }
+    if capacity > imageProofs.Length {
+      let expanded = [capacity]VulkanSceneImageChunkProof
+      Array.Copy(imageProofs, expanded, chunkCount)
+      imageProofs = expanded
+    }
+    if capacity > nextImageProofs.Length {
+      nextImageProofs = [capacity]VulkanSceneImageChunkProof
     }
   }
 
@@ -244,6 +352,19 @@ internal class VulkanSceneRetentionProofStore {
     }
     if capacity > nextCachedTextSegments.Length {
       nextCachedTextSegments = [capacity]CachedTextSegmentRefRecord
+    }
+  }
+
+  private func EnsureImageCapacity(required int32) {
+    let capacity = GrowthCapacity(Max(cachedImages.Length,
+      nextCachedImages.Length), required)
+    if capacity > cachedImages.Length {
+      let expanded = [capacity]VulkanSceneCachedImageProof
+      Array.Copy(cachedImages, expanded, cachedImageCount)
+      cachedImages = expanded
+    }
+    if capacity > nextCachedImages.Length {
+      nextCachedImages = [capacity]VulkanSceneCachedImageProof
     }
   }
 

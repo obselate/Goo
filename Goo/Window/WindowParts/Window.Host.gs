@@ -123,7 +123,7 @@ internal class WindowScheduler {
         while offset < count {
           let window = snapshot[(start + offset) % count]
           if window.IsOpen {
-            let service = window.SchedulerHasImmediateService()
+            let service = window.SchedulerHasImmediateService() || window.SchedulerHasPendingQueueWork()
             let timed = window.SchedulerTimedServiceDue()
             let frameDue = window.SchedulerFrameDue(afterEventsNow)
             if service || timed || frameDue {
@@ -140,7 +140,7 @@ internal class WindowScheduler {
   }
 }
 
-/// Hosts a Goo tree in an SDL window.
+/// Hosts a Goo tree in a native window.
 public partial class Window {
   private var schedulerLastTicks float64
   private var schedulerSimulationBank float64
@@ -210,19 +210,18 @@ public partial class Window {
         x,
         y,
         positionSet,
-        toSdlState(State),
+        State,
         decorated,
         resizable,
         transparent,
         VSync,
-        func(px int32, py int32) SdlHitResult { return hitTest(px, py) })
+        func(px int32, py int32) WindowHitResult { return hitTest(px, py) })
       host = native
+      let target = VulkanWindowTarget(native)
+      windowTarget = target
       uiThreadBound = true
       configureHost(native)
-      windowTarget = VulkanWindowTarget(native)
-      if let target = windowTarget {
-        profiler.Sink = target
-      }
+      profiler.Sink = target.ProfileSink
       if !applyNativeResize(
         native.LogicalWidth,
         native.LogicalHeight,
@@ -246,27 +245,27 @@ public partial class Window {
     }
   }
 
-  private func configureHost(native SdlHost) {
-    native.MetricsChanged += func(logicalWidth int32, logicalHeight int32,
-      nativeWidth int32, nativeHeight int32) {
+  private func configureHost(native WindowHost) {
+    native.MetricsChanged += (logicalWidth int32, logicalHeight int32,
+      nativeWidth int32, nativeHeight int32) -> {
         queueNativeMetrics(logicalWidth, logicalHeight, nativeWidth, nativeHeight)
       }
-    native.StateChanged += func(value SdlHostState) {
-      state = fromSdlState(value)
+    native.StateChanged += (value WindowState) -> {
+      state = value
       requestRender()
       notifications.RaiseStateChanged(State)
     }
-    native.Moved += func(px int32, py int32) {
+    native.Moved += (px int32, py int32) -> {
       x = px
       y = py
     }
-    native.FocusChanged += func(hasFocus bool) {
+    native.FocusChanged += (hasFocus bool) -> {
       handleFocusChanged(hasFocus)
     }
-    native.Exposed += func() {
+    native.Exposed += () -> {
       requestRender()
     }
-    native.CloseRequested += func() {
+    native.CloseRequested += () -> {
       Interlocked.Exchange(&closeRequested, 1)
     }
   }
@@ -432,13 +431,13 @@ public partial class Window {
       if profiling {
         profiler.Record(FrameProfileStage.Tree, treeProfile)
       }
-      native.SetCursor(toSdlCursor(input.CurrentCursor()))
+      native.SetCursor(input.CurrentCursor())
       let queueCompleted = queueCompletedAtEntry || windowTarget?.PollQueueCompletion() == true
       var rendered = false
       if queueCompleted {
         markFrameRendered()
         rendered = true
-        native.FramePacing.MarkFrame(float64(Stopwatch.GetTimestamp()))
+        native.MarkFrame(float64(Stopwatch.GetTimestamp()))
       }
       let frameNeeded = needsRenderFrame(resolver.VisualDirty)
       if frameAllowed && frameNeeded && windowTarget?.QueueWorkPending != true {
@@ -459,9 +458,9 @@ public partial class Window {
         if submitted {
           markFrameRendered()
           rendered = true
-          native.FramePacing.MarkFrame(float64(Stopwatch.GetTimestamp()))
+          native.MarkFrame(float64(Stopwatch.GetTimestamp()))
         } else {
-          native.FramePacing.Defer(float64(Stopwatch.GetTimestamp()))
+          native.DeferFrame(float64(Stopwatch.GetTimestamp()))
         }
       }
       if profiling {
@@ -472,7 +471,7 @@ public partial class Window {
   // One source of truth for "may I sleep": a running Anim, a mid-transition
   // Resolver field, an already-requested render, a not-yet-drained rebuild,
   // or scroll glide/scrollbar fade still settling. Any of these means Pump
-  // must keep spinning; none of them means it is safe to block in SdlHost.
+  // must keep spinning; none of them means it is safe to block in the window host.
   // Caret blink and key repeat are deliberately NOT here: unlike the sources
   // above, they never terminate on their own (a focus caret keeps "wanting"
   // a tick for as long as it's focused), so folding them into demand would
@@ -490,12 +489,14 @@ public partial class Window {
     || Interlocked.CompareExchange(&closeRequested, 0, 0) != 0
     || host?.IsClosing == true
 
+  internal func SchedulerHasPendingQueueWork() bool -> windowTarget?.QueueWorkPending == true
+
   internal func SchedulerFrameDue(nowTicks float64) bool {
     guard let native = host else {
       return false
     }
     return hasDemand() && native.SchedulerPacingAvailable &&
-    native.FramePacing.IsDue(nowTicks)
+    native.IsFrameDue(nowTicks)
   }
 
   internal func SchedulerWaitMs(nowTicks float64) int32 {
@@ -508,6 +509,9 @@ public partial class Window {
     if timed {
       return 0
     }
+    if windowTarget?.QueueWorkPending == true {
+      return idle
+    }
     if !demand {
       return idle
     }
@@ -517,7 +521,7 @@ public partial class Window {
     if !native.SchedulerPacingAvailable {
       return idle
     }
-    let pacingWait = native.FramePacing.WaitMilliseconds(nowTicks, idle)
+    let pacingWait = native.FrameWaitMilliseconds(nowTicks, idle)
     return pacingWait < idle ? pacingWait : idle
   }
 

@@ -128,14 +128,6 @@ private unsafe sealed class VulkanClipMaskAtlasGeneration : IDisposable {
       }
     }
 
-  internal func LayoutAt(layer uint32) VkImageLayout {
-    EnsureOpen()
-    if layer >= LayerCount {
-      throw ArgumentOutOfRangeException("layer")
-    }
-    return layerLayouts[int32(layer)]
-  }
-
   internal func LayerViewAt(layer uint32) VkImageView {
     EnsureOpen()
     if layer >= LayerCount {
@@ -434,14 +426,8 @@ internal unsafe sealed partial class VulkanClipMaskAtlas : IDisposable {
   internal prop Width uint32{ get -> width }
   internal prop Height uint32{ get -> height }
   internal prop Format VulkanClipMaskFormat{ get -> format }
-  internal prop BytesPerPixel uint32{ get -> bytesPerPixel }
   internal prop Generation uint64{ get -> generation }
-  internal prop ActiveLayerCount uint32{ get -> activeLayerCount }
-  internal prop MaximumLayerCount uint32{ get -> maximumLayerCount }
-  internal prop ByteBudget VkDeviceSize{ get -> byteBudget }
-  internal prop RegionCount int32{ get -> regionOrder.Count }
   internal prop DirtyRegionCount int32{ get -> dirtyRegions.Count }
-  internal prop Image VkImage{ get -> CurrentGeneration().Image }
   internal prop ImageView VkImageView{ get -> CurrentGeneration().ImageView }
   internal func ImageViewAt(layer uint32) VkImageView {
     EnsureOpen()
@@ -462,7 +448,6 @@ internal unsafe sealed partial class VulkanClipMaskAtlas : IDisposable {
       return total
     }
   }
-  internal prop CurrentResidentBytes VkDeviceSize{ get -> CurrentGeneration().ResidentBytes }
   internal prop Stats VulkanClipMaskAtlasStats{
     get {
       let value = CurrentGeneration()
@@ -754,42 +739,6 @@ internal unsafe sealed partial class VulkanClipMaskAtlas : IDisposable {
     }
     record.Dirty = false
     RemoveDirtyEntries(key)
-  }
-
-  internal func DirtyRegionAt(index int32) VulkanClipMaskDirtyRegion {
-    EnsureOpen()
-    if index < 0 || index >= dirtyRegions.Count {
-      throw ArgumentOutOfRangeException("index")
-    }
-    return dirtyRegions[index]
-  }
-
-  internal func CopyDirtyRegions(destination []VulkanClipMaskDirtyRegion) int32 {
-    EnsureOpen()
-    let count = if destination.Length < dirtyRegions.Count {
-      destination.Length
-    } else {
-      dirtyRegions.Count
-    }
-    var index int32 = 0
-    while index < count {
-      destination[index] = dirtyRegions[index]
-      index++
-    }
-    return count
-  }
-
-  internal func ClearDirtyRegions() {
-    EnsureOpen()
-    var index int32 = 0
-    while index < dirtyRegions.Count {
-      let dirty = dirtyRegions[index]
-      if regionMap.TryGetValue(dirty.Key, out var record) {
-        record.Dirty = false
-      }
-      index++
-    }
-    dirtyRegions.Clear()
   }
 
   internal func Resize(nativeWidth uint32, nativeHeight uint32, completedSubmissionSerial uint64) {

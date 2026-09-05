@@ -197,11 +197,11 @@ public open class Style {
   }
   /// Sets how the background image fits its border box. The default is Cover.
   public prop BackgroundImageFit ImageFit{ init -> pushEnumOrdinal(StyleField.BackgroundImageFit, int32(value)) }
-  /// Sets a vector path with a closed contour that clips this element and its descendants.
+  /// Sets a vector path with a contour that clips this element and its descendants.
   public prop ClipPath VectorPath{
     init{
-      if value.CommandCount != 0 && !value.HasClosedContour {
-        throw ArgumentException("ClipPath must contain a closed contour", "ClipPath")
+      if value.CommandCount != 0 && !PathGeometry.For(value).HasFillContour {
+        throw ArgumentException("ClipPath must contain a non-empty contour", "ClipPath")
       }
       pushPath(StyleField.ClipPath, value)
     }

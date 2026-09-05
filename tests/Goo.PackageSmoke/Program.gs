@@ -668,7 +668,7 @@ class TextControlsSmokeCell : Cell {
         FontSize: 16,
         TextDecoration: TextDecoration.Underline,
       },
-      TextEditor(document, controller, []TextPresentationLayer{ presentation }) {
+      TextEditor(controller, []TextPresentationLayer{ presentation }) {
         Width = 296,
         Height = 120,
         Handle = TextControlsSmokeCell.Editor,
@@ -1276,9 +1276,10 @@ func RunTextControlsSmoke() {
     if controller.ScrollTargetY <= 0.0 || !endCaretGeometry || endCaret.Height <= 0.0 {
       throw InvalidOperationException("Text controls smoke did not follow its offscreen active caret")
     }
-    if !controller.BeginComposition() || !controller.UpdateComposition("compose", 2, 3) {
-      throw InvalidOperationException("Text controls smoke could not activate composition")
-    }
+    if !controller.Execute(TextCommand { Kind: TextCommandKind.BeginComposition })
+      || !controller.UpdateComposition("compose", 2, 3) {
+        throw InvalidOperationException("Text controls smoke could not activate composition")
+      }
     let composition = controller.Composition
     if composition == nil {
       throw InvalidOperationException("Text controls smoke lost composition before pump")

@@ -19,6 +19,7 @@ internal struct VulkanDiagnosticTimestampContext {
   var queue uint64
   var submission uint64
   var fence uint64
+  var completionSerial uint64
 }
 internal data struct VulkanDiagnosticTimestampSnapshot {
   var stage VulkanDiagnosticTimestampStage
@@ -78,6 +79,7 @@ internal struct VulkanDiagnosticTimestampStageState {
   var queue uint64
   var submission uint64
   var fence uint64
+  var completionSerial uint64
   var elapsedTicks uint64
   var elapsedNanoseconds uint64
 }
@@ -105,6 +107,7 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
   private var timestampMask uint64
   private var timestampPeriod float32
   private var timestampLastResult VkResult = VkConstants.VK_SUCCESS
+  private var timestampLease VulkanSharedLease? = nil
 
   private let diagnostics VulkanDiagnostics
   private let objectAccounting VulkanObjectAccounting?
@@ -127,29 +130,26 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
       allTimestampSink = sink
     }
 
-  internal prop TimestampFrameSlotCountValue int32{ get -> TimestampFrameSlotCount }
-  internal prop TimestampStageCountValue int32{ get -> TimestampStageCount }
-  internal prop TimestampScopesPerStageValue int32{ get -> TimestampScopesPerStage }
-  internal prop TimestampQueryCountValue int32{ get -> TimestampQueryCount }
-  internal prop TimestampQueryPool VkQueryPool{ get -> timestampPool }
-  internal prop TimestampQueriesCreated bool{ get -> timestampPoolCreated }
   internal prop TimestampQueriesSupported bool{ get -> timestampSupported }
-  internal prop TimestampComputeAndGraphicsSupported bool{ get -> timestampComputeAndGraphics }
   internal prop TimestampValidBits uint32{ get -> timestampValidBits }
   internal prop TimestampPeriod float32{ get -> timestampPeriod }
-  internal prop TimestampLastResult VkResult{ get -> timestampLastResult }
 
   internal func CreateTimestampQueryPool(nativeDevice VkDevice, nativeDispatch VkDeviceDispatch,
-    validBits uint32, period float32, computeAndGraphics VkBool32) VkResult{
+    validBits uint32, period float32, computeAndGraphics VkBool32,
+    sharedLease VulkanSharedLease) VkResult{
       if timestampPoolCreated {
         if nativeDevice == timestampDevice {
           return VkConstants.VK_SUCCESS
         }
         return VkConstants.VK_ERROR_INITIALIZATION_FAILED
       }
+      if sharedLease == nil || sharedLease.Device != nativeDevice {
+        return VkConstants.VK_ERROR_INITIALIZATION_FAILED
+      }
 
       timestampDevice = nativeDevice
       timestampDispatch = nativeDispatch
+      timestampLease = sharedLease
       timestampValidBits = validBits
       timestampPeriod = period
       timestampComputeAndGraphics = computeAndGraphics != VkConstants.VK_FALSE
@@ -208,6 +208,7 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
 
   internal func DestroyTimestampQueryPool() {
     if !timestampPoolCreated {
+      timestampLease = nil
       return
     }
     if !TimestampPoolComplete() {
@@ -227,12 +228,14 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
     timestampComputeAndGraphics = false
     timestampDevice = nint(0)
     timestampDispatch = VkDeviceDispatch{}
+    timestampLease = nil
     timestampLastResult = VkConstants.VK_SUCCESS
     ResetTimestampRangeState()
   }
 
   internal func ForceDestroyTimestampQueryPool() bool {
     if !timestampPoolCreated {
+      timestampLease = nil
       return true
     }
     if timestampPool == 0uL {
@@ -244,6 +247,7 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
       timestampPeriod = 0.0F
       timestampDevice = nint(0)
       timestampDispatch = VkDeviceDispatch{}
+      timestampLease = nil
       timestampLastResult = VkConstants.VK_ERROR_DEVICE_LOST
       ResetTimestampRangeState()
       return true
@@ -265,6 +269,7 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
     timestampPeriod = 0.0F
     timestampDevice = nint(0)
     timestampDispatch = VkDeviceDispatch{}
+    timestampLease = nil
     timestampLastResult = VkConstants.VK_ERROR_DEVICE_LOST
     ResetTimestampRangeState()
     return true
@@ -280,31 +285,35 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
     timestampPeriod = 0.0F
     timestampDevice = nint(0)
     timestampDispatch = VkDeviceDispatch{}
+    timestampLease = nil
     timestampLastResult = VkConstants.VK_ERROR_DEVICE_LOST
     ResetTimestampRangeState()
   }
 
   private func TimestampPoolComplete() bool {
-    if timestampDispatch.vkGetFenceStatus == nil {
+    guard let lease = timestampLease else {
       return false
     }
-    let getFenceStatus = timestampDispatch.vkGetFenceStatus
+    var requiredCompletionSerial uint64 = 0uL
     var slot int32 = 0
     while slot < TimestampFrameSlotCount {
       var stageIndex int32 = 0
       while stageIndex < TimestampStageCount {
         let state = timestampStages[slot * TimestampStageCount + stageIndex]
         if state.submitted && !state.resolved && !state.unavailable {
-          if state.fence == 0uL
-            || getFenceStatus(timestampDevice, VkFence(state.fence)) != VkConstants.VK_SUCCESS{
-              return false
-            }
+          if state.completionSerial == 0uL {
+            return false
+          }
+          if state.completionSerial > requiredCompletionSerial {
+            requiredCompletionSerial = state.completionSerial
+          }
         }
         stageIndex++
       }
       slot++
     }
-    return true
+    if requiredCompletionSerial == 0uL { return true }
+    return lease.PollGraphicsSubmission(requiredCompletionSerial) == VkConstants.VK_SUCCESS
   }
 
   internal func ResetTimestampQueries(commandBuffer VkCommandBuffer, slot int32,
@@ -462,7 +471,7 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
     }
 
   internal func SubmitTimestampSlot(slot int32, context VulkanDiagnosticTimestampContext) bool {
-    if !ValidTimestampSlot(slot) {
+    if !ValidTimestampSlot(slot) || context.completionSerial == 0uL {
       return false
     }
     var submittedStageIndex int32 = 0
@@ -490,6 +499,7 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
           state.queue = context.queue
           state.submission = context.submission
           state.fence = context.fence
+          state.completionSerial = context.completionSerial
           state.result = VkConstants.VK_SUCCESS
           var scopeIndex int32 = 0
           while scopeIndex < state.scopeCount {
@@ -517,19 +527,20 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
     if !ValidTimestampSlot(slot) || !timestampPoolCreated || !timestampSupported {
       return VkConstants.VK_NOT_READY
     }
-    if timestampDispatch.vkGetFenceStatus == nil || timestampDispatch.vkGetQueryPoolResults == nil {
+    guard let lease = timestampLease else { return VkConstants.VK_NOT_READY }
+    if timestampDispatch.vkGetQueryPoolResults == nil {
       return VkConstants.VK_NOT_READY
     }
 
     var hasPendingStage = false
-    var fenceValue uint64 = 0uL
+    var completionSerial uint64 = 0uL
     var stageIndex int32 = 0
     while stageIndex < TimestampStageCount {
       let state = timestampStages[slot * TimestampStageCount + stageIndex]
       if state.submitted && !state.resolved && !state.unavailable {
         hasPendingStage = true
-        if fenceValue == 0uL {
-          fenceValue = state.fence
+        if state.completionSerial > completionSerial {
+          completionSerial = state.completionSerial
         }
       }
       stageIndex++
@@ -538,18 +549,17 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
       return VkConstants.VK_SUCCESS
     }
 
-    if fenceValue == 0uL {
+    if completionSerial == 0uL {
       return VkConstants.VK_NOT_READY
     }
-    let getFenceStatus = timestampDispatch.vkGetFenceStatus
-    let fenceResult = getFenceStatus(timestampDevice, VkFence(fenceValue))
-    if fenceResult != VkConstants.VK_SUCCESS {
-      if fenceResult != VkConstants.VK_NOT_READY {
-        timestampLastResult = fenceResult
-        diagnostics.RecordResult(VulkanDiagnosticEventIds.GpuTimestamp, int32(fenceResult),
-          context.frame, context.queue, context.submission, fenceValue)
+    let completionResult = lease.PollGraphicsSubmission(completionSerial)
+    if completionResult != VkConstants.VK_SUCCESS {
+      if completionResult != VkConstants.VK_NOT_READY {
+        timestampLastResult = completionResult
+        diagnostics.RecordResult(VulkanDiagnosticEventIds.GpuTimestamp, int32(completionResult),
+          context.frame, context.queue, context.submission, context.fence)
       }
-      return fenceResult
+      return completionResult
     }
 
     let values * uint64 = stackalloc[TimestampQueriesPerStage]uint64
@@ -581,7 +591,7 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
           timestampStages[stageRangeIndex] = stageState
           overallResult = result
           diagnostics.RecordResult(VulkanDiagnosticEventIds.GpuTimestamp, int32(result),
-            context.frame, context.queue, context.submission, fenceValue)
+            context.frame, context.queue, context.submission, context.fence)
         } else {
           var totalTicks uint64 = 0uL
           var totalNanoseconds uint64 = 0uL
@@ -617,59 +627,8 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
       stageIndex++
     }
     diagnostics.RecordResult(VulkanDiagnosticEventIds.GpuTimestamp, int32(overallResult),
-      context.frame, context.queue, context.submission, fenceValue)
+      context.frame, context.queue, context.submission, context.fence)
     return overallResult
-  }
-
-  internal func IsTimestampStageUnavailable(slot int32, stage VulkanDiagnosticTimestampStage) bool {
-    if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
-      return true
-    }
-    return timestampStages[TimestampRangeIndex(slot, stage)].unavailable
-  }
-
-  internal func IsTimestampStageResolved(slot int32, stage VulkanDiagnosticTimestampStage) bool {
-    if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
-      return false
-    }
-    let state = timestampStages[TimestampRangeIndex(slot, stage)]
-    return state.resolved && !state.unavailable
-  }
-
-  internal func TimestampStageTicks(slot int32, stage VulkanDiagnosticTimestampStage) uint64 {
-    if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
-      return 0uL
-    }
-    return timestampStages[TimestampRangeIndex(slot, stage)].elapsedTicks
-  }
-
-  internal func TimestampStageNanoseconds(slot int32, stage VulkanDiagnosticTimestampStage) uint64 {
-    if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
-      return 0uL
-    }
-    return timestampStages[TimestampRangeIndex(slot, stage)].elapsedNanoseconds
-  }
-
-  internal func TimestampStageScopeCount(slot int32, stage VulkanDiagnosticTimestampStage) int32 {
-    if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
-      return 0
-    }
-    return timestampStages[TimestampRangeIndex(slot, stage)].scopeCount
-  }
-
-  internal func TimestampStageDroppedScopeCount(slot int32,
-    stage VulkanDiagnosticTimestampStage) int32{
-      if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
-        return 0
-      }
-      return timestampStages[TimestampRangeIndex(slot, stage)].droppedScopeCount
-    }
-
-  internal func TimestampStageResult(slot int32, stage VulkanDiagnosticTimestampStage) VkResult {
-    if !ValidTimestampSlot(slot) || !ValidTimestampStage(stage) {
-      return VkConstants.VK_NOT_READY
-    }
-    return timestampStages[TimestampRangeIndex(slot, stage)].result
   }
 
   private func ValidTimestampSlot(slot int32) bool -> slot >= 0 && slot < TimestampFrameSlotCount
@@ -806,6 +765,7 @@ internal unsafe sealed class VulkanDiagnosticTimestampState {
         queue: 0uL,
         submission: 0uL,
         fence: 0uL,
+        completionSerial: 0uL,
         elapsedTicks: 0uL,
         elapsedNanoseconds: 0uL,
       }

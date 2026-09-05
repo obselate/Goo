@@ -4,7 +4,6 @@ import System
 
 /// Defines a retained multiline text editor.
 public class TextEditor : Blob {
-  private let document TextDocument
   private let controller TextEditorController
   private var layers []TextPresentationLayer
   private var overscanLines int32
@@ -12,15 +11,13 @@ public class TextEditor : Blob {
   internal override func coreBlob() {
   }
 
-  /// Gets the edited document.
-  public prop Document TextDocument{ get -> document }
   /// Gets the per-view editing controller.
   public prop Controller TextEditorController{ get -> controller }
   /// Gets the ordered presentation layers.
   public prop Layers []TextPresentationLayer{
     get -> copyEditorLayers(layers)
     init{
-      validateEditorLayers(document, value)
+      validateEditorLayers(controller.Document, value)
       layers = copyEditorLayers(value)
     }
   }
@@ -49,33 +46,25 @@ public class TextEditor : Blob {
   public prop OnSubmit Action? { get; init; }
 
   /// Creates an editor without presentation layers.
-  /// @param document The document to edit.
-  /// @param controller The per-view controller bound to the document.
-  public convenience init(document TextDocument, controller TextEditorController) {
-    init(document, controller, []TextPresentationLayer{})
+  /// @param controller The per-view controller that owns the edited document.
+  public convenience init(controller TextEditorController) {
+    init(controller, []TextPresentationLayer{})
   }
 
   /// Creates an editor with ordered presentation layers.
-  /// @param document The document to edit.
-  /// @param controller The per-view controller bound to the document.
+  /// @param controller The per-view controller that owns the edited document.
   /// @param layers The ordered presentation layers.
-  public init(document TextDocument, controller TextEditorController,
-    layers []TextPresentationLayer) {
-      if document == nil { throw ArgumentNullException("document") }
-      if controller == nil { throw ArgumentNullException("controller") }
-      if controller.Document != document {
-        throw ArgumentException("The controller must use the editor document", "controller")
-      }
-      this.document = document
-      this.controller = controller
-      validateEditorLayers(document, layers)
-      this.layers = copyEditorLayers(layers)
-      Placeholder = ""
-      SelectionColor = defaultSelectionColor()
-      CaretColor = Color.White
-      CurrentLineColor = Color.Transparent
-      overscanLines = 3
-    }
+  public init(controller TextEditorController, layers []TextPresentationLayer) {
+    if controller == nil { throw ArgumentNullException("controller") }
+    this.controller = controller
+    validateEditorLayers(controller.Document, layers)
+    this.layers = copyEditorLayers(layers)
+    Placeholder = ""
+    SelectionColor = defaultSelectionColor()
+    CaretColor = Color.White
+    CurrentLineColor = Color.Transparent
+    overscanLines = 3
+  }
 }
 
 internal func copyEditorLayers(values []TextPresentationLayer) []TextPresentationLayer {

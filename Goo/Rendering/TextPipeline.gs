@@ -246,23 +246,7 @@ internal class TextPaintRun {
   internal prop DisplayStart int32{ get; init; }
   internal prop DisplayLength int32{ get; init; }
   internal prop Style TextResolvedStyle{ get; init; }
-}
-
-internal class TextPaintDecorations {
-  shared {
-    private let values ConditionalWeakTable[TextPaintRun, []float32] =
-    ConditionalWeakTable[TextPaintRun, []float32]()
-
-    internal func Set(run TextPaintRun, segments []float32) {
-      values.Remove(run)
-      values.Add(run, segments)
-    }
-
-    internal func Get(run TextPaintRun) [] ? float32 {
-      if values.TryGetValue(run, out var segments) { return segments }
-      return nil
-    }
-  }
+  internal prop DecorationSegments [] ? float32{ get; set; }
 }
 
 internal class TextRichLine {

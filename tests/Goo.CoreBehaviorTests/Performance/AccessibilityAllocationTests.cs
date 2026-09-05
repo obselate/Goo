@@ -285,7 +285,7 @@ public sealed class AccessibilityAllocationTests
             {
                 Selection = CollapsedSelection(32),
             };
-            var editor = new TextEditor(document, controller)
+            var editor = new TextEditor(controller)
             {
                 Width = Length.Percent(100),
                 Height = Length.Percent(100),
@@ -303,7 +303,9 @@ public sealed class AccessibilityAllocationTests
 
         internal long EditAndPublish()
         {
-            var accepted = insert ? controller.Insert("x") : controller.DeleteBackward();
+            var accepted = insert
+                ? controller.Execute(new TextCommand(TextCommandKind.Insert, "x", false))
+                : controller.Execute(new TextCommand(TextCommandKind.DeleteBackward, "", false));
             insert = !insert;
             if (!accepted)
                 throw new InvalidOperationException("editor allocation edit was rejected");

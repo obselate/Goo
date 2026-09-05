@@ -2,7 +2,6 @@ package Goo
 
 import System
 import System.IO
-import System.Threading
 
 internal sealed class DecodedImage {
   shared {
@@ -95,79 +94,13 @@ internal sealed class DecodedImage {
   }
 }
 
-internal sealed class ImageCompletionRegistration : IDisposable {
-  private let gate object
-  private let completed ManualResetEventSlim
-  private var callback Action?
-
-  internal init(value Action) {
-    gate = Object()
-    completed = ManualResetEventSlim(false)
-    callback = value
-  }
-
-  internal func Invoke() {
-    var current Action?
-    lock gate {
-      current = callback
-      callback = nil
-    }
-    try {
-      current?.Invoke()
-    } finally {
-      completed.Set()
-    }
-  }
-
-  public func Dispose() {
-    lock gate { callback = nil }
-    completed.Set()
-  }
-
-  internal func Wait() { completed.Wait() }
-}
-
 internal sealed class ImageRequest {
-  private let gate object
-  private var result DecodedImage
-  private var references int32
-
-  internal init(path string, decoded DecodedImage) {
-    gate = Object()
+  internal init(path string) {
     Path = path
-    result = decoded
-    references = 1
   }
 
   internal prop Path string{ get; private set; }
-  internal prop IsComplete bool{ get -> true }
-  internal prop Result DecodedImage{ get -> result }
-
-  internal func Wait() DecodedImage -> result
-
-  internal func OnCompleted(callback Action) ImageCompletionRegistration {
-    let registration = ImageCompletionRegistration(callback)
-    registration.Invoke()
-    return registration
-  }
-
-  internal func Retain() {
-    lock gate {
-      if references <= 0 { throw ObjectDisposedException("ImageRequest") }
-      references++
-      result.Retain()
-    }
-  }
-
-  internal func Release() {
-    var release bool
-    lock gate {
-      if references <= 0 { return }
-      references--
-      release = true
-    }
-    if release { result.Release() }
-  }
+  internal prop Result DecodedImage{ get -> DecodedImage.Failed }
 }
 
 internal class ImageDecoding {
@@ -175,7 +108,7 @@ internal class ImageDecoding {
 
     internal func Request(path string) ImageRequest {
       let canonical = Canonicalize(path)
-      return ImageRequest(canonical, DecodedImage.Failed)
+      return ImageRequest(canonical)
     }
 
     internal func MatchesPath(request ImageRequest?, path string) bool {

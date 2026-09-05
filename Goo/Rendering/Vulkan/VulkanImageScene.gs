@@ -18,6 +18,10 @@ internal unsafe sealed class VulkanImageScene : IDisposable {
   private let imageResources VulkanImageResources
   private let generation uint64
   private let currentReferences VulkanCurrentResourceSet
+  private var cachedProvider ImageSourceProvider? = nil
+  private var cachedVersion uint64
+  private var cachedLookup VulkanImageResourceLookup
+  private var cachedLookupState int32
   private var referencesCommitted bool
   private var redrawRequired bool
   private var disposed bool
@@ -54,6 +58,10 @@ internal unsafe sealed class VulkanImageScene : IDisposable {
       return
     }
     currentReferences.Begin()
+    cachedProvider = nil
+    cachedVersion = 0uL
+    cachedLookup = VulkanImageResourceLookup{}
+    cachedLookupState = 0
     referencesCommitted = false
     redrawRequired = false
   }
@@ -102,6 +110,13 @@ internal unsafe sealed class VulkanImageScene : IDisposable {
       if byteCount == 0uL || byteCount != uint64(pixels.Length) {
         return true
       }
+      if cachedLookupState != 0 && cachedVersion == binding.Version
+        && Object.ReferenceEquals(cachedProvider, binding.Source) {
+          if cachedLookupState == 1 {
+            return true
+          }
+          return EmitLookup(frame, bounds, cachedLookup, fit, opacity, transformIndex)
+        }
       let identity = identities.ResolveImage(binding.Source, binding.Version,
         generation, ImageFormat)
       let source = VulkanResourceSource{
@@ -132,15 +147,26 @@ internal unsafe sealed class VulkanImageScene : IDisposable {
         let prior = imageResources.PriorRenderableSourceVersion(source,
           identities.LinearSamplerId, VulkanImageSamplerMode.Linear)
         if prior.Renderable {
+          Cache(binding.Source, binding.Version, prior, 2)
           return EmitLookup(frame, bounds, prior, fit, opacity, transformIndex)
         }
+        Cache(binding.Source, binding.Version, VulkanImageResourceLookup{}, 1)
         return true
       }
+      Cache(binding.Source, binding.Version, lookup, 2)
       let emitted = EmitLookup(frame, bounds, lookup, fit, opacity, transformIndex)
       if emitted {
         imageResources.PromoteSourceVersion(source)
       }
       return emitted
+    }
+
+  private func Cache(provider ImageSourceProvider, version uint64,
+    lookup VulkanImageResourceLookup, state int32) {
+      cachedProvider = provider
+      cachedVersion = version
+      cachedLookup = lookup
+      cachedLookupState = state
     }
 
   private func EmitLookup(frame SceneFrame, bounds ConservativeBounds,

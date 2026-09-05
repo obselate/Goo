@@ -77,14 +77,17 @@ func Main() {
 
 ## Platforms
 
-Goo ships runtime assets for Windows x64 and Linux x64. Both require a Vulkan
-1.3 driver.
+Goo ships runtime assets for Windows x64, Linux x64, and macOS arm64. The
+renderer requires the Vulkan 1.3 feature set used by Goo.
 
 - Windows x64 is tested on Windows 11 with current vendor Vulkan drivers. The
   minimum supported Windows version is not yet established.
 - Linux x64 requires Linux 6.6 or newer, glibc 2.27 or newer, a native Wayland
   1.18 or newer session, and a TrueType or OpenType sans-serif font. X11 and
   XWayland are not supported.
+- macOS arm64 requires macOS 14 or newer on Apple silicon. Goo bundles
+  MoltenVK 1.4.2 and selects installed Apple system fonts without requiring a
+  Vulkan SDK.
 
 ## Further reading
 

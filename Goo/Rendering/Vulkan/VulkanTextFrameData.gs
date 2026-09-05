@@ -344,7 +344,7 @@ internal unsafe sealed class VulkanTextFrameSlot : IDisposable {
 }
 
 internal unsafe sealed class VulkanTextFrameData : IDisposable {
-  private const RecordBytes VkDeviceSize = 128uL
+  private const RecordBytes VkDeviceSize = 112uL
   private const TopologyHashOffset uint64 = 1469598103934665603uL
   private const TopologyHashPrime uint64 = 1099511628211uL
   private let device VkDevice
@@ -495,6 +495,7 @@ internal unsafe sealed class VulkanTextFrameData : IDisposable {
       }
       slot.CandidateSegmentCount = 0
       slot.CandidateTopologyKey = TopologyHashOffset
+      slot.EnsureSegmentCapacity(frame.CachedTextSegmentCount)
       var recordCount int32 = 0
       var runCount int32 = 0
       var drawIndex int32 = 0
@@ -517,7 +518,6 @@ internal unsafe sealed class VulkanTextFrameData : IDisposable {
           let segment = ValidateSegment(drawRef, reference)
           let nextSegmentCount = AddInt32(slot.CandidateSegmentCount, 1,
             "text segment count")
-          slot.EnsureSegmentCapacity(nextSegmentCount)
           let candidateIndex = slot.CandidateSegmentCount
           if uint64(recordCount) > maxRecords {
             throw ArgumentOutOfRangeException("text record count")

@@ -442,11 +442,12 @@ func RequireFailedIdleCompleteRebuild(
         primitive.ByteCount > 0uL
           && primitive.BufferGeneration > 0uL
           && primitive.FullUpload
-          && primitive.WrittenBytes == primitive.ByteCount
-          && primitive.SkippedBytes == 0uL
+          && primitive.PlannedTransferBytes == primitive.ByteCount
+          && primitive.SkippedTransferBytes == 0uL
           && primitive.DirtyRecordCount == primitive.RecordCount
-          && primitive.MappedWrites > 0uL
-          && primitive.Flushes > 0uL,
+          && primitive.CpuWriteOperations > 0uL
+          && primitive.FlushRequests > 0uL
+          && primitive.NativeFlushCalls <= primitive.FlushRequests,
         label + " primitive rebuild did not reconstruct every record")
     }
     if text.RecordCount > 0 {
@@ -476,12 +477,12 @@ func RequireFailedIdleWarmReuse(
         label + " primitive reuse used an invalid slot")
       Require(
         !primitive.FullUpload
-          && primitive.WrittenBytes == 0uL
-          && primitive.SkippedBytes == primitive.ByteCount
+          && primitive.PlannedTransferBytes == 0uL
+          && primitive.SkippedTransferBytes == primitive.ByteCount
           && primitive.DirtyRecordCount == 0
           && primitive.UploadRangeCount == 0
-          && primitive.MappedWrites == 1uL
-          && primitive.Flushes == 0uL
+          && primitive.CpuWriteOperations == uint64(primitive.RecordCount)
+          && primitive.NativeFlushCalls == 0uL
           && primitive.RetainedReuse == uint64(primitive.RecordCount),
         label + " primitive reuse wrote unchanged bytes")
     }
@@ -510,8 +511,8 @@ func RequireFailedIdleSurfaceRebuild(
   label string) {
     if beforePrimitive.RecordCount > 0 {
       let reconstructed = afterPrimitive.FullUpload
-        && afterPrimitive.WrittenBytes == afterPrimitive.ByteCount
-        && afterPrimitive.SkippedBytes == 0uL
+        && afterPrimitive.PlannedTransferBytes == afterPrimitive.ByteCount
+        && afterPrimitive.SkippedTransferBytes == 0uL
       let retained = afterPrimitive.BufferGeneration == beforePrimitive.BufferGeneration
         && afterPrimitive.LastUseSerial != beforePrimitive.LastUseSerial
       Require(
@@ -840,13 +841,13 @@ func Main() {
         && finalPrimitive.RecordCount == 0
         && finalPrimitive.ByteCount == 0uL
         && finalPrimitive.BufferGeneration == 0uL
-        && finalPrimitive.WrittenBytes == 0uL
-        && finalPrimitive.SkippedBytes == 0uL
+        && finalPrimitive.PlannedTransferBytes == 0uL
+        && finalPrimitive.SkippedTransferBytes == 0uL
         && finalPrimitive.DirtyRecordCount == 0
         && finalPrimitive.UploadRangeCount == 0
         && !finalPrimitive.FullUpload
-        && finalPrimitive.MappedWrites == 0uL
-        && finalPrimitive.Flushes == 0uL
+        && finalPrimitive.CpuWriteOperations == 0uL
+        && finalPrimitive.NativeFlushCalls == 0uL
         && finalPrimitive.RetainedReuse == 0uL
         && finalPrimitive.LastUseSerial == 0uL
         && finalText.SlotIndex == 0
@@ -1192,10 +1193,10 @@ func Main() {
       +firstDeviceAfterText.BufferGeneration.ToString() + " serial0="
       +firstDeviceAfterSerials.Slot0Serial.ToString() + " serial1="
       +firstDeviceAfterSerials.Slot1Serial.ToString())
-    Console.WriteLine("retained_warm_reuse=1 primitive_skipped="
-      +warmPrimitive.SkippedBytes.ToString() + " primitive_mapped="
-      +warmPrimitive.MappedWrites.ToString() + " primitive_flushes="
-      +warmPrimitive.Flushes.ToString() + " text_skipped="
+    Console.WriteLine("retained_warm_reuse=1 primitive_skipped_transfer="
+      +warmPrimitive.SkippedTransferBytes.ToString() + " primitive_cpu_write_operations="
+      +warmPrimitive.CpuWriteOperations.ToString() + " primitive_native_flush_calls="
+      +warmPrimitive.NativeFlushCalls.ToString() + " text_skipped="
       +warmText.SkippedBytes.ToString() + " text_mapped="
       +warmText.MappedWrites.ToString() + " text_flushes="
       +warmText.Flushes.ToString())

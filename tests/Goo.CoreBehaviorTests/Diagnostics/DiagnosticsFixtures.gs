@@ -39,9 +39,9 @@ internal class DiagnosticsFixtures {
   func CaptureRequestRetriesAfterNotReady() bool {
     let tracker = DiagnosticCaptureTracker()
     if !tracker.NeedsRequest { return false }
-    tracker.Observe(VulkanReadbackRequestStatus.NotReady)
+    tracker.Observe(WindowReadbackRequestStatus.NotReady)
     if !tracker.NeedsRequest { return false }
-    tracker.Observe(VulkanReadbackRequestStatus.Accepted)
+    tracker.Observe(WindowReadbackRequestStatus.Accepted)
     if tracker.NeedsRequest { return false }
     tracker.Complete()
     return tracker.NeedsRequest

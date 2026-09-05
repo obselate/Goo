@@ -23,10 +23,6 @@ internal data struct VulkanClipMaskFrameStats {
   var BufferGeneration uint64
   var LastUseSerial uint64
 
-  internal prop MappedWriteCount uint64{ get -> MappedWrites }
-  internal prop FlushCount uint64{ get -> Flushes }
-  internal prop RetainedReuseCount uint64{ get -> RetainedReuse }
-  internal prop BufferCapacity VkDeviceSize{ get -> Capacity }
 }
 
 internal data struct VulkanClipMaskFrameTotals {
@@ -36,9 +32,6 @@ internal data struct VulkanClipMaskFrameTotals {
   var Flushes uint64
   var RetainedReuse uint64
 
-  internal prop MappedWriteCount uint64{ get -> MappedWrites }
-  internal prop FlushCount uint64{ get -> Flushes }
-  internal prop RetainedReuseCount uint64{ get -> RetainedReuse }
 }
 
 internal unsafe sealed class VulkanClipMaskFrameSlot : IDisposable {
@@ -220,7 +213,6 @@ internal unsafe sealed class VulkanClipMaskFrameData : IDisposable {
   private var disposed bool
 
   internal prop PreparedSlot int32{ get -> preparedSlot }
-  internal prop PreparedBytes VkDeviceSize{ get -> preparedBytes }
   internal prop LastStats VulkanClipMaskFrameStats{ get -> lastStats }
   internal prop Totals VulkanClipMaskFrameTotals{
     get {

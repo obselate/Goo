@@ -16,9 +16,13 @@
 !/.github/scripts/
 /.github/scripts/*
 !/.github/scripts/build-sdl-linux-x64.sh
+!/.github/scripts/build-sdl-macos-arm64.sh
 !/.github/scripts/build-text-native-linux-x64.sh
+!/.github/scripts/build-text-native-macos-arm64.sh
 !/.github/scripts/build-text-native-win-x64.sh
+!/.github/scripts/fetch-moltenvk-macos-arm64.sh
 !/.github/scripts/stage-linux-x64.sh
+!/.github/scripts/stage-macos-arm64.sh
 !/.github/scripts/validate-release.py
 !/.github/scripts/validate-onboarding.py
 !/.github/scripts/release_version.py
@@ -28,6 +32,8 @@
 
 !/Goo/
 !/Goo/**
+!/Goo.Svg/
+!/Goo.Svg/**
 !/tests/
 !/tests/**
 /tests/GooExtended.Tests/
@@ -38,6 +44,8 @@
 !/apps/Goo.Gallery/**
 !/apps/Goo.DevTools/
 !/apps/Goo.DevTools/**
+!/apps/Goo.Workbench/
+!/apps/Goo.Workbench/**
 
 !/docs/
 /docs/*

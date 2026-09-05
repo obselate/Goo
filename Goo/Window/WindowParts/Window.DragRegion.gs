@@ -1,6 +1,6 @@
 package Goo
 
-/// Hosts a Goo tree in an SDL window.
+/// Hosts a Goo tree in a native window.
 public partial class Window {
   shared {
     /// Marks a container subtree as a native drag region for undecorated windows.

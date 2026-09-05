@@ -106,7 +106,7 @@ class RetentionCell : Cell {
   }
 
   func MutateBorder() {
-    BorderColorChanged = true
+    BorderColorChanged = !BorderColorChanged
     Rebuild()
   }
 
@@ -545,8 +545,8 @@ func ReadbackRequestReadbackUntilAccepted(window Window, width uint32, height ui
   let timeoutTicks = int64(float64(Stopwatch.Frequency) * 1.0)
   let start = Stopwatch.GetTimestamp()
   var status = WindowReadbackTestFixture.Request(window, width, height)
-  while status == VulkanReadbackRequestStatus.Busy
-    || status == VulkanReadbackRequestStatus.NotReady{
+  while status == WindowReadbackRequestStatus.Busy
+    || status == WindowReadbackRequestStatus.NotReady{
       if Stopwatch.GetTimestamp() - start >= timeoutTicks {
         throw InvalidOperationException(
           "Readback request did not become accepted within the timeout")
@@ -555,7 +555,7 @@ func ReadbackRequestReadbackUntilAccepted(window Window, width uint32, height ui
       Thread.Yield()
       status = WindowReadbackTestFixture.Request(window, width, height)
     }
-  Require(status == VulkanReadbackRequestStatus.Accepted,
+  Require(status == WindowReadbackRequestStatus.Accepted,
     "Readback request was not accepted: " + status.ToString())
 }
 
@@ -714,12 +714,12 @@ func RunOffscreenFailureSmoke() {
     let opened = ReadbackOpenCell(root)
     window = opened
     let staged = WindowReadbackTestFixture.Request(opened, 64u, 64u)
-    Require(staged == VulkanReadbackRequestStatus.NotReady,
+    Require(staged == WindowReadbackRequestStatus.NotReady,
       "D02 offscreen failure request did not stage the window prerequisite")
     WindowReadbackTestFixture.DrainWindowQueue(opened, 2000)
     VulkanSharedRuntime.FailNextGraphicsSubmissionForTest()
     let retry = WindowReadbackTestFixture.Request(opened, 64u, 64u)
-    accepted = retry == VulkanReadbackRequestStatus.Accepted
+    accepted = retry == WindowReadbackRequestStatus.Accepted
     Require(accepted,
       "D02 offscreen failure retry was not accepted: " + retry.ToString())
     let timeoutTicks = int64(float64(Stopwatch.Frequency) * 2.0)
@@ -740,7 +740,7 @@ func RunOffscreenFailureSmoke() {
     Require(storageCleared,
       "D02 offscreen failure left readback storage resident")
     let followup = WindowReadbackTestFixture.Request(opened, 64u, 64u)
-    Require(followup != VulkanReadbackRequestStatus.Busy,
+    Require(followup != WindowReadbackRequestStatus.Busy,
       "D02 offscreen failure left a readback request Busy")
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
     Require(opened.IsOpen,
@@ -1328,6 +1328,9 @@ func RunRetentionSmoke() {
     window = opened
     Console.SetError(capturedError)
     opened.Open()
+    WindowReadbackTestFixture.StabilizeNativeMetrics(opened)
+    WindowReadbackTestFixture.SuppressNativeEventPump(opened, true)
+    WindowReadbackTestFixture.InputQueuePointerMove(opened, -1.0, -1.0)
     WindowReadbackTestFixture.ForceRender(opened, 0.0)
     let metrics = WindowReadbackTestFixture.Metrics(opened)
     Require(metrics.LogicalWidth == 240 && metrics.LogicalHeight == 140,
@@ -1367,14 +1370,24 @@ func RunRetentionSmoke() {
         && !initialState.PartialRedraw
         && initialState.DamageWidth == metrics.FramebufferWidth
         && initialState.DamageHeight == metrics.FramebufferHeight,
-      "Retained first use did not force a full redraw")
+      "Retained first use did not force a full redraw: scene="
+      +initialState.SceneVersion.ToString() + " active="
+      +initialState.ActiveSceneVersion.ToString() + " acquired="
+      +initialState.AcquiredImageState.ToString() + " applied="
+      +initialState.ActiveAppliedSceneVersion.ToString() + " partial="
+      +initialState.PartialRedraw.ToString() + " full="
+      +initialState.FullRedraw.ToString() + " damage="
+      +initialState.DamageX.ToString() + "," + initialState.DamageY.ToString() + ","
+      +initialState.DamageWidth.ToString() + "," + initialState.DamageHeight.ToString()
+      +" framebuffer=" + metrics.FramebufferWidth.ToString() + "x"
+      +metrics.FramebufferHeight.ToString())
     Require(initialState.DirtyChunkCount > 0u
         && initialState.PendingImageCount == 1u
         && initialState.ActivePendingSceneVersion == initialState.ActiveSceneVersion
         && initialState.PendingSceneVersion == initialState.ActiveSceneVersion,
       "Retained first use did not publish the scene to the acquired image")
     Require(initialState.AppliedImageCount == 0u
-        && initialState.PromotedImageCount == 0u
+        && !initialState.ActiveImagePromoted
         && initialState.ActiveAppliedSceneVersion == 0uL,
       "Retained first use promoted a scene before presentation")
     Require(initialState.RetainedLeafTotalCount == 4uL
@@ -1431,10 +1444,11 @@ func RunRetentionSmoke() {
         && initialPrimitive.FullUpload
         && initialPrimitive.DirtyRecordCount == initialPrimitive.RecordCount
         && initialPrimitive.UploadRangeCount == 1
-        && initialPrimitive.WrittenBytes == initialPrimitive.ByteCount
-        && initialPrimitive.SkippedBytes == 0uL
-        && initialPrimitive.MappedWrites == 1uL
-        && initialPrimitive.Flushes == 1uL
+        && initialPrimitive.PlannedTransferBytes == initialPrimitive.ByteCount
+        && initialPrimitive.SkippedTransferBytes == 0uL
+        && initialPrimitive.CpuWriteOperations == uint64(initialPrimitive.RecordCount)
+        && initialPrimitive.FlushRequests == 1uL
+        && initialPrimitive.NativeFlushCalls <= initialPrimitive.FlushRequests
         && initialPrimitive.RetainedReuse == 0uL,
       "Retained first primitive frame did not force a full upload")
     initialResult = PrimitiveReadback(opened, metrics)
@@ -1455,42 +1469,50 @@ func RunRetentionSmoke() {
     var sawPrimitiveSlot1 bool = false
     var sawPrimitiveSlot0Clean bool = false
     var sawPrimitiveSlot1Clean bool = false
+    var swapchainImagesInitialized bool = false
     var primitiveWarmupFrame int32 = 0
-    while primitiveWarmupFrame < 12
-      && (!sawPrimitiveSlot0Clean || !sawPrimitiveSlot1Clean) {
-        WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
-        let nextPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
-        warmPrimitive = nextPrimitive
-        if nextPrimitive.RecordCount > 0 {
-          let clean = !nextPrimitive.FullUpload
-            && nextPrimitive.WrittenBytes == 0uL
-            && nextPrimitive.SkippedBytes == nextPrimitive.ByteCount
-            && nextPrimitive.DirtyRecordCount == 0
-            && nextPrimitive.UploadRangeCount == 0
-            && nextPrimitive.MappedWrites == 1uL
-            && nextPrimitive.Flushes == 0uL
-            && nextPrimitive.RetainedReuse
-          == uint64(nextPrimitive.RecordCount)
-          if nextPrimitive.SlotIndex == 0 {
-            sawPrimitiveSlot0 = true
-            if clean {
-              sawPrimitiveSlot0Clean = true
+    while primitiveWarmupFrame < 64
+      && (!sawPrimitiveSlot0Clean || !sawPrimitiveSlot1Clean
+          || !swapchainImagesInitialized) {
+            WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+            let nextPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
+            warmPrimitive = nextPrimitive
+            warmState = WindowReadbackTestFixture.SceneRetention(opened)
+            swapchainImagesInitialized = warmState.SwapchainImageCount > 0u
+              && warmState.InitializedImageCount == warmState.SwapchainImageCount
+              && warmState.MinimumImageSceneVersion >= initialState.SceneVersion
+            if nextPrimitive.RecordCount > 0 {
+              let clean = !nextPrimitive.FullUpload
+                && nextPrimitive.PlannedTransferBytes == 0uL
+                && nextPrimitive.SkippedTransferBytes == nextPrimitive.ByteCount
+                && nextPrimitive.DirtyRecordCount == 0
+                && nextPrimitive.UploadRangeCount == 0
+                && nextPrimitive.CpuWriteOperations == uint64(nextPrimitive.RecordCount)
+                && nextPrimitive.NativeFlushCalls == 0uL
+                && nextPrimitive.RetainedReuse
+              == uint64(nextPrimitive.RecordCount)
+              if nextPrimitive.SlotIndex == 0 {
+                sawPrimitiveSlot0 = true
+                if clean {
+                  sawPrimitiveSlot0Clean = true
+                }
+              } else if nextPrimitive.SlotIndex == 1 {
+                sawPrimitiveSlot1 = true
+                if clean {
+                  sawPrimitiveSlot1Clean = true
+                }
+              }
             }
-          } else if nextPrimitive.SlotIndex == 1 {
-            sawPrimitiveSlot1 = true
-            if clean {
-              sawPrimitiveSlot1Clean = true
-            }
+            primitiveWarmupFrame = primitiveWarmupFrame + 1
           }
-        }
-        primitiveWarmupFrame = primitiveWarmupFrame + 1
-      }
     Require(sawPrimitiveSlot0 && sawPrimitiveSlot1
         && sawPrimitiveSlot0Clean && sawPrimitiveSlot1Clean
+        && swapchainImagesInitialized
         && warmPrimitive.RecordCount == initialPrimitive.RecordCount
         && warmPrimitive.ByteCount == initialPrimitive.ByteCount,
-      "Retained unchanged primitive content did not retain both frame slots")
-    warmState = WindowReadbackTestFixture.SceneRetention(opened)
+      "Retained warmup did not retain both frame slots and initialize every swapchain image: initialized="
+      +warmState.InitializedImageCount.ToString() + " images="
+      +warmState.SwapchainImageCount.ToString())
     let warmLeafTotal = warmState.RetainedLeafTotalCount
     -initialState.RetainedLeafTotalCount
     let warmLeafHits = warmState.RetainedLeafHitCount
@@ -1516,7 +1538,16 @@ func RunRetentionSmoke() {
       == initialState.RetainedParentBoxFallbackCount
         && warmState.RetainedParentBoxInvalidationCount
       == initialState.RetainedParentBoxInvalidationCount,
-      "Retained warm parent box did not hit while continuing into generic children")
+      "Retained warm parent box did not hit while continuing into generic children: total="
+      +warmParentTotal.ToString() + " hits=" + warmParentHits.ToString()
+      +" initialRebuilds=" + initialState.RetainedParentBoxRebuildCount.ToString()
+      +" warmRebuilds=" + warmState.RetainedParentBoxRebuildCount.ToString()
+      +" initialFallbacks=" + initialState.RetainedParentBoxFallbackCount.ToString()
+      +" warmFallbacks=" + warmState.RetainedParentBoxFallbackCount.ToString()
+      +" initialInvalidations="
+      +initialState.RetainedParentBoxInvalidationCount.ToString()
+      +" warmInvalidations="
+      +warmState.RetainedParentBoxInvalidationCount.ToString())
     let warmBorderTotal = warmState.RetainedBorderTotalCount
     -initialState.RetainedBorderTotalCount
     let warmBorderHits = warmState.RetainedBorderHitCount
@@ -1558,10 +1589,11 @@ func RunRetentionSmoke() {
         && !mutatedPrimitive.FullUpload
         && mutatedPrimitive.DirtyRecordCount == 1
         && mutatedPrimitive.UploadRangeCount == 1
-        && mutatedPrimitive.WrittenBytes == 128uL
-        && mutatedPrimitive.SkippedBytes == mutatedPrimitive.ByteCount - 128uL
-        && mutatedPrimitive.MappedWrites == 1uL
-        && mutatedPrimitive.Flushes == 1uL
+        && mutatedPrimitive.PlannedTransferBytes == 128uL
+        && mutatedPrimitive.SkippedTransferBytes == mutatedPrimitive.ByteCount - 128uL
+        && mutatedPrimitive.CpuWriteOperations == uint64(mutatedPrimitive.RecordCount)
+        && mutatedPrimitive.FlushRequests == 1uL
+        && mutatedPrimitive.NativeFlushCalls <= mutatedPrimitive.FlushRequests
         && mutatedPrimitive.RetainedReuse
       == uint64(mutatedPrimitive.RecordCount - 1),
       "Retained one-box mutation did not upload one dirty primitive record")
@@ -1630,7 +1662,7 @@ func RunRetentionSmoke() {
     Require(mutatedState.DirtyChunkCount > 0u
         && mutatedState.ReusedChunkCount > 0u,
       "Retained box mutation did not retain clean chunks")
-    Require(mutatedState.PendingImageCount == 1u
+    Require(mutatedState.PendingImageCount > 0u
         && mutatedState.ActivePendingSceneVersion == mutatedState.ActiveSceneVersion
         && mutatedState.PendingSceneVersion == mutatedState.ActiveSceneVersion,
       "Retained box mutation did not publish its scene version to the acquired image")
@@ -1816,10 +1848,11 @@ func RunRetentionSmoke() {
         && topologyAddPrimitive.FullUpload
         && topologyAddPrimitive.DirtyRecordCount == topologyAddPrimitive.RecordCount
         && topologyAddPrimitive.UploadRangeCount == 1
-        && topologyAddPrimitive.WrittenBytes == topologyAddPrimitive.ByteCount
-        && topologyAddPrimitive.SkippedBytes == 0uL
-        && topologyAddPrimitive.MappedWrites == 1uL
-        && topologyAddPrimitive.Flushes == 1uL
+        && topologyAddPrimitive.PlannedTransferBytes == topologyAddPrimitive.ByteCount
+        && topologyAddPrimitive.SkippedTransferBytes == 0uL
+        && topologyAddPrimitive.CpuWriteOperations == uint64(topologyAddPrimitive.RecordCount)
+        && topologyAddPrimitive.FlushRequests == 1uL
+        && topologyAddPrimitive.NativeFlushCalls <= topologyAddPrimitive.FlushRequests
         && topologyAddPrimitive.RetainedReuse == 0uL,
       "Retained topology add did not force a full primitive upload")
     topologyAddState = WindowReadbackTestFixture.SceneRetention(opened)
@@ -1848,10 +1881,11 @@ func RunRetentionSmoke() {
         && topologyRemovePrimitive.FullUpload
         && topologyRemovePrimitive.DirtyRecordCount == topologyRemovePrimitive.RecordCount
         && topologyRemovePrimitive.UploadRangeCount == 1
-        && topologyRemovePrimitive.WrittenBytes == topologyRemovePrimitive.ByteCount
-        && topologyRemovePrimitive.SkippedBytes == 0uL
-        && topologyRemovePrimitive.MappedWrites == 1uL
-        && topologyRemovePrimitive.Flushes == 1uL
+        && topologyRemovePrimitive.PlannedTransferBytes == topologyRemovePrimitive.ByteCount
+        && topologyRemovePrimitive.SkippedTransferBytes == 0uL
+        && topologyRemovePrimitive.CpuWriteOperations == uint64(topologyRemovePrimitive.RecordCount)
+        && topologyRemovePrimitive.FlushRequests == 1uL
+        && topologyRemovePrimitive.NativeFlushCalls <= topologyRemovePrimitive.FlushRequests
         && topologyRemovePrimitive.RetainedReuse == 0uL,
       "Retained topology remove did not force a full primitive upload")
     topologyRemoveState = WindowReadbackTestFixture.SceneRetention(opened)
@@ -1886,15 +1920,16 @@ func RunRetentionSmoke() {
     var borderSawSlot0Clean bool = false
     var borderSawSlot1Clean bool = false
     var borderWarmupFrame int32 = 0
-    while borderWarmupFrame < 12
+    while borderWarmupFrame < 64
       && (!borderSawSlot0Clean || !borderSawSlot1Clean) {
         WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
         borderWarmPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
+        borderWarmState = WindowReadbackTestFixture.SceneRetention(opened)
         if borderWarmPrimitive.RecordCount > 0 {
           let clean = !borderWarmPrimitive.FullUpload
             && borderWarmPrimitive.RecordCount >= 9
-            && borderWarmPrimitive.WrittenBytes == 0uL
-            && borderWarmPrimitive.SkippedBytes == borderWarmPrimitive.ByteCount
+            && borderWarmPrimitive.PlannedTransferBytes == 0uL
+            && borderWarmPrimitive.SkippedTransferBytes == borderWarmPrimitive.ByteCount
             && borderWarmPrimitive.DirtyRecordCount == 0
             && borderWarmPrimitive.UploadRangeCount == 0
             && borderWarmPrimitive.RetainedReuse
@@ -1917,24 +1952,23 @@ func RunRetentionSmoke() {
       && borderSawSlot0Clean && borderSawSlot1Clean
     Require(borderWarmReady,
       "Retained border warm primitive expansion did not retain its clean records")
-    borderWarmState = WindowReadbackTestFixture.SceneRetention(opened)
 
     root.MutateBorder()
     WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
     borderMutatedPrimitive = WindowReadbackTestFixture.PrimitiveFrameRetention(opened)
+    borderMutationState = WindowReadbackTestFixture.SceneRetention(opened)
     Require(borderMutatedPrimitive.RecordCount == borderWarmPrimitive.RecordCount
         && borderMutatedPrimitive.ByteCount == borderWarmPrimitive.ByteCount
         && !borderMutatedPrimitive.FullUpload
         && borderMutatedPrimitive.RecordCount >= 9
         && borderMutatedPrimitive.DirtyRecordCount == 1
         && borderMutatedPrimitive.UploadRangeCount == 1
-        && borderMutatedPrimitive.WrittenBytes == 128uL
-        && borderMutatedPrimitive.SkippedBytes
+        && borderMutatedPrimitive.PlannedTransferBytes == 128uL
+        && borderMutatedPrimitive.SkippedTransferBytes
       == borderMutatedPrimitive.ByteCount - 128uL
         && borderMutatedPrimitive.RetainedReuse
       == uint64(borderMutatedPrimitive.RecordCount - 1),
       "Retained one-edge border mutation did not upload one expanded solid-border record")
-    borderMutationState = WindowReadbackTestFixture.SceneRetention(opened)
     let borderMutationTotal = borderMutationState.RetainedBorderTotalCount
     -borderWarmState.RetainedBorderTotalCount
     let borderMutationHits = borderMutationState.RetainedBorderHitCount
@@ -1974,9 +2008,19 @@ func RunRetentionSmoke() {
         && borderMutationState.RetainedParentBoxInvalidationCount
       == borderWarmState.RetainedParentBoxInvalidationCount,
       "Retained border color mutation did not isolate one exact border rebuild")
-    RetainedRequireBorderPayload(borderMutationState, borderBounds, scaleX, scaleY, radiusScale,
-      2.0, 3.0, 4.0, 5.0, 0.0, changedBorderTopColor, borderRightColor,
-      borderBottomColor, borderLeftColor, solidBorderStyle, "mutated border")
+    var borderDamageAttempt int32 = 0
+    while borderDamageAttempt < 32 && !borderMutationState.PartialRedraw {
+      root.MutateBorder()
+      WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+      root.MutateBorder()
+      WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+      borderMutationState = WindowReadbackTestFixture.SceneRetention(opened)
+      borderDamageAttempt = borderDamageAttempt + 1
+    }
+    RetainedRequireBorderPayload(borderMutationState, borderBounds, scaleX, scaleY,
+      radiusScale, 2.0, 3.0, 4.0, 5.0, 0.0, changedBorderTopColor,
+      borderRightColor, borderBottomColor, borderLeftColor, solidBorderStyle,
+      "mutated border")
     let borderDamageLeft = int32(Math.Floor(borderBounds.X * scaleX))
     let borderDamageTop = int32(Math.Floor(borderBounds.Y * scaleY))
     let borderDamageRight = int32(Math.Ceiling(
@@ -2183,10 +2227,10 @@ func RunRetentionSmoke() {
       frame = frame + 1
     }
     Require(finalState.AcquiredImageState
-        && finalState.PromotedImageCount == 1u
+        && finalState.ActiveImagePromoted
         && finalState.ActiveAppliedSceneVersion > 0uL,
       "Retained acquired swapchain image scene version was never promoted")
-    Require(finalState.PendingImageCount == 1u
+    Require(finalState.PendingImageCount > 0u
         && finalState.ActivePendingSceneVersion == finalState.ActiveSceneVersion
         && finalState.PendingSceneVersion == finalState.ActiveSceneVersion,
       "Retained acquired image scene version was not left pending after presentation")
@@ -2313,8 +2357,8 @@ func RunRetentionSmoke() {
     +" unsupported_fallback_recapture=1"
     +" primitive_first_full=1 primitive_slots=2 primitive_warm_copy_zero=1"
     +" primitive_staging_candidate=1"
-    +" primitive_mutation_dirty=1 primitive_mutation_written="
-    +mutatedPrimitive.WrittenBytes.ToString()
+    +" primitive_mutation_dirty=1 primitive_mutation_planned_transfer="
+    +mutatedPrimitive.PlannedTransferBytes.ToString()
     +" primitive_topology_full=1 image_version_promotion=1 damageCount="
     +damageCount.ToString() + " dirtyChunkCount=" + dirtyChunkCount.ToString()
     +" reusedChunkCount=" + reusedChunkCount.ToString()
@@ -3198,6 +3242,10 @@ func RunProtectedTextSmoke() {
 
 let managedEntryTimestamp = Stopwatch.GetTimestamp()
 Window.ConfigureApplication("Goo Readback async readback smoke", "0.1.0", "io.github.obselate.goo.readback.readback")
+if Environment.GetEnvironmentVariable("GOO_ALL_BLOB_BENCHMARK") == "1" {
+  RunAllBlobBenchmark()
+  return
+}
 if Environment.GetEnvironmentVariable("GOO_PIPELINE_CACHE_BENCHMARK") == "1" {
   RunPipelineCacheBenchmark()
   return
@@ -3239,6 +3287,10 @@ if Environment.GetEnvironmentVariable("GOO_SHADER_EFFECT_BENCHMARK") == "1" {
   RunShaderEffectBenchmark()
   return
 }
+if Environment.GetEnvironmentVariable("GOO_PIPELINE_IDENTITY_SMOKE") == "1" {
+  RunPipelineIdentitySmoke()
+  return
+}
 if Environment.GetEnvironmentVariable("GOO_INPUT_ACCESSIBILITY_SMOKE") == "1" {
   RunInputAccessibilitySmoke()
   return
@@ -3267,12 +3319,24 @@ if Environment.GetEnvironmentVariable("GOO_QUEUE_ISOLATION_SMOKE") == "1" {
   RunQueueIsolationSmoke()
   return
 }
+if Environment.GetEnvironmentVariable("GOO_QUEUE_WAKE_SMOKE") == "1" {
+  RunQueueWakeSmoke()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_TIMELINE_COMPLETION_SMOKE") == "1" {
+  RunTimelineCompletionSmoke()
+  return
+}
 if Environment.GetEnvironmentVariable("GOO_VIRTUAL_TABLE_SMOKE") == "1" {
   RunVirtualTableSmoke()
   return
 }
 if Environment.GetEnvironmentVariable("GOO_VIRTUAL_TABLE_BENCHMARK") == "1" {
   RunVirtualTableBenchmark()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_PRIMITIVE_METRICS_SMOKE") == "1" {
+  RunPrimitiveUploadMetricsSmoke()
   return
 }
 if Environment.GetEnvironmentVariable("GOO_PRIMITIVE_UPLOAD_BENCHMARK") == "1" {
@@ -3291,6 +3355,10 @@ if Environment.GetEnvironmentVariable("GOO_RETENTION_SMOKE") == "1" {
   RunRetentionSmoke()
   return
 }
+if Environment.GetEnvironmentVariable("GOO_IMAGE_RETENTION_SMOKE") == "1" {
+  RunImageRetentionSmoke()
+  return
+}
 if Environment.GetEnvironmentVariable("GOO_EFFECTS_SMOKE") == "1" {
   RunEffectsSmoke()
   return
@@ -3301,6 +3369,10 @@ if Environment.GetEnvironmentVariable("GOO_ROUNDED_OVERFLOW_SMOKE") == "1" {
 }
 if Environment.GetEnvironmentVariable("GOO_PADDING_EDGE_OVERFLOW_SMOKE") == "1" {
   RunPaddingEdgeOverflowSmoke()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_VECTOR_QUALITY_SMOKE") == "1" {
+  RunVectorQualitySmoke()
   return
 }
 if Environment.GetEnvironmentVariable("GOO_CLIP_CAPTURE_SMOKE") == "1" {

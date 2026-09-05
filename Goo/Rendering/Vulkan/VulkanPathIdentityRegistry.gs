@@ -93,7 +93,7 @@ internal sealed class VulkanPathIdentityRegistry {
         let existingData = existing.Reference.Target as VectorPathData?
         if existing.Reference.IsAlive
           && existingData != nil
-          && existingData!!.Equals(data) {
+          && (Object.ReferenceEquals(existingData, data) || existingData!!.Equals(data)) {
             if existing.Identity.GeometryRevision != data.GeometryRevision {
               existing.Identity = VulkanPathResourceIdentity{
                 PathId: ResourceId{

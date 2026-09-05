@@ -254,7 +254,7 @@ static void AppendShaderEffectGuide(StringBuilder text)
     text.AppendLine();
     text.AppendLine("## Apply fragment shaders to retained elements");
     text.AppendLine();
-    text.AppendLine("Create one `ShaderEffect` from precompiled fragment SPIR-V and assign it through the ordinary `Style.ShaderEffect` property on a `Container`, `Button`, `Text`, `Image`, `Shape`, or another Blob. Goo renders that element and its subtree into a bounded offscreen layer, runs the fragment program, then composites the result without changing layout, hit testing, accessibility, transforms, or clipping.");
+    text.AppendLine("Load one backend-neutral `ShaderEffectProgram`, create retained `ShaderEffect` state from it, and assign the effect through the ordinary `Style.ShaderEffect` property on a `Container`, `Button`, `Text`, `Image`, `Shape`, or another Blob. Goo renders that element and its subtree into a bounded offscreen layer, runs the selected backend artifact, then composites the result without changing layout, hit testing, accessibility, transforms, or clipping.");
     text.AppendLine();
     text.AppendLine("```gsharp");
     text.AppendLine("import System");
@@ -262,8 +262,9 @@ static void AppendShaderEffectGuide(StringBuilder text)
     text.AppendLine("import System.Numerics");
     text.AppendLine("import Goo");
     text.AppendLine();
-    text.AppendLine("let path = Path.Combine(AppContext.BaseDirectory, \"Shaders\", \"glass.spv\")");
-    text.AppendLine("let effect = ShaderEffect(File.ReadAllBytes(path),");
+    text.AppendLine("let path = Path.Combine(AppContext.BaseDirectory, \"Shaders\", \"glass.goo-effect\")");
+    text.AppendLine("let program = ShaderEffectProgram.Load(path)");
+    text.AppendLine("let effect = ShaderEffect(program,");
     text.AppendLine("  samplesBackdrop: true,");
     text.AppendLine("  backdropOutset: 24.0F)");
     text.AppendLine("effect.SetParameter(0, Vector4(0.18F, 0.65F, 0.9F, 1.0F))");
@@ -278,7 +279,7 @@ static void AppendShaderEffectGuide(StringBuilder text)
     text.AppendLine("}");
     text.AppendLine("```");
     text.AppendLine();
-    text.AppendLine("Reuse the same effect instance for controls that share program and parameters. `SetParameter` accepts slots 0 through 7, marks mounted users paint-dirty only when a value changes, and stays allocation-free after construction. Create separate effect instances when controls need independent parameter state.");
+    text.AppendLine("Reuse the same effect instance for controls that share program and parameters. Create separate effect instances from the same program when controls need independent parameter state. Program sharing also shares the backend pipeline identity. `SetParameter` accepts slots 0 through 7, marks mounted users paint-dirty only when a value changes, and stays allocation-free after construction.");
     text.AppendLine();
     text.AppendLine("Set `Playing = true` to opt into continuous renderer-driven playback. `ElapsedSeconds` is supplied separately through `gooElapsedSeconds()`, so playback does not consume one of the eight parameter slots. Pausing preserves the current elapsed position, and assigning `ElapsedSeconds` seeks while paused or playing. Goo schedules continuous frames only while a playing effect is mounted.");
     text.AppendLine();
@@ -303,13 +304,13 @@ static void AppendShaderEffectGuide(StringBuilder text)
     text.AppendLine("</ItemGroup>");
     text.AppendLine("```");
     text.AppendLine();
-    text.AppendLine("Build requires the pinned Slang 2026.16 compiler through `SLANG_SDK` or `PATH` and SPIRV-Tools 2026.3 from Vulkan SDK 1.4.357.0 through `VULKAN_SDK` or `PATH`. Goo compiles and validates the source during the build, writes deterministic intermediates under `obj`, and copies `Shaders/glass.spv` plus `Shaders/glass.spv.json` provenance to build and publish output. Set `TargetPath` on `GooShaderEffect` to override the relative output path. Unchanged inputs skip compilation. Tool-version mismatches, compiler errors, validation errors, ABI mismatches, and unsupported capabilities fail the build.");
+    text.AppendLine("Build requires the pinned Slang 2026.16 compiler through `SLANG_SDK` or `PATH` and SPIRV-Tools 2026.3 from Vulkan SDK 1.4.357.0 through `VULKAN_SDK` or `PATH`. Goo compiles and validates the source during the build, writes deterministic intermediates under `obj`, and copies `Shaders/glass.goo-effect` plus `Shaders/glass.goo-effect.json` provenance to build and publish output. The program container can carry separate artifacts for multiple rendering backends. The current compiler emits Vulkan SPIR-V. Set `TargetPath` on `GooShaderEffect` to override the relative output path. Unchanged inputs skip compilation. Tool-version mismatches, compiler errors, validation errors, ABI mismatches, and unsupported capabilities fail the build.");
     text.AppendLine();
     text.AppendLine("The fixed ABI binds the isolated source at set 0, the optional backdrop at set 1, Goo primitive data at set 2, Goo clip data at set 3, optional retained effect data at set 4, and eight `vec4` values in a 128-byte fragment push block. `uv` is normalized to the visible element bounds. `source` and `backdrop` are premultiplied linear colors. Return premultiplied linear color. Goo applies retained clip coverage and element opacity after `gooEffect`. Set `backdropOutset` to the largest displacement or filter radius the shader needs beyond those bounds. When backdrop sampling is disabled, the backdrop argument aliases the source and Goo skips the target copy.");
     text.AppendLine();
     text.AppendLine("Each `ShaderEffectData` publication is a complete replacement. The constructor and `Publish` copy bytes. `Transfer` and `PublishTransferred` take array ownership and invoke the supplied callback after Goo no longer reads that publication. Each source is limited to 16 MiB, each compiled scene frame is limited to 64 MiB of effect data, and unchanged retained versions reuse the existing upload. Goo recreates device-local data from the retained publication after device recovery.");
     text.AppendLine();
-    text.AppendLine("SPIR-V stays a sidecar asset in JIT and NativeAOT builds. Goo packages the build adapter, but neither the adapter, authoring modules, nor compiler toolchains are copied to application output. Goo does not invoke a runtime shader compiler. The first use creates a Vulkan pipeline in a device-generation cache. Warm parameter updates reuse that pipeline and the retained layer pool. One target format supports up to 32 distinct effect program identities per device generation. A non-normal `BlendMode` cannot currently share the same element with `ShaderEffect`.");
+    text.AppendLine("The compiled program stays a sidecar asset in JIT and NativeAOT builds. Goo packages the build adapter, but neither the adapter, authoring modules, nor compiler toolchains are copied to application output. Goo does not invoke a runtime shader compiler. The first use creates a backend pipeline in a device-generation cache. Warm parameter updates reuse that pipeline and the retained layer pool. One target format supports up to 32 distinct effect program identities per device generation. A non-normal `BlendMode` cannot currently share the same element with `ShaderEffect`.");
 }
 
 static void AppendAccessibilityGuide(StringBuilder text)

@@ -137,7 +137,7 @@
   "textInstanceRecord": {
     "set": 2,
     "binding": 0,
-    "stride": 128,
+    "stride": 112,
     "stages": [
       "vertex"
     ],
@@ -160,11 +160,6 @@
       {
         "name": "foreground",
         "offset": 96,
-        "type": "vec4"
-      },
-      {
-        "name": "effectParams",
-        "offset": 112,
         "type": "vec4"
       }
     ],
@@ -190,7 +185,7 @@
         },
         {
           "path": "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/hb_gpu.vert.wrapper.glsl",
-          "sha256": "fa6b174882dd8b5aea6bf956e8fbeed11ff9619517556e233c653acf0d9d79c8"
+          "sha256": "128842ac415dc642e1c7a31804bf59254743df55725c34d6766890002624bf08"
         }
       ]
     },

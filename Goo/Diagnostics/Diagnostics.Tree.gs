@@ -41,9 +41,6 @@ internal class DiagnosticNodeIdentity {
     return nil
   }
 
-  internal func Forget(n Node) {
-    values.Remove(n)
-  }
 }
 
 internal class DiagnosticTreeState {
@@ -118,23 +115,6 @@ internal class DiagnosticTreeState {
       selectionChanged)
   }
 
-  internal func Current(windowId string, hovered Node?, selected Node?) DiagnosticSnapshot {
-    if initialized {
-      let currentHovered = nodeId(hovered, previous)
-      let currentSelected = nodeId(selected, previous)
-      if currentHovered == previousHoveredId && currentSelected == previousSelectedId {
-        return DiagnosticSnapshot(revisionNumber, false, windowId,
-          optionalId(rootFromPrevious()), optionalId(currentHovered), optionalId(currentSelected),
-          List[DiagnosticNodeSnapshot](), List[DiagnosticNodeSnapshot](), List[int64](), false)
-      }
-    }
-    if let reference = previousRoot {
-      let target = reference.Target as Node?
-      if let root = target { return Capture(root, windowId, hovered, selected) }
-    }
-    return Capture(nil, windowId, hovered, selected)
-  }
-
   internal func Find(id int64) DiagnosticNodeSnapshot? {
     if previous.TryGetValue(id, out var node) {
       return node
@@ -154,15 +134,6 @@ internal class DiagnosticTreeState {
       return nil
     }
     return node
-  }
-
-  private func rootFromPrevious() int64 {
-    for pair in previous {
-      if pair.Value.ParentId == nil {
-        return pair.Key
-      }
-    }
-    return 0
   }
 
   private func nodeId(node Node?, values Dictionary[int64, DiagnosticNodeSnapshot]) int64 {

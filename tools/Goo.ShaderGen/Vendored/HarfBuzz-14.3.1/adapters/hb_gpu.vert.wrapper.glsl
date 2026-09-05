@@ -4,7 +4,6 @@ struct HbGpuTextInstance
     vec4 glyphBounds;
     uvec4 glyphInput;
     vec4 foreground;
-    vec4 effectParams;
 };
 
 layout(set = 2, binding = 0, std430) readonly buffer HbGpuTextInstanceBuffer
@@ -78,7 +77,7 @@ void main()
     v_glyphLoc = instance.glyphInput.x;
     v_clipChainId = instance.glyphInput.z;
     v_effectAndOrigin = vec4(
-        instance.effectParams.x,
+        uintBitsToFloat(instance.glyphInput.w),
         uintBitsToFloat(instance.glyphInput.y),
         frameConstants.origin.xy);
     v_foreground = instance.foreground;

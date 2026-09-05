@@ -10,7 +10,7 @@ internal partial class PointerInput {
       guard let tree = root else { return false }
       scratchChain.Clear()
       try {
-        hit.ChainInto(tree, x, y, scratchChain)
+        hitChainInto(tree, x, y, scratchChain)
         if chainDisabled(scratchChain) {
           return false
         }

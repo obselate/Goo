@@ -137,7 +137,7 @@
   "textInstanceRecord": {
     "set": 2,
     "binding": 0,
-    "stride": 128,
+    "stride": 112,
     "stages": [
       "vertex"
     ],
@@ -161,18 +161,13 @@
         "name": "foreground",
         "offset": 96,
         "type": "vec4"
-      },
-      {
-        "name": "effectParams",
-        "offset": 112,
-        "type": "vec4"
       }
     ],
     "hostPacking": {
       "path": "HbGpuTextInstanceRecord.Generated.gs",
       "typeName": "HbGpuTextInstanceRecord",
-      "sha256": "4ea285e1b0e4b8b92fe3412520c586f4ba06ab11739ce92aab708c06b05b40c0",
-      "bytes": 1593
+      "sha256": "9dc80707ea63a1493b43639f76118ff2eb61cd1035a15affc3cbdc4c212805ed",
+      "bytes": 1405
     }
   },
   "assemblies": [
@@ -192,7 +187,7 @@
         },
         {
           "path": "tools/Goo.ShaderGen/Vendored/HarfBuzz-14.3.1/adapters/hb_gpu.vert.wrapper.glsl",
-          "sha256": "fa6b174882dd8b5aea6bf956e8fbeed11ff9619517556e233c653acf0d9d79c8"
+          "sha256": "128842ac415dc642e1c7a31804bf59254743df55725c34d6766890002624bf08"
         }
       ]
     },
@@ -407,9 +402,9 @@
       "source": "path_band.frag.slang",
       "output": "path_band.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "c30b32a3f90e3bfcf339215e5af4697237cfaf091626a52e75477973a083f190",
-      "outputSha256": "ca3b833f4f4319617d4d4e7330f277dc1448178e50f99d679ac5c0fc74a1a4ef",
-      "outputBytes": 107244,
+      "sourceSha256": "4028f811e1ad789b5b26b9d2d34663bd770334b298ba908e5f4c17f667e0bfbc",
+      "outputSha256": "ff8ba0f3b071f3d3f62c8b0ee0fb596558f493f4a23e3139d7c1b71a305d4c2c",
+      "outputBytes": 110004,
       "capabilities": [
         1
       ]
@@ -421,9 +416,9 @@
       "output": "hb_gpu.vert.spv",
       "entryPoint": "main",
       "assembly": "hb_gpu_vertex",
-      "sourceSha256": "dd4b30572bee385983720561ab6df9daec3867adf276f94784dd6aa3bf080ea9",
-      "outputSha256": "6463edcd36ea2c6d2fecdba25859c01fef7dc86d16857cec22f47ea2bde16b11",
-      "outputBytes": 4188,
+      "sourceSha256": "5d27624080ebf09756166ce47eb5933dbc5f768865f1a42dc209db2c58f7e0c9",
+      "outputSha256": "cac663c227014e75d75c9f939a9bc0bedb4388d9c55550e1e68765cf5433a069",
+      "outputBytes": 4128,
       "capabilities": [
         1
       ]
@@ -478,8 +473,8 @@
       "output": "clip_mask.frag.spv",
       "entryPoint": "main",
       "sourceSha256": "21ef8bfa25dce6aa42fc885699535b2d5a55ed6339e72e62741ac99a64170cea",
-      "outputSha256": "fb65b1117679c5983834df167dba16692e6fea1b0d2cda19c51c3fa1ec3f6332",
-      "outputBytes": 101200,
+      "outputSha256": "f3d6946d46cbb78a9c8c4e098369a0fa4ab69f18cd9f157271578f7898b4208f",
+      "outputBytes": 103960,
       "capabilities": [
         1
       ]

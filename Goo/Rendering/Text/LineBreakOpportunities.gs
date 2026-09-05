@@ -7,16 +7,12 @@ import System.Text
 
 internal sealed class LineBreakMap {
   internal prop Offsets []int32{ get; set; }
-  internal prop MandatoryOffsets []int32{ get; set; }
 
-  internal init(offsets []int32, mandatoryOffsets []int32) {
+  internal init(offsets []int32) {
     Offsets = offsets
-    MandatoryOffsets = mandatoryOffsets
   }
 
   internal func CanBreak(utf16Offset int32) bool -> Array.BinarySearch(Offsets, utf16Offset) >= 0
-
-  internal func IsMandatory(utf16Offset int32) bool -> Array.BinarySearch(MandatoryOffsets, utf16Offset) >= 0
 }
 
 internal enum TextLineBreakClass {
@@ -87,21 +83,19 @@ internal class LineBreakOpportunities {
       if text.Length == 0 {
         let offsets = [1]int32
         offsets[0] = 0
-        return LineBreakMap(offsets, []int32{})
+        return LineBreakMap(offsets)
       }
 
       let scalars = DecodeScalars(text)
       let offsets = List[int32](scalars.Count)
-      let mandatoryOffsets = List[int32]()
       for i in 0 ... scalars.Count {
         let action = ResolveBoundary(scalars, i)
         let end = scalars[i].End
         if action != TextLineBreakAction.Prohibited {
           offsets.Add(end)
-          if action == TextLineBreakAction.Mandatory { mandatoryOffsets.Add(end) }
         }
       }
-      return LineBreakMap(offsets.ToArray(), mandatoryOffsets.ToArray())
+      return LineBreakMap(offsets.ToArray())
     }
 
     private func DecodeScalars(text string) List[TextLineBreakScalar] {

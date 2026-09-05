@@ -2154,9 +2154,11 @@ internal class StyleFixtures {
       case StyleField.TransformSkewY { return Style{ Transform: PanelTransform{ SkewY: 7 } } }
       case StyleField.BackgroundImageSource { return Style{ BackgroundImageSource: nil } }
       case StyleField.ShaderEffect {
-        return Style{ ShaderEffect: ShaderEffect([]uint8{
+        return Style{ ShaderEffect: ShaderEffect(ShaderEffectProgram([]uint8{
+          71, 69, 70, 70, 1, 0, 0, 0, 1, 0, 0, 0,
+          86, 83, 80, 86, 20, 0, 0, 0,
           3, 2, 35, 7, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-        }) }
+        })) }
       }
       default { return nil }
     }

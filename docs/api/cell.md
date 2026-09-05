@@ -30,11 +30,29 @@ Creates a color animated by this component.
 
 Returns: an animation bridge owned by this component
 
+### `Animate(Color,System.Action{Color})`
+
+Creates a color animation that reports values without rebuilding this component.
+
+- `initial`: initial value
+- `onChange`: receives values from Set and each motion tick
+
+Returns: an animation bridge owned by this component
+
 ### `Animate(Length)`
 
 Creates a fixed-unit length animated by this component.
 
 - `initial`: pixel or percentage initial value
+
+Returns: an animation bridge owned by this component
+
+### `Animate(Length,System.Action{Length})`
+
+Creates a fixed-unit length animation that reports values without rebuilding this component.
+
+- `initial`: pixel or percentage initial value
+- `onChange`: receives values from Set and each motion tick
 
 Returns: an animation bridge owned by this component
 
@@ -46,11 +64,29 @@ Creates a point animated by this component.
 
 Returns: an animation bridge owned by this component
 
+### `Animate(Point,System.Action{Point})`
+
+Creates a point animation that reports values without rebuilding this component.
+
+- `initial`: initial value
+- `onChange`: receives values from Set and each motion tick
+
+Returns: an animation bridge owned by this component
+
 ### `Animate(float64)`
 
 Creates a number animated by this component.
 
 - `initial`: initial value
+
+Returns: an animation bridge owned by this component
+
+### `Animate(float64,System.Action{float64})`
+
+Creates a number animation that reports values without rebuilding this component.
+
+- `initial`: initial value
+- `onChange`: receives values from Set and each motion tick
 
 Returns: an animation bridge owned by this component
 
@@ -61,6 +97,17 @@ Creates a value animated by this component with custom coordinates.
 - `T`: animated value type
 - `initial`: initial value
 - `converter`: maps values to scalar simulation coordinates
+
+Returns: an animation bridge owned by this component
+
+### `Animate``1(T,MotionConverter{T},System.Action{T})`
+
+Creates a custom-coordinate animation that reports values without rebuilding this component.
+
+- `T`: animated value type
+- `initial`: initial value
+- `converter`: maps values to scalar simulation coordinates
+- `onChange`: receives values from Set and each motion tick
 
 Returns: an animation bridge owned by this component
 

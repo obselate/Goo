@@ -34,7 +34,7 @@ public class StyleResolutionTests
     public void ClipPathValidatesAndResolves()
     {
         Assert.Throws<System.ArgumentException>(() =>
-            _ = new Style { ClipPath = new PathBuilder().MoveTo(0, 0).LineTo(1, 1).Build() });
+            _ = new Style { ClipPath = new PathBuilder().MoveTo(0, 0).Build() });
         Assert.True(new StyleFixtures().ClipPathResolutionStorageAndSnapContract());
     }
 

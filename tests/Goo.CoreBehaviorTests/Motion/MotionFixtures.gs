@@ -9,6 +9,56 @@ internal class MotionFixtures {
     pump = MotionPump()
   }
 
+  func TweenFactoryContract() bool {
+    let tween = Motion.Tween(2.0, Easing.EaseInOut)
+    let simulation = tween(2.0, 10.0, 99.0)
+    let instantTween = Motion.Tween(0.0)
+    let instant = instantTween(2.0, 10.0, 99.0)
+    return Math.Abs(simulation.Position(0.5) - 3.0) < 1e-9
+      && Math.Abs(simulation.Velocity(0.5) - 4.0) < 1e-9
+      && Math.Abs(simulation.Position(1.5) - 9.0) < 1e-9
+      && Math.Abs(simulation.Velocity(1.5) - 4.0) < 1e-9
+      && !simulation.Done(1.999)
+      && simulation.Done(2.0)
+      && simulation.Position(2.0) == 10.0
+      && simulation.Velocity(2.0) == 0.0
+      && instant.Done(0.0)
+      && instant.Position(0.0) == 10.0
+      && instant.Velocity(0.0) == 0.0
+  }
+
+  func CallbackAnimationContract() bool {
+    let cell = MotionFixtureCell{}
+    cell.BindPump(pump)
+    var calls = 0
+    var latest = -1.0
+    let anim = cell.Animate(0.0, (value float64) -> {
+      calls++
+      latest = value
+    })
+    try {
+      anim.Set(2.0)
+      if calls != 1 || latest != 2.0 || cell.HasDirty() {
+        return false
+      }
+      anim.To(10.0, Motion.Tween(1.0, Easing.EaseIn))
+      pump.Sweep(0.5)
+      if calls != 2 || latest != 4.0 || cell.HasDirty() {
+        return false
+      }
+      pump.Sweep(0.5)
+      if calls != 3 || latest != 10.0 || anim.Running || cell.HasDirty() {
+        return false
+      }
+      cell.DisposeMounted()
+      anim.To(20.0, Motion.Tween(1.0))
+      pump.Sweep(1.0)
+      return calls == 3
+    } finally {
+      cell.DisposeMounted()
+    }
+  }
+
   func RetargetPreservesVelocityContract() bool {
     let cell = MotionFixtureCell{}
     cell.BindPump(pump)
