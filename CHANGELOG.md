@@ -8,7 +8,6 @@
 - Added immutable `VectorAsset`, `VectorNode`, `VectorPaint`, and `VectorStroke` APIs shared by authored, runtime SVG, and compiled vector content.
 - Added backend-neutral `ShaderEffectProgram` containers and `.goo-effect` build artifacts.
 - Added generic `Cell.Animate` overloads and `Motion.Tween`.
-- Added macOS arm64 packaging with bundled MoltenVK and Apple system-font resolution. Physical Mac qualification remains pending.
 
 ### Changed
 
@@ -20,6 +19,7 @@
 ### Fixed
 
 - Fixed sampled-image premultiplied alpha, liquid-glass dispersed coverage, transformed and clipped input routing, queue wake and isolation, effect-only replacement, pending-readback close, and failure cleanup.
+- Fixed clipped Lava blending, CRT coverage at transparent edges, undefined Gallery falloff math, and volumetric premultiplied output. Shader playback rejects values that overflow GPU time, and reentrant drag failures preserve the original callback stack.
 - Fixed repeated shared-path identity lookup so the measured 1,000-Shape workload allocates 2,032 B/frame instead of 1,282,032 B/frame.
 
 ### Performance
@@ -32,6 +32,14 @@
 
 - Passed 317 core behavior tests, 12 public API and documentation tests, strict repository lint, generated shader consistency, Release builds, and focused native Vulkan lifecycle, input, image, vector, clip, effect, queue, and readback gates.
 - Current evidence and hardware limits are recorded in [`docs/perf/linux-release-qualification.md`](docs/perf/linux-release-qualification.md).
+
+## 0.4.2 - 2026-09-02
+
+### Added
+
+- Added an Apple Silicon Goo Gallery app bundle for macOS 15 or newer.
+- Added a checksum-verified unsigned installer that installs Goo Gallery under the current user account, removes quarantine only from the installed app, and launches it.
+- Added pinned macOS arm64 SDL, MoltenVK, and HarfBuzz native payload builds with NativeAOT runtime verification.
 
 ## 0.4.1 - 2026-09-01
 

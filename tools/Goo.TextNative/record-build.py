@@ -223,6 +223,7 @@ def main():
             image_format = macos_format(path)
             architectures = macos_architectures(path)
             image_name = macos_install_name(path)
+            needed = sorted(value for value in needed if value != image_name)
             if policy["requiredFormat"] not in image_format:
                 raise SystemExit(f"{path.name} format drift: {image_format}")
             if architectures != sorted(policy["requiredArchitectures"]):

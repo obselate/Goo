@@ -630,6 +630,12 @@
         "LDFLAGS": "-Wl,--build-id=none",
         "SOURCE_DATE_EPOCH": "0"
       },
+      "osx-arm64": {
+        "CFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
+        "CXXFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
+        "LDFLAGS": "-Wl,-dead_strip",
+        "SOURCE_DATE_EPOCH": "0"
+      },
       "win-x64": {
         "CFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
         "CXXFLAGS": "-O3 -g0 -ffile-prefix-map=<temporary-source-root>=.",
@@ -694,11 +700,34 @@
         "harfbuzz": []
       }
     },
+    "macos": {
+      "forbiddenDependencyPrefixes": [
+        "/opt/homebrew/",
+        "/usr/local/"
+      ],
+      "requiredArchitectures": [
+        "arm64"
+      ],
+      "requiredFormat": "Mach-O 64-bit dynamically linked shared library arm64",
+      "requiredInstallName": {
+        "gpu": "@rpath/libgoo-harfbuzz-gpu.dylib",
+        "harfbuzz": "@rpath/libgoo-harfbuzz.dylib"
+      },
+      "requiredNeeded": {
+        "gpu": [
+          "/usr/lib/libSystem.B.dylib",
+          "@rpath/libgoo-harfbuzz.dylib"
+        ],
+        "harfbuzz": [
+          "/usr/lib/libSystem.B.dylib"
+        ]
+      }
+    },
     "soname": {
       "gpu": "libgoo-harfbuzz-gpu.so",
       "harfbuzz": "libgoo-harfbuzz.so"
     },
-    "sourcePatch": "Set the core and GPU shared-library identities to Goo-owned private names before the pinned Meson build; Linux keeps private SONAMEs and Windows uses unversioned DLL names.",
+    "sourcePatch": "Set the core and GPU shared-library identities to Goo-owned private names before the pinned Meson build; Linux keeps private SONAMEs, macOS keeps private @rpath install names, and Windows uses unversioned DLL names.",
     "sourcePatches": [
       {
         "description": "Convert explicit CPAL RGB bytes to linear-light Q15 with a fixed 256-entry lookup. Preserve alpha and foreground encoding.",
@@ -820,12 +849,35 @@
         "harfbuzz": []
       }
     },
+    "macos": {
+      "forbiddenDependencyPrefixes": [
+        "/opt/homebrew/",
+        "/usr/local/"
+      ],
+      "requiredArchitectures": [
+        "arm64"
+      ],
+      "requiredFormat": "Mach-O 64-bit dynamically linked shared library arm64",
+      "requiredInstallName": {
+        "gpu": "@rpath/libgoo-harfbuzz-gpu.dylib",
+        "harfbuzz": "@rpath/libgoo-harfbuzz.dylib"
+      },
+      "requiredNeeded": {
+        "gpu": [
+          "/usr/lib/libSystem.B.dylib",
+          "@rpath/libgoo-harfbuzz.dylib"
+        ],
+        "harfbuzz": [
+          "/usr/lib/libSystem.B.dylib"
+        ]
+      }
+    },
     "soname": {
       "gpu": "libgoo-harfbuzz-gpu.so",
       "harfbuzz": "libgoo-harfbuzz.so"
     },
     "sourceDirectory": "temporary",
-    "sourcePatch": "Set the core and GPU shared-library identities to Goo-owned private names before the pinned Meson build; Linux keeps private SONAMEs and Windows uses unversioned DLL names.",
+    "sourcePatch": "Set the core and GPU shared-library identities to Goo-owned private names before the pinned Meson build; Linux keeps private SONAMEs, macOS keeps private @rpath install names, and Windows uses unversioned DLL names.",
     "sourcePatches": [
       {
         "description": "Convert explicit CPAL RGB bytes to linear-light Q15 with a fixed 256-entry lookup. Preserve alpha and foreground encoding.",
@@ -889,6 +941,10 @@
       "gpu": "libgoo-harfbuzz-gpu.so",
       "harfbuzz": "libgoo-harfbuzz.so"
     },
+    "osx-arm64": {
+      "gpu": "libgoo-harfbuzz-gpu.dylib",
+      "harfbuzz": "libgoo-harfbuzz.dylib"
+    },
     "win-x64": {
       "gpu": "goo-harfbuzz-gpu.dll",
       "harfbuzz": "goo-harfbuzz.dll"
@@ -949,7 +1005,7 @@
       "hb_shape_full"
     ]
   },
-  "schema": 3,
+  "schema": 4,
   "source": {
     "harfbuzz": {
       "archiveSha256": "9dae9538aae2ffdf70cec31f2c27bf68e2aaeeae3112688467697d5faf6194f7",

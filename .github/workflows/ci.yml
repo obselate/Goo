@@ -20,7 +20,7 @@ env:
 jobs:
   quality:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v7
@@ -28,14 +28,6 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
-
-      - name: Install pinned Gallery shader toolchain
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends clang cmake curl ninja-build
-          .github/scripts/install-shader-toolchain-linux-x64.sh "$RUNNER_TEMP/goo-shader-toolchain"
-          echo "SLANG_SDK=$RUNNER_TEMP/goo-shader-toolchain/slang-2026.16" >> "$GITHUB_ENV"
-          echo "VULKAN_SDK=$RUNNER_TEMP/goo-shader-toolchain/vulkan-sdk-1.4.357.0" >> "$GITHUB_ENV"
 
       - name: Validate onboarding and release metadata
         run: .github/scripts/validate-onboarding.py
@@ -76,27 +68,6 @@ jobs:
           dotnet test tests/Goo.Svg.Tests/Goo.Svg.Tests.csproj \
             -c Release -p:TreatWarningsAsErrors=true
 
-      - name: Build and verify Gallery shader artifact
-        run: |
-          dotnet build apps/Goo.Gallery/Goo.Gallery.gsproj \
-            -c Release -p:TreatWarningsAsErrors=true
-          .github/scripts/gallery-shader-artifact.py create \
-            --repository "$PWD" \
-            --compiled apps/Goo.Gallery/bin/Release/net10.0/Shaders \
-            --output artifacts/gallery-shaders \
-            --commit "$GITHUB_SHA"
-          .github/scripts/gallery-shader-artifact.py verify \
-            --repository "$PWD" \
-            --input artifacts/gallery-shaders \
-            --commit "$GITHUB_SHA"
-
-      - name: Upload Gallery shader artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: goo-gallery-shaders-${{ github.sha }}
-          if-no-files-found: error
-          path: artifacts/gallery-shaders/
-
   macos-arm64:
     needs: quality
     runs-on: macos-15
@@ -112,21 +83,8 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Download and verify Gallery shader artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: goo-gallery-shaders-${{ github.sha }}
-          path: artifacts/gallery-shaders
-
-      - name: Verify Gallery shader artifact
-        run: |
-          .github/scripts/gallery-shader-artifact.py verify \
-            --repository "$PWD" \
-            --input artifacts/gallery-shaders \
-            --commit "$GITHUB_SHA"
-
       - name: Install native build tools
-        run: brew install meson ninja
+        run: brew install cmake meson ninja
 
       - name: Build pinned macOS arm64 native payloads
         run: |
@@ -138,6 +96,7 @@ jobs:
 
       - name: Publish NativeAOT macOS smoke app
         run: |
+          mkdir -p artifacts/packages
           dotnet publish tests/Goo.PackageSmoke/Goo.PackageSmoke.gsproj \
             -c Release -r osx-arm64 --self-contained true \
             -p:PublishAot=true \
@@ -154,8 +113,53 @@ jobs:
             artifacts/macos-candidate/symbols \
             Goo.PackageSmoke \
             tests/Goo.PackageSmoke/Info.plist
-          GOO_WINDOW_SMOKE=1 GOO_VK_DIAGNOSTICS=1 \
+          GOO_PRIMITIVE_SMOKE=1 GOO_VK_DIAGNOSTICS=1 \
             artifacts/macos-candidate/Goo.PackageSmoke.app/Contents/MacOS/Goo.PackageSmoke
+
+      - name: Fetch pinned Slang compiler
+        run: |
+          archive="$RUNNER_TEMP/slang-2026.16-macos-aarch64.tar.gz"
+          sdk="$RUNNER_TEMP/slang-2026.16"
+          curl --fail --location --retry 3 \
+            --output "$archive" \
+            https://github.com/shader-slang/slang/releases/download/v2026.16/slang-2026.16-macos-aarch64.tar.gz
+          echo "5d7edc2c91c38d1914c14a5a410f0fe517bce9a284395336715ba36a091e9d9e  $archive" \
+            | shasum -a 256 -c -
+          mkdir -p "$sdk"
+          tar -xzf "$archive" -C "$sdk"
+          "$sdk/bin/slangc" -version 2>&1 | grep -Fx "2026.16"
+          echo "SLANG_SDK=$sdk" >> "$GITHUB_ENV"
+
+      - name: Build pinned SPIR-V validator
+        run: |
+          source="$RUNNER_TEMP/SPIRV-Tools-1.4.357.0"
+          headers="$source/external/spirv-headers"
+          build="$RUNNER_TEMP/SPIRV-Tools-1.4.357.0-build"
+          sdk="$RUNNER_TEMP/vulkan-sdk-1.4.357.0"
+          git clone --depth 1 --branch vulkan-sdk-1.4.357.0 \
+            https://github.com/KhronosGroup/SPIRV-Tools.git "$source"
+          test "$(git -C "$source" rev-parse HEAD)" = \
+            "9a49b0883b9b635689a85b5647dbfcb223268151"
+          git init "$headers"
+          git -C "$headers" remote add origin \
+            https://github.com/KhronosGroup/SPIRV-Headers.git
+          git -C "$headers" fetch --depth 1 origin \
+            29981f65241605e08b0ede4cfeb999fe3b723c6a
+          git -C "$headers" checkout --detach FETCH_HEAD
+          test "$(git -C "$headers" rev-parse HEAD)" = \
+            "29981f65241605e08b0ede4cfeb999fe3b723c6a"
+          cmake -S "$source" -B "$build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DSPIRV_SKIP_TESTS=ON \
+            -DSPIRV_WERROR=OFF
+          cmake --build "$build" --target spirv-val --parallel 2
+          mkdir -p "$sdk/bin"
+          install -m0755 "$build/tools/spirv-val" "$sdk/bin/spirv-val"
+          "$sdk/bin/spirv-val" --version 2>&1 \
+            | grep -F "SPIRV-Tools v2026.3 vulkan-sdk-1.4.357.0"
+          echo "VULKAN_SDK=$sdk" >> "$GITHUB_ENV"
 
       - name: Bundle Goo Gallery for testers
         run: |
@@ -164,8 +168,6 @@ jobs:
             -p:PublishAot=true \
             -p:TreatWarningsAsErrors=true \
             -p:GooMacOsArm64NativeRoot="$PWD/artifacts/macos-candidate/native" \
-            -p:GooGalleryPrecompiledShaderRoot="$PWD/artifacts/gallery-shaders" \
-            -p:GooGalleryPrecompiledShaderCommit="$GITHUB_SHA" \
             -o artifacts/publish-macos-gallery
           .github/scripts/stage-macos-arm64.sh \
             artifacts/publish-macos-gallery \
@@ -337,6 +339,11 @@ jobs:
           .github/scripts/with-headless-wayland.sh env \
             GOO_VK_DIAGNOSTICS=1 \
             GOO_SHADER_EFFECT_SMOKE=1 \
+            dotnet tests/Goo.AsyncReadbackSmoke/bin/Release/net10.0/Goo.AsyncReadbackSmoke.dll
+
+          .github/scripts/with-headless-wayland.sh env \
+            GOO_VK_DIAGNOSTICS=1 \
+            GOO_FRAGMENT_CORRECTNESS_SMOKE=1 \
             dotnet tests/Goo.AsyncReadbackSmoke/bin/Release/net10.0/Goo.AsyncReadbackSmoke.dll
 
           .github/scripts/with-headless-wayland.sh env \

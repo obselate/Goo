@@ -1,3 +1,5 @@
+Final release review: [API, shader quality, cleanup, and deferred fault-path work](docs/perf/final-release-review-2026-09-05.md).
+
 Release preparation: [Goo 0.5.0](docs/perf/release-0.5.0-preparation.md). Local correctness checks pass. Tagging awaits fresh macOS native artifacts and the complete hosted package pipeline on the candidate commit.
 
 Current follow-up: [sampled-image and liquid-glass alpha fixes, dense-path optimization, glass GPU measurements, and in-app drag/drop](docs/perf/non-uat-followup-2026-09-05.md). Implementation, correctness checks, and all 63 validation-off GPU timing runs are complete. Subjective shader UAT and native platform drag/drop remain deferred. Earlier [effect replacement, hit fixtures, teardown cleanup, and style-comparison work](docs/perf/post-checkpoint-2026-09-05.md) remain preserved.

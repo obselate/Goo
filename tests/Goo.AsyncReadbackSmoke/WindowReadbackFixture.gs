@@ -1154,6 +1154,22 @@ internal partial class SdlHost {
 
 internal class WindowReadbackTestFixture {
   shared {
+    internal func CreateClippedLavaFixture() Blob -> Container {
+      Position: PositionType.Absolute,
+      Left: 16,
+      Top: 16,
+      Width: 96,
+      Height: 96,
+      BorderRadius: 30,
+      Overflow: Overflow.Hidden,
+      Children: {
+        LavaSurface{
+          Width: Length.Percent(100),
+          Height: Length.Percent(100),
+        },
+      },
+    }
+
     internal func AbortPrimitiveMetrics(window Window, finish bool) VulkanPrimitiveFrameStats ->
     window.AbortPrimitiveMetricsForTest(finish)
 

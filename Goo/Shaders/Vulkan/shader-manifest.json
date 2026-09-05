@@ -485,8 +485,8 @@
       "source": "lava.frag.slang",
       "output": "lava.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "683c682ed754ba3e64f1f6239fa0fdffceed56fb842365687110f1f956755b5a",
-      "outputSha256": "d3ea285c940296504dc9bcb1eb92af99c18c31d92e60da0fff18c518b438f8d4",
+      "sourceSha256": "a5a47eec38936240f8436340708da747814b297c8d1b0f5b344627bdf2682319",
+      "outputSha256": "bb375d839409c3a8ef7f8de4cadeb659ecf229e3162fb6ff4ebc244345b954f7",
       "outputBytes": 21864,
       "capabilities": [
         1

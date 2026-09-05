@@ -120,5 +120,6 @@ float4 gooEffect(float2 uv, float4 source, float4 backdrop)
     float sourceMix = clamp(sourceAlpha * 0.30, 0.0, 0.30);
     color = lerp(color, clamp(retainedSource, 0.0, 1.0) * alpha, sourceMix);
     float mask = clamp(max(sourceAlpha, backdrop.a), 0.0, 1.0);
-    return float4(clamp(color * mask, 0.0, 1.0), alpha * mask);
+    float outputAlpha = alpha * mask;
+    return float4(clamp(color * mask, 0.0, outputAlpha), outputAlpha);
 }

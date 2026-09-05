@@ -47,6 +47,7 @@ publish_extras=(
   Goo.PackageSmoke.pdb
   Gsharp.Extensions.pdb
   Gsharp.Extensions.xml
+  Vulkan/Runtime/MoltenVK-LICENSE.txt
   VendSans-VariableFont_wght.ttf
   HarfBuzz-adwaita-colrv1.ttf
   HarfBuzz-TTC.ttc

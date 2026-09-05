@@ -7,13 +7,13 @@ The candidate includes the [post-checkpoint fixes](post-checkpoint-2026-09-05.md
 - Linux CI now invokes sampled-image readback, liquid-glass alpha, and shader-effect replacement/recovery gates.
 - Image readback uses expected pixel regions instead of a GPU-specific golden hash. Nearest and linear sampling must differ within a run, and linear output must survive resource rehydration unchanged. The old broken sampled-image shader fails the portable region assertions.
 - macOS SDL and text-native builds explicitly target 14.0, matching the existing minimum-version promise. The package validator checks Mach-O architecture, minimum OS, install names, dependency policy, and current text-native provenance. The cached macOS candidate requires 15.0 and is rejected.
-- Gallery shader bundles are compiled with the pinned Linux toolchain and transferred to the macOS job with source, authoring, binary, and commit provenance. The macOS publish must validate this artifact before copying it. It does not invoke the Linux/Windows-only Slang compiler.
+- The final review merged the published 0.4.2 macOS fixes. Gallery compiles shaders natively with the pinned macOS arm64 Slang compiler. The temporary cross-host artifact path was removed because upstream native compilation already provides this capability.
 
 ## Verification and release boundary
 
 Local 0.5.0 verification passes 317 Core tests, 12 API/documentation tests, 10 SVG tests, and the three new native CI gates on lavapipe with Khronos validation. The portable image assertion rejects the old shader as a negative control.
 
-Gallery rebuild passes with Slang unavailable and all 24 precompiled bundle/manifest files copied unchanged. Missing artifacts, a stale commit, modified source, and modified bundle data are rejected. API regeneration is unchanged. Strict G# lint, canonical ShaderGen checks, workflow shell syntax, and the dependency-vulnerability gate pass.
+The initial evidence includes a precompiled Gallery artifact experiment. That path was removed during the final review after fetching the native macOS compiler support in 0.4.2. Those archived checks describe the earlier candidate, not the final release path. API regeneration, strict G# lint, canonical ShaderGen checks, workflow shell syntax, and the dependency-vulnerability gate passed on that candidate. Current verification is recorded in the [final review](final-release-review-2026-09-05.md).
 
 The [verification summary](evidence/release-0.5.0/verification.json), [file hashes](evidence/release-0.5.0/files.json), and [raw evidence archive](evidence/release-0.5.0/verification.tar.gz) preserve local results. Extract the archive into a temporary directory. The expected old-shader failure is recorded separately from successful gates.
 

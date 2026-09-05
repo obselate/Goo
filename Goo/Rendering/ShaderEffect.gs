@@ -121,7 +121,7 @@ public sealed class ShaderEffect {
       lock gate { return elapsedAt(Stopwatch.GetTimestamp()) }
     }
     set(v) {
-      if Double.IsNaN(v) || Double.IsInfinity(v) || v < 0.0 {
+      if Double.IsNaN(v) || Double.IsInfinity(v) || !finite(float32(v)) || v < 0.0 {
         throw ArgumentOutOfRangeException("value")
       }
       var callbacks([]Action)?

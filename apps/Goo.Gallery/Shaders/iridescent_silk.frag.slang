@@ -81,7 +81,7 @@ float4 gooEffect(float2 uv, float4 source, float4 backdrop)
     color = lerp(color, float3(0.012, 0.020, 0.036), shadowFold * 0.38);
 
     float2 centered = uv * 2.0 - 1.0;
-    color *= 0.78 + 0.22 * smoothstep(1.4, 0.18, dot(centered, centered));
+    color *= 0.78 + 0.22 * (1.0 - smoothstep(0.18, 1.4, dot(centered, centered)));
     float alpha = clamp(source.a + backdrop.a * 0.0, 0.0, 1.0);
     float3 retained = source.rgb / max(alpha, 0.0001);
     color = lerp(color, retained, alpha * 0.24);

@@ -33,14 +33,17 @@ float4 gooEffect(float2 uv, float4 source, float4 backdrop)
     float4 center = crtSample(sampleUv);
     float4 left = crtSample(sampleUv - float2(texel.x * separation, 0.0));
     float4 right = crtSample(sampleUv + float2(texel.x * separation, 0.0));
-    float alpha = clamp(center.a + source.a * 0.0 + backdrop.a * 0.0, 0.0, 1.0) * inside;
     float3 color = float3(right.r, center.g, left.b);
 
+    float bloomWeight = bloomAmount * 0.25;
     float4 bloom = crtSample(sampleUv + float2(texel.x * 2.0, 0.0));
     bloom += crtSample(sampleUv - float2(texel.x * 2.0, 0.0));
     bloom += crtSample(sampleUv + float2(0.0, texel.y * 2.0));
     bloom += crtSample(sampleUv - float2(0.0, texel.y * 2.0));
-    color += bloom.rgb * (bloomAmount * 0.25);
+    color += bloom.rgb * bloomWeight;
+    float sampledAlpha = max(center.a, max(left.a, right.a));
+    float alpha = clamp(max(sampledAlpha, bloom.a * bloomWeight)
+        + source.a * 0.0 + backdrop.a * 0.0, 0.0, 1.0) * inside;
 
     float scanline = 0.5 + 0.5 * sin(sampleUv.y * resolution.y * 3.14159265);
     color *= 1.0 - scanlineAmount * scanline;
@@ -50,7 +53,7 @@ float4 gooEffect(float2 uv, float4 source, float4 backdrop)
         ? float3(1.0, 0.88, 0.88)
         : (maskPhase < 2.0 ? float3(0.88, 1.0, 0.88) : float3(0.88, 0.88, 1.0));
     color *= mask;
-    float vignette = smoothstep(1.34, 0.24, radiusSquared);
+    float vignette = 1.0 - smoothstep(0.24, 1.34, radiusSquared);
     color *= 0.72 + 0.28 * vignette;
     float noise = crtHash(floor(sampleUv * resolution) + floor(frame.x * 24.0)) - 0.5;
     color += noise * 0.0045 * alpha;

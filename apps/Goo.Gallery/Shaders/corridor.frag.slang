@@ -92,7 +92,7 @@ float3 corridorArchColor(float3 point, float glow, float time)
 {
     float repeatZ = frac(point.z / CorridorPeriod + 0.5) - 0.5;
     float archBand = abs(repeatZ * CorridorPeriod);
-    float rib = smoothstep(0.18, 0.01, abs(archBand - 0.17));
+    float rib = 1.0 - smoothstep(0.01, 0.18, abs(archBand - 0.17));
     float vertical = saturate((point.y - 0.05) * 0.38);
     float shimmer = 0.5 + 0.5 * sin(time * 0.7 + point.y * 2.1 + point.x * 1.4);
     float3 base = lerp(float3(0.055, 0.060, 0.078),

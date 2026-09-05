@@ -271,7 +271,52 @@ internal class DragDropFixtures {
     input.HandleKey(root, resolver, Key.ShiftLeft, KeyModifiers{ Shift: true })
     input.QueuePointerRelease(60.0F, 10.0F)
     input.Drain(root, resolver, 1.0, nil)
-    return threw && endCount == 1 && queryCount == afterFailure
+    if !threw || endCount != 1 || queryCount != afterFailure { return false }
+
+    var throwMove bool
+    var moveEndCount int32
+    var callbackInput InputCoordinator?
+    var callbackRoot Node?
+    let callbackResolver = Resolver{}
+    let mountedCallbackRoot = Reconciler{ Res: Resolver{} }.Mount(Container{
+      Width: 160,
+      Height: 50,
+      DropTarget: DropTarget((e DragEvent) -> DragEffect.Move),
+      OnPointerMove: (e PointerEvent) -> {
+        if throwMove {
+          if let coordinator = callbackInput {
+            if let tree = callbackRoot { coordinator.Reset(tree, callbackResolver) }
+          }
+          throwAfterDragReset()
+        }
+      },
+      Children: { Container{
+        Width: 40,
+        Height: 40,
+        DragSource: DragSource(
+          (e DragStartEvent) -> DragData("payload", DragEffect.Move),
+          (e DragEndEvent) -> moveEndCount++),
+      } },
+    })
+    callbackRoot = mountedCallbackRoot
+    Layout().Calculate(mountedCallbackRoot, 160.0F, 50.0F)
+    let mountedCallbackInput = InputCoordinator()
+    callbackInput = mountedCallbackInput
+    mountedCallbackInput.AfterTreeUpdated(mountedCallbackRoot, callbackResolver, true)
+    beginDrag(mountedCallbackInput, mountedCallbackRoot, callbackResolver, 10.0F, 60.0F)
+    throwMove = true
+    mountedCallbackInput.QueuePointerMove(70.0F, 10.0F)
+    var stackPreserved bool
+    try {
+      mountedCallbackInput.Drain(mountedCallbackRoot, callbackResolver, 2.0, nil)
+    } catch (error InvalidOperationException) {
+      if let stack = error.StackTrace {
+        stackPreserved = error.Message == "drag move" && stack.Contains("throwAfterDragReset")
+      }
+    }
+    mountedCallbackInput.QueuePointerRelease(70.0F, 10.0F)
+    mountedCallbackInput.Drain(mountedCallbackRoot, callbackResolver, 3.0, nil)
+    return stackPreserved && moveEndCount == 1
   }
 
   func DropMutationAndPayloadOwnershipContract() bool {
@@ -512,6 +557,10 @@ internal class DragDropFixtures {
       input.QueuePointerMove(targetX, 10.0F)
       input.Drain(root, resolver, 0.0, nil)
     }
+
+  private func throwAfterDragReset() {
+    throw InvalidOperationException("drag move")
+  }
 
   private func createPayloadCase() DragDropPayloadCase {
     let payload = DragDropDisposable()

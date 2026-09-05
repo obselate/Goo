@@ -156,13 +156,16 @@ internal unsafe partial class VulkanWindowTarget {
     }
     let addDebugUtilsExtension = debugUtilsEnabled
       && !ContainsExtensionName(requiredExtensions, VkConstants.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
-    let portabilityEnumerationEnabled = ContainsExtensionName(
-      requiredExtensions, VkConstants.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)
-      || HasInstanceExtensionName(VkConstants.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)
+    let portabilityEnumerationEnabled = HasInstanceExtensionName(
+      VkConstants.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)
+    let skipRequiredPortabilityEnumeration = !portabilityEnumerationEnabled
+      && ContainsExtensionName(
+        requiredExtensions, VkConstants.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)
     let addPortabilityEnumerationExtension = portabilityEnumerationEnabled
       && !ContainsExtensionName(
         requiredExtensions, VkConstants.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)
     var enabledExtensionCount int32 = requiredExtensions.Length
+    -(if skipRequiredPortabilityEnumeration { 1 } else { 0 })
     if instanceMaintenanceVariant != VulkanSwapchainMaintenanceVariant.None
       && !ContainsExtensionName(requiredExtensions, surfaceMaintenanceName) {
         enabledExtensionCount = enabledExtensionCount + 1
@@ -184,8 +187,15 @@ internal unsafe partial class VulkanWindowTarget {
       let extensionPointers * VulkanWindowTargetExtensionPointer =
       stackalloc[enabledExtensionCount]VulkanWindowTargetExtensionPointer
       var extensionIndex int32 = 0
-      while extensionIndex < requiredExtensions.Length {
-        let storage = Marshal.StringToCoTaskMemUTF8(requiredExtensions[extensionIndex])
+      var requiredExtensionIndex int32 = 0
+      while requiredExtensionIndex < requiredExtensions.Length {
+        let requiredExtension = requiredExtensions[requiredExtensionIndex]
+        requiredExtensionIndex = requiredExtensionIndex + 1
+        if skipRequiredPortabilityEnumeration
+          && requiredExtension == VkConstants.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME{
+            continue
+          }
+        let storage = Marshal.StringToCoTaskMemUTF8(requiredExtension)
         extensionStorage[extensionIndex] = storage
         extensionPointers[extensionIndex].Value = *int8(storage)
         extensionIndex = extensionIndex + 1

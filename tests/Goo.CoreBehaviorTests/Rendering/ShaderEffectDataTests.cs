@@ -59,6 +59,15 @@ public sealed class ShaderEffectDataTests
         Assert.True(effect.SetData(0, null));
         Assert.Throws<ArgumentOutOfRangeException>(() => effect.SetData(-1, data));
         Assert.Throws<ArgumentOutOfRangeException>(() => effect.SetData(4, data));
+
+        effect.ElapsedSeconds = 12.5;
+        Assert.Equal(12.5, effect.ElapsedSeconds);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => effect.ElapsedSeconds = double.MaxValue);
+        Assert.Throws<ArgumentOutOfRangeException>(() => effect.ElapsedSeconds = double.PositiveInfinity);
+        Assert.Throws<ArgumentOutOfRangeException>(() => effect.ElapsedSeconds = double.NaN);
+        Assert.Throws<ArgumentOutOfRangeException>(() => effect.ElapsedSeconds = -1.0);
+        Assert.Equal(12.5, effect.ElapsedSeconds);
     }
 
     private static byte[] Program(byte[] spirv)

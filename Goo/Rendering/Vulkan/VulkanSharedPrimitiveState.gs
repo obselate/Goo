@@ -102,7 +102,7 @@ internal unsafe sealed partial class VulkanSharedPrimitiveFormatState : IDisposa
   internal prop LavaPipeline VkPipeline{
     get {
       return ResolvePipeline(ref lavaPipeline, analyticVertexModule, lavaModule,
-        pipelineLayout, false, true)
+        pipelineLayout, true, true)
     }
   }
   internal prop BlendPipeline VkPipeline{
@@ -248,7 +248,7 @@ internal unsafe sealed partial class VulkanSharedPrimitiveFormatState : IDisposa
     ResolvePipeline(ref sampledPipeline, analyticVertexModule, sampledModule,
       pipelineLayout, true, true)
     ResolvePipeline(ref lavaPipeline, analyticVertexModule, lavaModule,
-      pipelineLayout, false, true)
+      pipelineLayout, true, true)
     ResolvePipeline(ref blendPipeline, analyticVertexModule, blendModule,
       blendPipelineLayout, true, true)
     ResolvePipeline(ref pathPipeline, pathVertexModule, pathFragmentModule,

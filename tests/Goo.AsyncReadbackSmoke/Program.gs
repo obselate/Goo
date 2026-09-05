@@ -3295,6 +3295,10 @@ if Environment.GetEnvironmentVariable("GOO_LIQUID_GLASS_ALPHA_SMOKE") == "1" {
   RunLiquidGlassAlphaSmoke()
   return
 }
+if Environment.GetEnvironmentVariable("GOO_FRAGMENT_CORRECTNESS_SMOKE") == "1" {
+  RunFragmentCorrectnessSmoke()
+  return
+}
 if Environment.GetEnvironmentVariable("GOO_SHADER_EFFECT_BENCHMARK") == "1" {
   RunShaderEffectBenchmark()
   return

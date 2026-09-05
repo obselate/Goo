@@ -748,7 +748,7 @@ internal partial class PointerInput {
         if activeDragMatches() {
           terminateDrag(root, DragEndKind.Canceled, DragEffect.None, true, error)
         }
-        throw error
+        ExceptionDispatchInfo.Capture(error).Throw()
       }
       if activeDragMatches() {
         if let tree = root {

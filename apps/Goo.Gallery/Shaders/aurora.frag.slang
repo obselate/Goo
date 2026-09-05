@@ -71,7 +71,7 @@ float4 gooEffect(float2 uv, float4 source, float4 backdrop)
     color += third * float3(0.62, 0.18, 0.78) * intensity * 0.48;
 
     float2 centered = uv * 2.0 - 1.0;
-    float vignette = smoothstep(1.45, 0.26, dot(centered, centered));
+    float vignette = 1.0 - smoothstep(0.26, 1.45, dot(centered, centered));
     color *= 0.72 + 0.28 * vignette;
     color = color / (1.0 + max(color - 0.82, 0.0) * 0.65);
     float alpha = clamp(source.a + backdrop.a * 0.0, 0.0, 1.0);

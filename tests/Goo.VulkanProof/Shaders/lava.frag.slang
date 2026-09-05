@@ -202,8 +202,8 @@ void shade()
     }
 
     color *= light * 0.72 + 0.28;
-    color *= gooClipCoverage();
-    outColor = float4(max(color, float3(0.0)), 1.0);
+    float coverage = gooClipCoverage();
+    outColor = float4(max(color, float3(0.0)) * coverage, coverage);
 }
 
 #include "analytic_fragment_entry.slang"

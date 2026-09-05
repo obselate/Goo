@@ -14,7 +14,7 @@
     <Content Include="Assets/SpaceGrotesk-Variable.ttf" Link="SpaceGrotesk-Variable.ttf" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="Assets/VendSans-VariableFont_wght.ttf" Link="VendSans-VariableFont_wght.ttf" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
   </ItemGroup>
-  <ItemGroup Condition="'$(GooGalleryPrecompiledShaderRoot)' == ''">
+  <ItemGroup>
     <GooShaderEffect Include="Shaders/wolfenstein.frag.slang" TargetPath="Shaders/wolfenstein.goo-effect" />
     <GooShaderEffect Include="Shaders/chrome_sdf.frag.slang" TargetPath="Shaders/chrome_sdf.goo-effect" />
     <GooShaderEffect Include="Shaders/corridor.frag.slang" TargetPath="Shaders/corridor.goo-effect" />
@@ -28,29 +28,5 @@
     <GooShaderEffect Include="Shaders/iridescent_silk.frag.slang" TargetPath="Shaders/iridescent_silk.goo-effect" />
     <GooShaderEffect Include="Shaders/crt.frag.slang" TargetPath="Shaders/crt.goo-effect" />
   </ItemGroup>
-  <ItemGroup Condition="'$(GooGalleryPrecompiledShaderRoot)' != ''">
-    <_GooGalleryPrecompiledShader Include="wolfenstein;chrome_sdf;corridor;radial_light;ripple;terminal_glass;liquid_glass;volumetric;dither;aurora;iridescent_silk;crt" />
-    <Content Include="@(_GooGalleryPrecompiledShader->'$(GooGalleryPrecompiledShaderRoot)/Shaders/%(Identity).goo-effect')"
-             TargetPath="Shaders/%(Filename)%(Extension)"
-             CopyToOutputDirectory="PreserveNewest"
-             CopyToPublishDirectory="Always" />
-    <Content Include="@(_GooGalleryPrecompiledShader->'$(GooGalleryPrecompiledShaderRoot)/Shaders/%(Identity).goo-effect.json')"
-             TargetPath="Shaders/%(Filename)%(Extension)"
-             CopyToOutputDirectory="PreserveNewest"
-             CopyToPublishDirectory="Always" />
-    <Content Include="$(GooGalleryPrecompiledShaderRoot)/provenance.json"
-             TargetPath="Shaders/gallery-shaders.provenance.json"
-             CopyToOutputDirectory="PreserveNewest"
-             CopyToPublishDirectory="Always" />
-  </ItemGroup>
-  <Target Name="ValidateGooGalleryPrecompiledShaders"
-          BeforeTargets="AssignTargetPaths"
-          Condition="'$(GooGalleryPrecompiledShaderRoot)' != '' and '$(DesignTimeBuild)' != 'true'">
-    <Error Condition="'$(GooGalleryPrecompiledShaderCommit)' == ''"
-           Text="GooGalleryPrecompiledShaderCommit is required with GooGalleryPrecompiledShaderRoot." />
-    <Error Condition="!Exists('$(GooGalleryPrecompiledShaderRoot)/provenance.json')"
-           Text="Gallery precompiled shader provenance is missing: $(GooGalleryPrecompiledShaderRoot)/provenance.json" />
-    <Exec Command="python3 &quot;$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '..', '..', '.github', 'scripts', 'gallery-shader-artifact.py'))&quot; verify --repository &quot;$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '..', '..'))&quot; --input &quot;$(GooGalleryPrecompiledShaderRoot)&quot; --commit &quot;$(GooGalleryPrecompiledShaderCommit)&quot;" />
-  </Target>
   <Import Project="../../Goo/Goo.targets" />
 </Project>

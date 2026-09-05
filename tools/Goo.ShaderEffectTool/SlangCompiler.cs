@@ -13,6 +13,9 @@ internal sealed class SlangCompiler
     private const string WindowsExecutableSha256 = "e2966526f3ed76a2373c27dd6af282fdb1b010b40ae7b8ca90d9d41ee39a00c1";
     private const string WindowsRuntimeSha256 = "5b7c2a51827818ce64182ad0522d6bb50f87679c21baf5f364c7194d604372c5";
     private const string WindowsArchiveSha256 = "7fa1e69d68706ed18cc679270bc3a2e4a3f7400d9f7bf393564fad3b3bc03e25";
+    private const string MacOsArm64ExecutableSha256 = "7e4295527a0142b466d988184a15b27e5ef80be1f49943eec83d6aedfc725a15";
+    private const string MacOsArm64RuntimeSha256 = "ef20598c247dc673efafb42d5648326d894da2e8b18fc955d5485dd5a4c1efbe";
+    private const string MacOsArm64ArchiveSha256 = "5d7edc2c91c38d1914c14a5a410f0fe517bce9a284395336715ba36a091e9d9e";
 
     private readonly string path;
 
@@ -37,11 +40,7 @@ internal sealed class SlangCompiler
 
     public static SlangCompiler Find()
     {
-        if (System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture
-            != System.Runtime.InteropServices.Architecture.X64)
-        {
-            throw new PlatformNotSupportedException("slangc 2026.16 is locked only for x64");
-        }
+        RequireSupportedPlatform();
 
         string path = FindTool("slangc");
         ToolResult version = Run(path, new[] { "-version" });
@@ -73,9 +72,18 @@ internal sealed class SlangCompiler
             expectedRuntime = WindowsRuntimeSha256;
             archive = WindowsArchiveSha256;
         }
+        else if (OperatingSystem.IsMacOS())
+        {
+            platform = "macos-aarch64";
+            runtime = Path.GetFullPath(Path.Combine(
+                Path.GetDirectoryName(path)!, "..", "lib", $"libslang-compiler.0.{Version}.dylib"));
+            expectedExecutable = MacOsArm64ExecutableSha256;
+            expectedRuntime = MacOsArm64RuntimeSha256;
+            archive = MacOsArm64ArchiveSha256;
+        }
         else
         {
-            throw new PlatformNotSupportedException("slangc 2026.16 is locked only for Linux and Windows");
+            throw new PlatformNotSupportedException();
         }
 
         string executableSha256 = HashFile(path);
@@ -95,6 +103,21 @@ internal sealed class SlangCompiler
                 $"Slang compiler runtime SHA-256 must be {expectedRuntime}, found {runtimeSha256}");
         }
         return new SlangCompiler(path, platform, executableSha256, runtimeSha256, archive);
+    }
+
+    private static void RequireSupportedPlatform()
+    {
+        System.Runtime.InteropServices.Architecture architecture =
+            System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture;
+        bool supported = architecture == System.Runtime.InteropServices.Architecture.X64
+            && (OperatingSystem.IsLinux() || OperatingSystem.IsWindows())
+            || architecture == System.Runtime.InteropServices.Architecture.Arm64
+            && OperatingSystem.IsMacOS();
+        if (!supported)
+        {
+            throw new PlatformNotSupportedException(
+                "slangc 2026.16 is locked to Linux x64, Windows x64, and macOS arm64");
+        }
     }
 
     public IReadOnlyList<string> Compile(
