@@ -7,7 +7,7 @@ import System.Numerics
 import Goo
 
 class ShaderEffectCell : Cell {
-  private let effect ShaderEffect
+  private var effect ShaderEffect
 
   shared {
     let Target ElementHandle = ElementHandle{}
@@ -17,6 +17,11 @@ class ShaderEffectCell : Cell {
 
   init(value ShaderEffect) {
     effect = value
+  }
+
+  internal func ReplaceEffect(value ShaderEffect) {
+    effect = value
+    Rebuild()
   }
 
   override func Build() Blob -> Container {
@@ -163,7 +168,9 @@ func RunShaderEffectSmoke() {
     "GOO_VK_DIAGNOSTICS=1 is required")
   let shaderPath = Path.Combine(AppContext.BaseDirectory, "control_effect.frag.goo-effect")
   Require(File.Exists(shaderPath), "Shader effect asset is missing")
-  let effect = ShaderEffect(ShaderEffectProgram.Load(shaderPath), true, 20.0F)
+  let program = ShaderEffectProgram.Load(shaderPath)
+  let effect = ShaderEffect(program, true, 20.0F)
+  let replacementEffect = ShaderEffect(program, true, 20.0F)
   var transferReleaseCount int32
   let data = ShaderEffectData.Transfer(BitConverter.GetBytes(1.0F),
     func() { transferReleaseCount++ })
@@ -173,6 +180,10 @@ func RunShaderEffectSmoke() {
     "Shader effect rejected its initial parameter")
   Require(!effect.SetParameter(0, Vector4(1.0F, 0.25F, 0.25F, 0.0F)),
     "Shader effect reported an unchanged parameter as changed")
+  Require(replacementEffect.SetData(0, data),
+    "Replacement shader effect rejected its retained data source")
+  Require(replacementEffect.SetParameter(0, Vector4(0.25F, 1.0F, 0.25F, 1.0F)),
+    "Replacement shader effect rejected its initial parameter")
   let cell = ShaderEffectCell(effect)
   let capturedError = StringWriter()
   let originalError = Console.Error
@@ -214,6 +225,25 @@ func RunShaderEffectSmoke() {
         && int32(clippedCorner[2]) > int32(clippedCorner[1]) + 60,
       "Shader effect escaped the rounded control source: "
       +PrimitivePixelText(clippedCorner))
+
+    cell.ReplaceEffect(replacementEffect)
+    WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+    let replacement = PrimitiveReadback(opened, metrics)
+    let replacementCenter = PrimitiveLogicalPixel(replacement.Pixels,
+      replacement.Width, metrics, targetX, targetY)
+    Require(int32(replacementCenter[2]) > int32(replacementCenter[0]) + 100
+        && int32(replacementCenter[2]) > int32(replacementCenter[1]) + 60,
+      "Shader effect-only replacement did not reach the renderer: "
+      +PrimitivePixelText(replacementCenter))
+    cell.ReplaceEffect(effect)
+    WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+    let restored = PrimitiveReadback(opened, metrics)
+    let restoredCenter = PrimitiveLogicalPixel(restored.Pixels,
+      restored.Width, metrics, targetX, targetY)
+    Require(int32(restoredCenter[0]) > int32(restoredCenter[1]) + 80
+        && int32(restoredCenter[0]) > int32(restoredCenter[2]) + 80,
+      "Shader effect-only restoration did not reach the renderer: "
+      +PrimitivePixelText(restoredCenter))
 
     WindowReadbackTestFixture.InputQueuePointerMove(opened, targetX, targetY)
     WindowReadbackTestFixture.InputQueuePointerPress(opened, targetX, targetY)
@@ -406,7 +436,7 @@ func RunShaderEffectSmoke() {
   Require(layerResidentBytes == 0uL && layerTargetCount == 0uL
       && layerLeasedCount == 0uL,
     "Shader effect gate left layer resources resident after close")
-  Console.WriteLine("shader-effect-smoke: control=button backdrop=1 blend=multiply combined=1 clip=rounded input=click"
+  Console.WriteLine("shader-effect-smoke: control=button backdrop=1 blend=multiply combined=1 clip=rounded input=click effect_replacement=1 effect_restore=1"
     +" data=retained transfer_releases=" + transferReleaseCount.ToString()
     +" resize=1 dpi=" + displayScaleX.ToString("0.###")
     +" device_recovery=" + deviceRecoveries.ToString()

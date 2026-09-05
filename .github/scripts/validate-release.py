@@ -12,6 +12,10 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 MAX_BYTES = 20_971_520
 MAX_GLIBC = (2, 27)
+MAX_MACOS = (14, 0, 0)
+MACHO_ARM64 = 0x0100000C
+MACHO_DYLIB = 6
+MACHO_MAGIC_64 = 0xFEEDFACF
 WINDOWS_SDL_SHA256 = "2632e21625861a0dc106f2b1abb649e610d8be88534ba74c76a763abe5aefaa3"
 WINDOWS_SDL_IMPORTS = {
     "ADVAPI32.dll", "GDI32.dll", "IMM32.dll", "KERNEL32.dll", "OLEAUT32.dll",
@@ -153,6 +157,148 @@ def pe_imports(path: Path) -> set[str]:
     if result.returncode != 0:
         raise SystemExit(f"could not inspect PE imports: {path}")
     return set(re.findall(r"DLL Name:\s+(\S+)", result.stdout))
+
+
+def macho_version(value: int) -> tuple[int, int, int]:
+    return value >> 16, (value >> 8) & 0xFF, value & 0xFF
+
+
+def macho_string(data: bytes, command: int, size: int, offset: int) -> str:
+    if offset < 8 or offset >= size:
+        raise SystemExit("Mach-O load command has an invalid string offset")
+    start = command + offset
+    end = data.find(b"\0", start, command + size)
+    if end < 0:
+        raise SystemExit("Mach-O load command has an unterminated string")
+    try:
+        return data[start:end].decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise SystemExit("Mach-O load command has a non-UTF-8 string") from error
+
+
+def macho_metadata(data: bytes) -> dict[str, object]:
+    if len(data) < 32:
+        raise SystemExit("native payload has a truncated Mach-O header")
+    magic, cpu, _, file_type, count, commands_size, _, _ = struct.unpack_from(
+        "<IIIIIIII", data)
+    if magic != MACHO_MAGIC_64 or cpu != MACHO_ARM64 or file_type != MACHO_DYLIB:
+        raise SystemExit("native payload is not a thin arm64 Mach-O dylib")
+    if 32 + commands_size > len(data):
+        raise SystemExit("native payload has a truncated Mach-O load-command table")
+    position = 32
+    image_name = None
+    dependencies: set[str] = set()
+    minimum = None
+    for _ in range(count):
+        if position + 8 > 32 + commands_size:
+            raise SystemExit("native payload has a truncated Mach-O load command")
+        command, size = struct.unpack_from("<II", data, position)
+        if size < 8 or position + size > 32 + commands_size:
+            raise SystemExit("native payload has an invalid Mach-O load command")
+        base_command = command & 0x7FFFFFFF
+        if base_command in {0x0C, 0x0D, 0x18, 0x1F, 0x20, 0x23}:
+            if size < 24:
+                raise SystemExit("native payload has a truncated Mach-O dylib command")
+            name_offset = struct.unpack_from("<I", data, position + 8)[0]
+            name = macho_string(data, position, size, name_offset)
+            if base_command == 0x0D:
+                if image_name is not None:
+                    raise SystemExit("native payload has multiple Mach-O install names")
+                image_name = name
+            else:
+                dependencies.add(name)
+        elif base_command == 0x32:
+            if size < 24:
+                raise SystemExit("native payload has a truncated LC_BUILD_VERSION")
+            platform, value = struct.unpack_from("<II", data, position + 8)
+            if platform != 1:
+                raise SystemExit("native payload does not target macOS")
+            value = macho_version(value)
+            if minimum is not None and minimum != value:
+                raise SystemExit("native payload has conflicting minimum macOS metadata")
+            minimum = value
+        elif base_command == 0x24:
+            if size < 16:
+                raise SystemExit("native payload has a truncated LC_VERSION_MIN_MACOSX")
+            value = macho_version(struct.unpack_from("<I", data, position + 8)[0])
+            if minimum is not None and minimum != value:
+                raise SystemExit("native payload has conflicting minimum macOS metadata")
+            minimum = value
+        position += size
+    if position != 32 + commands_size:
+        raise SystemExit("native payload has inconsistent Mach-O load commands")
+    if image_name is None or minimum is None:
+        raise SystemExit("native payload lacks Mach-O identity or minimum macOS metadata")
+    return {
+        "dependencies": sorted(dependencies),
+        "installName": image_name,
+        "minimumMacOS": minimum,
+    }
+
+
+def validate_macos_payloads(payloads: dict[str, bytes]) -> None:
+    metadata = {
+        name: macho_metadata(data)
+        for name, data in payloads.items()
+        if name.endswith(".dylib")
+    }
+    expected_names = {
+        "libMoltenVK.dylib": "@rpath/libMoltenVK.dylib",
+        "libSDL3.dylib": "@rpath/libSDL3.dylib",
+        "libgoo-harfbuzz-gpu.dylib": "@rpath/libgoo-harfbuzz-gpu.dylib",
+        "libgoo-harfbuzz.dylib": "@rpath/libgoo-harfbuzz.dylib",
+    }
+    expected_rpath_dependencies = {
+        "libgoo-harfbuzz-gpu.dylib": {"@rpath/libgoo-harfbuzz.dylib"},
+    }
+    if set(metadata) != set(expected_names):
+        raise SystemExit("macOS native payload set is incomplete")
+    for name, expected_name in expected_names.items():
+        details = metadata[name]
+        if details["installName"] != expected_name:
+            raise SystemExit(f"packaged {name} has an unexpected Mach-O install name")
+        minimum = details["minimumMacOS"]
+        if minimum > MAX_MACOS:
+            value = ".".join(map(str, minimum))
+            raise SystemExit(f"packaged {name} requires macOS {value}; maximum is 14.0")
+        for dependency in details["dependencies"]:
+            if not dependency.startswith(("/System/Library/", "/usr/lib/", "@rpath/")):
+                raise SystemExit(f"packaged {name} has an unexpected dependency: {dependency}")
+            if dependency.startswith("@rpath/") \
+                    and dependency not in expected_rpath_dependencies.get(name, set()):
+                raise SystemExit(f"packaged {name} has an unexpected private dependency: {dependency}")
+
+    recorded = json.loads(payloads["text-native-build.json"])
+    manifest = json.loads((ROOT / "tools/Goo.TextNative/manifest.json").read_text())
+    for field in ("schema", "name", "source", "build", "requiredExports", "outputs"):
+        if recorded.get(field) != manifest.get(field):
+            raise SystemExit(f"packaged macOS text-native provenance is stale: {field}")
+    evidence = recorded.get("buildEvidence", {})
+    if evidence.get("target") != "osx-arm64" or evidence.get("sourceDirectory") != "temporary":
+        raise SystemExit("packaged macOS text-native build evidence is invalid")
+    if evidence.get("environment") != manifest["build"]["environments"]["osx-arm64"]:
+        raise SystemExit("packaged macOS text-native build environment is stale")
+    if evidence.get("deploymentTarget") != "14.0":
+        raise SystemExit("packaged macOS text-native deployment target is stale")
+    for field, expected in manifest["build"].items():
+        if field != "environments" and evidence.get(field) != expected:
+            raise SystemExit(f"packaged macOS text-native build policy is stale: {field}")
+    artifacts = recorded.get("artifacts", {})
+    for role, name in manifest["outputs"]["osx-arm64"].items():
+        artifact = artifacts.get(role, {})
+        data = payloads[name]
+        details = metadata[name]
+        required_exports = set(manifest["requiredExports"][role])
+        if artifact.get("file") != name \
+                or artifact.get("bytes") != len(data) \
+                or artifact.get("sha256") != hashlib.sha256(data).hexdigest() \
+                or artifact.get("architectures") != ["arm64"] \
+                or artifact.get("installName") != details["installName"] \
+                or details["dependencies"] != sorted(
+                    manifest["build"]["macos"]["requiredNeeded"][role]) \
+                or artifact.get("needed") != details["dependencies"] \
+                or not required_exports.issubset(set(artifact.get("exports", []))):
+            raise SystemExit(f"packaged macOS text-native artifact provenance is invalid: {name}")
 
 
 def pe_debug_entries(data: bytes) -> list[tuple[int, int, bytes]]:
@@ -325,14 +471,13 @@ def validate_package(path: Path) -> str:
                 "libgoo-harfbuzz-gpu.dylib",
                 "libgoo-harfbuzz.dylib",
             )
-            for name in macos_names:
-                data = archive.read(f"runtimes/osx-arm64/native/{name}")
-                if data[:4] != b"\xcf\xfa\xed\xfe":
-                    raise SystemExit(f"packaged {name} is not a thin arm64 Mach-O library")
-            text_native = json.loads(
-                archive.read("runtimes/osx-arm64/native/text-native-build.json"))
-            if text_native.get("buildEvidence", {}).get("target") != "osx-arm64":
-                raise SystemExit("packaged macOS text-native provenance target is invalid")
+            macos_payloads = {
+                name: archive.read(f"runtimes/osx-arm64/native/{name}")
+                for name in macos_names
+            }
+            macos_payloads["text-native-build.json"] = archive.read(
+                "runtimes/osx-arm64/native/text-native-build.json")
+            validate_macos_payloads(macos_payloads)
     print(f"Package OK: {path.stat().st_size} bytes")
     return sdl_digest
 

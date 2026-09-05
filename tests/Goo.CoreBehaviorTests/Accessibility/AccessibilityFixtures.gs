@@ -937,6 +937,7 @@ internal class AccessibilityScaleHoverCell : Cell {
   override func Build() Blob -> Container {
     Width: 96.0,
     Height: 24.0,
+    HitTestSelf: true,
     Accessibility: Accessibility{ Role: AccessibilityRole.Generic, Name: "hover target" },
   }
 }

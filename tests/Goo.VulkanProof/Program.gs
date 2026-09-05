@@ -2390,7 +2390,7 @@ unsafe func Main() int32 {
         if imageReadbackRequested {
           sceneFrame = SceneFrame(2)
           BuildVulkanImageScene(sceneFrame!!, 0u)
-          if sceneFrame!!.DrawRefCount != 1 || sceneFrame!!.CachedImageCount != 1 {
+          if sceneFrame!!.DrawRefCount != 2 || sceneFrame!!.CachedImageCount != 1 {
             throw InvalidOperationException("Vulkan image scene plan is invalid")
           }
         } else if shadowReadbackRequested {
@@ -3064,10 +3064,6 @@ unsafe func Main() int32 {
           throw InvalidOperationException("Vulkan sampled image readback pixels are invalid")
         }
         imageDigest = VulkanImageReadbackDigest(readbackBytes, offscreenExtent.width, offscreenExtent.height)
-        if VulkanImageE2EContract.ExpectedDigest != 0uL
-          && imageDigest != VulkanImageE2EContract.ExpectedDigest{
-            throw InvalidOperationException("Vulkan sampled image readback digest changed")
-          }
         Console.WriteLine("Image readback: digest=${imageDigest} allocated=${offscreenTargetValue.LastRecordAllocatedBytes}")
       } else if shadowReadbackRequested {
         if offscreenTargetValue.LastRecordAllocatedBytes != 0L {
@@ -3166,6 +3162,9 @@ unsafe func Main() int32 {
           throw InvalidOperationException("Vulkan linear sampled image readback pixels are invalid")
         }
         imageLinearDigest = VulkanImageReadbackDigest(secondReadback, offscreenExtent.width, offscreenExtent.height)
+        if imageLinearDigest == imageDigest {
+          throw InvalidOperationException("Vulkan nearest and linear image readbacks are identical")
+        }
         let plateauStatsAfter = imageResources!!.Stats
         let plateauAllocatorAfter = readbackAllocatorValue.Counters
         if !VulkanImageUploadStatsEqual(plateauUploadBefore, plateauStatsAfter.Upload)

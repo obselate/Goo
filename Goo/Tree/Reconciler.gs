@@ -648,7 +648,9 @@ internal class Reconciler {
       }
       let keyboardChanged = InputCallbacks.Sync(n, b)
       let textChanged = TextInputCallbacks.Sync(n, b)
-      if keyboardChanged || textChanged {
+      let dragDropChanged = DragDropMetadata.Sync(n, b)
+      n.HasSparseInputState = b.HasSparseInputState || n.HasElementHandle
+      if keyboardChanged || textChanged || dragDropChanged {
         MarkEffects(ReconcileEffects.Input)
       }
     }
@@ -1399,13 +1401,6 @@ internal func sameStyleEntries(a StyleEntries?, b StyleEntries?) bool {
   }
   return true
 }
-
-internal func sameStyleEntry(a StyleEntry, b StyleEntry) bool ->
-a.A == b.A && a.B == b.B && a.C == b.C && a.D == b.D
-  && entryText(a) == entryText(b) && sameGradient(entryGradient(a), entryGradient(b))
-  && sameBoxShadows(entryShadows(a), entryShadows(b))
-  && samePath(entryPath(a), entryPath(b))
-  && entryImageSource(a) == entryImageSource(b)
 
 internal func sameDashPattern(a DashPattern?, b DashPattern?) bool {
   if a == b {

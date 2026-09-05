@@ -21,6 +21,7 @@ internal func resolvedHitTestSelf(b Blob, focusable bool, entries StyleEntries?,
     if b.OnPointerEnter != nil { return true }
     if b.OnPointerLeave != nil { return true }
     if b.OnWheel != nil { return true }
+    if b.HasSparseInputState && DragDropMetadata.HasBlobBindings(b) { return true }
     if hover != nil { return true }
     if active != nil { return true }
     return inputStyleRequiresHitTest(entries)

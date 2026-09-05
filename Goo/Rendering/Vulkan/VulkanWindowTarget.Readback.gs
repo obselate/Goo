@@ -149,35 +149,20 @@ internal unsafe partial class VulkanWindowTarget {
         if captureFrame == nil {
           BeginFrame()
           if !frameBegun {
-            if reusedSlot {
-              ReleaseReusableReadback(request, pool)
-            }
             return WindowReadbackRequestStatus.NotReady
           }
           Render(root, background, dpi)
           if !frameRendered {
-            if reusedSlot {
-              ReleaseReusableReadback(request, pool)
-            }
             return WindowReadbackRequestStatus.Failed
           }
           readbackTiming.RecordTicks = Stopwatch.GetTimestamp()
           Present()
           if let currentRuntime = runtime {
             if currentRuntime.DeviceLost {
-              if reusedSlot {
-                AbandonReusableReadback(request, pool)
-                readbackPool = nil
-                readbackRequest = nil
-                readbackAbandonCount = readbackAbandonCount + 1uL
-              }
               return WindowReadbackRequestStatus.DeviceLost
             }
           }
           if frameFailed {
-            if reusedSlot {
-              ReleaseReusableReadback(request, pool)
-            }
             return WindowReadbackRequestStatus.Failed
           }
           let prerequisite = sceneCompiler.Frame

@@ -363,8 +363,8 @@
       "source": "analytic_sampled_image.frag.slang",
       "output": "analytic_sampled_image.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "f56c096fe863905b609b74d051e6f02ac7163f9c43231de9b80532e043f67853",
-      "outputSha256": "d2cca91ab6b81d3ad525840394d29ae712838b46372f642dc3b28a81fd325518",
+      "sourceSha256": "9e78f171ee53300ac9069fefe19819267e9cc1edf205940846f4c7c1f48e620e",
+      "outputSha256": "f06f2d9e35eda71a018575beaa630c876960477bc9fcde2c45456bf0e47da694",
       "outputBytes": 6092,
       "capabilities": [
         1
@@ -402,9 +402,9 @@
       "source": "path_band.frag.slang",
       "output": "path_band.frag.spv",
       "entryPoint": "main",
-      "sourceSha256": "4028f811e1ad789b5b26b9d2d34663bd770334b298ba908e5f4c17f667e0bfbc",
-      "outputSha256": "ff8ba0f3b071f3d3f62c8b0ee0fb596558f493f4a23e3139d7c1b71a305d4c2c",
-      "outputBytes": 110004,
+      "sourceSha256": "bec23e8fb1ba1e8cf614a27e19a325417da6a7c677472d87725c2d33ffed3d47",
+      "outputSha256": "d35f24052632ec03b9436cb64963d6cd6b6707a4da1a8f3309d45ca35d5ad03f",
+      "outputBytes": 111524,
       "capabilities": [
         1
       ]
@@ -473,8 +473,8 @@
       "output": "clip_mask.frag.spv",
       "entryPoint": "main",
       "sourceSha256": "21ef8bfa25dce6aa42fc885699535b2d5a55ed6339e72e62741ac99a64170cea",
-      "outputSha256": "f3d6946d46cbb78a9c8c4e098369a0fa4ab69f18cd9f157271578f7898b4208f",
-      "outputBytes": 103960,
+      "outputSha256": "44d9055153c9bba0822b0eec624473a2468ba30835e6c8d7ec81ed90f3ba8c08",
+      "outputBytes": 105480,
       "capabilities": [
         1
       ]

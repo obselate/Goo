@@ -1,0 +1,6 @@
+<Project>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)BenchmarkFixture.gs"
+             Link="ReconcileBenchmarkFixture.gs" />
+  </ItemGroup>
+</Project>

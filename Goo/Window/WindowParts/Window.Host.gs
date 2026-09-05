@@ -276,7 +276,7 @@ public partial class Window {
     }
     IsFocused = hasFocus
     if !hasFocus {
-      input.FocusLost(resolver)
+      input.FocusLost(node, resolver)
       markDirtyAndRender()
     }
     notifications.RaiseFocusChanged(hasFocus)

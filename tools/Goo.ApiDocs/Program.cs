@@ -91,6 +91,8 @@ static string BuildPage(string directory, ApiType[] types, ApiMember[] members, 
         AppendTextInputGuide(text);
     if (directory == "Input")
         AppendPointerLifecycleGuide(text);
+    if (directory == "Input")
+        AppendDragDropGuide(text);
     if (directory == "Style")
         AppendStyleCompositionGuide(text);
     if (directory == "Cell")
@@ -415,6 +417,22 @@ static void AppendPointerLifecycleGuide(StringBuilder text)
     text.AppendLine("`PointerEvent.IsPrimary` is true for the mouse and the first active touch or pen contact in a device-type sequence. The primary contact stays primary through its up callback. Goo does not promote another held contact during that sequence.");
     text.AppendLine();
     text.AppendLine("`PointerEvent.Pressure` is normalized to the inclusive range from 0 to 1. Mouse pressure is 1 only while the primary button is held and 0 otherwise. Touch samples every SDL down, move, and up event. Pen samples its latest pressure-axis value on the next down, move, up, or pen-button event. A pressure-axis event alone emits no `PointerMove`. A pen proximity-out clears that pen's sampled pressure. Goo does not coalesce movement or expose tilt, twist, contact geometry, raw history, or gesture recognition.");
+}
+
+static void AppendDragDropGuide(StringBuilder text)
+{
+    text.AppendLine();
+    text.AppendLine("## Transfer data within a Goo window");
+    text.AppendLine();
+    text.AppendLine("Attach an optional `DragSource` or `DropTarget` descriptor to a `Blob`. Goo records a source candidate after an unclaimed primary press. It calls `DragSource.Create` once when movement reaches four logical pixels. Returning null rejects the drag and preserves normal click behavior. Returning `DragData` captures the initiating pointer and suppresses its click.");
+    text.AppendLine();
+    text.AppendLine("`DragData.AllowedEffects` must contain `Copy`, `Move`, or both. A target query accepts by returning exactly one allowed effect. Any other value is treated as `None`. Goo hit-tests independently of source capture, honors clipping and transforms, and walks from the deepest target to its ancestors. It queries again when pointer modifiers change, after input-affecting tree updates, and immediately before release. A target with no `Changed` callback can accept a no-op drop through `Query`.");
+    text.AppendLine();
+    text.AppendLine("The selected target receives `Enter`, `Move`, `Leave`, and `Drop` snapshots through `Changed`. Positions are current target-local and logical-window coordinates. A successful `Drop` remains successful when its callback removes or reparents the target or source. Goo makes no further callback to a detached owner.");
+    text.AppendLine();
+    text.AppendLine("Escape, pointer cancellation, focus loss, window close, source removal or disablement, and callback failure cancel the session. Internal termination and capture cleanup run once. `DragSource.End` runs at most once only while its source remains mounted. Goo strongly retains the payload through an eligible `End`, then releases it. Goo never calls `Dispose` on consumer payloads. Callback cleanup preserves the original exception.");
+    text.AppendLine();
+    text.AppendLine("One pointer drag can be active per window. Goo provides no drag preview, automatic scrolling, native transfer, or generic keyboard target navigation. Applications must expose an equivalent keyboard and accessibility action when drag movement affects application state.");
 }
 
 static void AppendTextInputAreaGuide(StringBuilder text)

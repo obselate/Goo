@@ -61,6 +61,7 @@ internal class InputFixtures {
       Path: PathBuilder().MoveTo(0.5, 0.0).ArcTo(0.5, 0.5, 0.0, false, true, 0.5, 1.0).ArcTo(0.5, 0.5, 0.0, false, true, 0.5, 0.0).Close().Build(),
       Transform: PanelTransform{ TranslateX: 50 },
       TransformOriginX: Length.Percent(0), TransformOriginY: Length.Percent(0),
+      OnClick: () -> {},
     })
     Layout().Calculate(shape, 200.0F, 100.0F)
     if hitTopmost(shape, 100.0F, 50.0F) != shape
@@ -1608,7 +1609,7 @@ internal class InputFixtures {
               ZIndex: 100 },
           } },
         Container{ Key: "high-parent", Position: PositionType.Absolute, Width: 40, Height: 40,
-          ZIndex: 1 },
+          ZIndex: 1, HitTestSelf: true },
       },
     })
     Layout().Calculate(isolated, 40.0F, 40.0F)
@@ -1618,7 +1619,7 @@ internal class InputFixtures {
         Container{ Key: "clip", Position: PositionType.Absolute, Width: 20, Height: 20,
           Overflow: Overflow.Hidden, ZIndex: 10, HitTestSelf: false, Children: {
             Container{ Key: "clipped-child", Position: PositionType.Absolute,
-              Width: 40, Height: 40, ZIndex: 100 },
+              Width: 40, Height: 40, ZIndex: 100, HitTestSelf: true },
           } },
       },
     })
@@ -1641,9 +1642,9 @@ internal class InputFixtures {
     let root = Reconciler{ Res: Resolver{} }.Mount(Container{
       Key: "root", Width: 40, Height: 40, Children: {
         Container{ Key: "first", Position: PositionType.Absolute, Width: 40, Height: 40,
-          ZIndex: firstZ },
+          ZIndex: firstZ, HitTestSelf: true },
         Container{ Key: "second", Position: PositionType.Absolute, Width: 40, Height: 40,
-          ZIndex: secondZ },
+          ZIndex: secondZ, HitTestSelf: true },
       },
     })
     Layout().Calculate(root, 40.0F, 40.0F)
@@ -2238,7 +2239,7 @@ internal class ZIndexRuntimeRootCell : Cell {
   override func Build() Blob -> Container { Width: 40, Height: 40, Children: {
     Cell.Mount[ZIndexRuntimeChildCell]("dynamic"),
     Container{ Key: "sibling", Position: PositionType.Absolute,
-      Width: 40, Height: 40, ZIndex: 1 },
+      Width: 40, Height: 40, ZIndex: 1, HitTestSelf: true },
   } }
 }
 
@@ -2253,7 +2254,7 @@ internal class ZIndexRuntimeChildCell : Cell {
     if Raised {
       return Button{ Position: PositionType.Absolute, Width: 40, Height: 40, ZIndex: 2 }
     }
-    return Container{ Position: PositionType.Absolute, Width: 40, Height: 40 }
+    return Container{ Position: PositionType.Absolute, Width: 40, Height: 40, HitTestSelf: true }
   }
 }
 

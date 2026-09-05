@@ -1,0 +1,3 @@
+<Project>
+  <Import Project="/home/xaz/Projects/goo-gsharp/tests/Goo.AsyncReadbackSmoke/Goo.AsyncReadbackFixtures.props" />
+</Project>

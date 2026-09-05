@@ -28,6 +28,217 @@ Callbacks run only for the currently focused, enabled, visible client. Queued te
 
 `PointerEvent.Pressure` is normalized to the inclusive range from 0 to 1. Mouse pressure is 1 only while the primary button is held and 0 otherwise. Touch samples every SDL down, move, and up event. Pen samples its latest pressure-axis value on the next down, move, up, or pen-button event. A pressure-axis event alone emits no `PointerMove`. A pen proximity-out clears that pen's sampled pressure. Goo does not coalesce movement or expose tilt, twist, contact geometry, raw history, or gesture recognition.
 
+## Transfer data within a Goo window
+
+Attach an optional `DragSource` or `DropTarget` descriptor to a `Blob`. Goo records a source candidate after an unclaimed primary press. It calls `DragSource.Create` once when movement reaches four logical pixels. Returning null rejects the drag and preserves normal click behavior. Returning `DragData` captures the initiating pointer and suppresses its click.
+
+`DragData.AllowedEffects` must contain `Copy`, `Move`, or both. A target query accepts by returning exactly one allowed effect. Any other value is treated as `None`. Goo hit-tests independently of source capture, honors clipping and transforms, and walks from the deepest target to its ancestors. It queries again when pointer modifiers change, after input-affecting tree updates, and immediately before release. A target with no `Changed` callback can accept a no-op drop through `Query`.
+
+The selected target receives `Enter`, `Move`, `Leave`, and `Drop` snapshots through `Changed`. Positions are current target-local and logical-window coordinates. A successful `Drop` remains successful when its callback removes or reparents the target or source. Goo makes no further callback to a detached owner.
+
+Escape, pointer cancellation, focus loss, window close, source removal or disablement, and callback failure cancel the session. Internal termination and capture cleanup run once. `DragSource.End` runs at most once only while its source remains mounted. Goo strongly retains the payload through an eligible `End`, then releases it. Goo never calls `Dispose` on consumer payloads. Callback cleanup preserves the original exception.
+
+One pointer drag can be active per window. Goo provides no drag preview, automatic scrolling, native transfer, or generic keyboard target navigation. Applications must expose an equivalent keyboard and accessibility action when drag movement affects application state.
+
+## `DragData`
+
+Source:
+
+- [`DragDrop.gs`](../../Goo/Input/DragDrop.gs)
+
+Holds the consumer-owned value and allowed effects for one in-app drag operation.
+
+### `new(System.Object,DragEffect)`
+
+Creates drag data for a non-null payload and one or more allowed effects.
+
+- `value`: consumer-owned payload retained for the drag lifetime
+- `allowedEffects`: effects that a target may select
+
+### `AllowedEffects`
+
+Gets the effects that a target may select.
+
+### `Value`
+
+Gets the consumer-owned payload.
+
+## `DragEffect`
+
+Source:
+
+- [`DragDrop.gs`](../../Goo/Input/DragDrop.gs)
+
+Selects the effects allowed or accepted by an in-app drag operation.
+
+### Values
+
+- `None`
+- `Copy`
+- `Move`
+
+## `DragEndEvent`
+
+Source:
+
+- [`DragDrop.gs`](../../Goo/Input/DragDrop.gs)
+
+Describes the terminal source callback for one in-app drag operation.
+
+### `Effect`
+
+Gets the completed effect, or None when canceled.
+
+### `Kind`
+
+Gets how the operation ended.
+
+## `DragEndKind`
+
+Source:
+
+- [`DragDrop.gs`](../../Goo/Input/DragDrop.gs)
+
+Identifies how an in-app drag operation ended.
+
+### Values
+
+- `Dropped`
+- `Canceled`
+
+## `DragEvent`
+
+Source:
+
+- [`DragDrop.gs`](../../Goo/Input/DragDrop.gs)
+
+Describes one callback in the lifetime of an accepting drop target.
+
+### `AllowedEffects`
+
+Gets the effects allowed by the source.
+
+### `Data`
+
+Gets the drag data.
+
+### `Device`
+
+Gets the pointer device type.
+
+### `Effect`
+
+Gets the effect selected by this target, or None while querying.
+
+### `Kind`
+
+Gets the lifecycle phase.
+
+### `Modifiers`
+
+Gets the modifier keys held for this callback.
+
+### `PointerId`
+
+Gets the stable pointer identifier.
+
+### `Position`
+
+Gets the pointer position in target-local coordinates.
+
+### `WindowPosition`
+
+Gets the pointer position in logical window coordinates.
+
+## `DragEventKind`
+
+Source:
+
+- [`DragDrop.gs`](../../Goo/Input/DragDrop.gs)
+
+Identifies a drop-target lifecycle callback.
+
+### Values
+
+- `Enter`
+- `Move`
+- `Leave`
+- `Drop`
+
+## `DragSource`
+
+Source:
+
+- [`DragDrop.gs`](../../Goo/Input/DragDrop.gs)
+
+Defines payload creation and terminal notification for an in-app drag source.
+
+### `new(System.Func{DragStartEvent,DragData},System.Action{DragEndEvent})`
+
+Creates a source descriptor.
+
+- `create`: callback that creates or rejects drag data at the threshold
+- `end`: optional terminal callback
+
+### `Create`
+
+Gets the callback invoked once after the pointer crosses the drag threshold.
+
+### `End`
+
+Gets the optional callback invoked after the operation terminates.
+
+## `DragStartEvent`
+
+Source:
+
+- [`DragDrop.gs`](../../Goo/Input/DragDrop.gs)
+
+Describes the pointer state when a source crosses the drag threshold.
+
+### `Device`
+
+Gets the pointer device type.
+
+### `Modifiers`
+
+Gets the modifier keys held at the threshold.
+
+### `PointerId`
+
+Gets the stable pointer identifier.
+
+### `Position`
+
+Gets the pointer position in source-local coordinates.
+
+### `WindowPosition`
+
+Gets the pointer position in logical window coordinates.
+
+## `DropTarget`
+
+Source:
+
+- [`DragDrop.gs`](../../Goo/Input/DragDrop.gs)
+
+Defines negotiation and lifecycle callbacks for an in-app drop target.
+
+### `new(System.Func{DragEvent,DragEffect},System.Action{DragEvent})`
+
+Creates a target descriptor.
+
+- `query`: callback that selects one allowed effect or None
+- `changed`: optional lifecycle callback
+
+### `Changed`
+
+Gets the optional enter, move, leave, and drop callback.
+
+### `Query`
+
+Gets the callback that selects one allowed effect or rejects the drag.
+
 ## `FocusEvent`
 
 Source:

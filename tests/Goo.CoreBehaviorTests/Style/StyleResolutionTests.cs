@@ -7,6 +7,12 @@ using Xunit;
 public class StyleResolutionTests
 {
     [Fact]
+    public void EffectOnlyReplacementUpdatesTheRetainedNode()
+    {
+        Assert.True(new StyleFixtures().ShaderEffectOnlyReplacementContract());
+    }
+
+    [Fact]
     public void StyleEntryHasOnePayloadReference()
     {
         Assert.Equal(32, Unsafe.SizeOf<StyleEntry>());

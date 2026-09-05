@@ -3258,6 +3258,14 @@ if Environment.GetEnvironmentVariable("GOO_GPU_TIMESTAMPS_SMOKE") == "1" {
   RunGpuTimestampSmoke()
   return
 }
+if Environment.GetEnvironmentVariable("GOO_GPU_PATH_BENCHMARK") == "1" {
+  RunGpuPathBenchmark()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_GPU_GLASS_BENCHMARK") == "1" {
+  RunGpuGlassBenchmark()
+  return
+}
 if Environment.GetEnvironmentVariable("GOO_NATIVE_INPUT_SMOKE") == "1" {
   RunNativeInputSmoke()
   return
@@ -3281,6 +3289,10 @@ if Environment.GetEnvironmentVariable("GOO_SCROLLBAR_SMOKE") == "1" {
 }
 if Environment.GetEnvironmentVariable("GOO_SHADER_EFFECT_SMOKE") == "1" {
   RunShaderEffectSmoke()
+  return
+}
+if Environment.GetEnvironmentVariable("GOO_LIQUID_GLASS_ALPHA_SMOKE") == "1" {
+  RunLiquidGlassAlphaSmoke()
   return
 }
 if Environment.GetEnvironmentVariable("GOO_SHADER_EFFECT_BENCHMARK") == "1" {

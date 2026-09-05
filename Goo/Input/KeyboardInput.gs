@@ -88,7 +88,12 @@ internal class KeyboardInput {
   Drain(root, resolver, text, onKeyPress, 0)
 
   internal func Drain(root Node?, resolver Resolver, text TextInput,
-    onKeyPress Action[Key, KeyModifiers]?, repeatStartTicks int64) bool{
+    onKeyPress Action[Key, KeyModifiers]?, repeatStartTicks int64) bool ->
+  Drain(root, resolver, text, onKeyPress, repeatStartTicks, nil)
+
+  internal func Drain(root Node?, resolver Resolver, text TextInput,
+    onKeyPress Action[Key, KeyModifiers]?, repeatStartTicks int64,
+    pointer PointerInput?) bool{
       var changed = clearButtonPressAfterFocusMove(resolver, text)
       queueHead = 0
       try {
@@ -107,6 +112,11 @@ internal class KeyboardInput {
               if let callback = onKeyPress {
                 callback(e.Key, e.Modifiers)
               }
+              if pointer?.HandleDragKey(root, e.Key, e.Modifiers) == true {
+                changed = true
+                StopKeyRepeat(e.Key)
+                continue
+              }
               let dispatch = DispatchKeyDown(text.FocusedNode(), e.Key, e.Modifiers, false)
               let handled = !dispatch.DefaultPrevented
                 && HandleKeyDefault(root, resolver, text, e.Key, e.Modifiers)
@@ -116,6 +126,10 @@ internal class KeyboardInput {
               if handled { changed = true }
             } else if e.Kind == KeyboardEventKind.Release {
               try {
+                if pointer?.HandleDragKey(root, e.Key, e.Modifiers) == true {
+                  changed = true
+                  continue
+                }
                 let dispatch = DispatchKeyUp(text.FocusedNode(), e.Key, e.Modifiers)
                 if HandleButtonRelease(root, resolver, text, e.Key, !dispatch.DefaultPrevented) {
                   changed = true

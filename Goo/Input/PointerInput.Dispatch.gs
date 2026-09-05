@@ -3,6 +3,7 @@ package Goo
 import System
 import System.Collections.Generic
 import System.Numerics
+import System.Runtime.ExceptionServices
 
 internal partial class PointerInput {
   private func nextDelta(x float32, y float32) Point {
@@ -253,14 +254,25 @@ internal partial class PointerInput {
       return prevented
     }
 
-  private func cancelInteraction(resolver Resolver, text TextInput) bool {
+  private func cancelInteraction(root Node?, resolver Resolver, text TextInput) bool {
     let hadInteraction = heldButtons != PointerButtons.None || pressChain.Count > 0
       || dragEntry != nil || dragEditor != nil || hasScrollDrag()
       || clickTarget != nil || captureTarget != nil || activeTarget != nil
+      || currentOwnsDragState()
     if !hadInteraction { return false }
     let canceled = heldButtons
+    var failure Exception?
     try {
-      dispatchCancel()
+      try {
+        dispatchCancel()
+      } catch (error Exception) {
+        failure = error
+      }
+      try {
+        cancelCurrentDrag(root)
+      } catch (error Exception) {
+        if failure == nil { failure = error }
+      }
     } finally {
       canceledButtons = PointerButtons(int32(canceledButtons) | int32(canceled))
       clearPressChain(resolver)
@@ -287,6 +299,7 @@ internal partial class PointerInput {
         primaryPen = nil
       }
     }
+    if let error = failure { ExceptionDispatchInfo.Capture(error).Throw() }
     return true
   }
 

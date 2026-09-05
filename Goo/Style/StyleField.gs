@@ -211,6 +211,19 @@ internal func entryImageSource(entry StyleEntry) ImageSourceProvider ? -> entry.
 
 internal func entryShaderEffect(entry StyleEntry) ShaderEffect ? -> entry.Payload as ShaderEffect?
 
+internal func sameStyleEntry(left StyleEntry, right StyleEntry) bool {
+  if left.A != right.A || left.B != right.B || left.C != right.C || left.D != right.D {
+    return false
+  }
+  if Object.ReferenceEquals(left.Payload, right.Payload) { return true }
+  return entryText(left) == entryText(right)
+    && sameGradient(entryGradient(left), entryGradient(right))
+    && sameBoxShadows(entryShadows(left), entryShadows(right))
+    && samePath(entryPath(left), entryPath(right))
+    && entryImageSource(left) == entryImageSource(right)
+    && entryShaderEffect(left) == entryShaderEffect(right)
+}
+
 internal func samePath(left VectorPath, right VectorPath) bool {
   if left.payload == right.payload { return true }
   guard let data = left.payload else { return false }

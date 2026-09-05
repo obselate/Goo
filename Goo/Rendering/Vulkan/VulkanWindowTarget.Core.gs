@@ -846,10 +846,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
           HandleFrameFailure(VkConstants.VK_ERROR_DEVICE_LOST,
             VulkanDiagnosticEventIds.Submit)
         } finally {
-          CaptureDiagnosticResources()
-          CaptureDiagnosticValidationBoundary()
-          CloseDiagnosticFrame(false)
-          ClearActiveFrame()
+          FinishFailedFrame()
         }
         return false
       }
@@ -894,10 +891,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
       try {
         HandleFrameFailure(markedSubmit, VulkanDiagnosticEventIds.Submit)
       } finally {
-        CaptureDiagnosticResources()
-        CaptureDiagnosticValidationBoundary()
-        CloseDiagnosticFrame(false)
-        ClearActiveFrame()
+        FinishFailedFrame()
       }
       return
     }
@@ -983,10 +977,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         HandleFrameFailure(VkConstants.VK_ERROR_DEVICE_LOST,
           VulkanDiagnosticEventIds.PresentWait)
       } finally {
-        CaptureDiagnosticResources()
-        CaptureDiagnosticValidationBoundary()
-        CloseDiagnosticFrame(false)
-        ClearActiveFrame()
+        FinishFailedFrame()
       }
       return
     }
@@ -1009,10 +1000,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         try {
           HandleFrameFailure(prepareResult, VulkanDiagnosticEventIds.PresentWait)
         } finally {
-          CaptureDiagnosticResources()
-          CaptureDiagnosticValidationBoundary()
-          CloseDiagnosticFrame(false)
-          ClearActiveFrame()
+          FinishFailedFrame()
         }
         return
       }
@@ -1045,10 +1033,7 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
         HandleFrameFailure(VkConstants.VK_ERROR_UNKNOWN,
           VulkanDiagnosticEventIds.SwapchainPresent)
       } finally {
-        CaptureDiagnosticResources()
-        CaptureDiagnosticValidationBoundary()
-        CloseDiagnosticFrame(false)
-        ClearActiveFrame()
+        FinishFailedFrame()
       }
       return
     }
@@ -1134,6 +1119,13 @@ internal unsafe partial class VulkanWindowTarget : IDisposable, FrameProfileSink
       ClearActiveFrame()
     }
     return completed
+  }
+
+  private func FinishFailedFrame() {
+    CaptureDiagnosticResources()
+    CaptureDiagnosticValidationBoundary()
+    CloseDiagnosticFrame(false)
+    ClearActiveFrame()
   }
 
   public func Resize(width int32, height int32) bool {

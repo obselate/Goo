@@ -4,10 +4,11 @@ set -euo pipefail
 output="${1:?usage: build-sdl-macos-arm64.sh OUTPUT_DYLIB}"
 version=3.4.0
 sha256=082cbf5f429e0d80820f68dc2b507a94d4cc1b4e70817b119bbb8ec6a69584b8
+deployment_target=14.0
 work="$(mktemp -d -t goo-sdl-macos.XXXXXX)"
 trap 'rm -rf -- "$work"' EXIT
 
-for command_name in cmake codesign curl file install_name_tool lipo shasum tar; do
+for command_name in awk cmake codesign curl file install_name_tool lipo otool shasum tar; do
   command -v "$command_name" >/dev/null || { printf 'required command missing: %s\n' "$command_name" >&2; exit 1; }
 done
 
@@ -21,6 +22,7 @@ cmake -S "$work/src" -B "$work/build" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="$work/install" \
   -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET="$deployment_target" \
   -DSDL_AUDIO=OFF \
   -DSDL_CAMERA=OFF \
   -DSDL_DIALOG=OFF \
@@ -49,3 +51,5 @@ install_name_tool -id @rpath/libSDL3.dylib "$output"
 codesign --force --sign - --timestamp=none "$output"
 file "$output" | grep -Fq 'Mach-O 64-bit dynamically linked shared library arm64'
 [[ "$(lipo -archs "$output")" == arm64 ]]
+minos="$(otool -l "$output" | awk '$1 == "minos" { print $2; exit }')"
+[[ "$minos" == "$deployment_target" ]]

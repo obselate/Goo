@@ -364,6 +364,7 @@ class StateSurfacesChapter : Cell {
       index = index + 1
     }
     pauseAct(activeAct)
+    dragId = -1
     activeAct = next
     actProgress.Set(0.0)
     actProgress.To(1.0, GalleryActTransitionSpec)
@@ -474,20 +475,19 @@ class StateSurfacesChapter : Cell {
     }
   }
 
-  private func beginDrag(letter GallerySurfaceLetter, event PointerEvent) {
+  private func beginMagnetDrag(letter GallerySurfaceLetter, event DragStartEvent) DragData? {
     if activeAct != 0 {
-      return
+      return nil
     }
     cancelFridgeMotion()
     let pointer = stagePoint(event.WindowPosition)
     dragId = letter.Id
     dragOffset = Point{ X: letter.Magnet.X - pointer.X, Y: letter.Magnet.Y - pointer.Y }
-    event.Capture()
-    event.PreventDefault()
     Rebuild()
+    return DragData(letter, DragEffect.Move)
   }
 
-  private func dragMagnet(letter GallerySurfaceLetter, event PointerEvent) {
+  private func dragMagnet(letter GallerySurfaceLetter, event DragEvent) {
     if activeAct != 0 || dragId != letter.Id {
       return
     }
@@ -499,12 +499,33 @@ class StateSurfacesChapter : Cell {
     Rebuild()
   }
 
-  private func endDrag(letter GallerySurfaceLetter, event PointerEvent) {
+  private func endMagnetDrag(letter GallerySurfaceLetter, event DragEndEvent) {
     if dragId != letter.Id {
       return
     }
-    event.ReleaseCapture()
     dragId = -1
+    Rebuild()
+  }
+
+  private func queryMagnetDrop(event DragEvent) DragEffect {
+    if event.Data.Value is GallerySurfaceLetter { return DragEffect.Move }
+    return DragEffect.None
+  }
+
+  private func changeMagnetDrop(event DragEvent) {
+    if event.Kind == DragEventKind.Leave { return }
+    let payload = event.Data.Value
+    if payload is GallerySurfaceLetter {
+      dragMagnet(payload, event)
+    }
+  }
+
+  private func moveMagnet(letter GallerySurfaceLetter, x float64, y float64) {
+    cancelFridgeMotion()
+    letter.Magnet = Point{
+      X: Math.Clamp(x, 0.035, 0.965),
+      Y: Math.Clamp(y, 0.05, 0.95),
+    }
     Rebuild()
   }
 
@@ -518,13 +539,26 @@ class StateSurfacesChapter : Cell {
       return
     }
     event.PreventDefault()
-    cancelFridgeMotion()
-    letter.Magnet = Point{
-      X: Math.Clamp(letter.Magnet.X + dx, 0.035, 0.965),
-      Y: Math.Clamp(letter.Magnet.Y + dy, 0.05, 0.95),
-    }
-    Rebuild()
+    moveMagnet(letter, letter.Magnet.X + dx, letter.Magnet.Y + dy)
   }
+
+  private func moveMagnetAccessible(letter GallerySurfaceLetter,
+    request AccessibilityActionRequest) bool{
+      if activeAct != 0 { return false }
+      if request.Action == AccessibilityAction.Increment {
+        moveMagnet(letter, letter.Magnet.X + 0.02, letter.Magnet.Y)
+        return true
+      }
+      if request.Action == AccessibilityAction.Decrement {
+        moveMagnet(letter, letter.Magnet.X - 0.02, letter.Magnet.Y)
+        return true
+      }
+      if request.Action == AccessibilityAction.Scroll {
+        moveMagnet(letter, request.ScrollX, request.ScrollY)
+        return true
+      }
+      return false
+    }
 
   private func magnetColor(index int32) Color {
     let palette = index % 6
@@ -687,6 +721,13 @@ class StateSurfacesChapter : Cell {
       Accessibility: Accessibility{
         Role: AccessibilityRole.Button,
         Name: "Letter " + letter.Character.ToString(),
+        Actions: []AccessibilityAction{
+          AccessibilityAction.Increment,
+          AccessibilityAction.Decrement,
+          AccessibilityAction.Scroll,
+        },
+        OnAction: (request AccessibilityActionRequest) ->
+        moveMagnetAccessible(letter, request),
       },
       Transform: PanelTransform{
         TranslateX: -size * 0.5,
@@ -694,10 +735,9 @@ class StateSurfacesChapter : Cell {
         Rotate: displayRotation(letter),
         Scale: displayScale(letter),
       },
-      OnPointerDown: (event PointerEvent) -> beginDrag(letter, event),
-      OnPointerMove: (event PointerEvent) -> dragMagnet(letter, event),
-      OnPointerUp: (event PointerEvent) -> endDrag(letter, event),
-      OnPointerCancel: (event PointerEvent) -> endDrag(letter, event),
+      DragSource: DragSource(
+        (event DragStartEvent) -> beginMagnetDrag(letter, event),
+        (event DragEndEvent) -> endMagnetDrag(letter, event)),
       OnKeyDown: (event KeyEvent) -> nudgeMagnet(letter, event),
       Children: { content },
     }
@@ -710,6 +750,9 @@ class StateSurfacesChapter : Cell {
     Top: 0,
     Right: 0,
     Bottom: 0,
+    DropTarget: DropTarget(
+      (event DragEvent) -> queryMagnetDrop(event),
+      (event DragEvent) -> changeMagnetDrop(event)),
     TransitionMs: 250.0,
     BackgroundColor: Color.Rgb(91, 70, 54),
     Children: {

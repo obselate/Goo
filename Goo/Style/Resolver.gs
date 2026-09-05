@@ -187,7 +187,7 @@ internal class Resolver {
   }
 
   private func changedField(mask StyleMask, before StyleEntry, n Node, field StyleField) StyleMask {
-    if sameEntry(before, readField(n, field)) {
+    if sameStyleEntry(before, readField(n, field)) {
       return mask
     }
     return styleMaskWith(mask, field)
@@ -388,7 +388,7 @@ internal class Resolver {
     }
     if initial || n.TransitionMs <= 0.0 || !lerpable(e.Field)
       || !transitionSelected(n.TransitionSelection, e.Field) {
-        if sameEntry(readField(n, e.Field), e) {
+        if sameStyleEntry(readField(n, e.Field), e) {
           finishTransition(n, e.Field)
           return
         }
@@ -414,7 +414,7 @@ internal class Resolver {
   }
 
   internal func writeSnapField(n Node, e StyleEntry) {
-    if sameEntry(readField(n, e.Field), e) {
+    if sameStyleEntry(readField(n, e.Field), e) {
       finishTransition(n, e.Field)
       return
     }
@@ -426,7 +426,7 @@ internal class Resolver {
 
   internal func writeBoxShadows(n Node, e StyleEntry, initial bool) {
     let cur = readField(n, StyleField.BoxShadows)
-    if sameEntry(cur, e) {
+    if sameStyleEntry(cur, e) {
       finishTransition(n, StyleField.BoxShadows)
       return
     }
@@ -646,13 +646,6 @@ internal func makeBoxShadowTransition(from BoxShadowStack?, target BoxShadowStac
     }
   }
 
-internal func sameEntry(cur StyleEntry, e StyleEntry) bool -> cur.A == e.A && cur.B == e.B && cur.C == e.C && cur.D == e.D
-  && entryText(cur) == entryText(e) && sameGradient(entryGradient(cur), entryGradient(e))
-  && sameBoxShadows(entryShadows(cur), entryShadows(e))
-  && samePath(entryPath(cur), entryPath(e))
-  && entryImageSource(cur) == entryImageSource(e)
-  && entryShaderEffect(cur) == entryShaderEffect(e)
-
 // Quadratic curves: raw progress in, shaped progress out.
 internal func ease(e Easing, t float64) float64 {
   if e == Easing.EaseIn { return t * t }
@@ -674,7 +667,7 @@ internal func writeDirectWithInvalidation(n Node, e StyleEntry, invalidated Acti
   if !styleFieldApplies(n, e.Field) {
     return false
   }
-  if sameEntry(readField(n, e.Field), e) {
+  if sameStyleEntry(readField(n, e.Field), e) {
     return false
   }
   let tracksText = (n.Kind == NodeKind.Text || n.Kind == NodeKind.Editor)

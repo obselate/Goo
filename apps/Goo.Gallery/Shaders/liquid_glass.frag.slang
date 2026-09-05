@@ -25,7 +25,8 @@ float4 sampleDispersed(
     float4 center = gooBackdropTexture.Sample(uv);
     float4 red = gooBackdropTexture.Sample(clamp(uv + displacement * dispersion, minUv, maxUv));
     float4 blue = gooBackdropTexture.Sample(clamp(uv - displacement * dispersion, minUv, maxUv));
-    return float4(red.r, center.g, blue.b, center.a);
+    float alpha = max(max(red.a, center.a), blue.a);
+    return float4(red.r, center.g, blue.b, alpha);
 }
 
 float4 gooEffect(float2 uv, float4 source, float4 backdrop)

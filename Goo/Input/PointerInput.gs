@@ -3,6 +3,7 @@ package Goo
 import System
 import System.Collections.Generic
 import System.Numerics
+import System.Runtime.ExceptionServices
 
 internal partial class PointerInput {
   private let mouse PointerContact
@@ -42,6 +43,12 @@ internal partial class PointerInput {
   private var dragEntry Node?
   private var dragEditor Node?
   private var dragEditorStarted bool
+  private var dragCandidate Node?
+  private var dragSession PointerDragSession?
+  private var dragPointerId int64
+  private var dragPointerDevice PointerDevice
+  private var dragHitPath List[Node]?
+  private var dragGeneration int64
   private var lastPressT float64
   private var lastPressX float32
   private var lastPressY float32
@@ -309,20 +316,23 @@ internal partial class PointerInput {
           } else if e.Kind == PointerEventKind.Press {
             HandlePointerPress(root, resolver, text, timeS, e.X, e.Y, e.Button, e.Buttons,
               e.HasButtons, e.Pressure, e.HasPressure, e.Modifiers)
-            if pressChain.Count > 0 || dragEntry != nil || dragEditor != nil {
-              changed = true
-            }
+            if pressChain.Count > 0 || dragEntry != nil || dragEditor != nil
+              || dragCandidate != nil || dragSession != nil {
+                changed = true
+              }
           } else if e.Kind == PointerEventKind.Cancel {
             var diagnosticsConsumed = false
             if let hook = diagnosticsHook {
               diagnosticsConsumed = hook(root, PointerEventKind.Cancel, e.X, e.Y, e.Button)
             }
-            if diagnosticsConsumed || cancelInteraction(resolver, text) {
+            let canceled = cancelInteraction(root, resolver, text)
+            if diagnosticsConsumed || canceled {
               changed = true
             }
             if current != mouse { removeCurrentContact() }
           } else {
             let hadPress = pressChain.Count > 0 || dragEntry != nil || dragEditor != nil
+              || currentOwnsDragState()
             if HandlePointerRelease(root, resolver, e.X, e.Y, e.Button, e.Buttons,
               e.HasButtons, e.Pressure, e.HasPressure, e.Modifiers) || hadPress{
                 changed = true
@@ -471,8 +481,9 @@ internal partial class PointerInput {
     queue.Add(QueuedPointerEvent{ Kind: PointerEventKind.Cancel, PointerId: pointerId, Device: device })
   }
 
-  internal func FocusLost(resolver Resolver) {
+  internal func FocusLost(root Node?, resolver Resolver) {
     try {
+      cancelDrag(root)
       clearHover(resolver)
     } finally {
       cursorValid = false
@@ -489,12 +500,26 @@ internal partial class PointerInput {
   }
 
   internal func Reset(root Node?, resolver Resolver, text TextInput) {
+    var failure Exception?
+    try {
+      cancelDrag(root)
+    } catch (error Exception) {
+      failure = error
+    }
     activate(mouse)
-    cancelInteraction(resolver, text)
+    try {
+      cancelInteraction(root, resolver, text)
+    } catch (error Exception) {
+      if failure == nil { failure = error }
+    }
     if let values = contacts {
       for i in 0 ... values.Count {
         activate(values[i])
-        cancelInteraction(resolver, text)
+        try {
+          cancelInteraction(root, resolver, text)
+        } catch (error Exception) {
+          if failure == nil { failure = error }
+        }
       }
     }
     contacts?.Clear()
@@ -505,9 +530,14 @@ internal partial class PointerInput {
     activate(mouse)
     queue.Clear()
     queueHead = 0
-    clearHover(resolver)
+    try {
+      clearHover(resolver)
+    } catch (error Exception) {
+      if failure == nil { failure = error }
+    }
     scratchChain.Clear()
     hitChain.Clear()
+    dragHitPath?.Clear()
     clearCapture()
     clearActiveRoute()
     cursorValid = false
@@ -518,6 +548,7 @@ internal partial class PointerInput {
     lastPressT = -10.0
     lastPressNode = nil
     lastPressCount = 0
+    if let error = failure { ExceptionDispatchInfo.Capture(error).Throw() }
   }
 
   private func clearHover(resolver Resolver) {
@@ -626,7 +657,7 @@ internal partial class PointerInput {
 
   private func afterTreeUpdatedCurrent(root Node?, resolver Resolver, text TextInput) bool {
     guard let tree = root else {
-      let canceled = cancelInteraction(resolver, text)
+      let canceled = cancelInteraction(root, resolver, text)
       if currentDevice == PointerDevice.Mouse {
         clearHover(resolver)
         cursorValid = false
@@ -640,7 +671,7 @@ internal partial class PointerInput {
       routeUnavailable = !rebuildActivePath(tree)
     }
     if routeUnavailable {
-      cancelInteraction(resolver, text)
+      cancelInteraction(root, resolver, text)
       return true
     }
     if let d = dragEntry {
@@ -665,6 +696,7 @@ internal partial class PointerInput {
       clearPressChain(resolver)
       clickTarget = nil
     }
+    afterDragTreeUpdated(tree)
     if currentDevice == PointerDevice.Mouse && cursorValid {
       HandleMove(tree, resolver, cursor.X, cursor.Y)
     }
@@ -705,10 +737,40 @@ internal partial class PointerInput {
       let delta = nextDelta(x, y)
       lastModifiers = modifiers
       if hasScrollDrag() {
+        clearDragCandidate()
         return updateScrollDrag(root, x, y)
       }
-      let prevented = dispatchPointer(root, PointerEventKind.Move, x, y, delta.X, delta.Y,
-        PointerButton.None, modifiers)
+      var prevented bool
+      try {
+        prevented = dispatchPointer(root, PointerEventKind.Move, x, y, delta.X, delta.Y,
+          PointerButton.None, modifiers)
+      } catch (error Exception) {
+        if activeDragMatches() {
+          terminateDrag(root, DragEndKind.Canceled, DragEffect.None, true, error)
+        }
+        throw error
+      }
+      if activeDragMatches() {
+        if let tree = root {
+          try {
+            updateDragTarget(tree, x, y, modifiers, true)
+          } catch (error Exception) {
+            terminateDrag(tree, DragEndKind.Canceled, DragEffect.None, true, error)
+          }
+        }
+        handleMove(root, resolver, x, y,
+          currentDevice == PointerDevice.Mouse && !prevented, false)
+        return true
+      }
+      if dragCandidate != nil {
+        if prevented || captureTarget != nil || dragEntry != nil || dragEditorStarted {
+          if dragCandidate != nil && dragPointerMatches() { clearDragCandidate() }
+        } else if startDragIfReady(root, x, y, modifiers) {
+          handleMove(root, resolver, x, y,
+            currentDevice == PointerDevice.Mouse && !prevented, false)
+          return true
+        }
+      }
       return handleMove(root, resolver, x, y, currentDevice == PointerDevice.Mouse && !prevented,
         isSemanticPrimary() && !prevented)
     }
@@ -914,7 +976,9 @@ internal partial class PointerInput {
       if button != PointerButton.Primary || prevented {
         return false
       }
-      return HandlePress(root, resolver, text, timeS, x, y, modifiers, semantic)
+      let handled = HandlePress(root, resolver, text, timeS, x, y, modifiers, semantic)
+      if semantic { rememberDragCandidate() }
+      return handled
     }
 
   internal func HandleRelease(root Node?, resolver Resolver, x float32, y float32) bool -> HandleRelease(root, resolver, x, y, true)
@@ -969,6 +1033,23 @@ internal partial class PointerInput {
           updateScrollDrag(root, x, y)
           return true
         }
+        if button == PointerButton.Primary && semantic && activeDragMatches() {
+          var prevented bool
+          try {
+            prevented = dispatchPointer(root, PointerEventKind.Release, x, y,
+              0.0F, 0.0F, button, modifiers)
+          } catch (error Exception) {
+            terminateDrag(root, DragEndKind.Canceled, DragEffect.None, true, error)
+          }
+          releaseCaptureAfterUp(button)
+          if let tree = root {
+            dropDrag(tree, x, y, modifiers)
+          } else {
+            terminateDrag(nil, DragEndKind.Canceled, DragEffect.None, false, nil)
+          }
+          HandleRelease(root, resolver, x, y, false)
+          return true
+        }
         let prevented = dispatchPointer(root, PointerEventKind.Release, x, y, 0.0F, 0.0F, button, modifiers)
         releaseCaptureAfterUp(button)
         if button != PointerButton.Primary || !semantic {
@@ -984,6 +1065,7 @@ internal partial class PointerInput {
           dragEditorStarted = false
           clearScrollDrag()
           clickTarget = nil
+          if dragCandidate != nil && dragPointerMatches() { clearDragCandidate() }
           current.FocusTarget = nil
           releaseSemanticPrimary(button)
         }

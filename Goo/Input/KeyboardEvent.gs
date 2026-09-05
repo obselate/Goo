@@ -156,6 +156,8 @@ internal class InputCallbacks {
       if source == nil {
         nodeValues.Remove(node)
         node.HasSparseInputState = node.HasElementHandle
+          || TextInputCallbacks.HasNodeCallbacks(node)
+          || DragDropMetadata.HasNodeBindings(node)
         return sourcePresence != destinationPresence
       }
       if destination == nil {

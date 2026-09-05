@@ -611,6 +611,7 @@ void accumulateHorizontalEvenOddOrdered(
     uint count,
     bool rightRay,
     float2 pixelsPerPath,
+    uint totalParity,
     inout float value,
     inout float weight)
 {
@@ -618,6 +619,7 @@ void accumulateHorizontalEvenOddOrdered(
     float lastDistance = 0.0;
     uint lastCurve = 0u;
     uint lastSlot = 0u;
+    uint fractionalCount = 0u;
     uint maximumRoots = count * 2u;
     for (uint iteration = 0u; iteration < maximumRoots; ++iteration)
     {
@@ -645,6 +647,7 @@ void accumulateHorizontalEvenOddOrdered(
                 float direction;
                 if (!horizontalRootHit(point, curve, root, rightRay, pixelsPerPath,
                     distancePixels, direction)
+                    || distancePixels >= 0.5
                     || !rootFollows(distancePixels, curveIndex, slot, hasLast,
                         lastDistance, lastCurve, lastSlot))
                 {
@@ -665,13 +668,19 @@ void accumulateHorizontalEvenOddOrdered(
             break;
         }
         float amount = clamp(bestDistance + 0.5, 0.0, 1.0);
-        float rootSign = (iteration & 1u) == 0u ? 1.0 : -1.0;
+        float rootSign = (fractionalCount & 1u) == 0u ? 1.0 : -1.0;
         value += rootSign * amount;
         weight = max(weight, clamp(1.0 - abs(bestDistance) * 2.0, 0.0, 1.0));
+        fractionalCount++;
         hasLast = true;
         lastDistance = bestDistance;
         lastCurve = bestCurve;
         lastSlot = bestSlot;
+    }
+    uint tailParity = totalParity ^ (fractionalCount & 1u);
+    if (tailParity != 0u)
+    {
+        value += (fractionalCount & 1u) == 0u ? 1.0 : -1.0;
     }
 }
 
@@ -682,6 +691,7 @@ void accumulateVerticalEvenOddOrdered(
     uint count,
     bool downRay,
     float2 pixelsPerPath,
+    uint totalParity,
     inout float value,
     inout float weight)
 {
@@ -689,6 +699,7 @@ void accumulateVerticalEvenOddOrdered(
     float lastDistance = 0.0;
     uint lastCurve = 0u;
     uint lastSlot = 0u;
+    uint fractionalCount = 0u;
     uint maximumRoots = count * 2u;
     for (uint iteration = 0u; iteration < maximumRoots; ++iteration)
     {
@@ -716,6 +727,7 @@ void accumulateVerticalEvenOddOrdered(
                 float direction;
                 if (!verticalRootHit(point, curve, root, downRay, pixelsPerPath,
                     distancePixels, direction)
+                    || distancePixels >= 0.5
                     || !rootFollows(distancePixels, curveIndex, slot, hasLast,
                         lastDistance, lastCurve, lastSlot))
                 {
@@ -736,13 +748,19 @@ void accumulateVerticalEvenOddOrdered(
             break;
         }
         float amount = clamp(bestDistance + 0.5, 0.0, 1.0);
-        float rootSign = (iteration & 1u) == 0u ? 1.0 : -1.0;
+        float rootSign = (fractionalCount & 1u) == 0u ? 1.0 : -1.0;
         value += rootSign * amount;
         weight = max(weight, clamp(1.0 - abs(bestDistance) * 2.0, 0.0, 1.0));
+        fractionalCount++;
         hasLast = true;
         lastDistance = bestDistance;
         lastCurve = bestCurve;
         lastSlot = bestSlot;
+    }
+    uint tailParity = totalParity ^ (fractionalCount & 1u);
+    if (tailParity != 0u)
+    {
+        value += (fractionalCount & 1u) == 0u ? 1.0 : -1.0;
     }
 }
 
@@ -858,7 +876,7 @@ void accumulateHorizontalEvenOdd(
     {
         rightWeight = 0.0;
         accumulateHorizontalEvenOddOrdered(point, indices,
-            band.forwardStart, band.forwardCount, true, pixelsPerPath,
+            band.forwardStart, band.forwardCount, true, pixelsPerPath, rightParity,
             rightValue, rightWeight);
     }
     else
@@ -880,7 +898,7 @@ void accumulateHorizontalEvenOdd(
     {
         leftWeight = 0.0;
         accumulateHorizontalEvenOddOrdered(point, indices,
-            band.reverseStart, band.reverseCount, false, pixelsPerPath,
+            band.reverseStart, band.reverseCount, false, pixelsPerPath, leftParity,
             leftValue, leftWeight);
     }
     else
@@ -1011,7 +1029,7 @@ void accumulateVerticalEvenOdd(
     {
         downWeight = 0.0;
         accumulateVerticalEvenOddOrdered(point, indices,
-            band.forwardStart, band.forwardCount, true, pixelsPerPath,
+            band.forwardStart, band.forwardCount, true, pixelsPerPath, downParity,
             downValue, downWeight);
     }
     else
@@ -1033,7 +1051,7 @@ void accumulateVerticalEvenOdd(
     {
         upWeight = 0.0;
         accumulateVerticalEvenOddOrdered(point, indices,
-            band.reverseStart, band.reverseCount, false, pixelsPerPath,
+            band.reverseStart, band.reverseCount, false, pixelsPerPath, upParity,
             upValue, upWeight);
     }
     else

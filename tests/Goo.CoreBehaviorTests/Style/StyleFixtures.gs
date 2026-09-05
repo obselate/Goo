@@ -4,6 +4,30 @@ import System
 import System.Collections.Generic
 
 internal class StyleFixtures {
+  func ShaderEffectOnlyReplacementContract() bool {
+    let program = ShaderEffectProgram([]uint8{
+      71, 69, 70, 70, 1, 0, 0, 0, 1, 0, 0, 0,
+      86, 83, 80, 86, 20, 0, 0, 0,
+      3, 2, 35, 7, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+    })
+    let first = ShaderEffect(program)
+    let second = ShaderEffect(program)
+    let reconciler = Reconciler{ Res: Resolver{} }
+    let mounted = reconciler.Mount(Container{
+      Width: 64,
+      Height: 32,
+      BackgroundColor: Color.White,
+      ShaderEffect: first,
+    })
+    let retained = reconciler.Diff(mounted, Container{
+      Width: 64,
+      Height: 32,
+      BackgroundColor: Color.White,
+      ShaderEffect: second,
+    })
+    return retained == mounted && mounted.ShaderEffect == second
+  }
+
   func TokenCompositionContract() bool {
     let theme = CompositionTokens{
       Surface: Color.Rgb(18, 52, 86),
@@ -1954,13 +1978,13 @@ internal class StyleFixtures {
       for target in targets {
         var expected = source
         expected.Field = target
-        if !sameEntry(readField(n, target), expected) { return false }
+        if !sameStyleEntry(readField(n, target), expected) { return false }
       }
       n.BaseStyle = nil
       resolver.Invalidate(n, false)
       resolver.Flush()
       for target in targets {
-        if !sameEntry(readField(n, target), defaultStyleEntry(target)) { return false }
+        if !sameStyleEntry(readField(n, target), defaultStyleEntry(target)) { return false }
       }
       return true
     }

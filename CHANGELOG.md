@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.5.0 - 2026-09-05
+
+### Added
+
+- Added sparse in-app drag and drop through `Blob.DragSource` and `Blob.DropTarget`, with Copy/Move negotiation, transformed and clipped target discovery, cancellation, and deterministic payload cleanup.
+- Added immutable `VectorAsset`, `VectorNode`, `VectorPaint`, and `VectorStroke` APIs shared by authored, runtime SVG, and compiled vector content.
+- Added backend-neutral `ShaderEffectProgram` containers and `.goo-effect` build artifacts.
+- Added generic `Cell.Animate` overloads and `Motion.Tween`.
+- Added macOS arm64 packaging with bundled MoltenVK and Apple system-font resolution. Physical Mac qualification remains pending.
+
+### Changed
+
+- Changed `ShaderEffect` construction from raw fragment SPIR-V bytes to a validated `ShaderEffectProgram`. Load build output with `ShaderEffectProgram.Load` and pass the program to `ShaderEffect`.
+- Changed `TextEditor` construction to take only its `TextEditorController`; the controller now supplies the document. Consolidated editor operations under `TextEditorController.Execute(TextCommand)` and moved presentation-layer record types behind keyed layer methods.
+- Sealed `Anim<T>` and reorganized platform hosting behind internal per-platform services without adding a public backend selector.
+- Unified vector rendering around immutable document nodes while retaining `VectorPath` for individual paths.
+
+### Fixed
+
+- Fixed sampled-image premultiplied alpha, liquid-glass dispersed coverage, transformed and clipped input routing, queue wake and isolation, effect-only replacement, pending-readback close, and failure cleanup.
+- Fixed repeated shared-path identity lookup so the measured 1,000-Shape workload allocates 2,032 B/frame instead of 1,282,032 B/frame.
+
+### Performance
+
+- Shared identical shader programs by byte identity, centralized GPU timeline completion, and reused eligible offscreen layer targets. These changes reduce native-object pressure and preserve resource lifetime without a broad frame-time claim.
+- Reduced the measured EvenOdd overflow fallback by 34.96% at 33 contours and 35.64% at 65 contours on the qualified RTX 3080 workload. The 65-contour case remains above a 16.67 ms frame budget.
+- Reduced the measured 1,000-Container full-update host-frame P50 from 3.012 to 2.694 ms through retained style payload identity checks, with allocation unchanged.
+
+### Verification
+
+- Passed 317 core behavior tests, 12 public API and documentation tests, strict repository lint, generated shader consistency, Release builds, and focused native Vulkan lifecycle, input, image, vector, clip, effect, queue, and readback gates.
+- Current evidence and hardware limits are recorded in [`docs/perf/linux-release-qualification.md`](docs/perf/linux-release-qualification.md).
+
 ## 0.4.1 - 2026-09-01
 
 ### Added

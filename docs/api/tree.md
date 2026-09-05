@@ -78,6 +78,14 @@ Reports whether this element and its descendants reject input.
 
 Gets the style that applies while this element is disabled.
 
+### `DragSource`
+
+Gets the optional in-app drag source descriptor.
+
+### `DropTarget`
+
+Gets the optional in-app drop target descriptor.
+
 ### `Focus`
 
 Gets the style that applies while this element has focus.

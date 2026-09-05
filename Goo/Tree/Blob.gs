@@ -147,6 +147,22 @@ public open class Blob : Style {
       updateSparseInputState()
     }
   }
+  /// Gets the optional in-app drag source descriptor.
+  public prop DragSource DragSource? {
+    get -> DragDropMetadata.BlobSource(this)
+    init{
+      DragDropMetadata.SetBlobSource(this, value)
+      updateSparseInputState()
+    }
+  }
+  /// Gets the optional in-app drop target descriptor.
+  public prop DropTarget DropTarget? {
+    get -> DragDropMetadata.BlobTarget(this)
+    init{
+      DragDropMetadata.SetBlobTarget(this, value)
+      updateSparseInputState()
+    }
+  }
   internal prop HasSparseInputState bool{ get -> (blobState & int32(32)) != 0 }
   /// Gets the style that applies while the pointer hovers this element.
   public prop Hover Style? { get; init; }
@@ -232,6 +248,7 @@ public open class Blob : Style {
 
   private func updateSparseInputState() {
     let active = InputCallbacks.HasBlobCallbacks(this) || TextInputCallbacks.HasBlobCallbacks(this)
+      || DragDropMetadata.HasBlobBindings(this)
     blobState = active || HasElementHandle ? blobState | int32(32) : blobState & ^int32(32)
   }
 }

@@ -9,7 +9,7 @@ internal class VulkanImageE2EContract {
   const Height uint32 = 64u
   const ImageLogicalId uint64 = 7771uL
   const SamplerLogicalId uint64 = 7772uL
-  const ExpectedDigest uint64 = 2726448270383127845uL
+  const OpaqueBackdropColor uint32 = 0x204080FFu
 }
 
 internal func VulkanImageResourceIdVersion(version uint64) ResourceId -> ResourceId {
@@ -40,6 +40,12 @@ internal func BuildVulkanImageScene(frame SceneFrame, sampling uint32) {
     Width: float32(VulkanImageE2EContract.Width),
     Height: float32(VulkanImageE2EContract.Height),
   }, true)
+  frame.AddSolidBox(SolidBoxRecord{
+    Bounds: ConservativeBounds{ X: 40.0F, Y: 16.0F, Width: 4.0F, Height: 16.0F },
+    Color: VulkanImageE2EContract.OpaqueBackdropColor,
+    Opacity: 1.0F,
+    TransformIndex: -1,
+  })
   frame.AddCachedImage(CachedImageRefRecord{
     Bounds: ConservativeBounds{ X: 16.0F, Y: 16.0F, Width: 32.0F, Height: 32.0F },
     ImageId: VulkanImageResourceId(),
@@ -80,25 +86,52 @@ internal unsafe func VerifyVulkanImageReadback(readback * uint8, width uint32, h
   if readback == nil || width < VulkanImageE2EContract.Width || height < VulkanImageE2EContract.Height {
     return false
   }
-  if !VulkanImageExactPixel(readback, width, 4, 4, 0u, 0u, 0u, 0u) {
-    return false
-  }
-  if !VulkanImageExactPixel(readback, width, 20, 20, 0u, 0u, 255u, 255u) {
-    return false
-  }
-  if !VulkanImageNearPixel(readback, width, 44, 20, 188, 92, 0, 128, 4) {
-    return false
-  }
-  if !VulkanImageExactPixel(readback, width, 20, 44, 0u, 255u, 0u, 255u) {
-    return false
-  }
-  if !VulkanImageExactPixel(readback, width, 44, 44, 0u, 0u, 0u, 0u) {
+  if !VulkanImageNearRegion(readback, width, 0, 0, 16, 64, 0, 0, 0, 0, 0)
+    || !VulkanImageNearRegion(readback, width, 48, 0, 16, 64, 0, 0, 0, 0, 0)
+    || !VulkanImageNearRegion(readback, width, 16, 0, 32, 16, 0, 0, 0, 0, 0)
+    || !VulkanImageNearRegion(readback, width, 16, 48, 32, 16, 0, 0, 0, 0, 0) {
+      return false
+    }
+  if !VulkanImageNearRegion(readback, width, 16, 16, 15, 15, 0, 0, 255, 255, 4)
+    || !VulkanImageNearRegion(readback, width, 16, 33, 15, 15, 0, 255, 0, 255, 4)
+    || !VulkanImageNearRegion(readback, width, 33, 33, 15, 15, 0, 0, 0, 0, 0) {
+      return false
+    }
+  if !VulkanImageNearRegion(readback, width, 33, 16, 7, 15, 188, 92, 0, 128, 4)
+    || !VulkanImageNearRegion(readback, width, 44, 16, 4, 15, 188, 92, 0, 128, 4) {
+      return false
+    }
+  if !VulkanImageNearRegion(readback, width, 40, 16, 4, 15, 189, 102, 92, 255, 4) {
     return false
   }
   return true
 }
 
-internal unsafe func VerifyVulkanImageLinearReadback(readback * uint8, width uint32, height uint32) bool -> VerifyVulkanImageReadback(readback, width, height)
+internal unsafe func VerifyVulkanImageLinearReadback(
+  readback * uint8,
+  width uint32,
+  height uint32) bool{
+    if readback == nil || width < VulkanImageE2EContract.Width
+      || height < VulkanImageE2EContract.Height{
+        return false
+      }
+    if !VulkanImageNearRegion(readback, width, 0, 0, 16, 64, 0, 0, 0, 0, 0)
+      || !VulkanImageNearRegion(readback, width, 48, 0, 16, 64, 0, 0, 0, 0, 0)
+      || !VulkanImageNearRegion(readback, width, 16, 0, 32, 16, 0, 0, 0, 0, 0)
+      || !VulkanImageNearRegion(readback, width, 16, 48, 32, 16, 0, 0, 0, 0, 0) {
+        return false
+      }
+    if !VulkanImageNearRegion(readback, width, 16, 16, 8, 8, 0, 0, 255, 255, 4)
+      || !VulkanImageNearRegion(readback, width, 16, 40, 8, 8, 0, 255, 0, 255, 4)
+      || !VulkanImageNearRegion(readback, width, 40, 40, 8, 8, 0, 0, 0, 0, 0) {
+        return false
+      }
+    if !VulkanImageNearRegion(readback, width, 44, 16, 4, 8, 188, 92, 0, 128, 4)
+      || !VulkanImageNearRegion(readback, width, 40, 16, 4, 8, 189, 102, 92, 255, 4) {
+        return false
+      }
+    return true
+  }
 
 internal func VulkanImageUploadStatsEqual(first VulkanUploadRingStats, second VulkanUploadRingStats) bool -> first.Capacity == second.Capacity
   && first.UsedBytes == second.UsedBytes
@@ -228,22 +261,6 @@ internal func WaitVulkanImageFrame(target VulkanOffscreenTarget) {
   }
 }
 
-private unsafe func VulkanImageExactPixel(
-  readback * uint8,
-  width uint32,
-  x int32,
-  y int32,
-  red uint32,
-  green uint32,
-  blue uint32,
-  alpha uint32) bool{
-    let offset = uint64(y) * uint64(width) * 4uL + uint64(x) * 4uL
-    return readback[offset] == uint8(red)
-      && readback[offset + 1uL] == uint8(green)
-      && readback[offset + 2uL] == uint8(blue)
-      && readback[offset + 3uL] == uint8(alpha)
-  }
-
 private unsafe func VulkanImageNearPixel(
   readback * uint8,
   width uint32,
@@ -263,4 +280,31 @@ private unsafe func VulkanImageNearPixel(
       && greenDelta >= -tolerance && greenDelta <= tolerance
       && blueDelta >= -tolerance && blueDelta <= tolerance
       && alphaDelta >= -tolerance && alphaDelta <= tolerance
+  }
+
+private unsafe func VulkanImageNearRegion(
+  readback * uint8,
+  width uint32,
+  x int32,
+  y int32,
+  regionWidth int32,
+  regionHeight int32,
+  red int32,
+  green int32,
+  blue int32,
+  alpha int32,
+  tolerance int32) bool{
+    var currentY = y
+    while currentY < y + regionHeight {
+      var currentX = x
+      while currentX < x + regionWidth {
+        if !VulkanImageNearPixel(readback, width, currentX, currentY,
+          red, green, blue, alpha, tolerance) {
+            return false
+          }
+        currentX++
+      }
+      currentY++
+    }
+    return true
   }

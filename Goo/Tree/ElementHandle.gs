@@ -326,7 +326,8 @@ internal class ElementHandles {
         values.Remove(n)
         prior.Detach(n)
         n.HasElementHandle = false
-        n.HasSparseInputState = InputCallbacks.HasNodeCallbacks(n) || TextInputCallbacks.HasNodeCallbacks(n)
+        n.HasSparseInputState = InputCallbacks.HasNodeCallbacks(n)
+          || TextInputCallbacks.HasNodeCallbacks(n) || DragDropMetadata.HasNodeBindings(n)
       }
       if let next = handle {
         values.Add(n, next)
@@ -349,11 +350,13 @@ internal class ElementHandles {
         values.Remove(n)
         value.Detach(n)
         n.HasElementHandle = false
-        n.HasSparseInputState = InputCallbacks.HasNodeCallbacks(n) || TextInputCallbacks.HasNodeCallbacks(n)
+        n.HasSparseInputState = InputCallbacks.HasNodeCallbacks(n)
+          || TextInputCallbacks.HasNodeCallbacks(n) || DragDropMetadata.HasNodeBindings(n)
         return value
       }
       n.HasElementHandle = false
-      n.HasSparseInputState = InputCallbacks.HasNodeCallbacks(n) || TextInputCallbacks.HasNodeCallbacks(n)
+      n.HasSparseInputState = InputCallbacks.HasNodeCallbacks(n)
+        || TextInputCallbacks.HasNodeCallbacks(n) || DragDropMetadata.HasNodeBindings(n)
       return nil
     }
 

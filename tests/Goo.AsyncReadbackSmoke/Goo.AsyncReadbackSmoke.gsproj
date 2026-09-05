@@ -10,6 +10,8 @@
   <ItemGroup>
     <GooShaderEffect Include="Shaders/control_effect.frag.slang"
                      TargetPath="control_effect.frag.goo-effect" />
+    <GooShaderEffect Include="../../apps/Goo.Gallery/Shaders/liquid_glass.frag.slang"
+                     TargetPath="liquid_glass.frag.goo-effect" />
     <Compile Remove="WindowReadbackFixture.gs" />
     <Compile Include="../Shared/PrimitiveScene.gs" Link="PrimitiveScene.gs" />
     <Compile Include="../Shared/RoundedOverflowScene.gs" Link="RoundedOverflowScene.gs" />

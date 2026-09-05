@@ -23,4 +23,4 @@ The 2026-08-31 QEMU run used Windows 11 build 26200.9168, Microsoft Basic Displa
 
 ## Artifact
 
-`artifacts/Goo.0.3.0-windows-x64-nativeaot.zip` is a self-contained NativeAOT package consumer. Run `run-windows-qualification.ps1` from a normal signed-in Windows desktop and return the complete timestamped results directory.
+`artifacts/Goo.0.3.0-windows-x64-nativeaot.zip` is the historical self-contained NativeAOT package consumer used by the software baseline. Generate a new version-matched artifact from the exact release candidate before physical-GPU qualification. Run `run-windows-qualification.ps1` from a normal signed-in Windows desktop and return the complete timestamped results directory.

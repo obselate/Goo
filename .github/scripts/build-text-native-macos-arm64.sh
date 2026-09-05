@@ -7,8 +7,9 @@ repo_root="$(CDPATH= cd -- "$script_dir/../.." && pwd)"
 manifest="$repo_root/tools/Goo.TextNative/manifest.json"
 hb_url='https://github.com/harfbuzz/harfbuzz/releases/download/14.3.1/harfbuzz-14.3.1.tar.xz'
 hb_sha256='9dae9538aae2ffdf70cec31f2c27bf68e2aaeeae3112688467697d5faf6194f7'
+deployment_target='14.0'
 
-for command_name in codesign curl file lipo meson ninja nm otool patch python3 shasum strip tar xcodebuild; do
+for command_name in awk codesign curl file lipo meson ninja nm otool patch python3 shasum strip tar xcodebuild; do
   command -v "$command_name" >/dev/null || { printf 'required command missing: %s\n' "$command_name" >&2; exit 1; }
 done
 
@@ -126,6 +127,7 @@ path.write_text(text, encoding="utf-8")
 PY
 
 export SOURCE_DATE_EPOCH=0
+export MACOSX_DEPLOYMENT_TARGET="$deployment_target"
 export CFLAGS="-O3 -g0 -ffile-prefix-map=$work=."
 export CXXFLAGS="$CFLAGS"
 export LDFLAGS='-Wl,-dead_strip'
@@ -145,6 +147,10 @@ strip -x "$harfbuzz_output"
 strip -x "$gpu_output"
 codesign --force --sign - --timestamp=none "$harfbuzz_output"
 codesign --force --sign - --timestamp=none "$gpu_output"
+for library in "$harfbuzz_output" "$gpu_output"; do
+  minos="$(otool -l "$library" | awk '$1 == "minos" { print $2; exit }')"
+  [[ "$minos" == "$deployment_target" ]]
+done
 
 python3 "$repo_root/tools/Goo.TextNative/record-build.py" \
   --manifest "$manifest" \
@@ -152,6 +158,16 @@ python3 "$repo_root/tools/Goo.TextNative/record-build.py" \
   --output "$staging" \
   --artifact "harfbuzz=$harfbuzz_output" \
   --artifact "gpu=$gpu_output"
+python3 - "$staging/text-native-build.json" "$deployment_target" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+evidence = json.loads(path.read_text(encoding="utf-8"))
+evidence["buildEvidence"]["deploymentTarget"] = sys.argv[2]
+path.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+PY
 install -m 0755 "$harfbuzz_output" "$output/libgoo-harfbuzz.dylib"
 install -m 0755 "$gpu_output" "$output/libgoo-harfbuzz-gpu.dylib"
 install -m 0644 "$staging/text-native-build.json" "$output/text-native-build.json"

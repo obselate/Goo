@@ -116,6 +116,7 @@ internal class ClipPathNestedCell : Cell {
         Position: PositionType.Absolute,
         Width: 200.0,
         Height: 100.0,
+        HitTestSelf: true,
       },
       Container{
         Key: "outer",
@@ -138,6 +139,7 @@ internal class ClipPathNestedCell : Cell {
                 Position: PositionType.Absolute,
                 Width: 100.0,
                 Height: 100.0,
+                HitTestSelf: true,
               },
             },
           },
@@ -157,6 +159,7 @@ internal class ClipPathTransformCell : Cell {
         Position: PositionType.Absolute,
         Width: 200.0,
         Height: 100.0,
+        HitTestSelf: true,
       },
       Container{
         Key: "clip",
@@ -174,6 +177,7 @@ internal class ClipPathTransformCell : Cell {
             Position: PositionType.Absolute,
             Width: 100.0,
             Height: 100.0,
+            HitTestSelf: true,
           },
         },
       },

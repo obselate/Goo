@@ -2,6 +2,7 @@ package Goo
 
 import System
 import System.Collections.Generic
+import System.Runtime.ExceptionServices
 
 internal class InputCoordinator {
   private var keyboard KeyboardInput
@@ -57,7 +58,8 @@ internal class InputCoordinator {
   internal func Drain(root Node?, resolver Resolver, timeS float64,
     onKeyPress Action[Key, KeyModifiers]?, repeatStartTicks int64) bool{
       let pointerChanged = pointer.Drain(root, resolver, timeS, text)
-      return keyboard.Drain(root, resolver, text, onKeyPress, repeatStartTicks) || pointerChanged
+      return keyboard.Drain(root, resolver, text, onKeyPress, repeatStartTicks, pointer)
+        || pointerChanged
     }
 
   internal func AfterTreeUpdated(root Node?, resolver Resolver, rebuilt bool) {
@@ -111,14 +113,18 @@ internal class InputCoordinator {
   internal func CurrentCursor() Cursor -> pointer.CurrentCursor()
   internal func ConsumeScrollRectsDirty() bool -> pointer.ConsumeScrollRectsDirty()
 
-  internal func FocusLost(resolver Resolver) {
+  internal func FocusLost(root Node?, resolver Resolver) {
     try {
       keyboard.Reset(resolver)
       text.SetFocus(resolver, nil)
-      pointer.FocusLost(resolver)
+      pointer.FocusLost(root, resolver)
     } finally {
       resolver.Flush()
     }
+  }
+
+  internal func FocusLost(resolver Resolver) {
+    FocusLost(nil, resolver)
   }
 
   internal func FocusElement(resolver Resolver, target Node) bool {
@@ -140,13 +146,28 @@ internal class InputCoordinator {
   }
 
   internal func Reset(root Node?, resolver Resolver) {
+    var failure Exception?
     try {
       keyboard.Reset(resolver)
-      pointer.Reset(root, resolver, text)
-      text.SetFocus(resolver, nil)
-    } finally {
-      resolver.Flush()
+    } catch (error Exception) {
+      failure = error
     }
+    try {
+      pointer.Reset(root, resolver, text)
+    } catch (error Exception) {
+      if failure == nil { failure = error }
+    }
+    try {
+      text.SetFocus(resolver, nil)
+    } catch (error Exception) {
+      if failure == nil { failure = error }
+    }
+    try {
+      resolver.Flush()
+    } catch (error Exception) {
+      if failure == nil { failure = error }
+    }
+    if let error = failure { ExceptionDispatchInfo.Capture(error).Throw() }
   }
 
   internal func Dispose() {
@@ -195,6 +216,7 @@ internal class InputCoordinator {
 
   internal func HandleKey(root Node?, resolver Resolver, key Key, modifiers KeyModifiers) bool {
     try {
+      if pointer.HandleDragKey(root, key, modifiers) { return true }
       return keyboard.HandleKey(root, resolver, text, key, modifiers)
     } finally {
       resolver.Flush()
@@ -318,6 +340,7 @@ internal class InputCoordinator {
         if let callback = onKeyPress {
           callback(key, modifiers)
         }
+        if pointer.HandleDragKey(root, key, modifiers) { return true }
         return keyboard.HandleKey(root, resolver, text, key, modifiers)
       } finally {
         resolver.Flush()
