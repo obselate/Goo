@@ -119,7 +119,9 @@ def markdown_links(files: list[str]) -> None:
                 continue
             local = target.split("#", 1)[0]
             destination = (path.parent / local).resolve()
-            if not destination.exists():
+            if not destination.is_relative_to(ROOT):
+                failures.append(f"{relative}: {target} resolves outside the repository")
+            elif not destination.exists():
                 failures.append(f"{relative}: {target}")
     if failures:
         fail("broken local Markdown links:\n" + "\n".join(failures))

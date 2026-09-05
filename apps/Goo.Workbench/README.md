@@ -1,6 +1,6 @@
 # Workbench
 
-Native Goo mockup of the [corporate UI studies](../../../design-aesthetics/THEMES.md). Compare Division, Instrument, and Registry using the three theme tabs above the header. Switching preserves the workspace state. Division opens by default. Use `WORKBENCH_THEME=Instrument` or `WORKBENCH_THEME=Registry` to choose the initial variant.
+Native Goo mockup of the corporate UI studies. Optional sibling-repository provenance is in `../design-aesthetics/THEMES.md`. Compare Division, Instrument, and Registry using the three theme tabs above the header. Switching preserves the workspace state. Division opens by default. Use `WORKBENCH_THEME=Instrument` or `WORKBENCH_THEME=Registry` to choose the initial variant.
 
 The shared project workspace includes search, status filters, a detail inspector, task toggles, and in-memory sample creation.
 
@@ -33,7 +33,7 @@ Services depend on models. Views depend on services, models, and components. Com
 
 The service owns only session data. No persistence, network backend, custom renderer, or dependency-injection framework is introduced.
 
-Current build status, previews, and runtime limitations are in the [verification report](../../../design-aesthetics/VERIFICATION.md). Use `--no-build` with the run command to launch the verified local binary while Goo vector work is in progress.
+Optional sibling-repository preview provenance is in `../design-aesthetics/VERIFICATION.md`.
 
 ## Validation
 
@@ -42,7 +42,6 @@ gslint --strict --severity GL0006=none apps/Goo.Workbench
 dotnet build apps/Goo.Workbench/Goo.Workbench.gsproj -c Release
 WORKBENCH_SMOKE=1 dotnet run --project apps/Goo.Workbench/Goo.Workbench.gsproj -c Release --no-build
 WORKBENCH_SMOKE=1 WORKBENCH_VERIFY_CELLS=1 dotnet run --project apps/Goo.Workbench/Goo.Workbench.gsproj -c Release --no-build
-python3 ../design-aesthetics/verify.py
 ```
 
 Leave `GOO_DEVTOOLS` unset for normal interaction. For diagnostics, launch with `GOO_DEVTOOLS=1`. Use the repository's Goo.DevTools CLI to request a tree snapshot or PNG capture. Accessibility declarations do not establish native screen-reader support. Startup and frame-time targets in the design system require separate measurements.
@@ -55,4 +54,4 @@ The lint command disables only GL0006, which requests code documentation comment
 WORKBENCH_SMOKE=1 WORKBENCH_BENCH=1 GOO_FRAME_PROFILE=1 dotnet run --project apps/Goo.Workbench/Goo.Workbench.gsproj -c Release --no-build
 ```
 
-Run without `GOO_DEVTOOLS`. The benchmark sends native accessibility actions and measures action dispatch plus one window pump. It emits CSV lines for 320 selections, filters, and theme changes. Discard the first 64 samples per group for warm comparisons. The pump can update the tree without presenting when the native surface is throttled, so this measures UI update cost, not physical click-to-display latency. See the [performance report](../../../design-aesthetics/PERFORMANCE.md).
+Run without `GOO_DEVTOOLS`. The benchmark sends native accessibility actions and measures action dispatch plus one window pump. It emits CSV lines for 320 selections, filters, and theme changes. Discard the first 64 samples per group for warm comparisons. The pump can update the tree without presenting when the native surface is throttled, so this measures UI update cost, not physical click-to-display latency. Optional sibling-repository performance provenance is in `../design-aesthetics/PERFORMANCE.md`.
