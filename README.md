@@ -14,8 +14,10 @@ Goo applications describe UI as ordinary G# objects. Goo retains mounted state, 
 
 ## Quick start
 
+### Create an app
+
 Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-and meet the [platform requirements](#platform-requirements), then:
+and meet the [platform requirements](#platforms), then:
 
 ```sh
 dotnet new install Goo.Templates@0.5.0
@@ -34,6 +36,49 @@ dotnet run
 The template restores the G# SDK and Goo package through NuGet. A separate G#
 compiler, SDL, HarfBuzz, or shader compiler installation is not required for
 this starter application.
+
+### Build and run Goo Gallery
+
+The Gallery lets you try Goo's controls, layout, animation, drag and drop,
+and shaders. Install .NET 10, Git, and the
+[source-build shader tools](https://github.com/obselate/goo/blob/main/CONTRIBUTING.md#source-setup):
+Slang 2026.16 and Vulkan SDK 1.4.357.0. Set `SLANG_SDK` and `VULKAN_SDK`
+to their SDK roots. The Gallery compiles its own shaders during the build.
+
+```sh
+git clone https://github.com/obselate/goo.git
+cd goo
+```
+
+Download [Goo.0.5.0.nupkg](https://github.com/obselate/goo/releases/download/v0.5.0/Goo.0.5.0.nupkg)
+and extract it as a ZIP archive into `artifacts/gallery-native` inside the
+checkout. This supplies the released native libraries without compiling them
+yourself. Keep the archive's directory structure intact.
+
+From the checkout root, use the command for your platform. `dotnet run` builds
+the Gallery in Release mode and opens it.
+
+**Linux x64 (Wayland):**
+
+```sh
+dotnet run --project apps/Goo.Gallery/Goo.Gallery.gsproj -c Release -p:GooLinuxSdlPath="$PWD/artifacts/gallery-native/runtimes/linux-x64/native/libSDL3.so"
+```
+
+**Windows x64 (PowerShell):**
+
+```powershell
+dotnet run --project apps/Goo.Gallery/Goo.Gallery.gsproj -c Release -p:GooWindowsSdlPath="$PWD/artifacts/gallery-native/runtimes/win-x64/native/SDL3.dll"
+```
+
+**macOS arm64:**
+
+```sh
+dotnet run --project apps/Goo.Gallery/Goo.Gallery.gsproj -c Release -p:GooMacOsArm64NativeRoot="$PWD/artifacts/gallery-native/runtimes/osx-arm64/native"
+```
+
+Open **Surfaces > Fridge** to try drag and drop, or **Shaders** for the shader
+examples. Apple silicon users can also download the prebuilt Gallery and its
+installer from the [latest release](https://github.com/obselate/goo/releases/latest).
 
 ## Example
 
