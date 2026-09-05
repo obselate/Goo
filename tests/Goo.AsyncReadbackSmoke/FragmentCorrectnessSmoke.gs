@@ -72,10 +72,21 @@ func RunFragmentCorrectnessSmoke() {
     window = opened
     Console.SetError(capturedError)
     opened.Open()
-    WindowReadbackTestFixture.ForceRender(opened, 0.0)
-    WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667)
+    WindowReadbackTestFixture.ForceRender(opened, 0.0, 10.0)
+    WindowReadbackTestFixture.ForceRender(opened, 0.0166666666666667, 10.0)
     let metrics = WindowReadbackTestFixture.Metrics(opened)
-    let frame = PrimitiveReadback(opened, metrics)
+    var accepted = WindowReadbackTestFixture.Request(opened,
+      uint32(metrics.FramebufferWidth), uint32(metrics.FramebufferHeight))
+    if accepted == WindowReadbackRequestStatus.NotReady {
+      WindowReadbackTestFixture.DrainWindowQueue(opened, 10000)
+      accepted = WindowReadbackTestFixture.Request(opened,
+        uint32(metrics.FramebufferWidth), uint32(metrics.FramebufferHeight))
+    }
+    Require(accepted == WindowReadbackRequestStatus.Accepted,
+      "Fragment correctness readback was not accepted: " + accepted.ToString())
+    ReadbackAwaitReadbackReady(opened, 10000)
+    let frame = ReadbackTakeReadback(opened)
+    PrimitiveValidateResult(frame, metrics)
     let lavaOutside = PrimitiveLogicalPixel(frame.Pixels, frame.Width, metrics, 4.0, 64.0)
     let lavaCorner = PrimitiveLogicalPixel(frame.Pixels, frame.Width, metrics, 17.0, 17.0)
     let lavaCenter = PrimitiveLogicalPixel(frame.Pixels, frame.Width, metrics, 64.0, 64.0)
