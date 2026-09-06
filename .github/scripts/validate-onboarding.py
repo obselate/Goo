@@ -92,17 +92,18 @@ def release_text(version: str) -> None:
         fail(f"README.md: required onboarding text is missing: {missing}")
     if "Windows requires Windows 11" in readme:
         fail("README.md: Windows 11 must be a tested environment, not a minimum requirement")
-    readme_prose = markdown_prose(readme)
+    nuget_readme = (ROOT / "docs/nuget-readme.md").read_text(encoding="utf-8")
+    nuget_readme_prose = markdown_prose(nuget_readme)
     relative_links = [
-        target for target in re.findall(r"!?\[[^\]\n]*\]\(([^)\n]+)\)", readme_prose)
+        target for target in re.findall(r"!?\[[^\]\n]*\]\(([^)\n]+)\)", nuget_readme_prose)
         if not target.startswith(("#", "http://", "https://"))
     ]
     relative_html = [
-        target for target in re.findall(r"(?:href|src)=\"([^\"]+)\"", readme_prose)
+        target for target in re.findall(r"(?:href|src)=\"([^\"]+)\"", nuget_readme_prose)
         if not target.startswith(("#", "http://", "https://"))
     ]
     if relative_links or relative_html:
-        fail(f"README.md: NuGet cannot resolve relative links: {relative_links + relative_html}")
+        fail(f"docs/nuget-readme.md: NuGet cannot resolve relative links: {relative_links + relative_html}")
 
 
 def markdown_links(files: list[str]) -> None:
